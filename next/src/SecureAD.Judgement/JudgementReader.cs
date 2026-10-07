@@ -249,6 +249,63 @@ public sealed partial class JudgementReader : IDisposable
         return Tier0RouteFindingStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
+    /// <summary>Reads saved whole-generation path totals, including explicit unavailable/not-requested status; null means no saved product.</summary>
+    public Tier0RunSummary? ReadTier0RunSummary(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0DistanceStorage.ReadSummary(_connection, Description, cancellationToken);
+    }
+
+    /// <summary>Reads only the selected recorded object's saved distance; null means no saved product or no recorded subject.</summary>
+    internal Tier0ObjectDistance? ReadTier0ObjectDistance(string distinguishedName, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0DistanceStorage.ReadObject(_connection, Description, distinguishedName, cancellationToken);
+    }
+
+    /// <summary>Reads the selected subject's saved best evaluated route, independently of shortest distance and page order.</summary>
+    internal SavedBestSupportedRoute? ReadBestSupportedRoute(string distinguishedName, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return BestSupportedRouteStorage.Read(_connection, Description, distinguishedName, cancellationToken);
+    }
+
+    public Tier0OverviewPage? ReadTier0Overview(Tier0OverviewMark? after, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0Browsing.ReadPage(_connection, Description, after, cancellationToken);
+    }
+
+    public Tier0RouteDetails? ReadTier0RouteDetails(string distinguishedName, CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0Browsing.ReadObject(_connection, Description, distinguishedName, cancellationToken);
+    }
+
+    /// <summary>Reads a bounded saved group page without replaying membership analysis.</summary>
+    public GroupInventoryPage ReadGroupInventory(GroupInventoryQuery query, GroupInventoryMark? after,
+        CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return GroupInventoryStorage.Read(_connection, Description, query, after, cancellationToken);
+    }
+
     private void RequireCurrentPathGeneration()
     {
         var judgement = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Judgement);
@@ -521,9 +578,15 @@ public sealed partial class JudgementReader : IDisposable
             {EvidenceJoins}
             WHERE ($severity IS NULL OR f.severity = $severity)
               AND ($rule IS NULL OR f.rule_id = $rule)
-              AND ($domain IS NULL OR f.domain_fqdn = $domain)
-              AND ($container IS NULL OR f.distinguished_name LIKE $containerLike ESCAPE '\')
-              AND ($object IS NULL OR f.distinguished_name = $object)
+              AND (
+                (($domain IS NULL OR f.domain_fqdn = $domain)
+                 AND ($container IS NULL OR f.distinguished_name LIKE $containerLike ESCAPE '\')
+                 AND ($object IS NULL OR f.distinguished_name = $object))
+                OR (f.rule_id='SEC-052' AND EXISTS (
+                    SELECT 1 FROM finding_circular_group cg WHERE cg.finding_id=f.finding_id
+                      AND ($domain IS NULL OR cg.domain_fqdn=$domain)
+                      AND ($container IS NULL OR cg.distinguished_name LIKE $containerLike ESCAPE '\')
+                      AND ($object IS NULL OR cg.distinguished_name=$object))))
               AND ($afterRank IS NULL OR
                    f.severity_rank < $afterRank OR
                    (f.severity_rank = $afterRank AND f.rule_id > $afterRule) OR
@@ -859,7 +922,10 @@ public sealed partial class JudgementReader : IDisposable
         w.standing                          AS w_standing,
         w.object_class                      AS w_object_class,
         w.membership_was_complete           AS w_membership_was_complete,
-        w.finding_id                        AS w_finding_id
+        w.finding_id                        AS w_finding_id,
+        cy.proof                            AS cy_proof,
+        cy.fingerprint                      AS cy_fingerprint,
+        cy.generation                       AS cy_generation
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -876,6 +942,7 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_object_takeover t ON t.finding_id = f.finding_id
         LEFT JOIN finding_object_ownership w ON w.finding_id = f.finding_id
         LEFT JOIN finding_tier0_route z ON z.finding_id = f.finding_id
+        LEFT JOIN finding_circular_membership cy ON cy.finding_id = f.finding_id
         LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
@@ -943,7 +1010,17 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (ruleId == UnexpectedTier0Route.RuleId)
+        if (ruleId == "SEC-052")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("cy_proof")))
+                throw new InvalidDataException("The circular-membership finding has no saved evidence.");
+            evidence = CircularMembershipStorage.Read(reader.GetString(reader.GetOrdinal("cy_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("cy_fingerprint")), reader.GetString(reader.GetOrdinal("cy_generation")),
+                Description, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("subject_key")),
+                Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId == UnexpectedTier0Route.RuleId)
         {
             var proof = reader.GetOrdinal("z_proof");
             var calculation = reader.GetOrdinal("z_calculation_fingerprint");

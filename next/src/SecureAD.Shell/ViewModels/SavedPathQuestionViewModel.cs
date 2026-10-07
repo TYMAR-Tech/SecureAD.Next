@@ -34,7 +34,7 @@ internal sealed class SavedPathQuestionViewModel
         var kind = Kind(targetClass);
         var targetName = QualifiedName(Name(risk.TargetDn, targetClass), dacl?.Target?.DomainFqdn);
         Target = Text("NamedObject", targetName, kind);
-        var groupName = Name(risk.GroupDn ?? own?.Request.TargetDn ?? risk.TargetDn, "group");
+        var groupName = QualifiedName(Name(risk.GroupDn ?? own?.Request.TargetDn ?? risk.TargetDn, "group"), own?.Target?.DomainFqdn);
         var established = risk.Authorization == ControlEvaluationState.Established;
         var existingMembership = own?.Basis == OwnAccountMembershipBasis.ExistingMembership;
         var conditionalMembership = own?.Basis == OwnAccountMembershipBasis.ExistingOrAuthorizedAdd;

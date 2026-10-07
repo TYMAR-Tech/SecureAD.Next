@@ -164,6 +164,7 @@ internal sealed class FakeAssetSource : IAssetSource
 {
     private int _lifetime;
     private bool _selected;
+    private string? _selectedRun;
     public bool IsCurrent { get; set; } = true;
     public Func<object, CancellationToken, Task<object>>? CompleteRead { get; set; }
     public List<string> Reads { get; } = [];
@@ -176,8 +177,19 @@ internal sealed class FakeAssetSource : IAssetSource
         var lifetime = _lifetime;
         return () => _selected && IsCurrent && lifetime == _lifetime;
     }
-    public void SelectRun(string bundleDirectory) { _lifetime++; _selected = true; }
-    public void CloseRun() { _lifetime++; _selected = false; }
+    public void SelectRun(string bundleDirectory)
+    {
+        if (_selected && IsCurrent
+            && string.Equals(_selectedRun, bundleDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        _lifetime++;
+        _selected = true;
+        _selectedRun = bundleDirectory;
+        IsCurrent = true;
+    }
+    public void CloseRun() { _lifetime++; _selected = false; _selectedRun = null; }
     public async Task<T> ReadAsync<T>(string bundleDirectory, Func<IAssetReader, CancellationToken, T> read,
         CancellationToken cancellationToken)
     {
@@ -239,6 +251,13 @@ internal sealed class FakeAssetSource : IAssetSource
     }
 
     public Result<Tier0FindingSummary?> Tier0Summary { get; set; } = Result<Tier0FindingSummary?>.Success(null);
+    public Result<Tier0OverviewPage?> Tier0Overview { get; set; } = Result<Tier0OverviewPage?>.Success(null);
+    public List<Tier0OverviewMark?> Tier0OverviewQueries { get; } = [];
+    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after)
+    {
+        Tier0OverviewQueries.Add(after);
+        return Tier0Overview;
+    }
     public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory)
     {
         Reads.Add("Tier0Summary");
@@ -268,6 +287,23 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public DirectoryTree Tree { get; set; } = new([], []);
 
+    public GroupInventoryPage GroupPage { get; set; } = new(Guid.NewGuid(), new string('a', 64), [], 0, null, new(true, null), null);
+    public AuditError? GroupFailure { get; set; }
+    public List<(GroupInventoryQuery Query, GroupInventoryMark? After)> GroupQueries { get; } = [];
+    public Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after)
+    {
+        GroupQueries.Add((query, after));
+        return GroupFailure is { } failure ? Result<GroupInventoryPage>.Failure(failure) : Result<GroupInventoryPage>.Success(GroupPage);
+    }
+
+    public List<IReadOnlyList<string>> MemberReferenceQueries { get; } = [];
+    public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names)
+    {
+        MemberReferenceQueries.Add(names);
+        return Result<CapturedMemberReferences>.Success(new(names.Select(name => new CapturedMemberReference(name,
+            Guid.NewGuid(), name, name, "group", "contoso.com")).ToArray()));
+    }
+
     public ObjectPage Page { get; set; } = new([], 0, true, null);
 
     public AuditError? Fails { get; set; }
@@ -281,6 +317,7 @@ internal sealed class FakeAssetSource : IAssetSource
     public ListingScope ListedScope { get; private set; }
 
     public int ListedPage { get; private set; }
+    public int TreeReads { get; private set; }
     public int ObjectListings { get; private set; }
     public int LapsListedPage { get; private set; }
 
@@ -292,6 +329,7 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public Result<DirectoryTree> ReadTree(string bundleDirectory)
     {
+        TreeReads++;
         AskedFor = bundleDirectory;
 
         return Fails is { } error

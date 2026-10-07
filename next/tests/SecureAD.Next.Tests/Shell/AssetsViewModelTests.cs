@@ -155,6 +155,115 @@ public sealed class AssetsViewModelTests
     }
 
     [Fact]
+    public void ReturningToTheSameCurrentRunDoesNotRebuildItsTree()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.Selected = screen.Roots[0].Children[0];
+
+        screen.Suspend();
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal((1, DomainDn, 1), (assets.TreeReads, screen.Selected!.DistinguishedName, screen.PageNumber));
+    }
+
+    [Fact]
+    public void ReturningAfterTheSelectedRunGenerationChangesRebuildsItsTree()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.Suspend();
+        assets.IsCurrent = false;
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal(2, assets.TreeReads);
+    }
+
+    [Fact]
+    public void ReturningAfterTheSamePathWasReopenedRebuildsItsTree()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.Suspend();
+        assets.CloseRun();
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal(2, assets.TreeReads);
+    }
+
+    [Fact]
+    public void SelectingAnotherRunRebuildsItsTree()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.Suspend();
+
+        screen.Show(@"C:\runs\fabrikam-2026-10-06", aCaptureIsRunning: false);
+
+        Assert.Equal(2, assets.TreeReads);
+    }
+
+    [Fact]
+    public void ARefusedTreeIsNotRetainedForTheNextEntry()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        assets.Fails = AuditError.Create(ErrorCategory.Evidence, "TestRefusal", ErrorSeverity.Failed,
+            "The evidence was refused.", BundlePath);
+        screen.Read();
+        screen.Suspend();
+        assets.Fails = null;
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal((3, true), (assets.TreeReads, screen.HasTree));
+    }
+
+    [Fact]
+    public async Task ACancelledTreeIsNotRetainedForTheNextEntry()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        assets.CompleteRead = async (value, token) =>
+        {
+            await release.Task.WaitAsync(token);
+            return value;
+        };
+        screen.Read();
+
+        screen.Suspend();
+        await screen.ReadCompletion;
+        assets.CompleteRead = null;
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal(3, assets.TreeReads);
+    }
+
+    [Fact]
+    public void EnteringDuringCaptureDiscardsTheRetainedTree()
+    {
+        var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };
+        var screen = new AssetsViewModel(assets);
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+        screen.Suspend();
+        screen.Show(BundlePath, aCaptureIsRunning: true);
+        screen.Suspend();
+
+        screen.Show(BundlePath, aCaptureIsRunning: false);
+
+        Assert.Equal(2, assets.TreeReads);
+    }
+
+    [Fact]
     public void SelectingAContainerListsThatContainersObjects()
     {
         var assets = new FakeAssetSource { Tree = TreeOfOneDomain(), Page = APageOfOne() };

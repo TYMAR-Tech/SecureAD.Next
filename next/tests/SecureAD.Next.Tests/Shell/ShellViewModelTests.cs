@@ -35,7 +35,7 @@ public sealed class ShellViewModelTests
 
         shell.Show(ShellSection.Assets);
 
-        Assert.Equal(["Objects", "Findings", "LAPS", "Delegations"], shell.Views.Select(v => v.Name));
+        Assert.Equal(["Objects", "Findings", "Groups", "Tier 0", "LAPS", "Delegations"], shell.Views.Select(v => v.Name));
     }
 
     [Fact]

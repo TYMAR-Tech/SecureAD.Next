@@ -167,20 +167,28 @@ internal sealed class RequesterMembershipContext
     internal IReadOnlyList<(PathRequesterSelectionReason Reason, string Dn)> Limitations(string holderDn) =>
         ExpansionFor(holderDn).Limitations;
 
-    internal IReadOnlyList<(string GroupDn, RequesterMembershipEvidence Evidence)> Groups(string holderDn)
+    internal IReadOnlyList<(string GroupDn, RequesterMembershipEvidence Evidence)> Groups(string holderDn, Tier0Target resource)
     {
-        if (!Global(Attributes(holderDn))) return [];
-        var expansion = ExpansionFor(holderDn);
-        if (expansion.Groups is { } existing) return existing;
-        var result = new List<(string, RequesterMembershipEvidence)>();
-        foreach (var member in expansion.Members.Members ?? [])
+        if (!_identities.TryGetValue(holderDn, out var holder) || !InResourceForest(holder, resource)) return [];
+        var expansion = ExpansionFor(holderDn, true);
+        if (expansion.Groups is null)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
-            if (Resolve(member.Sid, member.Scope) is not { } identity || !Global(Attributes(identity.DistinguishedName))) continue;
-            result.Add((identity.DistinguishedName, Read(identity.DistinguishedName, holderDn)));
+            var result = new List<(string, RequesterMembershipEvidence)>();
+            foreach (var member in expansion.Members.Members ?? [])
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                if (Resolve(member.Sid, member.Scope) is not { } identity || !Global(Attributes(identity.DistinguishedName))) continue;
+                result.Add((identity.DistinguishedName, Read(identity.DistinguishedName, holderDn, true)));
+            }
+            expansion.Groups = result;
         }
-        return expansion.Groups = result;
+        return expansion.Groups.Where(route => AppliesToResource(route.Evidence, resource)).ToArray();
     }
+
+    internal bool AppliesToResource(RequesterMembershipEvidence evidence, Tier0Target resource) =>
+        evidence.Links.Count != 0 && evidence.Links.All(link =>
+            InResourceForest(link.Member, resource) && InResourceForest(link.Group, resource)
+            && ((link.GroupType & 0x0f) is not (4 or 5) || Same(link.Group.DomainFqdn, resource.DomainFqdn)));
 
     internal RequesterMembershipEvidence Read(string requesterDn, string holderDn) => Read(requesterDn, holderDn, false);
 
@@ -293,10 +301,13 @@ internal sealed class RequesterMembershipContext
     }
 
     internal static void RequireGroupSources(RequesterMembershipEvidence evidence, Tier0Target origin, Tier0Target resource,
-        string trusteeSid, Func<string, ObjectAttributes?> attributes, CancellationToken cancellationToken)
+        string trusteeSid, Func<string, ObjectAttributes?> attributes, CancellationToken cancellationToken,
+        RequesterMembershipContext context)
     {
         if (evidence.Links is not { Count: > 0 } || evidence.SourceFingerprint is not { Length: 64 }
             || !Enum.IsDefined(evidence.Verdict) || evidence.Limitations is null) throw Tier0PathStorage.InvalidProof();
+        if (!Global(attributes(origin.DistinguishedName))
+            || !context.AppliesToResource(evidence, resource)) throw Tier0PathStorage.InvalidProof();
         var current = origin;
         var seen = new HashSet<Tier0Target> { origin };
         foreach (var link in evidence.Links)
@@ -306,11 +317,12 @@ internal sealed class RequesterMembershipContext
                 || !seen.Add(link.Group)) throw Tier0PathStorage.InvalidProof();
             var member = attributes(link.Member.DistinguishedName);
             var group = attributes(link.Group.DistinguishedName);
-            if (member is null || group is null || !Global(member) || !Global(group)
+            if (member is null || group is null
+                || !context.Qualified(member, link.Member) || !context.Qualified(group, link.Group)
+                || !RequesterTrusteeReading.SupportsSecurityNesting(group, member)
                 || member.Find("sIDHistory")?.HasValue == true || group.Find("sIDHistory")?.HasValue == true
-                || Tier0Target.From(member, resource.NamingContext) != link.Member
-                || Tier0Target.From(group, resource.NamingContext) != link.Group
-                || !Same(link.Member.DomainFqdn, resource.DomainFqdn) || !Same(link.Group.DomainFqdn, resource.DomainFqdn)
+                || Tier0Target.From(member, link.Member.NamingContext) != link.Member
+                || Tier0Target.From(group, link.Group.NamingContext) != link.Group
                 || link.GroupType != RequesterTrusteeReading.Number(group, "groupType") || link.CapturedUtc != group.CapturedUtc
                 || link.Witness.Object != link.Group || link.Witness.Attribute != "member"
                 || !Same(link.Witness.Value, link.Member.DistinguishedName)

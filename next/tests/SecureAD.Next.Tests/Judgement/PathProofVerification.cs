@@ -147,7 +147,7 @@ internal static class PathProofVerification
             .ToDictionary(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<Tier0PathNode> nodes = inputs.Availability == PathInputAvailability.Recorded
             ? Tier0PathCalculation.Calculate(inputs, identities.Values.ToArray(),
-                TerminalPermissions(connection, reader.Description), bundle.ReadObjectAttributes, contexts, CancellationToken.None)
+                TerminalPermissions(connection, reader.Description), bundle.ReadObjectAttributes, contexts, CancellationToken.None, null)
             : [];
         if (header.Selection is { } selection)
         {

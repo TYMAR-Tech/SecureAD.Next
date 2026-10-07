@@ -47,6 +47,7 @@ public sealed class JudgementWriter : IDisposable
     private SqliteTransaction? _batch;
     private int _batchObjects;
     private readonly List<RuleExecutionOutcome> _outcomes = [];
+    private JudgementDescription? _pathDescription;
     private bool _evidenceIsComplete = true;
     private readonly HashSet<string> _rulesWritten = new(StringComparer.Ordinal);
 
@@ -141,6 +142,28 @@ public sealed class JudgementWriter : IDisposable
         if (!LapsAttributes.IsComputer(subject)) return;
         LapsInventoryStorage.Write(_connection, Batch(), LapsInventoryStorage.CreateComputerResult(subject));
         _lapsComputers++;
+    }
+
+    private readonly GroupMembershipTotals _groupMembershipTotals = new();
+
+    internal void StartGroupInventory(bool captureComplete)
+    {
+        ThrowIfFinished();
+        GroupInventoryStorage.Start(_connection, GenerationId, captureComplete);
+    }
+
+    internal void WriteGroupInventory(ObjectAttributes subject)
+    {
+        ThrowIfFinishedWithinObject();
+        _groupMembershipTotals.Add(subject);
+        GroupInventoryStorage.Write(_connection, Batch(), subject, _statements);
+    }
+
+    internal void CompleteGroupInventory(CancellationToken token)
+    {
+        ThrowIfFinished();
+        GroupInventoryStorage.Complete(_connection, _groupMembershipTotals, token);
+        _groupMembershipTotals.Clear();
     }
 
     internal void CompleteLapsInventory()
@@ -239,6 +262,7 @@ public sealed class JudgementWriter : IDisposable
     {
         ThrowIfFinished();
         PathInputStorage.Start(_connection, description, requested);
+        _pathDescription = description;
     }
 
     internal void CalculateTier0Paths(JudgementDescription description, JudgingInputs inputs, IReadOnlyList<RequesterDaclRequest> requests,
@@ -551,6 +575,10 @@ public sealed class JudgementWriter : IDisposable
         PathRequesterRiskStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
+        CircularMembershipStorage.RequirePublishable(_connection);
+        GroupInventoryStorage.RequirePublishable(_connection, null);
+        Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
+        BestSupportedRouteStorage.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
@@ -755,6 +783,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case CircularMembershipEvidence cycle:
+                CircularMembershipStorage.Write(_connection, transaction, findingId, GenerationId, cycle);
+                break;
             case Tier0RouteFindingEvidence route:
                 Tier0RouteFindingStorage.WriteEvidence(_connection, transaction, findingId, route);
                 break;

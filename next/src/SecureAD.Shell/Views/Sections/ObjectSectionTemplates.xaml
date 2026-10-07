@@ -1,7 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
-                    xmlns:views="clr-namespace:SecureAD.Shell.Views">
+                    xmlns:views="clr-namespace:SecureAD.Shell.Views"
+                    xmlns:controls="clr-namespace:SecureAD.Shell.Controls">
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="../../Themes/Assets.xaml" />
@@ -18,6 +19,41 @@
          NOTHING HERE IS A VERDICT. No severity, no risk, no colour an administrator would read as
          a security judgement. -->
 
+    <DataTemplate DataType="{x:Type vm:GroupMembershipSectionViewModel}">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding SelectedView}" Width="180" HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding Qualification}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,8,0,0" />
+                <TextBlock Text="{Binding PrimaryGroup}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,5,0,0" />
+                <TextBox Text="{Binding Error,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                         Foreground="{StaticResource FaultBrush}" Visibility="{Binding HasError,Converter={StaticResource Shown}}" />
+                <TextBlock Text="Reading captured member references..." Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+            </StackPanel>
+            <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <TextBlock Text="{Binding PageDescription}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <Button Content="Previous" Command="{Binding PreviousCommand}" Margin="0,0,8,0" />
+                <Button Content="Next" Command="{Binding NextCommand}" Margin="0,0,12,0" />
+                <Button Content="Open member" Command="{Binding OpenMemberCommand}" CommandParameter="{Binding SelectedMember}" />
+            </WrapPanel>
+            <controls:GroupInventoryGrid ItemsSource="{Binding Members}" SelectedItem="{Binding SelectedMember}"
+                OpenItemCommand="{Binding OpenMemberCommand}" AutoGenerateColumns="False" IsReadOnly="True"
+                HeadersVisibility="Column" CanUserSortColumns="False" Style="{StaticResource {x:Type DataGrid}}">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Object" Width="2*">
+                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                            <Button Content="{Binding Name}" IsEnabled="{Binding CanOpen}" HorizontalAlignment="Left"
+                                Command="{Binding DataContext.OpenMemberCommand,RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                CommandParameter="{Binding}" Margin="3" />
+                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="*" />
+                    <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" Width="*" />
+                    <DataGridTextColumn Header="Recorded reference" Binding="{Binding RecordedName}" Width="2*" />
+                </DataGrid.Columns>
+            </controls:GroupInventoryGrid>
+        </DockPanel>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type vm:SavedTier0PathSectionViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
@@ -27,6 +63,55 @@
                         <Setter Property="Margin" Value="0,0,0,8" />
                     </Style>
                 </StackPanel.Resources>
+                <Button HorizontalAlignment="Left" Margin="0,0,0,10"
+                        Command="{Binding DataContext.ShowObjectFindingsCommand,RelativeSource={RelativeSource AncestorType=views:ObjectView}}">
+                    <TextBlock Text="View this object's findings" TextWrapping="Wrap" />
+                </Button>
+                <StackPanel Visibility="{Binding HasRoutes,Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding Routes.Classification,StringFormat='Tier 0 classification: {0}. Reachability is a separate result.'}" />
+                    <WrapPanel>
+                        <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,12,12" MaxWidth="380">
+                            <StackPanel>
+                                <TextBlock Text="Shortest supported distance" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Routes.Distance}" FontSize="24" />
+                                <TextBlock Text="{Binding Routes.Minimum}" Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+                        </Border>
+                        <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,12" MaxWidth="380">
+                            <StackPanel>
+                                <TextBlock Text="Best-supported route" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Routes.Best}" FontSize="20" />
+                                <TextBlock Text="{Binding Routes.Explanation}" Foreground="{StaticResource SecondaryTextBrush}" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                    <CheckBox IsChecked="{Binding ShowShortest}" Margin="0,0,0,12">
+                        <TextBlock Text="Show shortest supported route instead of best-supported route" TextWrapping="Wrap" />
+                    </CheckBox>
+                    <ItemsControl ItemsSource="{Binding SelectedSteps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding SelectedConditions}" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <Expander Margin="0,8,0,12">
+                        <Expander.Header><TextBlock Text="Saved grade and coverage" TextWrapping="Wrap" /></Expander.Header>
+                        <StackPanel Margin="8">
+                            <TextBlock Text="{Binding Routes.Grade}" />
+                            <TextBlock Text="{Binding Routes.GradingCoverage}" />
+                            <TextBlock Text="{Binding Routes.Coverage}" />
+                            <TextBlock Text="Proof grades do not attest live access, a current access token or complete forest coverage." />
+                        </StackPanel>
+                    </Expander>
+                    <TextBlock Text="Existing assessed results" FontWeight="SemiBold" Margin="0,12,0,8" />
+                </StackPanel>
                 <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" FontWeight="SemiBold" />
                 <TextBlock x:Name="SavedPathSeverity" Text="{Binding Severity}" />
                 <TextBlock Text="{Binding Detail}" />
@@ -997,6 +1082,8 @@
          decided in the view model, where a test can reach it. -->
     <DataTemplate DataType="{x:Type vm:FindingsSectionViewModel}">
         <StackPanel>
+            <Button Content="Open Path to Tier 0" HorizontalAlignment="Left" Margin="0,0,0,10"
+                    Command="{Binding DataContext.ShowObjectPathCommand,RelativeSource={RelativeSource AncestorType=views:ObjectView}}" />
             <Border Style="{StaticResource Card}"
                     Visibility="{Binding HasVerdict, Converter={StaticResource Shown}}">
                 <TextBox Text="{Binding Verdict, Mode=OneWay}"

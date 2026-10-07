@@ -15,7 +15,7 @@ internal sealed partial class AssetsViewModel
 
     public bool IsObjectSearch => Pane == AssetsPane.Objects && _objectSearchQuery is not null;
     public bool HasEmptyObjectSearch => IsObjectSearch && HasListingResult && Objects.Count == 0;
-    public bool CanChangeBrowsingScope => !IsObjectSearch;
+    public bool CanChangeBrowsingScope => !IsObjectSearch && !(ShowsGroups && GroupsWholeCapture);
     public string ObjectSearchHeading => IsObjectSearch ? ObjectNavigationText.Format("SearchHeading", _objectSearchQuery!) : "";
     public string ObjectSearchEmpty => ObjectNavigationText.Get("SearchEmpty");
     public string NavigationLocation => IsObjectSearch ? ObjectNavigationText.Get("WholeCapture") : Selected?.DistinguishedName ?? "";

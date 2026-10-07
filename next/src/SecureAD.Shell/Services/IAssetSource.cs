@@ -79,6 +79,8 @@ internal interface IAssetReader
     /// <summary>Reads whole-run SEC-071 counts, independent of the findings grid's current filters and page.</summary>
     Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory);
 
+    Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after);
+
     /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
     Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,
         string? holderScope, bool includeExpected, long afterId);
@@ -95,6 +97,11 @@ internal interface IAssetReader
     /// <summary>Reads the directory tree of the bundle in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     Result<DirectoryTree> ReadTree(string bundleDirectory);
+
+    /// <summary>Reads captured group metadata and saved cycle answers for the selected view.</summary>
+    Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after);
+    /// <summary>Resolves displayed direct membership references without traversing group nesting.</summary>
+    Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names);
 
     /// <summary>Lists one page of the objects in a container.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>

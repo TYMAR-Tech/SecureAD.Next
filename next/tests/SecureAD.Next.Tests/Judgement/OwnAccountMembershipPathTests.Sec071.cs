@@ -252,9 +252,17 @@ public sealed partial class OwnAccountMembershipPathTests
     internal static IReadOnlyList<Finding> ReadMixedEvidenceSample(IReadOnlyList<IRule> sampleRules, Xunit.Abstractions.ITestOutputHelper output)
     {
         var fixture = new OwnAccountMembershipPathTests(output);
-        var directory = fixture.RiskCapture();
+        var directory = fixture.RiskCapture(extra: (writer, domain) =>
+        {
+            const string a = "CN=Cycle A,DC=contoso,DC=com";
+            const string b = "CN=Cycle B,DC=contoso,DC=com";
+            Write(writer, domain, a, ["top", "group"], "S-1-5-21-1-2-3-1800",
+                [Text("groupType", "-2147483646"), Text("member", b), Text("memberOf", b)], "O:SYG:SYD:");
+            Write(writer, domain, b, ["top", "group"], "S-1-5-21-1-2-3-1801",
+                [Text("groupType", "-2147483646"), Text("member", a), Text("memberOf", a)], "O:SYG:SYD:");
+        });
         Derive(directory);
-        var result = JudgingRun.JudgeAudit(directory, [.. sampleRules, new UnexpectedTier0Route()],
+        var result = JudgingRun.JudgeAudit(directory, [.. sampleRules, new UnexpectedTier0Route(), new CircularGroupMembership()],
             PathRequesterPolicy.SupportedCapturedQuestions, Started, Started, JudgingRun.NobodyIsWatching,
             RunLog.Discarded, CancellationToken.None, null);
         Assert.True(result.IsSuccess, result.Error?.Description);

@@ -90,6 +90,13 @@ internal sealed class PathRequesterRouteIndex
             && (previous is null || candidate.Assessment.Steps.Count < previous) ? candidate.Assessment.Request : null;
     }
 
+    internal int? SupportedDistance(Tier0PathNode node) =>
+        node.MembershipDaclRoute is not null ? _membershipDacls[node.Subject].Assessment.Steps.Count
+        : node.OwnAccountRoute is not null ? _ownAccounts[node.Subject].Steps.Count
+        : node.RequesterRoute is not null ? _requesters[node.Subject].Assessment.Steps.Count
+        : node.MembershipDistance == 0 ? 0
+        : node.Terminal is not null ? 1 : node.MembershipDistance;
+
     private static bool Earlier(int length, string key, int previousLength, string previousKey) =>
         length < previousLength || length == previousLength && StringComparer.Ordinal.Compare(key, previousKey) < 0;
 }

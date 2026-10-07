@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 18 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 19 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,286 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**Owner-authorized reconciliation and main integration, 2026-10-07.**
+The owner requested reconciling uncommitted/unpushed work across the local checkouts and merging
+the current good build to main before further repository cleanup.
+Preserve the older dirty working trees while accounting for their contents; duplicated corrections
+already present in the current build need no second implementation, and stale status wording or
+local-only tool configuration must not replace current product decisions.
+This authorizes branch integration, commit, push and pull-request merge, not package replacement,
+live directory access or a new claim of lab/production acceptance.
+
+**Owner-authorized source checkpoint and local artifact cleanup, 2026-10-07.**
+The owner requested committing and pushing the completed work, then reducing local project storage,
+estimated by him at 400-500 GB, rather than retaining every historical verification artifact.
+He authorizes consolidating relevant history and discarding material that has no continuing value,
+with particular care for evidence needed by future performance investigations.
+Inventory actual paths and sizes before deletion; retain unique source, frozen correctness anchors
+and performance evidence needed to explain or reproduce meaningful comparisons, rather than
+preserving every copied build, synthetic test database or failed attempt by default.
+This changes the earlier blanket retention direction for local disposable artifacts; it does not
+authorize deleting valuable capture evidence without identifying it, changing measurement results,
+or publishing private evidence with the source checkpoint.
+The owner extended read-only inventory to all three SecureAD.Next checkouts and project-linked
+temporary folders, leaving the predecessor and unrelated temporary files outside scope.
+He then explicitly approved the first disposable-TEMP list: the
+[completed cleanup](../.v-local-cleanup-20261007-c00a/cleanup-result.json) removed 98.19 GiB of
+generated verification data while preserving its reports/provenance and all performance campaigns,
+captures, packages and source checkouts.
+Deleted temporary paths in historical verification records are now provenance, not promises that
+their generated test databases still exist; the original measurements and records were not rewritten.
+
+**Owner-requested New audit wizard preview, 2026-10-07.**
+While testing the connected Tier 0 presentation in the laboratory, the owner requested a fictional
+mockup of improvements to the New audit screens.
+The [interactive wizard preview](../.v-ui-audit-preview-20261007-c493/audit-preview.html) retains
+the existing two-step structure, makes blocking readiness issues visible above the domain table
+and beside Next, keeps all-domain details together, and separates capture-only from capture-and-analyse.
+Review becomes the progress/outcome surface rather than introducing another approval screen;
+sealing, derivation and judging retain separate outcomes, including stopping after evidence is sealed.
+The owner approved implementing the wizard presentation on 2026-10-07 while testing the Tier 0
+changes in the lab; that authorizes the revised wording/layout, not changes to capture behavior,
+protection requirements, scope defaults, budgets or packages.
+The existing recovery contract still applies: Next rechecks every domain, even after a refusal,
+so the presentation must not disable the only action capable of clearing an old preflight failure.
+The [wizard-presentation checkpoint](../.v-audit-wizard-20261007-d916/handoff.json) records 572
+passing affected-area tests with coverage after a final correct-source rebuild, 1,026 matching
+code/configuration inputs and all 22 required new/adapted checks detecting rebuilt defects across
+15 variants with restored controls.
+The application retains the two steps with a compact step strip, a persistent preparation warning,
+all-domain details, existing attested exclusions and expandable controller overrides.
+Capture-and-analyse and capture-only remain distinct choices; activity uses existing reported
+phases/counters and elapsed/update-age values, with capture and sealing grouped where the launcher
+does not supply separate completion signals rather than inventing a sealing percentage.
+Output cards distinguish sealed evidence, saved/degraded/failed/stopped analysis and analysis not
+requested; stopping an active audit asks for confirmation, while canceling preparation remains
+its existing separate action, and already-sealed evidence remains available after analysis stops.
+Lab packages were not replaced; representative lab, physical-display and production acceptance
+remain outstanding, and no capture behavior, scope default, protection requirement or budget changed.
+
+**Owner-requested Groups browsing mockup, 2026-10-06.**
+After SEC-052, the owner requested a Groups view like the predecessor's inventory to help an
+administrator see their groups, with double-click opening the corresponding object.
+Inspect the predecessor read-only for the interaction, then provide a fictional-data visual mockup
+using the current product's presentation; this is preview approval, not implementation approval.
+The proposed placement, counting labels, coverage/cycle separation and return-navigation behavior
+remain for owner review, and the predecessor's live checks, SID-only object lookup and window
+architecture are not adopted by this request.
+The owner liked the preview and explicitly approved implementation: Assets > Groups, the current
+blue-grey presentation, group search/scope/type filters, separate direct/known-total/cycle/coverage
+information, selected-group context where space permits, and double-click or Enter to open the
+captured object with return navigation preserving the list state.
+Implement against saved, generation-bound evidence and derived results, not live queries or
+analysis replay while browsing; missing totals and unresolved references must remain explicit.
+This approval does not authorize changing production budgets, performance campaigns, package
+replacement, commit or push, and does not count as physical-display or production acceptance.
+After source inspection found that no matching structural nested total is saved today, the owner
+selected browsing first, then saved nested totals as a separate bounded pass.
+The first delivery must provide the group list, direct recorded membership, cycle information and
+captured-object navigation, with an explicit "Not available" total rather than relabelling the
+authorization expansion or doing new analysis while opening the view.
+The [first Groups browsing checkpoint](../.v-groups-browser-20261006-93bd/handoff.json) records all
+7,259 offline tests passing with coverage after a final correct-source rebuild, 1,012 matching code
+inputs and all 35 required new/adapted checks detecting rebuilt defects across 29 mutations with
+passing restored controls.
+Judgement format 59 saves captured group metadata and distinct text references from `member` during
+the existing object pass; Evidence/Derivation formats, the 19-rule catalogue and prior analysis
+semantics are unchanged.
+The WPF view keeps actual domain identity, separate cycle outcomes, bounded pages and explicit
+unavailable nested totals, supports double-click/Enter and direct-member navigation, and preserves
+filters, selected row, page and scroll position when returning.
+Filters remain visible during a refused read so their Clear action is usable, and whole-forest
+browsing disables Base/One level rather than showing a scope it does not apply.
+Earlier captured runs need judging with this build to populate the new inventory; no recapture is
+required; that first checkpoint left saved structural totals for the separate pass below, with
+physical-display/lab/production acceptance still outstanding.
+
+**Owner-approved nested-total counting meaning, 2026-10-06.**
+"Known total" counts distinct captured member objects reached directly or through nested groups,
+including the nested groups themselves; count each object once and exclude the starting group
+even when circular membership leads back to it.
+A group containing Alice and another group containing Alice and Bob therefore has a known total
+of three: Alice, Bob and the nested group.
+Missing references remain separately reported limitations, not evidence of complete membership.
+The owner subsequently approved beginning the proposed bounded implementation: follow captured
+`member` links, matching the existing Direct count, and keep primary-group relationships separate.
+Save totals during analysis and read them without calculation during browsing; retain "Known total"
+and show "Incomplete membership evidence" beside affected results, with separate reference counts.
+This does not authorize live access, measurement campaigns, budget changes, packaging, commit or push.
+The [saved-total checkpoint](../.v-nested-totals-20261006-71af/handoff.json) records 498 passing
+affected-area offline tests with coverage after a final correct-source rebuild, 1,015 matching
+code/configuration inputs and all 38 required new/adapted checks detecting rebuilt defects across 18 useful
+mutations with passing restored controls; failed and interrupted attempts remain retained.
+Judgement format 60 now saves these totals and their limitations for Groups browsing.
+Evidence and Derivation remain unchanged: current derivation-16 inputs can be reused for judging,
+while derivation-15 results still need rederiving from the same sealed evidence, not recapture.
+Physical-display, lab/production and forest-scale runtime acceptance remain outstanding; rendered
+small/large-window checks are not physical-monitor acceptance, and no package was replaced.
+
+**Owner-approved SEC-052 scope and wording, 2026-10-06.**
+Report one fixed Medium finding per recorded set of groups joined by circular membership, including
+a group directly containing itself; overlapping loops remain one finding with all involved groups
+and source-backed direct membership evidence.
+Reuse the saved cycle product and correct its self-loop omission, keeping missing/partial derivation
+and captured evidence explicit rather than claiming no loops.
+Use the existing Rules and Findings views with title "Circular group membership" and explanation
+"These groups form a circular membership relationship. Review the recorded links and the membership
+or permissions that depend on them; this finding does not establish a route to Tier 0."
+Guidance is "Remove unintended nesting links after reviewing their impact. A set containing
+overlapping loops may require more than one link to be removed."
+Do not claim infinite Windows recursion, measured token-size problems, automatic High severity or
+proven remediation; validate normal GUI/CLI judging and saved readback offline with rebuilt mutations,
+preserving existing work, packages and campaigns without live access, commit or push.
+
+The [SEC-052 checkpoint](../.v-sec052-20261006-8e3c/handoff.json) records all 7,228 offline tests
+passing with coverage after a final correct-source rebuild, 1,002 matching code inputs and all 50
+new/adapted checks detecting rebuilt defects across 26 mutations with 26 passing restored controls.
+The normal catalogue now has 19 rules; derivation format 16 retains self-loops, and judgement format
+58 stores the finding plus references that make the same single finding visible from every involved
+group under object/domain/container filters.
+Earlier format-57 and historical layout hashes, prior feature sources and all failed attempts remain
+retained; original `member`/`memberOf` witnesses, scoped BUILTIN identities, deterministic component
+identity, incomplete outcomes and source-generation refusals are verified.
+Existing derivation-format-15 results must be derived again from their sealed evidence before this
+build can judge them; no recapture or migration is required or authorized.
+P-125's implementation gap is closed, not Stage 7 acceptance: presenting the new saved distance,
+summary and best-route products, plus representative lab/display/production verification, remain owed.
+No live directory operation, production-data copying, timing campaign, package replacement, commit
+or push was performed.
+
+**Owner-requested Tier 0 results presentation preview, 2026-10-06.**
+After the saved nested-total slice, the owner requested a fictional-data preview for the already
+saved distances, best-supported routes and whole-run coverage summaries.
+The [interactive preview](../.v-ui-tier0-preview-20261006-582c/tier0-preview.html) proposes their
+grouping in Assets > Tier 0, keeping shortest distance separate from route grading, classification
+separate from reachability, and missing capture evidence separate from unsupported analysis and
+processing limits.
+On 2026-10-07 the owner requested a revision showing how these results connect to the existing
+Path to Tier 0 object tab and Findings.
+The revised preview keeps whole-run counts on the Tier 0 overview, opens selected captured objects
+in their existing Path to Tier 0 tab, and links findings and recommendations to that same viewer.
+Uncaptured identities open a saved-limitation panel instead of fabricated object details; route
+ranking neither changes severity nor hides other unexpected results, and the first preview is retained.
+The owner approved this revised wording and flow for implementation on 2026-10-07, with the
+intention of trying it in the laboratory to assess the interaction, and requested closing the mockups.
+Implement the connected presentation without replacing existing assessed-result groups or changing
+finding qualification; offline verification precedes lab acceptance, and the approval is not itself
+physical-display or lab acceptance.
+No live access, package replacement, commit or push is authorized by this implementation approval.
+The [connected-presentation checkpoint](../.v-tier0-presentation-20261007-b683/handoff.json) records
+684 passing affected-area tests with coverage after a final correct-source rebuild, 1,023 matching
+code/configuration inputs and all 18 new/adapted checks detecting rebuilt defects across 17 variants
+with restored controls.
+Assets > Tier 0 reads bounded pages and saved whole-run summaries; the existing object path section
+shows shortest and best-supported routes with separate qualifications above its retained assessed
+results, and Findings links to the same object section.
+Returning from an object's findings preserves the route choice but reads its saved results afresh
+under the protected generation; returning to the overview retains its page and selection.
+No Evidence, Derivation, Judgement or path-calculation format changed for this presentation, and
+prior stored judgement-60 results can be browsed without analysis replay.
+Mockup serving was stopped; lab/physical-display/production acceptance and separately authorized
+packaging remain outstanding, and the preview files and failed verification attempts are preserved.
+
+**Owner-approved saved best-supported-route slice, 2026-10-06.**
+Save a separate best-supported route and its source-backed grade, comparing complete evaluated
+candidates before shortest-route selection discards alternatives.
+Apply the accepted certainty/feasibility/conditions/confidence/length/stable-signature ordering,
+using concrete requester and operation proofs rather than generic permission labels; unresolved
+questions without complete supported steps are not invented possible paths.
+Keep shortest supported distance, findings, SEC-071 severity, expected administration and screen
+ordering unchanged, with exact generation-bound selected-only readback and explicit grading limits.
+Verify offline with isolated rebuilt mutations, preserving current work and campaigns; no new
+screens, live access, production data, timing campaign, budget change, package replacement, commit
+or push is authorized.
+
+The [best-supported-route checkpoint](../.v-best-route-20261006-4d7a/handoff.json) records a final
+correct-source rebuild, 1,116 passing affected-area tests, 998 matching code inputs and all 34
+new/adapted checks detecting rebuilt defects across 15 mutations with 15 passing restored controls.
+Judgement format 56/path version 12 save the result separately; shortest-distance logic, requester
+selection version 5, original permission/operation proofs, findings, page order, Evidence/Derivation
+formats and historical layout hashes are unchanged.
+The producer grades the currently complete supported proofs, not invented possible routes or
+exhaustive alternatives; their definite/high grade concerns supported proof semantics rather than
+live access or complete forest coverage, and both obtainable-membership permission kinds remain
+conditional with distinct membership-outcome and enabled-authorization assumptions.
+Missing grading evidence is counted with typed limitations, and stable signatures exclude saved
+generation identifiers; a three-step existing-membership route outranks a two-step conditional route
+without changing its saved shortest supported distance of two.
+The selected saved result remains internal until a separately approved presentation change, with
+SEC-052 and new lab/display/production acceptance outstanding and no storage-size or runtime claim.
+
+**Owner-approved saved distance and whole-run coverage slice, 2026-10-06.**
+Save each object's supported distance separately from whether the overall minimum is established,
+and save whole-run classification/reachability/coverage totals during judging rather than deriving
+them from displayed pages.
+Keep classified Tier 0 objects separate from other supported reachers, preserve unresolved and
+unassessed work, bind passive selected readback to the exact generation, and verify with synthetic
+offline tests and isolated rebuilt mutations.
+This slice adds no screens and does not change route ordering: certainty-first best-route selection
+follows separately under the existing accepted rules.
+Preserve all current work, packages and verification campaigns; no live access, production data,
+new timing campaign, budget change, commit or push is authorized.
+
+The [saved-distance checkpoint](../.v-distance-summary-20261006-2f8a/handoff.json) records a final
+correct-source rebuild, 1,083 passing affected-area tests, 993 matching code inputs and all 28
+new/adapted checks detecting rebuilt defects across 13 useful mutations with 15 passing restored
+controls; the two earlier blocked/surviving mutation attempts and failed fixture attempts remain.
+Judgement format 55 and path version 11 persist the extension; requester selection, Evidence and
+Derivation formats, the 18-rule catalogue and earlier layout hashes are unchanged.
+The saved total covers recorded analysis identities, including declared but uncaptured roots, not
+captured inventory; those roots remain unresolved, classifications are not expanded to other
+reachers, and distinct checked subjects are not counted as questions or routes.
+Selected-object inspection remains internal until a separately approved screen consumes it, and
+saved readback neither loads other objects' proofs nor replays analysis.
+Best-route ordering remains next, followed by SEC-052; no new lab/display/production acceptance,
+performance claim or package publication is established by this offline checkpoint.
+
+**Owner-confirmed return to Stage 7 after a lab DNS refusal, 2026-10-06.**
+After reporting that New audit returned to the domain screen when Next was pressed, the owner
+identified a familiar DNS issue in the Azure-hosted lab and will correct it and retest.
+This is the owner's diagnosis, not independently verified recovery; continue Stage 7 rather than
+changing capture/preflight behavior or treating the symptom as a confirmed regression.
+The owner noted that the Details warning was easy to overlook and suggested stronger attention
+when an issue occurs; record that usability concern separately, with concrete wording/layout
+approval still required before implementation.
+
+**Owner-approved same-forest continuation after one membership outcome, 2026-10-06.**
+Keep the first own-account membership assessment in its existing same-domain global-security-group
+boundary, with Self-Membership and Write members separate, then extend its continuation through
+supported captured same-forest group nesting to Modify permissions on a fixed Tier 0 domain target.
+Preserve pre-change authorization, existing and newly applicable ordered denies, every original
+permission and direct membership witness, resource-domain context and exact saved-generation binding.
+Reuse the existing domain-qualified labels and "Allowed under the saved membership assumption; not
+proof of current access or a completed Add" wording, without new panels or regrouping.
+Validate automatic GUI/CLI selection and passive readback with synthetic offline tests and isolated
+rebuilt mutations; wider initial permissions, non-domain resource contexts, SID-history/primary-group
+expansion, multiple hypothetical changes and takeover simulation are not included.
+No live AD, production-data use, new timing campaign, changed production budget, package replacement,
+commit or push is authorized, and existing work and verification campaigns must remain intact.
+
+The [validated continuation checkpoint](../.v-forest-continuation-20261006-6b2d/handoff.json) records
+1,073 passing affected-area tests and all 39 new/adapted continuation cases detecting rebuilt defects
+across 13 mutations with 13 passing restored controls.
+A final correct-source rebuild after three XML comment clarifications passed all 39 continuation
+cases and matched 990 code inputs; the earlier tree correction and all historical layout hashes
+were preserved.
+Judgement format 54, path version 10 and selection version 5 bind the extension without changing
+Evidence/Derivation formats or the 18-rule catalogue.
+The final checks corrected an obtained-group SID-history boundary to explicit unknown rather than
+excluding a potentially applicable deny; this is not SID-history authorization support.
+Initial membership permissions remain at their preceding boundary; saved distance/best-route/whole-run
+summaries and SEC-052 remain subsequent Stage 7 work, with new lab, display and production acceptance
+still outstanding and no customer-scale cost or timing claim.
+
+**Owner-approved generation-bound directory-tree reuse, 2026-10-06.**
+Entering Assets again for the same still-current protected run may rebuild the unchanged screen from
+the completed tree already read in that lifetime instead of rerunning the whole-capture tree query.
+The screen still enters at Objects, the first root and page one; a changed run, reopened lifetime,
+invalid generation, capture, refusal or cancellation forces a full read.
+This approval does not include SQL or index changes, integrity-policy changes, new measurements or
+tooling, production-data use, UI wording/layout changes, the separate lab-launch investigation,
+commit or push; return to Stage 7 after this bounded correction and offline validation.
 
 **Owner-authorized footer-test correction commit and push, 2026-10-06.**
 After all 7,077 offline tests passed with coverage, the owner authorized committing and pushing

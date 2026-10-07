@@ -30,7 +30,7 @@ internal sealed partial class AssetsViewModel
         Enum.GetValues<DelegationPermission>().Select(value => new DelegationPermissionChoice(value, DelegationText.Get(value.ToString()))).ToArray();
     public bool ShowsDelegations => Pane == AssetsPane.Delegations;
     public bool ShowsDelegationsListing => ShowsDelegations && ShowsListing;
-    public bool ShowsDirectoryTree => !ShowsDelegations || HasOpenObject;
+    public bool ShowsDirectoryTree => !ShowsTier0 && (!ShowsDelegations || HasOpenObject);
     public bool HasDelegationAnswer => _delegationHasAnswer && !IsLoading && !HasViewRefusal;
     public bool HasDelegationSelection => HasDelegationAnswer && SelectedDelegation is not null;
     public bool DelegationControlsAreEnabled => _active && HasTree && !IsLoading;

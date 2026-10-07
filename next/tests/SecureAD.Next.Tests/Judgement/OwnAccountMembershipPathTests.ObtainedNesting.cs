@@ -68,8 +68,12 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.Equal((HolderSid, CoreDn), (reader.ReadControlEdge(CoreDn, combined.Steps[^1].PermissionId!.Value).HolderSid,
             combined.Steps[^1].To.DistinguishedName));
         using var sources = ControlProofVerification.OpenSources(reader);
+        using var connection = RiskDatabase(reader, writableCopy: false);
+        var identities = OwnershipAuditStorage.Targets(connection).ToDictionary(value => value.Identity.DistinguishedName,
+            value => value.Identity, StringComparer.OrdinalIgnoreCase);
         RequesterMembershipContext.RequireGroupSources(nesting, combined.Membership.Target!, dacl.Target!, HolderSid,
-            sources.Bundle.ReadObjectAttributes, CancellationToken.None);
+            sources.Bundle.ReadObjectAttributes, CancellationToken.None,
+            RequesterMembershipContext.Create(sources, identities, reader.ReadPathInputs(), CancellationToken.None)!);
         var relation = Assert.Single(reader.ReadPathInputs().AdmissionRelationships,
             value => value.Controller.DistinguishedName == TargetDn && value.Witness?.GroupMembership is not null);
         Assert.Equal(Tier0State.Unknown, relation.State);

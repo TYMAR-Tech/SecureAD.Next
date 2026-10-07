@@ -145,7 +145,7 @@ public sealed partial class OwnAccountMembershipPathTests
             coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{TargetSid})(A;;WD;;;{HolderSid})");
         using (var clear = fixture.Connection.CreateCommand())
         {
-            clear.CommandText = "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
+            clear.CommandText = "DELETE FROM tier0_best_route; DELETE FROM tier0_distance; DELETE FROM tier0_distance_product; DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
             clear.ExecuteNonQuery();
         }
         using var trace = new JudgingInputReuseTests.Statements(fixture.Connection);

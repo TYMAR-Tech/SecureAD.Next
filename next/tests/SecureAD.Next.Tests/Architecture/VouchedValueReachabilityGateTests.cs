@@ -499,6 +499,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// 71 adds <c>DelegationCoverage.IsComplete</c>: declared capture scope, excluded classes and
     /// unreadable/unattempted/incomplete permissions or descriptor errors remain independent of
     /// result paging. A fully read, gap-free capture is true; each recorded gap can make it false.
+    /// 72 adds <c>CircularMembershipEvidence.IsComplete</c>: the recorded cycle inventory may
+    /// be complete or partial independently of its positive witnesses; the constructor drives both.
+    /// 73 adds <c>CircularMembershipLink.IsComplete</c>: a recorded relationship requires at
+    /// least one original value; empty and nonempty witness collections drive both outcomes.
+    /// 74 adds <c>CapturedMemberReferences.IsComplete</c>: only the displayed references were
+    /// resolved, not a membership expansion; explicit resolved/unresolved rows drive both values.
     /// </para>
     /// </summary>
     [Fact]
@@ -513,7 +519,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -545,6 +551,9 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "ListingCoverage" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ClassifiedPermissionEntry" && v.Name == "RightsAreComplete");
         Assert.Contains(found, v => v.Type.Name == "RequesterResourceContext" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "CircularMembershipEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "CircularMembershipLink" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "CapturedMemberReferences" && v.Name == "IsComplete");
     }
 
     /// <summary>
@@ -667,6 +676,13 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static IEnumerable<object> ConstructEveryWay(Type type)
     {
+        if (type == typeof(SecureAD.Evidence.CapturedMemberReferences))
+        {
+            yield return new SecureAD.Evidence.CapturedMemberReferences(
+                [new("CN=Known,DC=example", Guid.NewGuid(), "CN=Known,DC=example", "Known", "group", "example")]);
+            yield return new SecureAD.Evidence.CapturedMemberReferences(
+                [new("CN=Missing,DC=example", null, null, null, null, null)]);
+        }
         if (type == typeof(SecureAD.Judgement.RequesterResourceContext))
         {
             var domain = new SecureAD.Derivation.Tier0Target(Guid.NewGuid(), "DC=contoso,DC=com", "DC=contoso,DC=com",

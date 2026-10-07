@@ -51,6 +51,20 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     private static IReadOnlyList<Sample> Samples { get; } =
     [
         new Sample(
+            new CircularGroupMembership().Definition,
+            "CN=Cycle A,DC=contoso,DC=com",
+            CycleSample(),
+            read =>
+            {
+                var cycle = Assert.IsType<CircularMembershipEvidence>(read);
+                Assert.Equal(2, cycle.Groups.Count);
+                Assert.Equal(2, cycle.Links.Count);
+                Assert.All(cycle.Links, link => Assert.Equal(2, link.Witnesses.Count));
+                Assert.True(cycle.InventoryComplete);
+                Assert.Contains(cycle.Groups, group => group.DistinguishedName == "CN=Cycle A,DC=contoso,DC=com");
+                Assert.Contains(cycle.Groups, group => group.DistinguishedName == "CN=Cycle B,DC=contoso,DC=com");
+            }),
+        new Sample(
             new UnexpectedTier0Route().Definition,
             "CN=Alice,DC=contoso,DC=com",
             new Tier0RouteFindingEvidence(Guid.NewGuid(), null, ThisCapture, new('a', 64),
@@ -409,7 +423,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     public void EveryEvidenceKindSurvivesTheGridsPagingPath()
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
-            Samples.Where(sample => sample.Evidence is not Tier0RouteFindingEvidence)
+            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence))
                 .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output);
 
         foreach (var sample in Samples)
@@ -431,6 +445,17 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
 
     private static RuleDefinition Definition(string id, string title) =>
         new(id, title, Severity.High, 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
+
+    private static CircularMembershipEvidence CycleSample()
+    {
+        var a = new CircularMembershipGroup(Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            "CN=Cycle A,DC=contoso,DC=com", "contoso.com", "S-1-5-21-1-2-3-1800", null);
+        var b = new CircularMembershipGroup(Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            "CN=Cycle B,DC=contoso,DC=com", "contoso.com", "S-1-5-21-1-2-3-1801", null);
+        return new(ThisCapture, Guid.NewGuid(), CircularMembershipIndex.Key([a, b]), [a, b],
+            [new(a.ObjectGuid, b.ObjectGuid, [new(a.ObjectGuid, "member", 0, b.DistinguishedName)]),
+                new(b.ObjectGuid, a.ObjectGuid, [new(b.ObjectGuid, "member", 0, a.DistinguishedName)])], true);
+    }
 
     private sealed class SampleRule(Sample sample) : IObjectRule
     {

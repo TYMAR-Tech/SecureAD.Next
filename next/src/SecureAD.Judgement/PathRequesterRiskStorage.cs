@@ -32,7 +32,7 @@ internal static class PathRequesterRiskStorage
         JudgementDescription description, JudgingInputs sources, PathInputs inputs, bool selectionRequested,
         IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
         IReadOnlyList<SavedMembershipDaclProof> membershipDacls, string calculationFingerprint,
-        PathProofStorage.Writer proofs, CancellationToken cancellationToken)
+        PathProofStorage.Writer proofs, CancellationToken cancellationToken, BestSupportedRouteSelection bestRoutes)
     {
         sources.RequireFor(description);
         var authorities = new Dictionary<string, Authority>(StringComparer.OrdinalIgnoreCase);
@@ -52,6 +52,7 @@ internal static class PathRequesterRiskStorage
         {
             cancellationToken.ThrowIfCancellationRequested();
             var source = proofs.Write(question.SourceProof);
+            bestRoutes.Proof(question.SourceProof, source.Id, Convert.ToHexString(source.Fingerprint));
             var answer = Qualify(question, Convert.ToHexString(source.Fingerprint));
             counts[question.Family][(int)answer.Verdict]++;
             var proof = proofs.Write(answer);
@@ -305,6 +306,27 @@ internal static class PathRequesterRiskStorage
         var fixedTarget = (long)command.ExecuteScalar()! == 1;
         cancellationToken.ThrowIfCancellationRequested();
         return new(coverage, requesterDn, verdict, new(counts[0], counts[1], counts[2], counts[3]), questions, next, fixedTarget);
+    }
+
+    internal static PathRiskQuestion ReadSelectedQuestion(SqliteConnection connection, JudgementDescription description,
+        string requester, PathRequesterFamily family, string target, string? group, OwnAccountMembershipPermissionKind? kind,
+        CancellationToken token)
+    {
+        var coverage = ReadCoverage(connection, description, token);
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT requester,question_key,proof,fingerprint,verdict,source_proof,id
+            FROM path_requester_risk WHERE requester=$requester AND question_key=$key
+            """;
+        command.Parameters.AddWithValue("$requester", requester);
+        command.Parameters.AddWithValue("$key", string.Join('\0', family.ToString(), requester.ToUpperInvariant(),
+            target.ToUpperInvariant(), group?.ToUpperInvariant(), kind?.ToString()));
+        using var read = command.ExecuteReader();
+        if (!read.Read()) throw Tier0PathStorage.InvalidProof();
+        var risk = ReadAssessment(connection, read, description, coverage, token);
+        var result = ReadQuestion(connection, read.GetInt64(6), risk, read.GetInt64(5), token);
+        if (read.Read() || risk.Authorization != ControlEvaluationState.Established) throw Tier0PathStorage.InvalidProof();
+        return result;
     }
 
     private static PathRiskQuestion ReadQuestion(SqliteConnection connection, long id, PathRequesterRiskAssessment risk,

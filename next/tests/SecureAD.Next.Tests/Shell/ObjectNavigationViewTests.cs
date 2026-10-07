@@ -130,7 +130,7 @@ public sealed class ObjectNavigationViewTests
         // Exercise the actual navigation/listing and coverage markup without constructing the
         // unchanged auxiliary panes, whose compiled constructors require application resources.
         var childViews = root.Descendants().Where(element => element.Name.NamespaceName == "clr-namespace:SecureAD.Shell.Views"
-            && element.Name.LocalName != "BindingProxy").ToArray();
+            && element.Name.LocalName != "BindingProxy" && !element.Name.LocalName.Contains('.')).ToArray();
         foreach (var child in childViews)
         {
             if (child.Name.LocalName != "CaptureCoverageView" && !(includeObject && child.Name.LocalName == "ObjectView"))
@@ -138,6 +138,17 @@ public sealed class ObjectNavigationViewTests
             var coverage = InlineView(child.Name.LocalName);
             foreach (var attribute in child.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration))
                 coverage.SetAttributeValue(attribute.Name, attribute.Value);
+            foreach (var property in child.Elements())
+            {
+                Assert.Equal(child.Name.LocalName + ".Style", property.Name.LocalName);
+                var styleProperty = new XElement(property) { Name = wpf + "UserControl.Style" };
+                foreach (var style in styleProperty.Elements(wpf + "Style"))
+                {
+                    Assert.Equal("views:" + child.Name.LocalName, style.Attribute("TargetType")?.Value);
+                    style.SetAttributeValue("TargetType", "UserControl");
+                }
+                coverage.AddFirst(styleProperty);
+            }
             child.ReplaceWith(coverage);
         }
 

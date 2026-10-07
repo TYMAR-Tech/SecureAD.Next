@@ -99,6 +99,7 @@ internal static class OwnershipAuditValidation
         string? preparedTarget = null;
         ObjectPermissions? preparedPermissions = null;
         IReadOnlyDictionary<int, string>? originalEntries = null;
+        RequesterMembershipContext? membershipContext = null;
         ObjectPermissions PermissionsFor(string target)
         {
             if (preparedTarget != target)
@@ -142,7 +143,9 @@ internal static class OwnershipAuditValidation
                 {
                     if (link.WitnessIsOwner || capability != ControlCapability.CanWriteDacl) throw OwnershipAuditStorage.InvalidProof();
                     RequesterMembershipContext.RequireGroupSources(membership, controller.Identity, affected.Identity,
-                        link.WitnessTrustee, bundle.ReadObjectAttributes, cancellationToken);
+                        link.WitnessTrustee, bundle.ReadObjectAttributes, cancellationToken,
+                        membershipContext ??= sources.RequesterMemberships(header.Input, targets.ToDictionary(pair => pair.Key,
+                            pair => pair.Value.Identity, StringComparer.OrdinalIgnoreCase), cancellationToken));
                 }
                 relations[index] = Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity,
                     affected.Identity, capability, new(link.WitnessTarget, link.WitnessOrdinal,

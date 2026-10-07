@@ -22,6 +22,8 @@ internal static class Tier0PathStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         PathProofStorage.CreateTables(connection);
+        Tier0DistanceStorage.CreateTables(connection);
+        BestSupportedRouteStorage.CreateTables(connection);
         Execute(connection, null, """
         CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof INTEGER NOT NULL REFERENCES path_proof(id),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
@@ -39,7 +41,10 @@ internal static class Tier0PathStorage
         beginPhase(PathRequesterWorkPhase.PreparingPaths);
         var inputs = PathInputStorage.Read(connection, description, out var ownership, cancellationToken);
         PathInputStorage.ValidateSources(connection, description, sources, ownership, inputs, cancellationToken);
+        IReadOnlyList<OwnershipAuditStorage.TargetRow> recorded = ownership is null
+            ? OwnershipAuditStorage.Targets(connection, cancellationToken) : ownership.Targets;
         IReadOnlyList<Tier0PathNode> nodes = [];
+        var bestRoutes = new BestSupportedRouteSelection(connection, description, inputs, cancellationToken);
         if (inputs.Availability == PathInputAvailability.Recorded)
         {
             var bundle = sources.Bundle;
@@ -48,14 +53,14 @@ internal static class Tier0PathStorage
             if (ownership is null) throw InvalidProof();
             ownership.RequireFor(connection, description);
             nodes = Tier0PathCalculation.Calculate(inputs, ownership.Targets.Select(row => row.Identity).ToArray(),
-                TerminalPermissions(connection, description), bundle.ReadObjectAttributes, contexts.Value, cancellationToken);
+                TerminalPermissions(connection, description), bundle.ReadObjectAttributes, contexts.Value, cancellationToken, bestRoutes.Terminal);
+            bestRoutes.Memberships(nodes);
         }
         IReadOnlyDictionary<string, Tier0Target> identities = nodes.ToDictionary(node => node.Subject.DistinguishedName,
             node => node.Subject, StringComparer.OrdinalIgnoreCase);
         if (nodes.Count == 0 && (requests.Count != 0 || ownAccountRequests.Count != 0 || membershipDaclRequests.Count != 0))
         {
-            var targets = ownership is null ? OwnershipAuditStorage.Targets(connection, cancellationToken) : ownership.Targets;
-            identities = targets.ToDictionary(row => row.Identity.DistinguishedName, row => row.Identity, StringComparer.OrdinalIgnoreCase);
+            identities = recorded.ToDictionary(row => row.Identity.DistinguishedName, row => row.Identity, StringComparer.OrdinalIgnoreCase);
         }
         var memberships = offlineSelection || requests.Count != 0 || membershipDaclRequests.Count != 0
             ? RequesterMembershipContext.Create(sources, identities, inputs, cancellationToken) : null;
@@ -116,7 +121,13 @@ internal static class Tier0PathStorage
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header.Id), ("$hash", header.Fingerprint));
         PathRequesterRiskStorage.Write(connection, transaction, description, sources, inputs, offlineSelection,
-            requesters, ownAccounts, membershipDacls, Convert.ToHexString(header.Fingerprint), proofs, cancellationToken);
+            requesters, ownAccounts, membershipDacls, Convert.ToHexString(header.Fingerprint), proofs, cancellationToken, bestRoutes);
+        Tier0DistanceStorage.Write(connection, transaction, description, inputs, Convert.ToHexString(header.Fingerprint),
+            recorded, nodes, routeIndex, selection, requesters.Select(value => value.Assessment.Request.RequesterDn)
+                .Concat(ownAccounts.Select(value => value.Assessment.Request.RequesterDn))
+                .Concat(membershipDacls.Select(value => value.Assessment.Request.RequesterDn)), cancellationToken);
+        BestSupportedRouteStorage.Write(connection, transaction, proofs,
+            bestRoutes.Results(recorded, Convert.ToHexString(header.Fingerprint)), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
 
@@ -382,7 +393,7 @@ internal static class Tier0PathStorage
             contexts.Value, cancellationToken, diagnostic) { Memberships = memberships };
     }
 
-    private static Tier0PathNode? ReadNode(SqliteConnection connection, string target, CancellationToken cancellationToken)
+    internal static Tier0PathNode? ReadNode(SqliteConnection connection, string target, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var query = connection.CreateCommand();

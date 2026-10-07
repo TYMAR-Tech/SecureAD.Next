@@ -36,6 +36,8 @@ public sealed class DerivationLayoutTests
         [14] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
         // Schema 15 retains CA source identities and host values; observed with unchanged tables.
         [15] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
+        // Version 16 includes captured singleton self-loops; the physical tables are unchanged.
+        [16] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
     };
 
     [Fact]

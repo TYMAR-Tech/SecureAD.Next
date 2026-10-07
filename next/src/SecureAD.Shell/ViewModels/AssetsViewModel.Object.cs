@@ -16,6 +16,11 @@ internal sealed partial class AssetsViewModel
         {
             if (attributes is null)
             {
+                if (ShowsTier0)
+                {
+                    Tier0ObjectLimitation = "The selected saved analysis identity has no captured object to open. Its unresolved or unassessed result remains in the overview; no object details or route are inferred.";
+                    return;
+                }
                 RefuseView(NavigationText.Get("ObjectMissing"));
                 return;
             }
@@ -35,9 +40,26 @@ internal sealed partial class AssetsViewModel
         string? objectClass, ObjectSectionDefinition definition, Func<bool> current, CancellationToken token)
     {
         var dn = attributes.DistinguishedName;
+        if (definition.Key == ObjectSectionCatalog.Membership && Pane == AssetsPane.Groups)
+        {
+            var members = new GroupMembershipSectionViewModel(definition, attributes,
+                (names, cancellation) => ReadBoundAsync(bundle, current,
+                    reader => reader.ResolveMembershipReferences(bundle, names), cancellation, "read captured group members"),
+                OpenGroupMember, current);
+            using var cancellation = token.Register(members.Suspend);
+            await members.ReadCompletion;
+            token.ThrowIfCancellationRequested();
+            return members;
+        }
         if (definition.Key == ObjectSectionCatalog.SavedTier0Path)
         {
             var path = new SavedTier0PathSectionViewModel(definition);
+            path.ShowShortest = Opened?.ShowShortestTier0Route ?? false;
+            path.PropertyChanged += (_, change) =>
+            {
+                if (change.PropertyName == nameof(SavedTier0PathSectionViewModel.ShowShortest) && Opened is { } currentObject
+                    && currentObject.DistinguishedName == dn) currentObject.ShowShortestTier0Route = path.ShowShortest;
+            };
             path.ConfigureAsync(dn, (group, after, cancellation) => ReadBoundAsync(bundle, current,
                 reader => reader.ReadSavedTier0Path(bundle, dn, group, after), cancellation, "read saved Tier 0 path"));
             return path;
