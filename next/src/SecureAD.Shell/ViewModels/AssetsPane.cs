@@ -34,4 +34,9 @@ internal enum AssetsPane
 
     /// <summary>Original permission entries naming a selected principal, across captured AD objects.</summary>
     Delegations,
+
+    /// <summary>Saved captured group inventory, direct reference counts and cycle information.</summary>
+    Groups,
+
+    Tier0,
 }

@@ -620,6 +620,13 @@ public sealed class BundleReader : IDisposable
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
 
+    /// <summary>Resolves only a displayed page of original membership names to captured object identities.</summary>
+    public CapturedMemberReferences ResolveMembershipReferences(IReadOnlyList<string> names, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        return CapturedMembershipReferences.Read(Connection, names, cancellationToken);
+    }
+
     /// <summary>Searches all captured objects by name/account name or DN without reading analysis stores.</summary>
     public ObjectSearchPage SearchObjects(string search, ObjectSearchMark? after, CancellationToken cancellationToken = default)
     {

@@ -132,7 +132,8 @@ internal static class AuthorizationMembershipExpander
             if (limit != ExpansionLimit.None)
                 break;
 
-            if (component.Length > 1)
+            if (component.Length > 1 || component.Length == 1 && graph.IsGroup(component[0])
+                && graph.MembersOf(component[0]).Contains(component[0]))
                 cycles.Add(component);
 
             foreach (var node in component)

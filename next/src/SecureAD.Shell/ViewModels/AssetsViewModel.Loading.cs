@@ -10,16 +10,16 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed partial class AssetsViewModel
 {
     private sealed record ListingQuestion(AssetsPane Pane, string Bundle, string? Container,
-        ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search);
+        ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search, GroupInventoryQuery? Groups);
 
     private readonly Dictionary<AssetsPane, (ListingQuestion Question, Func<bool> IsCurrent)> _pages = [];
 
     private ListingQuestion Question() => new(Pane, BundlePath!,
-        Pane is AssetsPane.Delegations || IsObjectSearch ? null : Selected?.DistinguishedName,
+        Pane is AssetsPane.Delegations or AssetsPane.Tier0 || IsObjectSearch ? null : Selected?.DistinguishedName,
         Pane is AssetsPane.Objects or AssetsPane.Laps && !IsObjectSearch ? Scope : null,
-        Pane == AssetsPane.Objects ? IsObjectSearch ? _objectSearchBack.Count + 1 : PageNumber : 1,
+        Pane == AssetsPane.Objects ? IsObjectSearch ? _objectSearchBack.Count + 1 : PageNumber : Pane == AssetsPane.Groups ? _groupBack.Count + 1 : Pane == AssetsPane.Tier0 ? _tier0Back.Count + 1 : 1,
         Pane == AssetsPane.Findings ? FindingsAsked() : null,
-        IsObjectSearch ? _objectSearchQuery : null);
+        IsObjectSearch ? _objectSearchQuery : null, Pane == AssetsPane.Groups ? GroupQuestion() : null);
 
     private void LoadVisible()
     {
@@ -42,6 +42,12 @@ internal sealed partial class AssetsViewModel
 
         switch (question.Pane)
         {
+            case AssetsPane.Tier0:
+                await LoadTier0Async(question);
+                break;
+            case AssetsPane.Groups:
+                await LoadGroupsAsync(question);
+                break;
             case AssetsPane.Delegations:
                 CancelRead();
                 Announce();
@@ -241,6 +247,15 @@ internal sealed partial class AssetsViewModel
         if (pane == Pane) _listingReady = false;
         switch (pane)
         {
+            case AssetsPane.Tier0:
+                Tier0Objects.Clear();
+                Tier0OverviewStatus = Tier0OverviewCoverage = Tier0ObjectLimitation = "";
+                break;
+            case AssetsPane.Groups:
+                Groups.Clear();
+                GroupTotal = 0;
+                GroupQualification = null;
+                break;
             case AssetsPane.Delegations:
                 ClearDelegationSearch();
                 break;

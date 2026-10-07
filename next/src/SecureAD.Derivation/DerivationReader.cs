@@ -975,6 +975,27 @@ public sealed class DerivationReader : IDisposable
         return groups;
     }
 
+    /// <summary>Resolves only the dictionary identities referenced by the saved cycle product.</summary>
+    public Result<IReadOnlyDictionary<int, (string Sid, string Scope)>> ReadNestingCycleIdentities()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        try
+        {
+            using var command = _connection.CreateCommand();
+            command.CommandText = "SELECT DISTINCT s.sid_id,s.sid,s.scope FROM sid s JOIN nesting_cycle c ON c.sid_id=s.sid_id";
+            using var reader = command.ExecuteReader();
+            var identities = new Dictionary<int, (string Sid, string Scope)>();
+            while (reader.Read()) identities.Add(reader.GetInt32(0), (reader.GetString(1), reader.GetString(2)));
+            return Result<IReadOnlyDictionary<int, (string Sid, string Scope)>>.Success(identities);
+        }
+        catch (SqliteException error)
+        {
+            return Result<IReadOnlyDictionary<int, (string Sid, string Scope)>>.Failure(
+                AuditError.Create(ErrorCategory.Evidence, "CycleIdentitiesUnreadable", ErrorSeverity.Failed,
+                    "Saved cycle identities could not be read: " + error.Message, BundleDirectory));
+        }
+    }
+
     /// <summary>The SID text and scope of every principal, by dictionary id.</summary>
     private Dictionary<int, (string Sid, string Scope)> ReadSidIdentities()
     {

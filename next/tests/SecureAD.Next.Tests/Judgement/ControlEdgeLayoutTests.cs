@@ -122,6 +122,20 @@ public sealed class ControlEdgeLayoutTests
         [52] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
         // Format 53 changes source-fingerprint meaning, not the independently recorded format-52 layout.
         [53] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
+        // Format 54 extends continuation proof semantics without changing the format-52 tables.
+        [54] = "19981F6B762A37AF6D43D202124A8E87C974569FEAC3474F3661043BA3232235",
+        // Observed format-55 distance rows and run-summary table; historical checkpoints are unchanged.
+        [55] = "7BB6FE24F859A00998271E83B4F78AF88BFB010448A296CBDEE2545C49E494FB",
+        // Observed format-56 best-route references; all earlier layout anchors remain unchanged.
+        [56] = "EB0D05D46A889646CBCA9BF066D8389056D3EA8F66FACC09A120540CC6CE8F50",
+        // Observed format-57 circular-membership finding evidence; earlier checkpoints remain unchanged.
+        [57] = "C5B221893A7519DBA0F0AAA4954214603A9EF434E4864EF9FDA5ABF78AFF97B1",
+        // Observed format-58 component-member filter references; retain the initial SEC-052 layout too.
+        [58] = "DD53A6F98BABDB9D119F2BC2E929D0DC8F1F572D107B78331B6C5F147B5566E7",
+        // Observed format-59 captured group browsing inventory; prior checkpoints remain unchanged.
+        [59] = "3E3D77775421AA925A605003D349669A515E00DD0525079169BB9533589BA7CB",
+        // Observed format-60 structural totals; all historical layout anchors remain unchanged.
+        [60] = "B3BAE0EA13D16E442D28ED3F5928856CAEAF7C1F50FEEE7244D0281C5537E3E4",
     };
 
     [Fact]

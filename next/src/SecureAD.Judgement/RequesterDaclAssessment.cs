@@ -20,7 +20,7 @@ public enum RequesterDaclIssue
     TargetNotFixed,
     /// <summary>A captured identity is missing, ambiguous or cannot be qualified.</summary>
     IdentityUnresolved,
-    /// <summary>The operation is outside the verified same-domain resource context.</summary>
+    /// <summary>The operation is outside the verified resource context.</summary>
     ResourceContextUnsupported,
     /// <summary>The target's DACL could not be read or parsed.</summary>
     DescriptorUnreadable,
@@ -32,7 +32,7 @@ public enum RequesterDaclIssue
     ScopeUnsupported,
     /// <summary>A relevant trustee cannot be matched or excluded for this requester.</summary>
     TrusteeUnknown,
-    /// <summary>The grant lacks a supported explicit user or captured global-group route.</summary>
+    /// <summary>The grant lacks a supported explicit user or security-group route.</summary>
     GrantRouteUnsupported,
     /// <summary>The granting entry cannot be bound to its original stored holder permission.</summary>
     PermissionReferenceUnavailable,
@@ -68,7 +68,7 @@ public sealed record RequesterDaclAssessment(RequesterDaclRequest Request, Guid 
 {
     /// <summary>The separate membership context, when this answer belongs to a combined proof rather than captured membership alone.</summary>
     public OwnAccountMembershipRequest? ObtainedMembership { get; init; }
-    /// <summary>The verified resource domain for captured same-forest authorization; absent for the older bounded operation context.</summary>
+    /// <summary>The verified same-forest resource domain, also bound to an obtained-membership continuation.</summary>
     public RequesterResourceContext? ResourceContext { get; init; }
 }
 
@@ -88,7 +88,7 @@ internal static class RequesterDaclEvaluator
         var evidence = new List<RequesterDaclAceEvidence>();
         var requester = identities.GetValueOrDefault(request.RequesterDn);
         var target = inputs.FixedTargets.SingleOrDefault(value => Same(value.DistinguishedName, request.TargetDn));
-        var sameForest = obtainedMembership is null && memberships?.HasForestScope == true;
+        var sameForest = memberships?.HasForestScope == true;
         var resourceContext = sameForest && target is not null ? memberships!.Resource(target) : null;
         var user = attributes(request.RequesterDn);
         var resource = attributes(request.TargetDn);
@@ -108,7 +108,7 @@ internal static class RequesterDaclEvaluator
         if (obtainedMembership is not null && (obtainedMembership.Obtainability != ControlEvaluationState.Established
             || obtainedMembership.Requester != requester || obtainedGroup is null || !Qualified(group, obtainedGroup)
             || !Domain(obtainedGroup) || !Same(obtainedGroup.NamingContext, requester.NamingContext)
-            || !Same(target.NamingContext, requester.NamingContext)
+            || (!sameForest && !Same(target.NamingContext, requester.NamingContext))
             || obtainedMembership.GenerationId != description.GenerationId
             || obtainedMembership.DerivationGenerationId != description.DerivationGenerationId
             || obtainedMembership.EvidenceSeal != description.EvidenceSeal))
@@ -156,7 +156,8 @@ internal static class RequesterDaclEvaluator
                         obtainedGroup.ObjectGuid, obtainedGroup.DistinguishedName, obtainedGroup.DomainFqdn,
                         RequesterTrusteeReading.Number(group, "groupType"), group!.CapturedUtc, null);
                 }
-                else if (trustee.Reason is RequesterTrusteeReason.OtherCurrentUser or RequesterTrusteeReason.DistributionGroup)
+                else if (trustee.Reason is RequesterTrusteeReason.OtherCurrentUser or RequesterTrusteeReason.DistributionGroup
+                    || trustee.State == RequesterTrusteeState.DoesNotMatch && group!.Find("sIDHistory")?.HasValue == true)
                 {
                     // The added group's carried identities are outside this bounded model. A current
                     // nonmatching identity cannot exclude a historical SID introduced by that group.
@@ -166,20 +167,23 @@ internal static class RequesterDaclEvaluator
             RequesterMembershipEvidence? obtainedNesting = null;
             if (obtainedMembership is not null && memberships is not null && holder is not null
                 && trustee.Reason is RequesterTrusteeReason.MembershipNotEstablished or RequesterTrusteeReason.NestedGlobalMembership
-                    or RequesterTrusteeReason.DirectGlobalMembership
+                    or RequesterTrusteeReason.DirectGlobalMembership or RequesterTrusteeReason.DirectSecurityMembership
+                    or RequesterTrusteeReason.NestedSecurityMembership
                 && Qualified(holder, identities.GetValueOrDefault(holder.DistinguishedName))
                 && Domain(identities[holder.DistinguishedName])
                 && (obtainedMembership.Basis == OwnAccountMembershipBasis.ExistingOrAuthorizedAdd
                     || obtainedMembership.MembershipEvidence.Any(value => value.Attribute == "member"
                         && value.Object == obtainedGroup && Same(value.Value, requester.DistinguishedName))))
             {
-                obtainedNesting = memberships.Read(obtainedGroup!.DistinguishedName, holder.DistinguishedName);
-                if (obtainedNesting.Links.Count != 0)
+                obtainedNesting = memberships.Read(obtainedGroup!.DistinguishedName, holder.DistinguishedName, sameForest);
+                if (obtainedNesting.Links.Count != 0 && (!sameForest || memberships.AppliesToResource(obtainedNesting, target)))
                 {
                     membership = null;
                     trustee = trustee with { State = RequesterTrusteeState.Matches, Reason =
                         obtainedMembership.Basis == OwnAccountMembershipBasis.ExistingOrAuthorizedAdd
-                            ? RequesterTrusteeReason.ObtainedGlobalMembership : RequesterTrusteeReason.NestedGlobalMembership };
+                            ? RequesterTrusteeReason.ObtainedGlobalMembership
+                            : obtainedNesting.Links.All(link => (link.GroupType & 0x0f) == 2)
+                                ? RequesterTrusteeReason.NestedGlobalMembership : RequesterTrusteeReason.NestedSecurityMembership };
                 }
                 else obtainedNesting = null;
             }

@@ -51,6 +51,15 @@ internal static class UnresolvedWording
         if (!Enum.TryParse<UnresolvedReason>(split[1], out var reason))
             return $"{token} was undecided, and this version has no plainer way to say why.";
 
+        if (split[0] == nameof(DerivedFactKind.NestingCycles))
+            return reason switch
+            {
+                UnresolvedReason.NotDerived => "Circular membership was not derived for this run.",
+                UnresolvedReason.MembershipIncomplete => "Circular membership could not be assessed completely from this run's captured and derived group data. Recorded loops do not establish that no others exist.",
+                UnresolvedReason.IdentityUnreadable => "A group identity needed for circular membership could not be established from the captured evidence.",
+                _ => $"{token} was undecided, and this version has no plainer way to say why.",
+            };
+
         return reason switch
         {
             UnresolvedReason.NotDerived =>

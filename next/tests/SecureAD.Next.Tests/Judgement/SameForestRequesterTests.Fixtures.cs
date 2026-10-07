@@ -29,7 +29,8 @@ public sealed partial class SameForestRequesterTests
     private const string BuiltinA = "CN=Administrators,CN=Builtin," + RootA;
     private const string BuiltinB = "CN=Administrators,CN=Builtin," + RootB;
 
-    private static string Capture(string variant, string? descriptor = null)
+    private static string Capture(string variant, string? descriptor = null,
+        OwnAccountMembershipPermissionKind? obtained = null, bool independentAdmission = false)
     {
         var directory = TempDirectories.Create("same-forest-requesters");
         using var writer = BundleWriter.Create(directory, Started);
@@ -42,27 +43,51 @@ public sealed partial class SameForestRequesterTests
         writer.WriteCoverage(a);
         writer.WriteCoverage(b);
         writer.WriteCoverage(config);
+        var memberGuid = "bf9679c0-0de6-11d0-a285-00aa003049e2";
+        if (obtained is not null && variant != "no-schema")
+        {
+            var schema = new PartitionCoverage("CN=Schema," + config.NamingContextDn, NamingContextKind.Schema, "dc01." + A,
+                ConnectionSecurityLevel.SignedAndSealed, 3, 100, 1, [], false);
+            writer.WriteCoverage(schema);
+            Write(schema, "CN=Member," + schema.NamingContextDn, ["top", "attributeSchema"], null,
+                [Text("lDAPDisplayName", "member"), Bytes("schemaIDGUID", Guid.Parse(memberGuid).ToByteArray()),
+                    Text("isSingleValued", "FALSE"), Text("systemFlags", "18"), Text("searchFlags", "0")], "O:SYG:SYD:");
+            foreach (var (name, guid) in new[] { ("group", "bf967a9c-0de6-11d0-a285-00aa003049e2"), ("user", "bf967aba-0de6-11d0-a285-00aa003049e2") })
+                Write(schema, "CN=" + name + "," + schema.NamingContextDn, ["top", "classSchema"], null,
+                    [Text("lDAPDisplayName", name), Bytes("schemaIDGUID", Guid.Parse(guid).ToByteArray()), Text("systemFlags", "16")], "O:SYG:SYD:");
+        }
         Write(a, RootA, ["top", "domainDNS"], SidA, [],
             variant == "outside-domain" ? $"O:SYG:SYD:(A;;WD;;;{SidB}-1400)" : "O:SYG:SYD:");
         Write(b, RootB, ["top", "domainDNS"], SidB, [], "O:SYG:SYD:");
+        if (independentAdmission)
+            Write(a, "CN=Domain Admins," + RootA, ["top", "group"], SidA + "-512",
+                [Text("groupType", "-2147483646"), Text("member", Global)], "O:SYG:SYD:");
         Write(a, Actor, variant == "computer" ? ["top", "user", "computer"] : ["top", "user"],
             variant == "sid-domain-mismatch" ? SidB + "-1100" : SidA + "-1100",
             [Text("userAccountControl", "512"), Text("primaryGroupID", variant == "primary" ? "1200" : "513"),
                 .. variant == "history" ? new[] { Bytes("sIDHistory", Sid.ToBytes(SidB + "-1400")!) } : []], "O:SYG:SYD:");
         Write(a, Other, ["top", "user"], SidA + "-1101",
             [Text("userAccountControl", "512"), Text("primaryGroupID", "513")], "O:SYG:SYD:");
+        var initialSid = variant == "self-authorized" ? SidA + "-1200" : SidA + "-1100";
+        var initialRight = obtained == OwnAccountMembershipPermissionKind.WriteMembers ? "WP" : "SW";
         Write(a, Global, ["top", "group"], SidA + "-1200",
-            [Text("groupType", "-2147483646"), Values("member", variant == "primary" ? [] : [Actor])], "O:SYG:SYD:");
+            [Text("groupType", variant == "initial-universal" ? "-2147483640" : "-2147483646"),
+                Values("member", variant == "primary" || obtained is not null && variant != "already-member" ? [] : [Actor]),
+                .. variant == "origin-history" ? new[] { Bytes("sIDHistory", Sid.ToBytes(SidA + "-1600")!) } : []],
+            obtained is null ? "O:SYG:SYD:" : $"O:SYG:SYD:(OA;;{initialRight};{memberGuid};;{initialSid})");
+        if (variant == "origin-history")
+            Write(a, "CN=Former," + RootA, ["top", "group"], SidA + "-1600",
+                [Text("groupType", "-2147483644")], "O:SYG:SYD:");
         Write(b, Universal, ["top", "group"], SidB + "-1300",
             [Text("groupType", variant == "illegal-global" ? "-2147483646" : "-2147483640"),
-                Values("member", variant == "illegal-universal" ? [Local] : [Global])], "O:SYG:SYD:");
+                Values("member", variant == "illegal-universal" ? [Local] : variant == "missing-link" ? [] : [Global])], "O:SYG:SYD:");
         var localType = variant == "distribution" ? "4" : variant == "missing-type" ? null : "-2147483644";
         Write(b, Local, ["top", "group"], SidB + "-1400",
             [.. localType is null ? [] : new[] { Text("groupType", localType) },
                 Values("member", variant == "illegal-universal" ? [Global] : variant == "cycle" ? [Local, Universal] : [Universal]),
                 .. variant == "group-history" ? new[] { Bytes("sIDHistory", Sid.ToBytes("S-1-5-21-7-8-9-1400")!) } : []], "O:SYG:SYD:");
         Write(b, Denying, ["top", "group"], SidB + "-1500",
-            [Text("groupType", "-2147483644"), Text("member", Universal)], "O:SYG:SYD:");
+            [Text("groupType", "-2147483644"), Text("member", variant == "existing-deny" ? Actor : Universal)], "O:SYG:SYD:");
         Write(a, BuiltinA, ["top", "group"], "S-1-5-32-544",
             [Text("groupType", "-2147483643"), Text("member", Other)], "O:SYG:SYD:");
         Write(b, BuiltinB, ["top", "group"], "S-1-5-32-544",
@@ -73,7 +98,8 @@ public sealed partial class SameForestRequesterTests
         if (variant == "expected")
             Write(a, "CN=Enterprise Admins," + RootA, ["top", "group"], SidA + "-519",
                 [Text("groupType", "-2147483640"), Text("member", Actor)], "O:SYG:SYD:");
-        Write(b, Target, ["top", "group"], SidB + "-512", [Text("groupType", "-2147483646")],
+        Write(b, Target, ["top", "group"], SidB + "-512",
+            [Text("groupType", "-2147483646")],
             descriptor ?? $"O:SYG:SYD:(A;;WD;;;{(variant == "builtin" ? "S-1-5-32-544" : variant == "global" ? SidA + "-1200" : variant == "universal" || variant == "illegal-universal" ? SidB + "-1300" : SidB + "-1400")})");
         Write(config, config.NamingContextDn, ["top", "configuration"], null, [], $"O:SYG:SYD:(A;;WD;;;{SidB}-1400)");
         Write(config, "CN=Directory Service,CN=Windows NT,CN=Services," + config.NamingContextDn, ["top", "nTDSService"], null,

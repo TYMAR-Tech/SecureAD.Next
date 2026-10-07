@@ -41,6 +41,7 @@
             <StackPanel>
                 <TextBlock Text="{Binding Tier0SummaryHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="Tier0FindingSummary" Text="{Binding Tier0SummaryText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <Button Content="Tier 0 overview" Command="{Binding ShowTier0OverviewCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
             </StackPanel>
         </Border>
 

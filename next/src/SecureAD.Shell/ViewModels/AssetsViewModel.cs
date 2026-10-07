@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -43,6 +44,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private bool _resetting;
     private bool _listingReady;
     private Func<bool>? _filterValidity;
+    private DirectoryTree? _retainedTree;
+    private Func<bool>? _treeCurrent;
     private AssetsPane _objectPane;
     private Func<bool>? _objectCurrent;
     private ListingQuestion? _objectQuestion;
@@ -456,11 +459,30 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
+        var canReuseTree = !aCaptureIsRunning
+            && _retainedTree is not null
+            && _treeCurrent?.Invoke() == true
+            && BundlePath is not null
+            && string.Equals(Path.GetFullPath(BundlePath), Path.GetFullPath(bundleDirectory),
+                StringComparison.OrdinalIgnoreCase);
         CancelRead();
+        if (!string.Equals(BundlePath, bundleDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            _resetting = true;
+            ClearGroups();
+            _resetting = false;
+        }
         _assets.SelectRun(bundleDirectory);
         _active = true;
         BundlePath = bundleDirectory;
         _captureIsRunning = aCaptureIsRunning;
+        if (canReuseTree && _treeCurrent?.Invoke() == true)
+        {
+            ResetTreePresentation();
+            DisplayTree(_retainedTree!);
+            ReadCompletion = LoadVisibleAsync();
+            return;
+        }
         Read();
     }
 
@@ -471,11 +493,14 @@ internal sealed partial class AssetsViewModel : ObservableObject
         CancelRead();
         _resetting = true;
         _assets.CloseRun();
+        ClearGroups();
         ResetObjectSearch();
         ShowsCaptureCoverageDetails = false;
         BundlePath = null;
         Refusal = null;
         HasLooked = false;
+        _retainedTree = null;
+        _treeCurrent = null;
         Selected = null;
         Opened = null;
         Roots.Clear();
@@ -513,24 +538,9 @@ internal sealed partial class AssetsViewModel : ObservableObject
     public void Read()
     {
         CancelRead();
-        _resetting = true;
-        Opened = null;
-        ResetObjectSearch();
-        ShowsCaptureCoverageDetails = false;
-        Roots.Clear();
-        Gaps.Clear();
-        ClearListings();
-        Selected = null;
-        PageNumber = 1;
-        _findingsBack.Clear();
-        _findingsFrom = null;
-        Severities.Clear();
-        Rules.Clear();
-        SeverityFilter = RuleFilter = Any;
-        _filterValidity = null;
-        HasLooked = false;
-        Refusal = null;
-        _resetting = false;
+        _retainedTree = null;
+        _treeCurrent = null;
+        ResetTreePresentation();
 
         if (BundlePath is null || !_active)
         {
@@ -553,22 +563,53 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ReadCompletion = ReadTreeAsync(BundlePath);
     }
 
+    private void ResetTreePresentation()
+    {
+        _resetting = true;
+        ResetGroupPaging();
+        ResetTier0Paging();
+        Opened = null;
+        ResetObjectSearch();
+        ShowsCaptureCoverageDetails = false;
+        Roots.Clear();
+        Gaps.Clear();
+        ClearListings();
+        Selected = null;
+        PageNumber = 1;
+        _findingsBack.Clear();
+        _findingsFrom = null;
+        Severities.Clear();
+        Rules.Clear();
+        SeverityFilter = RuleFilter = Any;
+        _filterValidity = null;
+        HasLooked = false;
+        Refusal = null;
+        _resetting = false;
+    }
+
     private async Task ReadTreeAsync(string bundle)
     {
         var revision = _revision + 1;
-        await ReadViewAsync(bundle, reader => reader.ReadTree(bundle), (tree, _) =>
+        await ReadViewAsync(bundle, reader => reader.ReadTree(bundle), (tree, current) =>
         {
-            foreach (var root in tree.Roots) Roots.Add(new TreeNodeViewModel(root));
-            foreach (var node in Roots.SelectMany(root => root.ThisAndBelow()))
-                node.PropertyChanged += OnNodeChanged;
-            foreach (var gap in tree.Gaps) Gaps.Add(new TreeGapViewModel(gap));
-            _resetting = true;
-            Selected = Roots.FirstOrDefault();
-            _resetting = false;
-            HasLooked = true;
+            _retainedTree = tree;
+            _treeCurrent = current;
+            DisplayTree(tree);
         }, saved: false, tree: true);
         if (revision == _revision && _active && HasLooked && BundlePath == bundle)
             await LoadVisibleAsync();
+    }
+
+    private void DisplayTree(DirectoryTree tree)
+    {
+        foreach (var root in tree.Roots) Roots.Add(new TreeNodeViewModel(root));
+        foreach (var node in Roots.SelectMany(root => root.ThisAndBelow()))
+            node.PropertyChanged += OnNodeChanged;
+        foreach (var gap in tree.Gaps) Gaps.Add(new TreeGapViewModel(gap));
+        _resetting = true;
+        Selected = Roots.FirstOrDefault();
+        _resetting = false;
+        HasLooked = true;
     }
 
     /// <summary>Shows the page before the one showing.</summary>
@@ -686,6 +727,11 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void CloseObject()
     {
+        if (Pane == AssetsPane.Groups && _groupObjectBack.TryPop(out var group))
+        {
+            Open(group, ObjectSectionCatalog.Membership);
+            return;
+        }
         CancelRead();
         Opened = null;
         if (_pages.TryGetValue(Pane, out var page) && page.Question == Question() && page.IsCurrent())
@@ -886,6 +932,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     partial void OnSelectedChanged(TreeNodeViewModel? value)
     {
         if (_resetting) return;
+        UseSelectedGroupLocation();
         var leavesDelegationObject = HasOpenObject && ShowsDelegations;
         ResetObjectSearch();
         Opened = null;
@@ -895,6 +942,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ClearListing(AssetsPane.Objects);
         ClearListing(AssetsPane.Findings);
         ClearListing(AssetsPane.Laps);
+        ClearListing(AssetsPane.Groups);
         if (leavesDelegationObject) Pane = AssetsPane.Objects;
         else if (Pane != AssetsPane.Delegations) LoadVisible();
         Announce();
@@ -925,7 +973,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsSubtree));
         ClearListing(AssetsPane.Objects);
         ClearListing(AssetsPane.Laps);
-        if (Pane is AssetsPane.Objects or AssetsPane.Laps)
+        ResetGroupPaging();
+        ResetTier0Paging();
+        ClearListing(AssetsPane.Groups);
+        if (Pane is AssetsPane.Objects or AssetsPane.Laps or AssetsPane.Groups)
         {
             Opened = null;
             LoadVisible();
@@ -941,6 +992,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         AnnounceObjectNavigation();
         AnnounceDelegations();
+        AnnounceGroups();
+        AnnounceTier0();
         OnPropertyChanged(nameof(HasViewRefusal));
         OnPropertyChanged(nameof(IsOpeningTree));
         OnPropertyChanged(nameof(HasListingResult));

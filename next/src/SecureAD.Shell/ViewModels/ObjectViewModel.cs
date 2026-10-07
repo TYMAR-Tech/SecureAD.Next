@@ -37,6 +37,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
     private long _revision;
     private bool _publishing;
     private bool _active = true;
+    internal bool ShowShortestTier0Route { get; set; }
 
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private Notice? _refusal;
@@ -165,6 +166,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
         {
             if (oldValue is SavedTier0PathSectionViewModel path) path.CancelRead();
             if (oldValue is ControlEdgesSectionViewModel controls) controls.Suspend();
+            if (oldValue is GroupMembershipSectionViewModel members) members.Suspend();
             oldValue.IsSelected = false;
             var index = Sections.IndexOf(oldValue);
             if (index >= 0) Sections[index] = new UnloadedObjectSectionViewModel(_definitions[index]);
@@ -200,6 +202,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
         pending?.Cancel();
         if (Selected is SavedTier0PathSectionViewModel path) path.CancelRead();
         if (Selected is ControlEdgesSectionViewModel controls) controls.Suspend();
+        if (Selected is GroupMembershipSectionViewModel members) members.Suspend();
         IsLoading = false;
     }
 

@@ -15,6 +15,18 @@ namespace SecureAD.Next.Tests.Shell;
 /// </remarks>
 public sealed class UnresolvedWordingTests
 {
+    [Theory]
+    [InlineData("NestingCycles.MembershipIncomplete")]
+    [InlineData("NestingCycles.NotDerived")]
+    [InlineData("NestingCycles.IdentityUnreadable")]
+    public void Sec052UnresolvedWordingDescribesCyclesRatherThanProtectedAccountRoutes(string token)
+    {
+        var text = UnresolvedWording.For(token);
+        Assert.Contains("circular membership", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("protected", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("would settle", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Every reason has words of its own, so none falls back to the token.
     /// </summary>

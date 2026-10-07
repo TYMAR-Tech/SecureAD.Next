@@ -11,7 +11,7 @@ using Xunit.Sdk;
 
 namespace SecureAD.Next.Tests.Shell;
 
-public sealed class AuditProgressViewTests
+public sealed partial class AuditProgressViewTests
 {
     [Fact]
     public void TheRealEnatelCheckboxStartsUnchecked() => OnSta(() =>
@@ -110,14 +110,17 @@ public sealed class AuditProgressViewTests
         root.Attribute(xaml + "ClassModifier")!.Remove();
         // The unused details dialog template requires compiled internal types. The audit surface
         // and all its progress/outcome bindings are loaded from the unmodified production XAML.
-        root.Element(wpf + "UserControl.Resources")!.Remove();
+        var resources = root.Element(wpf + "UserControl.Resources")!;
+        var styles = resources.Elements(wpf + "Style").ToArray();
+        resources.Remove();
         var assembly = typeof(NewAuditViewModel).Assembly.GetName().Name;
         root.SetAttributeValue(XNamespace.Xmlns + "vm", "clr-namespace:SecureAD.Shell.ViewModels;assembly=" + assembly);
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
+        var dictionaries = sources.Select(source => new XElement(wpf + "ResourceDictionary",
+            new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source)));
         root.AddFirst(new XElement(wpf + "UserControl.Resources", new XElement(wpf + "ResourceDictionary",
-            new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source => new XElement(wpf + "ResourceDictionary",
-                new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source)))))));
+            new XElement(wpf + "ResourceDictionary.MergedDictionaries", dictionaries), styles)));
         return (FrameworkElement)XamlReader.Parse(root.ToString());
     }
 

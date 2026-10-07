@@ -101,6 +101,12 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         return WithRun(bundleDirectory, reader => reader.ReadTree(bundleDirectory));
     }
 
+    public Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGroups(bundleDirectory, query, after));
+
+    public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names) =>
+        WithRun(bundleDirectory, reader => reader.ResolveMembershipReferences(bundleDirectory, names));
+
     /// <inheritdoc/>
     public Result<ObjectPage> ListObjects(
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)

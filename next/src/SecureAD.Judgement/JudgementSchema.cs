@@ -118,8 +118,21 @@ public static class JudgementSchema
     /// retaining their exact fingerprints without whole-document text materialization.</para>
     /// <para>53 binds membership and requester source proofs through versioned component fingerprints,
     /// retaining complete source coverage without rehashing shared schema/domain/target data per question.</para>
+    /// <para>54 binds one obtained global membership's continuation to the captured same-forest
+    /// resource domain, retaining scope-qualified nesting and pre-change operation proof.</para>
+    /// <para>55 saves per-object supported distances and bound whole-run path/classification totals,
+    /// with separate unresolved, unassessed and requester-check coverage.</para>
+    /// <para>56 saves a separately graded best evaluated route while retaining shortest distance
+    /// and original candidate proof references.</para>
+    /// <para>57 saves SEC-052 circular membership sets and their original direct witnesses.</para>
+    /// <para>58 indexes each cycle's involved groups for object/domain/container finding filters,
+    /// while retaining one finding per component.</para>
+    /// <para>59 stores captured group metadata and direct recorded-member counts for selected-only
+    /// browsing without group expansion.</para>
+    /// <para>60 saves distinct structural member totals and separate missing-reference and evidence
+    /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
-    public const int Version = 53;
+    public const int Version = 60;
 
     private static readonly string[] TableDdl =
     [
@@ -681,6 +694,8 @@ public static class JudgementSchema
         SelfMembershipStorage.CreateTables(connection);
         PathInputStorage.CreateTables(connection);
         Tier0PathStorage.CreateTables(connection);
+        CircularMembershipStorage.CreateTables(connection);
+        GroupInventoryStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);

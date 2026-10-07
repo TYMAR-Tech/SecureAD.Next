@@ -120,7 +120,7 @@ internal static class RequesterDaclProofs
     {
         if (assessment.Evidence is null || assessment.Steps is null) throw Tier0PathStorage.InvalidProof();
         var resource = assessment.ResourceContext;
-        if (resource is not null && (!resource.IsComplete || assessment.ObtainedMembership is not null
+        if (resource is not null && (!resource.IsComplete
             || assessment.Target is not { } targetIdentity || resource.ResourceDomain.NamingContext != targetIdentity.NamingContext
             || resource.ResourceDomain.DomainFqdn != targetIdentity.DomainFqdn
             || assessment.Authorization == ControlEvaluationState.Established
@@ -129,7 +129,11 @@ internal static class RequesterDaclProofs
         if (obtained is not null && (assessment.ObtainedMembership != obtained.Request
             || obtained.Obtainability != ControlEvaluationState.Established || obtained.Requester != assessment.Requester
             || obtained.GenerationId != assessment.GenerationId || obtained.DerivationGenerationId != assessment.DerivationGenerationId
-            || obtained.EvidenceSeal != assessment.EvidenceSeal)) throw Tier0PathStorage.InvalidProof();
+            || obtained.EvidenceSeal != assessment.EvidenceSeal
+            || obtained.Target is not { } obtainedTarget || assessment.Requester is not { } obtainedRequester
+            || !string.Equals(obtainedTarget.NamingContext, obtainedRequester.NamingContext, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(obtainedTarget.DomainFqdn, obtainedRequester.DomainFqdn, StringComparison.OrdinalIgnoreCase)))
+            throw Tier0PathStorage.InvalidProof();
         foreach (var entry in assessment.Evidence)
         {
             cancellationToken.ThrowIfCancellationRequested();

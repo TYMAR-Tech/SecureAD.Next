@@ -22,6 +22,21 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     [ObservableProperty] private string _automaticChecks = SavedPathText.Get("NotRead");
     [ObservableProperty] private IReadOnlyList<string> _limitations = [];
     [ObservableProperty] private IReadOnlyList<SavedPathGroupViewModel> _groups = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRoutes))]
+    private Tier0RoutePresentation? _routes;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedSteps))]
+    [NotifyPropertyChangedFor(nameof(SelectedConditions))]
+    private bool _showShortest;
+    public bool HasRoutes => Routes is not null;
+    public IReadOnlyList<SavedPathStepViewModel> SelectedSteps => Routes is null ? [] : ShowShortest ? Routes.ShortestSteps : Routes.BestSteps;
+    public string SelectedConditions => Routes is null ? "" : ShowShortest ? Routes.ShortestConditions : Routes.Conditions;
+    partial void OnRoutesChanged(Tier0RoutePresentation? value)
+    {
+        OnPropertyChanged(nameof(SelectedSteps));
+        OnPropertyChanged(nameof(SelectedConditions));
+    }
 
     public string Boundary { get; } = SavedPathText.Get("RiskBoundary");
     public string CoverageHeading { get; } = SavedPathText.Get("CoverageHeading");
@@ -60,6 +75,7 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
         Result = AutomaticChecks = SavedPathText.Get("NotRead");
         Detail = Provenance = Severity = "";
         Limitations = [];
+        Routes = null;
     }
 
     private async Task LoadAsync(
@@ -104,6 +120,7 @@ internal sealed partial class SavedTier0PathSectionViewModel(ObjectSectionDefini
     {
         var description = saved.Description;
         var page = saved.Page;
+        Routes = saved.Routes is { } routes ? new(routes) : null;
         Provenance = SavedPathText.Get("Generation", description.GenerationId, description.CompletedUtc,
             description.EvidenceSeal, description.DerivationGenerationId?.ToString() ?? SavedPathText.Get("NotUsed"));
         AutomaticChecks = SavedPathText.Get(page.Coverage.Availability == PathRiskAvailability.Recorded

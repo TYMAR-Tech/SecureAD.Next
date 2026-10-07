@@ -74,6 +74,12 @@ internal sealed partial class AssetReadRequest(
     public Result<DirectoryTree> ReadTree(string bundleDirectory) =>
         WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadTree(), _readCancellation));
 
+    public Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after) =>
+        WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadGroupInventory(query, after, _readCancellation), _readCancellation));
+
+    public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names) =>
+        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ResolveMembershipReferences(names, _readCancellation), _readCancellation));
+
     /// <inheritdoc/>
     public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, int pageNumber) =>
         WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ListObjects(containerDn, scope, pageNumber), _readCancellation));

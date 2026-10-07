@@ -86,10 +86,10 @@
 
             <TextBlock Grid.Column="2" Text="{Binding LoadingText}"
                        Foreground="{StaticResource SecondaryTextBrush}"
-                       Visibility="{Binding IsLoading, Converter={StaticResource Shown}}" />
+                       Visibility="{Binding ShowsOtherViewLoading, Converter={StaticResource Shown}}" />
 
             <StackPanel Grid.Column="2"
-                        Visibility="{Binding HasViewRefusal, Converter={StaticResource Shown}}">
+                        Visibility="{Binding HasOtherViewRefusal, Converter={StaticResource Shown}}">
                 <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
                 <TextBox Text="{Binding ViewRefusal.Detail, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
@@ -110,6 +110,8 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Margin="0,0,0,8" Background="{StaticResource AttributeHeaderBackground}">
+                    <Button Content="Entire captured forest - Groups" Command="{Binding BrowseAllGroupsCommand}"
+                            Margin="0,0,0,10" Visibility="{Binding ShowsGroups,Converter={StaticResource Shown}}" />
                     <TextBlock Text="{x:Static vm:ObjectNavigationText.SearchLabel}" Style="{StaticResource BlockLabel}" />
                     <TextBox Text="{Binding ObjectSearchText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="{x:Static vm:ObjectNavigationText.SearchHint}">
@@ -246,6 +248,10 @@
                  somewhere in the directory and will look at the object next. -->
             <views:FindingsView Grid.Column="2"
                                 Visibility="{Binding ShowsFindingsListing, Converter={StaticResource Shown}}" />
+            <views:GroupsView Grid.Column="2"
+                              Visibility="{Binding ShowsGroupsSurface, Converter={StaticResource Shown}}" />
+            <views:Tier0OverviewView Grid.ColumnSpan="3"
+                                    Visibility="{Binding ShowsTier0Listing, Converter={StaticResource Shown}}" />
 
             <!-- Which machines are managing their local administrator password, and by what.
                  Beside the objects for the same reason the findings are: an operator narrowing to
@@ -256,8 +262,19 @@
             <views:DelegationsView Grid.ColumnSpan="3"
                                    Visibility="{Binding ShowsDelegationsListing, Converter={StaticResource Shown}}" />
 
-            <views:ObjectView Grid.Column="2"
-                              Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}" />
+            <views:ObjectView Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}">
+                <views:ObjectView.Style>
+                    <Style TargetType="views:ObjectView">
+                        <Setter Property="Grid.Column" Value="2" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowsTier0}" Value="True">
+                                <Setter Property="Grid.Column" Value="0" />
+                                <Setter Property="Grid.ColumnSpan" Value="3" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </views:ObjectView.Style>
+            </views:ObjectView>
 
             <Grid Grid.Column="2" Grid.Row="1" Margin="0,8,0,0" x:Name="AssetsFooter">
                 <Grid.RowDefinitions>

@@ -284,7 +284,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var reader = Open(directory);
         using var connection = RiskDatabase(reader, writableCopy: true);
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
+        command.CommandText = "DELETE FROM tier0_best_route; DELETE FROM tier0_distance; DELETE FROM tier0_distance_product; DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
         command.ExecuteNonQuery();
         using var stopping = new CancellationTokenSource();
         var inserted = 0;

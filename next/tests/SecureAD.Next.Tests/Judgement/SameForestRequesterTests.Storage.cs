@@ -116,7 +116,7 @@ public sealed partial class SameForestRequesterTests
     }
 
     [Fact]
-    public void SameForestChangeDoesNotExpandTheObtainedMembershipContext()
+    public void SameForestContinuationAcceptsCapturedOwnMembershipWithoutInventingAnAdd()
     {
         using var reader = Open(Prepared("nested"));
         using var sources = ControlProofVerification.OpenSources(reader);
@@ -134,9 +134,9 @@ public sealed partial class SameForestRequesterTests
         var assessment = RequesterDaclEvaluator.Assess(request, reader.ReadPathInputs(), reader.Description, identities,
             sources.Bundle.ReadObjectAttributes, sources.Bundle.ReadPermissions(Target), sources.ReadNamingContexts().Value,
             reader.ReadControlEdges(Target, null, null, true, 0).Edges, A, CancellationToken.None, member, context, TargetPermissionReference.EntryMatches);
-        Assert.Equal(ControlEvaluationState.Unknown, assessment.Authorization);
-        Assert.Contains(RequesterDaclIssue.ResourceContextUnsupported, assessment.Issues);
-        Assert.Null(assessment.ResourceContext);
+        Assert.Equal(ControlEvaluationState.Established, assessment.Authorization);
+        Assert.Equal(RootB, assessment.ResourceContext!.ResourceDomain.DistinguishedName);
+        Assert.All(assessment.Steps.Take(3), step => Assert.Equal(Tier0PathStepKind.Membership, step.Kind));
     }
 
     private static string[] Snapshot(string directory) => Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)

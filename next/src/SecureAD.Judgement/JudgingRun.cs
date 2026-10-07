@@ -609,6 +609,37 @@ public static class JudgingRun
 
             var product = stored.ProtectedPrincipals;
 
+            if (wanted.Contains(nameof(DerivedFactKind.NestingCycles), StringComparer.OrdinalIgnoreCase))
+            {
+                if (stored.NestingCycles.Availability is not (NestingCycleAvailability.Available or NestingCycleAvailability.Partial))
+                {
+                    var refusal = Failure("DerivedFactsAbsent",
+                        $"A scheduled rule reads {DerivedFactKind.NestingCycles}, and the saved cycle product is "
+                        + $"{stored.NestingCycles.Availability}. Derive this bundle before judging circular membership.",
+                        bundleDirectory);
+                    log.Record(JudgePhase, refusal.Error!, []);
+                    return refusal;
+                }
+                var membershipInput = inputs.ReadMembershipInput();
+                var cycleIdentities = derivation.ReadNestingCycleIdentities();
+                if (!cycleIdentities.IsSuccess)
+                {
+                    log.Record(JudgePhase, cycleIdentities.Error, []);
+                    return Result<JudgementRunState>.Failure(cycleIdentities.Error);
+                }
+                var cycles = CircularMembershipIndex.Create(stored, membershipInput,
+                    cycleIdentities.Value, inputs.EvidenceSeal, cancellationToken);
+                if (!cycles.IsComplete && !membershipInput.Objects.Any(source => RequesterTrusteeReading.HasClass(source, "group")))
+                {
+                    var refusal = Failure("DerivedFactsAbsent",
+                        "The cycle inventory is incomplete and contains no captured groups to assess. No absence of circular membership can be established.",
+                        bundleDirectory);
+                    log.Record(JudgePhase, refusal.Error!, []);
+                    return refusal;
+                }
+                context = context with { NestingCycles = cycles };
+            }
+
             if (wanted.Contains(
                     nameof(DerivedFactKind.ProtectedPrincipals), StringComparer.OrdinalIgnoreCase)
                 && product.Availability != ProtectedPrincipalProductAvailability.Available)
@@ -794,6 +825,7 @@ public static class JudgingRun
             evaluationAsOf);
         progress.RecordGeneration(writer.GenerationId, seal.Hash, derivationGeneration);
         writer.RecordEvidenceScope(scope.Value!);
+        writer.StartGroupInventory(bundle.Description.EveryDeclaredUnitRecordedAsRead);
 
         log.Note(
             JudgePhase,
@@ -871,6 +903,8 @@ public static class JudgingRun
             work.Laps.Start();
             writer.WriteLapsInventory(subject);
             work.Laps.Stop();
+            progress.BeginOperation("store-group-inventory");
+            writer.WriteGroupInventory(subject);
             unobservedRoots.Remove(subject.DistinguishedName);
             progress.BeginOperation("read-permissions");
             work.Read.Start();
@@ -987,6 +1021,8 @@ public static class JudgingRun
         work.LapsComplete.Start();
         writer.CompleteLapsInventory();
         work.LapsComplete.Stop();
+        progress.BeginOperation("complete-group-inventory");
+        writer.CompleteGroupInventory(cancellationToken);
         progress.BeginOperation("complete-permissions");
         work.ClosePermissions.Start();
         writer.CompletePermissionClassifications(objectsRead);

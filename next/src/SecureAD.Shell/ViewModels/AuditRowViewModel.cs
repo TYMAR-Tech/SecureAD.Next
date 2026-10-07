@@ -74,4 +74,9 @@ internal abstract partial class AuditRowViewModel : ObservableObject
     /// <summary>Whether this domain has been left out with nothing stated for it.</summary>
     public bool IsExcludedWithoutAttestation =>
         Inclusion != DomainInclusion.Included && Attestation is null;
+
+    public virtual string ReadinessText => IsExcludedWithoutAttestation
+        ? "Exclusion needs authorization" : Inclusion != DomainInclusion.Included ? "Excluded" : "Not checked";
+
+    internal void RefreshReadiness() => OnPropertyChanged(nameof(ReadinessText));
 }

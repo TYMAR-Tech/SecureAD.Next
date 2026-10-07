@@ -158,6 +158,11 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     /// <summary>A domain with a controller may be read from a different one.</summary>
     public override bool MayNameAController => true;
 
+    public override string ReadinessText => !IsIncluded ? base.ReadinessText
+        : Problem is not null ? "Validation refused"
+        : !Plan.WasPreflighted ? "Not checked"
+        : HasSomethingToSay ? "Review details" : "Checks recorded";
+
     /// <summary>Whether this domain has been left out with nothing stated for it.</summary>
     public bool IsExcludedWithoutAttestationRow =>
         Inclusion != DomainInclusion.Included && Attestation is null;
@@ -631,8 +636,11 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     /// A refusal appearing or clearing changes whether this domain has anything to say beneath the
     /// table.
     /// </summary>
-    partial void OnProblemChanged(string? value) =>
+    partial void OnProblemChanged(string? value)
+    {
         OnPropertyChanged(nameof(HasSomethingToSay));
+        RefreshReadiness();
+    }
 
     /// <summary>
     /// The state of a three-state answer, where an unasked question never borrows the negative
@@ -919,7 +927,10 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             // Frozen once the run is under way, for the reason MayChangeObjectScope is: what the
             // screen says this run will do must go on describing the run that is happening.
             if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, true))
+            {
                 OnPropertyChanged(nameof(CaptureAndAnalyse));
+                AnnouncePresentation();
+            }
         }
     }
 
@@ -938,7 +949,10 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         set
         {
             if (value && MayChangeObjectScope && SetProperty(ref _captureOnly, false, nameof(CaptureOnly)))
+            {
                 OnPropertyChanged(nameof(CaptureAndAnalyse));
+                AnnouncePresentation();
+            }
         }
     }
 
@@ -1150,7 +1164,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// whether or not it is being opened from here, and it is the only thing to say about a run
     /// that sealed nothing.
     /// </remarks>
-    public string? ResultsNote => !HasFinished
+    public string? ResultsNote => !HasFinished && !HasRunEnded
         ? null
         : BundleDirectory is null
             ? "This run produced no evidence to read."
@@ -1166,7 +1180,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// </remarks>
     public string StepQuestion => Screen switch
     {
-        AuditScreen.Review when HasFinished => "What this audit produced",
+        AuditScreen.Review when HasFinished || HasRunEnded => "What this audit produced",
         AuditScreen.Review when IsCapturing => "This audit is running",
         AuditScreen.Review => "Is this run ready to start?",
         _ => "What would this run read?",
@@ -1411,9 +1425,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// finished and sealed nothing is still done, and there is nothing for it to show.
     /// </para>
     /// </remarks>
-    public string LeaveLabel => HasFinished
-        ? BundleDirectory is null ? "Done" : "View results"
-        : "Discard";
+    public string LeaveLabel => BundleDirectory is not null ? "View results" : HasFinished || HasRunEnded ? "Done" : "Discard";
 
     /// <summary>What the review screen states about this run.</summary>
     public AuditReview Review => Describe();
@@ -1744,6 +1756,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         // panel becoming visible on HasExclusions already has its contents behind it.
         RefreshExclusions();
         RefreshRows();
+        foreach (var row in Rows) row.RefreshReadiness();
 
         OnPropertyChanged(nameof(HasExclusions));
         OnPropertyChanged(nameof(HasNoExclusions));
@@ -1757,6 +1770,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         OnPropertyChanged(nameof(CanStart));
         StartCommand.NotifyCanExecuteChanged();
         ReviewCommand.NotifyCanExecuteChanged();
+        AnnouncePresentation();
     }
 
     /// <summary>
@@ -1840,6 +1854,9 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         DerivationReport = JudgingReport = null;
         ObjectsDerived = ObjectsJudged = 0;
         Findings = new Dictionary<Severity, int>();
+        StopConfirmationRequested = false;
+        CaptureOutput = AuditOutputState.Active;
+        DerivationOutput = JudgementOutput = CaptureOnly ? AuditOutputState.NotRequested : AuditOutputState.Waiting;
         Progress.Begin(AuditProgressViewModel.Text("Capture"));
         using var clockStop = new CancellationTokenSource();
         var clock = RefreshProgressAsync(clockStop.Token);
@@ -1864,6 +1881,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             BundleDirectory = outcome.IsSuccess && outcome.Value.ProducedABundle
                 ? outcome.Value.BundleDirectory
                 : null;
+            CaptureOutput = BundleDirectory is not null ? AuditOutputState.Saved
+                : outcome.IsSuccess ? AuditOutputState.NoOutput : AuditOutputState.Failed;
 
             // Deriving and judging both follow a capture without being asked for - the owner's
             // shape, 2026-08-26 - unless the operator asked for a capture on its own. The decision
@@ -1897,6 +1916,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            if (CaptureOutput == AuditOutputState.Active) CaptureOutput = AuditOutputState.Stopped;
             Progress.End(AuditProgressViewModel.Text("Stopped"));
             Report = BundleDirectory is { } sealedEvidence
                 ? $"Stopped. The evidence was already sealed and is safe at {sealedEvidence}."
@@ -1904,6 +1924,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         catch (Exception failure)
         {
+            if (CaptureOutput == AuditOutputState.Active) CaptureOutput = AuditOutputState.Failed;
             // A capture that throws must not take the application down with it. Before this, a
             // defect in the audit layer reached the dispatcher unhandled and killed the process
             // mid-run: the operator lost the window, the plan he had just worked through, and any
@@ -1931,7 +1952,10 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         finally
         {
+            if (DerivationOutput == AuditOutputState.Waiting) DerivationOutput = AuditOutputState.NotStarted;
+            if (JudgementOutput == AuditOutputState.Waiting) JudgementOutput = AuditOutputState.NotStarted;
             IsCapturing = false;
+            StopConfirmationRequested = false;
             clockStop.Cancel();
             await clock.ConfigureAwait(true);
         }
@@ -1961,6 +1985,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private async Task DeriveAsync(string bundleDirectory, CancellationToken cancellationToken)
     {
         IsDeriving = true;
+        DerivationOutput = AuditOutputState.Active;
         var epoch = _progressEpoch;
         Progress.Report(AuditProgressViewModel.Text("Deriving"), string.Empty);
         DerivationReport = "Deriving from the evidence. Nothing is read from the directory now.";
@@ -1976,6 +2001,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             if (!derived.IsSuccess)
             {
+                DerivationOutput = AuditOutputState.Failed;
                 _auditHasGaps = true;
                 DerivationReport =
                     $"The evidence was sealed and is safe. Nothing could be derived from it: "
@@ -1985,15 +2011,23 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             }
 
             DerivationReport = Describe(derived.Value);
+            DerivationOutput = derived.Value.State switch
+            {
+                DerivationRunState.Completed when derived.Value.EveryPhaseThatRanSucceeded => AuditOutputState.Saved,
+                DerivationRunState.Completed or DerivationRunState.CompletedDegraded => AuditOutputState.SavedWithLimitations,
+                _ => AuditOutputState.Failed,
+            };
             _auditHasGaps |= derived.Value.State != DerivationRunState.Completed || !derived.Value.EveryPhaseThatRanSucceeded;
         }
         catch (OperationCanceledException)
         {
+            DerivationOutput = AuditOutputState.Stopped;
             DerivationReport = AuditProgressViewModel.Text("DerivationStopped");
             throw;
         }
         catch (Exception failure) when (failure is not OperationCanceledException)
         {
+            DerivationOutput = AuditOutputState.Failed;
             _auditHasGaps = true;
             // A defect in deriving costs the derivation and nothing else. Left to escape, it would
             // skip the judging and be reported as a run that failed - so a fault in the newest and
@@ -2061,6 +2095,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private async Task JudgeAsync(string bundleDirectory, CancellationToken cancellationToken)
     {
         IsJudging = true;
+        JudgementOutput = AuditOutputState.Active;
         var epoch = _progressEpoch;
         Progress.Report(AuditProgressViewModel.Text("PreparingInputs"), string.Empty);
         JudgingReport = "Judging the evidence. Nothing is read from the directory now.";
@@ -2076,6 +2111,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
             if (!judged.IsSuccess)
             {
+                JudgementOutput = AuditOutputState.Failed;
                 _auditHasGaps = true;
                 JudgingReport =
                     $"The evidence was sealed and is safe. It could not be judged: "
@@ -2087,16 +2123,24 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             Findings = judged.Value.Findings;
             ObjectsJudged = Math.Max(ObjectsJudged, judged.Value.ObjectsJudged);
             JudgingReport = Describe(judged.Value);
+            JudgementOutput = judged.Value.State switch
+            {
+                JudgementRunState.Completed => AuditOutputState.Saved,
+                JudgementRunState.CompletedDegraded => AuditOutputState.SavedWithLimitations,
+                _ => AuditOutputState.Failed,
+            };
             _auditHasGaps |= judged.Value.State != JudgementRunState.Completed;
             Progress.Report(AuditProgressViewModel.Text("ReadingResults"), AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
         }
         catch (OperationCanceledException)
         {
+            JudgementOutput = AuditOutputState.Stopped;
             JudgingReport = AuditProgressViewModel.Text("JudgingStopped");
             throw;
         }
         catch (Exception failure) when (failure is not OperationCanceledException)
         {
+            JudgementOutput = AuditOutputState.Failed;
             JudgingReport = failure.Message;
             throw;
         }
@@ -2408,6 +2452,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>The screen, and everything drawn differently on each one, move together.</summary>
     partial void OnScreenChanged(AuditScreen value)
     {
+        AnnouncePresentation();
         OnPropertyChanged(nameof(IsOnDomains));
         OnPropertyChanged(nameof(IsOnReview));
         OnPropertyChanged(nameof(StepQuestion));
@@ -2419,6 +2464,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>A finished run changes what the screen offers and what it is headed by.</summary>
     partial void OnHasFinishedChanged(bool value)
     {
+        AnnouncePresentation();
         OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(ResultsNote));
@@ -2430,6 +2476,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// <summary>Where the evidence is decides the results note and what the footer offers.</summary>
     partial void OnBundleDirectoryChanged(string? value)
     {
+        AnnouncePresentation();
         OnPropertyChanged(nameof(ResultsNote));
         OnPropertyChanged(nameof(LeaveLabel));
     }
@@ -2439,11 +2486,15 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDetails));
 
     /// <summary>The banner appears and vanishes with what it has to say.</summary>
-    partial void OnNoticeChanged(Notice? value) =>
+    partial void OnNoticeChanged(Notice? value)
+    {
         OnPropertyChanged(nameof(HasNotice));
+        AnnouncePresentation();
+    }
 
     partial void OnIsBusyChanged(bool value)
     {
+        AnnouncePresentation();
         OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));
@@ -2456,6 +2507,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
 
     partial void OnIsCapturingChanged(bool value)
     {
+        AnnouncePresentation();
         OnPropertyChanged(nameof(MayChangeObjectScope));
         OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(CanStart));

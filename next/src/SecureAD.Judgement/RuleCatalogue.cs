@@ -45,5 +45,6 @@ public static class RuleCatalogue
         new ObjectOwnedByNonAdministrator(),
         new ProtectedObjectOwnedByNonAdministrator(),
         new UnexpectedTier0Route(),
+        new CircularGroupMembership(),
     ];
 }

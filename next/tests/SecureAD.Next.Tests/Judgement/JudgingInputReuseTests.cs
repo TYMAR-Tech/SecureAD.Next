@@ -253,7 +253,7 @@ public sealed class JudgingInputReuseTests
     public void PathProductionLoadsFinalOwnershipCollectionsOnce()
     {
         using var fixture = new SavedFixture();
-        Execute(fixture.Database, "DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation");
+        Execute(fixture.Database, "DELETE FROM tier0_best_route; DELETE FROM tier0_distance; DELETE FROM tier0_distance_product; DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation");
         using var trace = new Statements(fixture.Database);
         var phases = new List<PathRequesterWorkPhase>();
         using var statements = new PreparedStatements(fixture.Database);

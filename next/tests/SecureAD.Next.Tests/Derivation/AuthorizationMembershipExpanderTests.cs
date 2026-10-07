@@ -65,6 +65,20 @@ public sealed class AuthorizationMembershipExpanderTests
         Assert.Contains(2, closure.MembersOf(1).ToArray());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Sec052DirectSelfLoopIsRecordedAndRetainsCapturedMembers(bool securityEnabled)
+    {
+        var group = securityEnabled ? Security(0) : Distribution(0);
+        var baseline = Expand(group, User(1), edges: [(0, 1)]);
+        var loop = Expand(group, User(1), edges: [(0, 0), (0, 1)]);
+        Assert.Equal(new[] { 0 }, Assert.Single(loop.Cycles));
+        Assert.Equal(new[] { 0, 1 }, loop.MembersOf(0).ToArray());
+        Assert.Equal(new[] { 1 }, baseline.MembersOf(0).ToArray());
+        Assert.Empty(baseline.Cycles);
+    }
+
     /// <summary>
     /// A distribution hop does not carry authorization.
     /// </summary>

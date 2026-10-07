@@ -27,6 +27,13 @@ public static class RuleGuidanceCatalogue
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
         new RuleGuidance(
+            "SEC-052", "Group membership", MitreTechnique: null,
+            WhyItMatters: CircularGroupMembership.Explanation,
+            WhatToDo: CircularGroupMembership.Guidance,
+            About: "These groups form a circular membership relationship.\n\n"
+                + "Review the recorded links and the membership or permissions that depend on them; this finding does not establish a route to Tier 0.",
+            MicrosoftReference: "https://learn.microsoft.com/windows/win32/ad/determining-a-user-s-or-group-s-membership-in-a-group"),
+        new RuleGuidance(
             "SEC-071",
             "Tier 0",
             MitreTechnique: null,

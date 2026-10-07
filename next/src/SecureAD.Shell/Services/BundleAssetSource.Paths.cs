@@ -14,10 +14,15 @@ internal sealed record SavedTier0Path(JudgementDescription Description, Tier0Fin
     Finding? Finding, PathRiskPage Page, IReadOnlyList<ControlEdge> Permissions)
 {
     public SavedPathAccount? Account { get; init; }
+    public Tier0RouteDetails? Routes { get; init; }
 
     internal bool IsBound => Page.Coverage.GenerationId == Description.GenerationId
         && Page.Coverage.EvidenceSeal == Description.EvidenceSeal
         && Page.Coverage.DerivationGenerationId == Description.DerivationGenerationId
+        && (Routes is null || Routes.GenerationId == Description.GenerationId
+            && Routes.DerivationGenerationId == Description.DerivationGenerationId && Routes.EvidenceSeal == Description.EvidenceSeal
+            && Routes.CalculationFingerprint == Page.Coverage.CalculationFingerprint
+            && string.Equals(Routes.Subject.DistinguishedName, Page.RequesterDn, StringComparison.OrdinalIgnoreCase))
         && (Summary is null || Summary.GenerationId == Description.GenerationId
             && Summary.EvidenceSeal == Description.EvidenceSeal
             && Summary.DerivationGenerationId == Description.DerivationGenerationId
@@ -72,10 +77,17 @@ internal sealed partial class BundleAssetSource
 
     public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory) =>
         WithRun(bundleDirectory, reader => reader.ReadTier0FindingSummary(bundleDirectory));
+
+    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadTier0Overview(bundleDirectory, after));
 }
 
 internal sealed partial class AssetReadRequest
 {
+    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after) =>
+        ReadProduct(bundleDirectory, reader => reader.ReadTier0Overview(after, _readCancellation),
+            "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:");
+
     /// <inheritdoc/>
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName) =>
         ReadSavedTier0Path(bundleDirectory, distinguishedName, PathRiskVerdict.UnexpectedRoute, null);
@@ -109,7 +121,8 @@ internal sealed partial class AssetReadRequest
                     token.ThrowIfCancellationRequested();
                     permissions.Add(reader.ReadControlEdge(step.To.DistinguishedName, step.PermissionId.GetValueOrDefault()));
                 }
-                var saved = new SavedTier0Path(reader.Description, summary, finding, page, permissions);
+                var routes = reader.ReadTier0RouteDetails(distinguishedName, token);
+                var saved = new SavedTier0Path(reader.Description, summary, finding, page, permissions) { Routes = routes };
                 if (!saved.IsBound) return PathFailure("GenerationChanged", bundleDirectory, null);
                 if (page.Questions.Count > 0)
                 {

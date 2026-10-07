@@ -64,6 +64,8 @@ public enum DerivedFactKind
     /// is worse than silence, so <c>docs/decisions/0091</c> refuses the judging instead.
     /// </remarks>
     PrincipalExpansion,
+    /// <summary>Recorded circular membership components, including direct group self-loops.</summary>
+    NestingCycles,
 }
 
 /// <summary>
@@ -199,6 +201,7 @@ public sealed record JudgingContext(
     // Capture-unit identity, not a suffix-based guess at the target's resource domain.
     internal IReadOnlyDictionary<string, NamingContextKind>? NamingContexts { get; init; }
     internal Func<string, ObjectAttributes?>? ControlPrincipals { get; init; }
+    internal CircularMembershipIndex? NestingCycles { get; init; }
 
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only

@@ -340,6 +340,8 @@ internal sealed partial class ShellViewModel : ObservableObject
         {
             Views.Add(SectionView.Built("Objects"));
             Views.Add(SectionView.Built("Findings"));
+            Views.Add(SectionView.Built("Groups"));
+            Views.Add(SectionView.Built("Tier 0"));
             Views.Add(SectionView.Built("LAPS"));
             Views.Add(SectionView.Built("Delegations"));
         }
@@ -370,7 +372,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     private void OnAssetsPaneChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(AssetsViewModel.Pane) || Section != ShellSection.Assets) return;
-        var selected = Views.FirstOrDefault(view => string.Equals(view.Name, Assets.Pane.ToString(), StringComparison.OrdinalIgnoreCase));
+        var selected = Views.FirstOrDefault(view => string.Equals(view.Name, Assets.Pane == AssetsPane.Tier0 ? "Tier 0" : Assets.Pane.ToString(), StringComparison.OrdinalIgnoreCase));
         if (selected is not null && !selected.IsSelected) selected.IsSelected = true;
     }
 
@@ -390,6 +392,8 @@ internal sealed partial class ShellViewModel : ObservableObject
         Assets.Pane = selected.Name switch
         {
             "Findings" => AssetsPane.Findings,
+            "Groups" => AssetsPane.Groups,
+            "Tier 0" => AssetsPane.Tier0,
             "LAPS" => AssetsPane.Laps,
             "Delegations" => AssetsPane.Delegations,
             _ => AssetsPane.Objects,

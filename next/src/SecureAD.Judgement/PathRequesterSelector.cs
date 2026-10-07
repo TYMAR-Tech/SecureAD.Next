@@ -15,7 +15,7 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
         CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
         : this(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs, nodes, contexts, cancellationToken, diagnostic) { }
 
-    internal const int Version = 4;
+    internal const int Version = 5;
     internal RequesterMembershipContext? Memberships { get; init; }
     private const int WriteDacl = 0x40000;
     private readonly Dictionary<string, ObjectAttributes?> _attributes = new(StringComparer.OrdinalIgnoreCase);
@@ -102,7 +102,7 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
                             Add(PathRequesterFamily.OwnAccountMembership, requester, dn, null, kind, [witness]);
                         foreach (var terminal in TerminalWitnesses(dn))
                         {
-                            if (Qualification(requester, terminal.ResourceDn) is { } issue)
+                            if (Qualification(requester, terminal.ResourceDn, Memberships?.HasForestScope == true) is { } issue)
                                 Limit(issue, terminal.ResourceDn, null, requester);
                             else Add(PathRequesterFamily.MembershipDacl, requester, terminal.ResourceDn, dn, kind, [witness, terminal]);
                         }
@@ -156,15 +156,19 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
                 cancellationToken.ThrowIfCancellationRequested();
                 diagnostic?.Counter("targetPermissionsProcessed", ++permissionsRead);
                 if ((entry.AccessMask & WriteDacl) != 0 && EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
-                    && Holder(target.DistinguishedName, entry) is { } holder && Group(holder))
+                    && (Memberships?.HasForestScope == true
+                        ? Memberships.Holder(entry.Trustee, target)?.DistinguishedName
+                        : Holder(target.DistinguishedName, entry)) is { } holder && Group(holder))
                 {
                     result.Add(holder);
-                    if (Qualification(holder, target.DistinguishedName) is not null) continue;
+                    if (Qualification(holder, target.DistinguishedName, Memberships?.HasForestScope == true) is not null) continue;
+                    if (RequesterTrusteeReading.Number(Attributes(holder), "groupType") is { } type
+                        && (type & 0x0f) is 4 or 5 && !Same(nodes[holder].Subject.DomainFqdn, target.DomainFqdn)) continue;
                     if (!result.TryGetValue(holder, out var group)) throw Tier0PathStorage.InvalidProof();
                     if (!_terminals.TryGetValue(holder, out var witnesses)) _terminals[holder] = witnesses = [];
                     witnesses.Add(new(target.DistinguishedName, entry.Ordinal, WriteDacl, group, null));
                     if (Memberships is null) continue;
-                    foreach (var route in Memberships.Groups(holder))
+                    foreach (var route in Memberships.Groups(holder, target))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         result.Add(route.GroupDn);

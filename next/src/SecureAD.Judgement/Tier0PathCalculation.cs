@@ -21,11 +21,12 @@ internal sealed record Tier0PathNode(Tier0Target Subject, int? MembershipDistanc
 
 internal static class Tier0PathCalculation
 {
-    internal const int Version = 9;
+    internal const int Version = 12;
 
     internal static IReadOnlyList<Tier0PathNode> Calculate(PathInputs inputs, IReadOnlyList<Tier0Target> targets,
         IEnumerable<ControlEdge> permissions, Func<string, ObjectAttributes?> attributes,
-        IReadOnlyDictionary<string, NamingContextKind> contexts, CancellationToken cancellationToken)
+        IReadOnlyDictionary<string, NamingContextKind> contexts, CancellationToken cancellationToken,
+        Action<Tier0PathStep, ControlEdge>? terminalCandidate)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var nodes = targets.ToDictionary(target => target.DistinguishedName,
@@ -65,6 +66,7 @@ internal static class Tier0PathCalculation
             cancellationToken.ThrowIfCancellationRequested();
             var step = TerminalStep(edge, inputs, anchors, holders, attributes, contexts);
             if (step is null) continue;
+            terminalCandidate?.Invoke(step, edge);
             var previous = nodes[step.From.DistinguishedName];
             if (previous.Terminal is not null) continue;
             nodes[step.From.DistinguishedName] = previous with { Terminal = step, PermissionFingerprint = Fingerprint(edge) };

@@ -14,7 +14,7 @@ using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
 
 namespace SecureAD.Next.Tests.Judgement;
 
-public sealed class Tier0PathTests(ITestOutputHelper output)
+public sealed partial class Tier0PathTests(ITestOutputHelper output)
 {
     private const string RootDn = "DC=contoso,DC=com";
     private const string ConfigurationDn = "CN=Configuration,DC=contoso,DC=com";

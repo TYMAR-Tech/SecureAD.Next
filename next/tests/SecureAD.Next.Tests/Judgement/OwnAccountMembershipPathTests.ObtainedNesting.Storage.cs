@@ -104,12 +104,12 @@ public sealed partial class OwnAccountMembershipPathTests
             value => value.Identity, StringComparer.OrdinalIgnoreCase);
         var input = reader.ReadPathInputs();
         var first = RequesterMembershipContext.Create(sources, identities, input, CancellationToken.None)!;
-        var routes = first.Groups(HolderDn);
+        var routes = first.Groups(HolderDn, identities[CoreDn]);
         var actual = Assert.Single(routes, route => route.GroupDn == TargetDn).Evidence;
         var next = RequesterMembershipContext.Create(sources, identities, input, CancellationToken.None)!;
         Assert.Same(first, next);
-        Assert.Same(routes, next.Groups(HolderDn));
-        Assert.Same(actual, next.Read(TargetDn, HolderDn));
+        Assert.Same(actual, Assert.Single(next.Groups(HolderDn, identities[CoreDn]), route => route.GroupDn == TargetDn).Evidence);
+        Assert.Same(actual, next.Read(TargetDn, HolderDn, true));
         Assert.Equal(2, actual.Links.Count);
         Assert.Throws<InvalidDataException>(() => sources.RequesterMemberships(input.Input! with { DerivationGenerationId = Guid.NewGuid() },
             identities, CancellationToken.None));
