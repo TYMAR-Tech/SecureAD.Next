@@ -59,6 +59,17 @@ already present in the current build need no second implementation, and stale st
 local-only tool configuration must not replace current product decisions.
 This authorizes branch integration, commit, push and pull-request merge, not package replacement,
 live directory access or a new claim of lab/production acceptance.
+After a successful merge, the owner explicitly selected keeping only `main` locally and on GitHub
+and moving the active stage7 checkout onto `main`.
+Delete obsolete branch references only after their commits are confirmed retained by main;
+preserve unique working-tree files and the compact reconciliation record before handling older
+linked checkouts, and do not confuse deleting a branch name with deleting its checkout or evidence.
+PR #5 merged as `4734ba7` after all 7,328 clean-machine tests passed at `f210957`, with only
+test-host corrections beyond the accepted application build.
+The stage7 checkout is now on `main`; all other local and GitHub branch names were removed only
+after ancestry checks confirmed their commits remain in main history.
+The two older linked checkouts remain on their original detached commits with their uncommitted
+files preserved and hash-verified; deleting their directories remains a separate cleanup decision.
 
 **Owner-authorized source checkpoint and local artifact cleanup, 2026-10-07.**
 The owner requested committing and pushing the completed work, then reducing local project storage,

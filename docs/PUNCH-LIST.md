@@ -13,15 +13,20 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Repository reconciliation — current build preserved for integration to main, 2026-10-07.**
+**Repository reconciliation — merged to main with the current build preserved, 2026-10-07.**
 The owner authorized reconciling local uncommitted/unpushed work and merging the good current build to main; every local branch tip is already an ancestor of `ui-navigation`, and the older followup checkout's RODC production/test changes match current files exactly.
 Older document differences are superseded status wording, while the original checkout's remaining instruction edit is a stray `how` prefix and its untracked MCP configuration is local-only; neither belongs in the integration, and both older working trees remain untouched.
-PR #5 initially passed 7,325 of 7,328 CI tests and exposed three layout-test setup failures; the test-only correction retains inlined production layout styles and fixes requested Groups viewport sizes independently of the native desktop, with 397 restored offline checks passing with coverage and all four affected cases detecting two rebuilt defects.
+PR #5 merged as `4734ba7` after all 7,328 CI tests passed at exact head `f210957`; the initial three layout-test failures were corrected without changing application behavior, with 397 restored offline checks passing with coverage and all four affected cases detecting two rebuilt defects.
 
-**Main integration CI correction — pushed for clean-machine rerun; not merged, 2026-10-07.**
+**Main integration CI correction — clean-machine rerun passed and merged, 2026-10-07.**
 The runtime-XAML object-view adapter had dropped the production view's style and the Groups width check had allowed the CI desktop to shrink its requested viewport; neither correction changes application behavior or weakens a layout assertion.
 The [local verification](../.v-main-integration-20261007-34b8/final-layout-restored.trx) records 397 passing tests after a correct-source rebuild, with the initial failed CI and interrupted local full-suite attempt retained rather than counted as passes.
-PR #5 must receive a successful clean-machine rerun before merge; the older working trees and lab package remain untouched.
+The [successful full CI rerun](https://github.com/TYMAR-Tech/SecureAD.Next/actions/runs/37581285218) passed all 7,328 tests before PR #5 merged; the lab package and older working files remain unchanged.
+
+**Branch cleanup — completed after successful main merge, 2026-10-07.**
+The owner selected keeping only `main` locally and on GitHub, and the active stage7 checkout is now on main after PR #5 merged successfully.
+All 12 local and 15 remote pre-cleanup branch tips were verified as ancestors of main before removing the 11 non-main local branches and 14 non-main remote branches; their commits remain in main history, with the exact tips retained in the [reconciliation record](../.v-main-integration-20261007-34b8/reconciliation/branches-before-cleanup.json).
+Both older linked checkouts are detached at their original commits with all uncommitted files hash-verified unchanged, and no checkout directory, package, capture or performance artifact was removed by this branch cleanup.
 
 **Local artifact consolidation — first disposable-TEMP pass completed, 2026-10-07.**
 The owner authorized selective cleanup after source commit `1e60014` was pushed to `ui-navigation`, extended the read-only inventory to all three checkouts and project-linked temporary folders, and explicitly approved deleting the confirmed disposable verification-TEMP list.
