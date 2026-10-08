@@ -66,9 +66,16 @@ editing versions 6-13, and makes the three SEC-083 nullable parameter choices ex
 call sites without changing scan behavior or weakening the architecture gate.
 All 132 focused checks pass with coverage, and all seven required cases detect five isolated
 rebuilt defects with five passing rebuilt controls; the active checkout never carries those defects.
-The [integration verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains the
-source/binary fingerprints and outcomes; a correct-source full regression and exact-head CI
-remain mandatory before the authorized merge.
+The owner subsequently explicitly accepted the completed exact-head CI full suite as the
+regression gate instead of waiting for the duplicate local full run, with that local attempt
+recorded separately rather than called a pass.
+CI run 37814230494 rebuilt `6ede455` and passed all 7,427 tests with coverage.
+The local duplicate later aborted after 3,297 passing tests when its three-minute inactivity
+watchdog fired with the document-encoding check active; the underlying cause remains unconfirmed.
+PR #6 merged as `3c5110b`, and the retained `rules-delivery` branch was advanced to the merged main
+in this checkout with all seven unrelated diagnostic inputs fingerprint-verified unchanged.
+The [integration verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains both
+outcomes and the source/binary fingerprints; the earlier failed runs are not relabelled green.
 
 **Owner-directed Stage 6/7 and whole-pipeline design review, 2026-10-08.**
 After the shared-proof correction, the owner rejected alternating isolated speed and storage

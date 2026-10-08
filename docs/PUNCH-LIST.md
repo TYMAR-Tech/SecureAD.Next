@@ -13,10 +13,15 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Checkpoint integration before the Stage 6/7 correction — owner-approved 2026-10-08.**
-The owner authorized a separate shared-proof checkpoint, correction of the three baseline verification failures without weaker checks or changed historical values, and a merge of `rules-delivery` into `main` only after the correct-source full regression and exact-head CI pass.
-The shared-proof checkpoint is committed as `58200ff`, the bounded gate correction passes 132 focused checks plus all seven required cases across five isolated rebuilt defects and restored controls, and the [verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains the exact source/binary provenance and subsequent outcomes.
-The approved integration includes SEC-026 and SEC-083 capture, keeps this checkout and branch, and leaves unrelated diagnostics, the Stage 6/7 correction, new measurements and production operations outside this checkpoint.
+**Checkpoint integration before the Stage 6/7 correction — merged as #6, 2026-10-08.**
+The owner explicitly accepted CI run 37814230494 as the full-regression gate, with all 7,427 tests passing on exact head `6ede455`, and #6 merged the rules, shared-proof checkpoint and bounded verification correction as `3c5110b`.
+The retained `rules-delivery` branch was advanced to merged main in this checkout, all seven unrelated diagnostic inputs remain unchanged, and the [verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains 132 focused passes plus seven required cases detecting five rebuilt defects with restored controls.
+The aborted local duplicate is recorded separately below rather than called a pass; the Stage 6/7 correction, new measurements, production operations and package replacement remain outside this integration.
+
+**Local full-regression abort — P2 open, 2026-10-08.**
+The duplicate local run ended after 3,297 passing tests with no reported assertion failure when the three-minute inactivity watchdog fired, naming `DocumentEncodingGateTests.NoDocumentCarriesTextFromAWindows1252RoundTrip` as the active test.
+That guard recursively enumerates repository Markdown before filtering build output and therefore visits local ignored artifact trees, but this code-confirmed scan scope does not establish the cause of the host exit.
+Retain the TRX, log, sequence and partial coverage under `.v-merge-ready-20261008-9c35`, investigate separately without weakening the guard, and do not reopen the owner-accepted merge gate whose exact-head CI completed all 7,427 tests.
 
 **Stage 6/7 design review — completed; balanced correction proposal open, 2026-10-08.**
 The read-only review traced the active GUI/CLI pipeline and retained evidence, verified all 954 compiled inputs against the checkpoint, and supported Tier-0-first assessment plus uncapped backwards membership search without accepting complete attack-path coverage or production capacity.
@@ -51,7 +56,7 @@ A further bounded pass should separate generator/reference work from actual pers
 **Pre-existing Evidence 14 regression gates — P2 corrected and offline verified, 2026-10-08.**
 The bounded followup appends the missing format-14 coverage-identity checkpoint and replaces three implicit nullable defaults with explicit choices, retaining the same disabled-scan coverage and all eight historical pins for versions 6-13.
 All 132 focused checks pass with coverage, and the missing pin, each implicit default and a false optional-scan completion are independently detected by five explicitly rebuilt isolated variants with five passing rebuilt controls.
-The original `d187528` failures remain preserved under `.v-shared-path-20261007-7f2c/baseline-existing-gates.trx`; this focused result does not turn that earlier three-failure full run green, and integration still requires its own full regression and exact-head CI.
+The original `d187528` failures remain preserved under `.v-shared-path-20261007-7f2c/baseline-existing-gates.trx`; the later exact-head CI passed all 7,427 tests without relabelling that earlier three-failure run or the separately aborted local duplicate as green.
 
 **Existing-capture delivery compatibility — P1 open, 2026-10-07.**
 The proof-storage correction changes only Judgement, so its analysis requirement is re-judging with the original sealed Evidence and completed Derivation rather than recapture or re-derivation.
