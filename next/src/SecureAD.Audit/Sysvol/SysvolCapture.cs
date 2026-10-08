@@ -256,7 +256,8 @@ public sealed class SysvolCapture
     {
         foreach (var (relativePath, scope) in RegistryPolicyFiles)
         {
-            var file = await ReadFileAsync(target, progress, relativePath, FileExpectation.MayNotExist, cancellationToken)
+            var file = await ReadFileAsync(target, progress, relativePath, FileExpectation.MayNotExist, cancellationToken,
+                    recordContentFailure: null)
                 .ConfigureAwait(false);
 
             if (file is null)
@@ -279,7 +280,8 @@ public sealed class SysvolCapture
     private async Task ReadSecurityTemplateAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
-        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, FileExpectation.MayNotExist, cancellationToken)
+        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, FileExpectation.MayNotExist, cancellationToken,
+                recordContentFailure: null)
             .ConfigureAwait(false);
 
         if (file is null)
@@ -441,6 +443,7 @@ public sealed class SysvolCapture
     /// decides what an absent file means, and nothing else here can tell the two apart.
     /// </param>
     /// <param name="cancellationToken">Stops the read.</param>
+    /// <param name="recordContentFailure">Additional content-only coverage for the optional XML scan; null for ordinary files.</param>
     /// <returns>The bytes, or null if the file is not there or could not be read.</returns>
     private async Task<byte[]?> ReadFileAsync(
         GpoTarget target,
@@ -448,7 +451,7 @@ public sealed class SysvolCapture
         string relativePath,
         FileExpectation expectation,
         CancellationToken cancellationToken,
-        Action<string>? recordContentFailure = null)
+        Action<string>? recordContentFailure)
     {
         progress.ThrowIfAbandoned();
         var file = await _reader

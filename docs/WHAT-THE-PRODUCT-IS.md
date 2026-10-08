@@ -61,6 +61,14 @@ another worktree; preserve unrelated diagnostic work rather than including it ac
 This authorizes the checkpoint commits, push, pull request and verified merge, not production
 acceptance, package replacement, live access or a production judging rerun.
 Keep the proposed Stage 6/7 correction and its new measurements out of this integration checkpoint.
+The bounded verification correction appends the missing Evidence-14 coverage-identity pin without
+editing versions 6-13, and makes the three SEC-083 nullable parameter choices explicit at their
+call sites without changing scan behavior or weakening the architecture gate.
+All 132 focused checks pass with coverage, and all seven required cases detect five isolated
+rebuilt defects with five passing rebuilt controls; the active checkout never carries those defects.
+The [integration verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains the
+source/binary fingerprints and outcomes; a correct-source full regression and exact-head CI
+remain mandatory before the authorized merge.
 
 **Owner-directed Stage 6/7 and whole-pipeline design review, 2026-10-08.**
 After the shared-proof correction, the owner rejected alternating isolated speed and storage

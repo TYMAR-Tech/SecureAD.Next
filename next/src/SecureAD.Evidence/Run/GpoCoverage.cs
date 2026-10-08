@@ -64,8 +64,8 @@ public sealed record GpoCoverage
         string? fileSysPath,
         GpoReadOutcome outcome,
         string? reason,
-        GppPasswordScanOutcome gppPasswordScanOutcome = GppPasswordScanOutcome.NotRequested,
-        string? gppPasswordScanReason = null)
+        GppPasswordScanOutcome gppPasswordScanOutcome,
+        string? gppPasswordScanReason)
     {
         GpoGuid = gpoGuid;
         DisplayName = displayName;
@@ -105,7 +105,7 @@ public sealed record GpoCoverage
     public string? GppPasswordScanReason { get; }
 
     /// <summary>Returns this policy coverage with its independently measured SEC-083 scan result.</summary>
-    public GpoCoverage WithGppPasswordScan(GppPasswordScanOutcome outcome, string? reason = null)
+    public GpoCoverage WithGppPasswordScan(GppPasswordScanOutcome outcome, string? reason)
     {
         var complete = outcome is GppPasswordScanOutcome.NotRequested or GppPasswordScanOutcome.Read;
         if (complete != string.IsNullOrWhiteSpace(reason))
@@ -125,7 +125,8 @@ public sealed record GpoCoverage
     /// <param name="displayName">The policy's display name.</param>
     /// <param name="fileSysPath">The policy's folder on the share.</param>
     public static GpoCoverage Read(Guid gpoGuid, string displayName, string fileSysPath) =>
-        new(RequireGuid(gpoGuid), Require(displayName), Require(fileSysPath), GpoReadOutcome.Read, reason: null);
+        new(RequireGuid(gpoGuid), Require(displayName), Require(fileSysPath), GpoReadOutcome.Read, reason: null,
+            GppPasswordScanOutcome.NotRequested, gppPasswordScanReason: null);
 
     /// <summary>Records a policy some of whose files could not be read.</summary>
     /// <param name="gpoGuid">The policy's <c>objectGUID</c>.</param>
@@ -135,7 +136,8 @@ public sealed record GpoCoverage
     public static GpoCoverage PartiallyRead(
         Guid gpoGuid, string displayName, string fileSysPath, string reason) =>
         new(RequireGuid(gpoGuid), Require(displayName), Require(fileSysPath),
-            GpoReadOutcome.PartiallyRead, Require(reason));
+            GpoReadOutcome.PartiallyRead, Require(reason),
+            GppPasswordScanOutcome.NotRequested, gppPasswordScanReason: null);
 
     /// <summary>Records a policy whose folder could not be read at all.</summary>
     /// <param name="gpoGuid">The policy's <c>objectGUID</c>.</param>
@@ -145,7 +147,8 @@ public sealed record GpoCoverage
     public static GpoCoverage Unreadable(
         Guid gpoGuid, string displayName, string fileSysPath, string reason) =>
         new(RequireGuid(gpoGuid), Require(displayName), Require(fileSysPath),
-            GpoReadOutcome.Unreadable, Require(reason));
+            GpoReadOutcome.Unreadable, Require(reason),
+            GppPasswordScanOutcome.NotRequested, gppPasswordScanReason: null);
 
     /// <summary>
     /// Records a policy the directory declared without saying where its files are.
@@ -162,7 +165,8 @@ public sealed record GpoCoverage
     /// <param name="reason">Why nothing could be attempted.</param>
     public static GpoCoverage Unlocatable(Guid gpoGuid, string displayName, string reason) =>
         new(RequireGuid(gpoGuid), Require(displayName), fileSysPath: null,
-            GpoReadOutcome.Unreadable, Require(reason));
+            GpoReadOutcome.Unreadable, Require(reason),
+            GppPasswordScanOutcome.NotRequested, gppPasswordScanReason: null);
 
     private static Guid RequireGuid(Guid value)
     {

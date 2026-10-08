@@ -23,6 +23,26 @@ public sealed class SysvolCoverageTests
     private const string FirstPath = @"\\contoso.com\SysVol\contoso.com\Policies\{11111111-1111-1111-1111-111111111111}";
     private const string SecondPath = @"\\contoso.com\SysVol\contoso.com\Policies\{22222222-2222-2222-2222-222222222222}";
 
+    [Theory]
+    [InlineData(nameof(GpoCoverage.Read))]
+    [InlineData(nameof(GpoCoverage.PartiallyRead))]
+    [InlineData(nameof(GpoCoverage.Unreadable))]
+    [InlineData(nameof(GpoCoverage.Unlocatable))]
+    public void OrdinaryPolicyCoverageKeepsTheOptionalPasswordScanUnrequested(string factory)
+    {
+        var policy = factory switch
+        {
+            nameof(GpoCoverage.Read) => GpoCoverage.Read(FirstPolicy, "Policy", FirstPath),
+            nameof(GpoCoverage.PartiallyRead) => GpoCoverage.PartiallyRead(FirstPolicy, "Policy", FirstPath, "Access denied."),
+            nameof(GpoCoverage.Unreadable) => GpoCoverage.Unreadable(FirstPolicy, "Policy", FirstPath, "Access denied."),
+            nameof(GpoCoverage.Unlocatable) => GpoCoverage.Unlocatable(FirstPolicy, "Policy", "Path was not captured."),
+            _ => throw new ArgumentOutOfRangeException(nameof(factory)),
+        };
+
+        Assert.Equal(GppPasswordScanOutcome.NotRequested, policy.GppPasswordScanOutcome);
+        Assert.Null(policy.GppPasswordScanReason);
+    }
+
     [Fact]
     public void ARunThatReadEveryPolicyReportsItReadThemAll()
     {
