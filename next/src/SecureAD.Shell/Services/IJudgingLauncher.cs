@@ -45,7 +45,7 @@ internal sealed record JudgingOutcome(
     public SelfMembershipSummary? Requesters { get; init; }
 
     /// <summary>Saved Stage 7 selection coverage, separate from the legacy scan; not presented until screen approval.</summary>
-    public PathRequesterCoverage? PathRequesters { get; init; }
+    public PathRequesterSummary? PathRequesters { get; init; }
 }
 
 /// <summary>One thing that stopped a rule deciding, and how far it reached.</summary>

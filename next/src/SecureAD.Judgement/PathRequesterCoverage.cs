@@ -45,12 +45,27 @@ public enum PathRequesterWorkPhase
 public sealed record PathRequesterFamilyCoverage(PathRequesterFamily Family, int SelectedQuestions,
     int StoredAssessments, int UnresolvedResults, int UnknownCurrentMembership, int UnknownOperationReadiness);
 
+/// <summary>Saved whole-run counters for completion checks, without loading individual proof or limitation records.</summary>
+public sealed record PathRequesterSummary(string EvidenceSeal, Guid? DerivationGenerationId, Guid JudgementGenerationId,
+    PathInputAvailability InputAvailability, int? SelectionVersion, bool InputScanCompleted,
+    IReadOnlyList<PathRequesterFamilyCoverage> Families, int InputUncertaintyCount, int SelectionLimitationCount)
+{
+    /// <summary>Whether automatic selection was requested, not whether every possible path was assessed.</summary>
+    public bool SelectionRequested => SelectionVersion.HasValue;
+    /// <summary>Execution status only; the saved limitations still apply.</summary>
+    public PathRequesterCoverageState Verdict => State(SelectionRequested, InputScanCompleted);
+
+    internal static PathRequesterCoverageState State(bool requested, bool completed) => !requested
+        ? PathRequesterCoverageState.NotRequested : completed
+            ? PathRequesterCoverageState.EvaluatedSupportedQuestions : PathRequesterCoverageState.InputsUnavailable;
+}
+
 /// <summary>
 /// Passive projection of the saved selection and reconciled proof batches in one exact input generation.
 /// No completeness or safety verdict is inferred from zero questions or a finished supported scan.
 /// Failed, cancelled or interrupted attempts are not published over this result.
 /// </summary>
-public sealed record PathRequesterCoverage(string EvidenceSeal, Guid? DerivationGenerationId,
+internal sealed record PathRequesterCoverage(string EvidenceSeal, Guid? DerivationGenerationId,
     SavedPathInputs Inputs, int? SelectionVersion, bool InputScanCompleted,
     IReadOnlyList<PathRequesterFamilyCoverage> Families, IReadOnlyList<PathRequesterSelectionLimitation> Limitations)
 {
@@ -67,7 +82,5 @@ public sealed record PathRequesterCoverage(string EvidenceSeal, Guid? Derivation
     public bool SelectionRequested => SelectionVersion.HasValue;
 
     /// <summary>Selection execution status; limitations still apply to a finished supported scan.</summary>
-    public PathRequesterCoverageState Verdict => !SelectionRequested ? PathRequesterCoverageState.NotRequested
-        : InputScanCompleted ? PathRequesterCoverageState.EvaluatedSupportedQuestions
-        : PathRequesterCoverageState.InputsUnavailable;
+    public PathRequesterCoverageState Verdict => PathRequesterSummary.State(SelectionRequested, InputScanCompleted);
 }

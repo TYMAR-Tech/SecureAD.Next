@@ -173,6 +173,19 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
     }
 
+    internal static PermissionEntry ReadReference(SqliteConnection connection, string target, Guid generation,
+        long id, int ordinal, byte[] fingerprint)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT {Projection},$ordinal,$fingerprint FROM permission_entry p {MeaningJoin} WHERE p.id=$id";
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$ordinal", ordinal);
+        command.Parameters.AddWithValue("$fingerprint", fingerprint);
+        using var read = command.ExecuteReader();
+        if (!read.Read()) throw FullControlEvaluator.InvalidProof();
+        return Read(read, target, generation);
+    }
+
     private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
     {
         var meaning = Text(read, 10);

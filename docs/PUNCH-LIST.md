@@ -13,10 +13,55 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Production judgement exhausted disk during Tier-0 path work — P1 open, 2026-10-07.**
-The owner reports the production run failed with a full disk after starting with about 90 GB free, leaving a roughly 60 GB `judgement.db.partial-shm` beside 19.5 GB Evidence and 2.8 GB Derivation; these owner-observed figures strongly implicate judgement/path processing but do not establish which table, transaction or algorithm caused the growth.
-Preserve the failed run and its exact files, executable provenance and logs without opening the live forest, replacing the package, deleting evidence or accepting the partial database as a result.
-The next bounded session must inspect a sealed offline copy, account for bytes and repeated whole-forest work across Tier-0 path selection/storage/publication, and present measured corrective scope before optimization or another production run.
+**Checkpoint integration before the Stage 6/7 correction — P1 in progress, owner-approved 2026-10-08.**
+Commit the completed shared-proof correction separately, correct the three reproduced baseline verification failures without weakening checks or changing earlier frozen values, and merge `rules-delivery` into `main` after exact-head CI passes.
+The approved merge includes SEC-026 and SEC-083 capture, keeps this checkout and branch for subsequent work, and preserves unrelated diagnostic changes outside the checkpoint.
+The Stage 6/7 correction and new measurements stay separate, and this approval does not authorize production acceptance, package replacement, live access or production judging.
+
+**Stage 6/7 design review — completed; balanced correction proposal open, 2026-10-08.**
+The read-only review traced the active GUI/CLI pipeline and retained evidence, verified all 954 compiled inputs against the checkpoint, and supported Tier-0-first assessment plus uncapped backwards membership search without accepting complete attack-path coverage or production capacity.
+The proposed correction factors source-bound assessment work and ordered witnesses before resource-batched evaluation and persistence, addressing preparation, memory, publication and selected readback together rather than adding a depth cutoff or another storage-only patch.
+Implement only under a bounded approved followup with unchanged permission/count/uncertainty/generation semantics apart from explicitly accepted scope corrections; the predecessor depth-five limit and the proof-heavy synthetic result are not production budgets.
+
+**Broad-principal admission contract — P2 open, code-confirmed 2026-10-08.**
+Accepted decision 0116 includes Domain Users among broad principals kept symbolic, but automatic discovery and path requester selection special-case only Everyone and Authenticated Users, allowing resolved broad groups through ordinary candidate/expansion handling.
+The shared principal registry already identifies those groups, while their contribution to the recorded production scope and question volume remains unmeasured.
+Align the automatic boundary in the approved Stage 6/7 followup without dropping source permissions, broad-exposure findings or explicit uncertainty, and verify any intentional result-set change separately from unchanged-answer performance comparisons.
+
+**Active analysis limits outside path depth — P2 open, reviewed 2026-10-08.**
+Normal derivation still uses 500,000 closure entries and 30 minutes, ordinary rule-side membership lookup defaults to 5,000 returned principals, and own-account assessment reuses a Self-Membership check limited to 10,000 relevant permission entries.
+These are active limits, unlike the separately disabled discovery/member-attribution features, and differ from Stage 7's qualified holder walk with no additional depth/result cutoff.
+Their incomplete answers must remain explicit; no reviewed production record proves they caused the publication failure, and changing them requires its own evidence and approval rather than silently treating them as production-capacity guarantees.
+
+**Production judgement exhausted disk during publication — P1 open, 2026-10-07.**
+The production metadata report shows a 20.80 GB main partial file, 62.43 GB WAL and 121.24 MB SHM, but the subsequently authorized read-only size report establishes a 75,533,393,920-byte logical database (18,440,770 pages of 4,096 bytes, zero freelist pages), correcting the earlier claim that the database was only 20.80 GB and the WAL merely excess history; publication failed at deferred index construction and no judgement generation was published.
+The owner-returned v2 report measures `path_proof_chunk` at 60,442,431,488 bytes (80% of Judgement), with 59,017,633,257 bytes of proof content including 47,196,981,473 bytes referenced as requester source proofs and a single 9,041,786,737-byte calculation-header proof; control evidence plus its primary-key index occupies about 4.02 GB and descriptor-entry occurrences about 2.75 GB, so row counts alone would have prioritized the wrong correction.
+All 74 tables were measured and source metadata remained unchanged under deny-write guards; the report's false reconciliation/completeness flag is a diagnostic accounting omission explained by the one 4,096-byte lock-byte page required by SQLite's file-format section 1.4 for this database size (no freelist or pointer-map pages), and the shared-proof correction below is now implemented and offline verified without weakening proof bindings, while production acceptance, package replacement, production judging reruns, commits and pushes remain separately approval-gated.
+
+**Shared requester-proof storage — implemented and offline verified; production acceptance open, 2026-10-08.**
+Judgement 62 replaces repeated source bodies with typed shared components and exact ordered/resource/generation-bound references, replaces the oversized calculation header with a compact manifest over separately saved records and existing uncertainty, and uses saved completion counters plus read/page-scoped reconstruction without changing capture, derivation, permission answers, counting or explicit incompleteness.
+The [verified checkpoint](../.v-shared-path-20261007-7f2c/handoff.json) records a full solution rebuild, 7,420 passing tests with coverage and only three independently reproduced pre-existing failures, all 34 required checks detecting 24 rebuilt defects with restored controls, exact frozen-lab source/input/selection roundtrips, the owner-run current-format lab readback below, 954 matching compiled code/configuration inputs and all 47 earlier layout anchors preserved.
+The full-size synthetic proof workload saved 939,225 nodes, 653,689 questions and 1,586,470 uncertainty records, replacing 47,295,959,913 expanded source bytes and an 18,143,455,537-byte expanded header with a 13,580,939,264-byte completed database and 2,495-byte header at a sampled 25,089,148,257-byte working-file peak; actual publication and passive readback passed, but this targeted workload does not reconstruct other production table volumes or execute capture/derivation/rules/permission evaluation, so production capacity and throughput remain unaccepted and no live access, production rerun, package replacement, commit or push was performed.
+
+**Shared-proof selection persistence cost — P2 open, 2026-10-08.**
+The full-size synthetic run's measured phases total 195.81 minutes, including 143.98 minutes in the combined reference-header sizing and selection-persistence phase, 34.99 minutes in answers/distance/best-route storage and commit, and 6.45 minutes in final publication; these are shared-machine diagnostics, not isolated production writer timings or an end-to-end judging estimate.
+The earlier identical-input pilot reduced the generated database from 726,458,368 to 137,240,576 bytes but added selection lookup work, while read/page-scoped decoding was subsequently corrected and independently mutation-verified without retaining results across reads.
+A further bounded pass should separate generator/reference work from actual persistence, measure repeated component lookup/comparison and small-record writes at the observed forest shape, then propose any additional optimization for approval without dropping witnesses, weakening bindings, limiting coverage or promising a production completion time.
+
+**Pre-existing Evidence 14 regression gates — P2 open, 2026-10-07.**
+An explicitly rebuilt copy of the session's untouched `d187528` source reproduces two missing coverage-identity checkpoint failures for Evidence format 14 and the null-default gate failures in `SysvolCapture.ReadFileAsync`, `GpoCoverage` and `WithGppPasswordScan`.
+The same failures occur in the broader proof-storage verification, so they are baseline capture/test issues rather than evidence that the new Judgement format changed capture; the isolated baseline result is retained under `.v-shared-path-20261007-7f2c/baseline-existing-gates.trx`.
+Correct these in a separate bounded capture followup without changing earlier frozen coverage identities or weakening the gates, and do not describe a full suite containing these failures as green.
+
+**Existing-capture delivery compatibility — P1 open, 2026-10-07.**
+The proof-storage correction changes only Judgement, so its analysis requirement is re-judging with the original sealed Evidence and completed Derivation rather than recapture or re-derivation.
+The supplied lab copy actually contains Evidence 13 and Derivation 16, while `rules-delivery` now requires Evidence 14 because of the separate SEC-083 capture change; the production and lab logs identify the same executable, but the production report does not independently state its Evidence format.
+The current checkout must not be presented as ready to rejudge that older capture: a compatible maintenance delivery needs separate authorization and verification, without silently migrating evidence, undoing current capture work, replacing the production package or directing a needless recapture.
+
+**Owner-run current-format lab — completed and readback verified, 2026-10-08 UTC.**
+The supplied `ad.lab-20261008-034144` bundle uses Evidence 14, Derivation 16 and Judgement 62, published 8,441 objects with 20 rules, and passed seal/integrity/binding checks plus normal readback of all 463 questions across 38 pages and eight requester route views on a verified copy.
+Its executable hash matches the locally published package, its logged engine MVID matches the retained DLL, and the matching PDB's 122 recorded source documents match the checkout; Judgement occupies 44,642,304 bytes with a 3,184-byte calculation header, while `CompletedDegraded` correctly retains 22 unknown combined-authorization questions affecting one requester's SEC-071 outcome.
+This validates the new lab run, not production-scale capacity or a clean security verdict; the owner is considering a new production capture, the recommended interim mode is CLI `--capture` without automatic analysis, and no agent production access, package replacement or original-bundle modification was performed.
 
 **SEC-026 duplicate SPNs — implemented and offline verified on rules-delivery, 2026-10-07.**
 The owner approved fixed High per-owner findings for duplicate complete captured SPN values after checking Microsoft documentation; the rule preserves original occurrences, distinct forest-scoped owners, ports/instances/suffixes, explicit incomplete evidence and special-name review without claiming alias equivalence or authentication/takeover success.

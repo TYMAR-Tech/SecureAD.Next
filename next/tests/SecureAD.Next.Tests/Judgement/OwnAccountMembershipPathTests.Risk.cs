@@ -269,11 +269,11 @@ public sealed partial class OwnAccountMembershipPathTests
         var proofs = PathRequesterRiskStorage.ReadProofs(connection, reader.Description, CancellationToken.None);
         var risks = ReadRisks(reader).Assessments;
 
-        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.Requesters)),
+        Assert.Equal(PathProofVerification.SourceFingerprint(connection, reader.Description, PathRequesterFamily.RequesterDacl, Assert.Single(proofs.Requesters)),
             risks.Single(value => value.Family == PathRequesterFamily.RequesterDacl).SourceProofFingerprint);
-        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.OwnAccounts)),
+        Assert.Equal(PathProofVerification.SourceFingerprint(connection, reader.Description, PathRequesterFamily.OwnAccountMembership, Assert.Single(proofs.OwnAccounts)),
             risks.Single(value => value.Family == PathRequesterFamily.OwnAccountMembership).SourceProofFingerprint);
-        Assert.Equal(Tier0PathCalculation.Fingerprint(Assert.Single(proofs.MembershipDacls)),
+        Assert.Equal(PathProofVerification.SourceFingerprint(connection, reader.Description, PathRequesterFamily.MembershipDacl, Assert.Single(proofs.MembershipDacls)),
             risks.Single(value => value.Family == PathRequesterFamily.MembershipDacl).SourceProofFingerprint);
     }
 

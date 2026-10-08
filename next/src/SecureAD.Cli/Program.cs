@@ -602,7 +602,7 @@ internal static class Program
             var openedCoverage = JudgementReader.Open(bundleDirectory);
             if (!openedCoverage.IsSuccess) return Failed;
             using var coverageReader = openedCoverage.Value;
-            if (coverageReader.ReadPathRequesterCoverage().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
+            if (coverageReader.ReadPathRequesterSummary().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
                 return Failed;
         }
 

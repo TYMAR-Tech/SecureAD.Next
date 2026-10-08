@@ -72,7 +72,7 @@ public sealed record PathInputs(Guid JudgementGenerationId, PathInputAvailabilit
 /// Whole-forest classifications, relations and permission identifiers remain behind
 /// <see cref="JudgementReader.ReadPathInputs"/>.
 /// </summary>
-public sealed record SavedPathInputs(Guid JudgementGenerationId, PathInputAvailability Availability,
+internal sealed record SavedPathInputs(Guid JudgementGenerationId, PathInputAvailability Availability,
     Tier0InputBinding? Input, Tier0Coverage Coverage, IReadOnlyList<Tier0Target> FixedTargets,
     IReadOnlyList<PathUncertaintyRegion> UncertaintyRegions, SelfMembershipSummary? RequesterDiscovery)
 {

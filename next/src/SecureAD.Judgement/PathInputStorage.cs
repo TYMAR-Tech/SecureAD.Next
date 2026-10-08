@@ -242,7 +242,7 @@ internal static class PathInputStorage
             : descriptor.Owner?.Sid == source.TrusteeSid || descriptor.DaclState == DaclState.Null && source.TrusteeSid == "S-1-1-0";
     }
 
-    private static IReadOnlyList<PathUncertaintyRegion> ReadRegions(SqliteConnection connection, CancellationToken cancellationToken)
+    internal static IReadOnlyList<PathUncertaintyRegion> ReadRegions(SqliteConnection connection, CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT proof,fingerprint FROM path_uncertainty ORDER BY id";
@@ -275,6 +275,17 @@ internal static class PathInputStorage
             || header.DiscoveryVersion != Tier0DiscoveryCoverage.CurrentVersion || header.ControlEngineVersion != ControlEdgeStorage.EngineVersion
             || header.AnchorCount < 0 || header.RegionCount < 0) throw InvalidProof();
         return header;
+    }
+
+    internal static void RequireProjection(SqliteConnection connection, JudgementDescription description,
+        PathCalculationStorage.Inputs inputs)
+    {
+        var source = ReadHeader(connection) ?? throw InvalidProof();
+        if (source.Generation != description.GenerationId || source.EvidenceSeal != description.EvidenceSeal
+            || source.DerivationGeneration != description.DerivationGenerationId
+            || source.Availability != inputs.Availability || source.Input != inputs.Input || source.Coverage != inputs.Coverage
+            || source.AnchorCount != inputs.FixedTargets.Count || source.RegionCount != inputs.UncertaintyRegions.Count)
+            throw Tier0PathStorage.InvalidProof();
     }
 
     private static void WriteHeader(SqliteConnection connection, SqliteTransaction? transaction, Header header)

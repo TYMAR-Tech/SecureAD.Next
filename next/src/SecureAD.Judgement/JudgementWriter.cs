@@ -576,6 +576,7 @@ public sealed class JudgementWriter : IDisposable
         PathProofStorage.RequirePublishable(_connection, cancellationToken);
         diagnostic?.Part("validate-path-questions");
         PathRequesterRiskStorage.RequirePublishable(_connection);
+        PathCalculationStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
         CircularMembershipStorage.RequirePublishable(_connection);

@@ -268,8 +268,8 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
     private PathRequesterSelection Result(bool complete, PathRequesterSelectionSource[] sources) => new(Version, inputs.JudgementGenerationId,
         Tier0PathCalculation.Fingerprint(inputs), complete, _candidates.Values.Select(candidate => candidate.Finish()).OrderBy(Key, StringComparer.Ordinal).ToArray(), sources,
         _limitations.OrderBy(value => Tier0PathCalculation.Fingerprint(value), StringComparer.Ordinal).ToArray());
-    private static string Key(PathRequesterCandidate value) => Key(value.Family, value.RequesterDn, value.TargetDn, value.GroupDn, value.PermissionKind);
-    private static string Key(PathRequesterFamily family, string requester, string target, string? group, OwnAccountMembershipPermissionKind? kind) =>
+    internal static string Key(PathRequesterCandidate value) => Key(value.Family, value.RequesterDn, value.TargetDn, value.GroupDn, value.PermissionKind);
+    internal static string Key(PathRequesterFamily family, string requester, string target, string? group, OwnAccountMembershipPermissionKind? kind) =>
         family + "\0" + requester.ToUpperInvariant() + "\0" + target.ToUpperInvariant() + "\0" + group?.ToUpperInvariant() + "\0" + kind;
     private static (string Sid, string? Scope) IdentityKey(string sid, string? scope) => (sid.ToUpperInvariant(), scope?.ToUpperInvariant());
     private static int Mask(OwnAccountMembershipPermissionKind kind) => kind == OwnAccountMembershipPermissionKind.SelfMembership ? 0x08 : 0x20;

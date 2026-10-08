@@ -204,12 +204,22 @@ public sealed partial class JudgementReader : IDisposable
     /// <summary>
     /// Reads coverage from the saved selection and reconciled proof batches in this exact generation.
     /// Never re-evaluates proof questions, selects accounts or publishes analysis.
+    /// This complete detail/validation read visits every saved question; completion uses <see cref="ReadPathRequesterSummary"/>.
     /// </summary>
-    public PathRequesterCoverage ReadPathRequesterCoverage()
+    internal PathRequesterCoverage ReadPathRequesterCoverage()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         RequireCurrentPathGeneration();
         return Tier0PathStorage.ReadCoverage(_connection, Description);
+    }
+
+    /// <summary>Reads saved completion counters without loading selection details or requester proofs.</summary>
+    public PathRequesterSummary ReadPathRequesterSummary(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireCurrentPathGeneration();
+        return Tier0PathStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
     /// <summary>Reads saved qualification counts for existing requester questions, not whole-forest risk coverage.</summary>

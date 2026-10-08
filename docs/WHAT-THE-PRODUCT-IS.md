@@ -51,6 +51,108 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-approved checkpoint integration before the Stage 6/7 correction, 2026-10-08.**
+The owner approved committing the completed shared-proof correction separately, addressing the
+three reproduced verification failures without weakening their checks, and merging `rules-delivery`
+to `main` once the exact committed candidate passes CI.
+The merge also carries the branch's already committed SEC-026 and SEC-083 capture changes.
+Keep `rules-delivery`, update it from the merged main and continue in this same checkout without
+another worktree; preserve unrelated diagnostic work rather than including it accidentally.
+This authorizes the checkpoint commits, push, pull request and verified merge, not production
+acceptance, package replacement, live access or a production judging rerun.
+Keep the proposed Stage 6/7 correction and its new measurements out of this integration checkpoint.
+
+**Owner-directed Stage 6/7 and whole-pipeline design review, 2026-10-08.**
+After the shared-proof correction, the owner rejected alternating isolated speed and storage
+fixes and requested a fresh-session handoff for one objective assessment of the whole design.
+The assessment must examine whether Stage 6 target admission and Stage 7 path/requester analysis
+are semantically correct and appropriately scoped, including depth, cycles and question breadth,
+rather than treating them as settled while focusing only on storage.
+His recollection of the predecessor's depth-five limit is a question to assess, not approval to
+introduce that limit in the rebuild; the accepted backwards supported-path calculation has no
+arbitrary security-depth cutoff, and the two applications' path models are not interchangeable.
+Start with a read-only review of the normal reachable pipeline, distinguish active work from
+disabled expansion/discovery features, and account for processing, memory, storage and readback
+together before proposing another implementation or measurement campaign.
+The [fresh-session handoff](../.v-shared-path-20261007-7f2c/STAGE6-STAGE7-DESIGN-REVIEW-HANDOFF.md)
+records the code, passed depth/cycle witnesses, production scope/cost counters and remaining
+questions; it does not declare Stages 6/7 complete or production-accepted.
+Preserve all existing work and evidence, with no new depth/processing cap, live access, production
+rerun, package replacement, commit or push authorized by this review request.
+
+**Shared-proof storage correction implemented and offline verified, 2026-10-08.**
+The [validated checkpoint](../.v-shared-path-20261007-7f2c/handoff.json) records Judgement format 62,
+with Evidence and Derivation unchanged by this correction, every saved answer and occurrence
+preserved, and no UI wording/layout change or additional analysis scope.
+Identical proof components are shared within their exact generation/context; original permissions
+reuse the existing shared-entry store, and ordered use-site references retain resource, position
+and source bindings.
+The calculation header now binds separate selection records and existing uncertainty rather than
+embedding them, and normal GUI/CLI completion uses saved counters instead of reconstructing all
+requester proofs.
+Selected-page reconstruction reuses validated components only within that read/page lifetime,
+never across later reads or generations; explicit full-detail verification remains separate.
+All 463 original lab source proofs and the full saved input/selection collections match their
+frozen canonical fingerprints after roundtrip, and the owner's new lab passes normal protected
+readback as recorded below.
+The full solution rebuilt successfully; 7,420 of 7,423 tests passed with coverage, with exactly
+three failures independently reproduced on the untouched baseline, while all 34 required behavior
+checks detected 24 rebuilt defects with restored controls.
+The full-size synthetic case completed actual writer publication, index construction, checkpointing,
+sealing and saved readback for 939,225 nodes, 653,689 questions and 1,586,470 uncertainty records.
+Its database finished at 13,580,939,264 bytes with a 2,495-byte calculation header and sampled
+25,089,148,257-byte peak working files, against generated expanded source/header contents of
+47,295,959,913 and 18,143,455,537 bytes respectively.
+This is a proof-heavy persistence test with fabricated source bindings, not a new forest capture,
+permission calculation, full production table reconstruction or production-capacity/runtime claim.
+The combined reference-sizing/selection-persistence phase was costly and remains a separately
+recorded profiling followup; further optimization or production execution still needs its approval.
+Original lab bundles, production reports, existing work and historical verification records remain
+preserved, with compact source/binary/measurement records retained instead of disposable bulk.
+
+**Owner-provided current-format lab verification and proposed capture head start, 2026-10-08 UTC.**
+The owner supplied `ad.lab-20261008-034144`, produced by his build containing the shared-proof changes,
+for offline inspection while the full-size synthetic capacity run continues.
+The original bundle remains untouched; a verified copy passes normal saved-result readers with
+Evidence 14, Derivation 16 and Judgement 62, including all 463 saved requester questions and their
+route views, exact source-generation bindings and explicit unknown authorization results.
+The executable hash matches the local published package and the logged engine identity is tied
+through its matching PDB to the current source documents, not inferred from the `d187528` stamp.
+The owner is considering taking that build to production for a new capture; this is not an
+authorization for agent live access or package replacement and is not production-capacity acceptance.
+The recommended head start is the existing CLI `--capture` mode, which seals evidence and stops
+without derivation or judging, leaving the owner in control of when analysis begins.
+A new Evidence-14 capture avoids the separate older-Evidence-13 delivery issue; it is not a
+recapture requirement imposed by the Judgement storage correction itself.
+
+**Owner-approved shared path-proof correction for the next implementation session, 2026-10-07.**
+Following the production publication disk failure and read-only proof trace, the owner approved
+saving identical immutable proof components once, with ordered occurrence references retaining
+each question's saved answer, original permission positions, requester, resource, membership
+assumptions and exact Evidence/Derivation/Judgement bindings.
+Replace the oversized calculation header with a compact manifest over separately saved selection
+records and the existing input/uncertainty records; update coupled writers, validation, selected
+proof/route/finding readers and GUI/CLI completion coverage so summaries do not reconstruct every proof.
+Preserve every limitation and its detailed evidence, group-held counting, passive readback and
+atomic publication; this changes storage, not ownership, permission, operation or path semantics.
+The accepted cost is a new Judgement format with strict reference validation, no migration and no
+parallel legacy production implementation; UI wording and layout remain unchanged.
+The approved offline verification includes exact saved-answer comparisons, corruption and
+resource/generation substitutions, isolated explicitly rebuilt defects and restored controls,
+and a synthetic capacity runner covering the observed nine-domain workload of 939,225 nodes,
+653,689 questions across the three existing families, 359 selection resources, 138 fixed targets
+and 1,586,470 uncertainty records, with high-, low- and no-sharing controls.
+Measure index construction, checkpointing, sealing, reopening and peak database/WAL/temporary
+storage as well as final size; lab content repetition is not a production savings forecast.
+Fingerprint comparison sources and binaries rather than treating the production executable's
+`9621ea0` version stamp as all compiled source: the identical lab/production executable logs and
+saved lab format 60 establish later compiled features, but not an exact production source manifest.
+This approval is for the next bounded implementation session, not an implemented correction or
+production-capacity acceptance, and does not authorize live access, production judging, package
+replacement, analysis expansion, truncation, processing caps, commit or push.
+Preserve the existing checkout, owner work, original lab bundle, production reports and historical
+verification records; use isolated lab copies and synthetic inputs only.
+
 **Owner-approved SEC-026 implementation and Microsoft verification, 2026-10-07.**
 The owner approved the proposed bounded duplicate-SPN rule on `rules-delivery`, with fixed High
 severity, and required the proposal to be checked against Microsoft documentation before delivery.

@@ -72,6 +72,7 @@ internal static class BestSupportedRouteStorage
         if (selection.Best is not { } best)
             return new(selection, [], distance.Coverage);
         IReadOnlyList<Tier0PathStep> steps;
+        var proofs = new PathSharedProofStorage(connection, description, cancellationToken);
         switch (best.Source)
         {
             case RouteSourceKind.FixedTarget:
@@ -102,24 +103,21 @@ internal static class BestSupportedRouteStorage
                 steps = [terminal];
                 break;
             case RouteSourceKind.Requester:
-                var requester = PathProofStorage.Read<SavedRequesterDaclProof>(connection, best.ProofId!.Value,
-                    best.ProofFingerprint!, cancellationToken).Assessment;
+                var requester = proofs.Read<SavedRequesterDaclProof>(best.ProofId!.Value, best.ProofFingerprint!).Assessment;
                 RequireProof(description, selection.Subject, requester.Requester, requester.GenerationId,
                     requester.DerivationGenerationId, requester.EvidenceSeal, requester.Authorization);
                 RequesterDaclProofs.RequireMembershipEvidence(requester, cancellationToken);
                 steps = requester.Steps;
                 break;
             case RouteSourceKind.OwnAccount:
-                var own = PathProofStorage.Read<SavedOwnAccountMembershipProof>(connection, best.ProofId!.Value,
-                    best.ProofFingerprint!, cancellationToken);
+                var own = proofs.Read<SavedOwnAccountMembershipProof>(best.ProofId!.Value, best.ProofFingerprint!);
                 RequireProof(description, selection.Subject, own.Assessment.Requester, own.Assessment.GenerationId,
                     own.Assessment.DerivationGenerationId, own.Assessment.EvidenceSeal, own.Assessment.Obtainability);
                 RequireConditions(best, own.Assessment);
                 steps = own.Steps;
                 break;
             case RouteSourceKind.MembershipDacl:
-                var combined = PathProofStorage.Read<SavedMembershipDaclProof>(connection, best.ProofId!.Value,
-                    best.ProofFingerprint!, cancellationToken).Assessment;
+                var combined = proofs.Read<SavedMembershipDaclProof>(best.ProofId!.Value, best.ProofFingerprint!).Assessment;
                 RequireProof(description, selection.Subject, combined.Membership.Requester, combined.GenerationId,
                     combined.DerivationGenerationId, combined.EvidenceSeal, combined.Authorization);
                 if (combined.Dacl is null || combined.Membership.Obtainability != ControlEvaluationState.Established)
