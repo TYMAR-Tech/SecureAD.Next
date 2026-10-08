@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 19 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 20 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,217 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**Owner-approved checkpoint integration before the Stage 6/7 correction, 2026-10-08.**
+The owner approved committing the completed shared-proof correction separately, addressing the
+three reproduced verification failures without weakening their checks, and merging `rules-delivery`
+to `main` once the exact committed candidate passes CI.
+The merge also carries the branch's already committed SEC-026 and SEC-083 capture changes.
+Keep `rules-delivery`, update it from the merged main and continue in this same checkout without
+another worktree; preserve unrelated diagnostic work rather than including it accidentally.
+This authorizes the checkpoint commits, push, pull request and verified merge, not production
+acceptance, package replacement, live access or a production judging rerun.
+Keep the proposed Stage 6/7 correction and its new measurements out of this integration checkpoint.
+The bounded verification correction appends the missing Evidence-14 coverage-identity pin without
+editing versions 6-13, and makes the three SEC-083 nullable parameter choices explicit at their
+call sites without changing scan behavior or weakening the architecture gate.
+All 132 focused checks pass with coverage, and all seven required cases detect five isolated
+rebuilt defects with five passing rebuilt controls; the active checkout never carries those defects.
+The [integration verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains the
+source/binary fingerprints and outcomes; a correct-source full regression and exact-head CI
+remain mandatory before the authorized merge.
+
+**Owner-directed Stage 6/7 and whole-pipeline design review, 2026-10-08.**
+After the shared-proof correction, the owner rejected alternating isolated speed and storage
+fixes and requested a fresh-session handoff for one objective assessment of the whole design.
+The assessment must examine whether Stage 6 target admission and Stage 7 path/requester analysis
+are semantically correct and appropriately scoped, including depth, cycles and question breadth,
+rather than treating them as settled while focusing only on storage.
+His recollection of the predecessor's depth-five limit is a question to assess, not approval to
+introduce that limit in the rebuild; the accepted backwards supported-path calculation has no
+arbitrary security-depth cutoff, and the two applications' path models are not interchangeable.
+Start with a read-only review of the normal reachable pipeline, distinguish active work from
+disabled expansion/discovery features, and account for processing, memory, storage and readback
+together before proposing another implementation or measurement campaign.
+The [fresh-session handoff](../.v-shared-path-20261007-7f2c/STAGE6-STAGE7-DESIGN-REVIEW-HANDOFF.md)
+records the code, passed depth/cycle witnesses, production scope/cost counters and remaining
+questions; it does not declare Stages 6/7 complete or production-accepted.
+Preserve all existing work and evidence, with no new depth/processing cap, live access, production
+rerun, package replacement, commit or push authorized by this review request.
+
+**Shared-proof storage correction implemented and offline verified, 2026-10-08.**
+The [validated checkpoint](../.v-shared-path-20261007-7f2c/handoff.json) records Judgement format 62,
+with Evidence and Derivation unchanged by this correction, every saved answer and occurrence
+preserved, and no UI wording/layout change or additional analysis scope.
+Identical proof components are shared within their exact generation/context; original permissions
+reuse the existing shared-entry store, and ordered use-site references retain resource, position
+and source bindings.
+The calculation header now binds separate selection records and existing uncertainty rather than
+embedding them, and normal GUI/CLI completion uses saved counters instead of reconstructing all
+requester proofs.
+Selected-page reconstruction reuses validated components only within that read/page lifetime,
+never across later reads or generations; explicit full-detail verification remains separate.
+All 463 original lab source proofs and the full saved input/selection collections match their
+frozen canonical fingerprints after roundtrip, and the owner's new lab passes normal protected
+readback as recorded below.
+The full solution rebuilt successfully; 7,420 of 7,423 tests passed with coverage, with exactly
+three failures independently reproduced on the untouched baseline, while all 34 required behavior
+checks detected 24 rebuilt defects with restored controls.
+The full-size synthetic case completed actual writer publication, index construction, checkpointing,
+sealing and saved readback for 939,225 nodes, 653,689 questions and 1,586,470 uncertainty records.
+Its database finished at 13,580,939,264 bytes with a 2,495-byte calculation header and sampled
+25,089,148,257-byte peak working files, against generated expanded source/header contents of
+47,295,959,913 and 18,143,455,537 bytes respectively.
+This is a proof-heavy persistence test with fabricated source bindings, not a new forest capture,
+permission calculation, full production table reconstruction or production-capacity/runtime claim.
+The combined reference-sizing/selection-persistence phase was costly and remains a separately
+recorded profiling followup; further optimization or production execution still needs its approval.
+Original lab bundles, production reports, existing work and historical verification records remain
+preserved, with compact source/binary/measurement records retained instead of disposable bulk.
+
+**Owner-provided current-format lab verification and proposed capture head start, 2026-10-08 UTC.**
+The owner supplied `ad.lab-20261008-034144`, produced by his build containing the shared-proof changes,
+for offline inspection while the full-size synthetic capacity run continues.
+The original bundle remains untouched; a verified copy passes normal saved-result readers with
+Evidence 14, Derivation 16 and Judgement 62, including all 463 saved requester questions and their
+route views, exact source-generation bindings and explicit unknown authorization results.
+The executable hash matches the local published package and the logged engine identity is tied
+through its matching PDB to the current source documents, not inferred from the `d187528` stamp.
+The owner is considering taking that build to production for a new capture; this is not an
+authorization for agent live access or package replacement and is not production-capacity acceptance.
+The recommended head start is the existing CLI `--capture` mode, which seals evidence and stops
+without derivation or judging, leaving the owner in control of when analysis begins.
+A new Evidence-14 capture avoids the separate older-Evidence-13 delivery issue; it is not a
+recapture requirement imposed by the Judgement storage correction itself.
+
+**Owner-approved shared path-proof correction for the next implementation session, 2026-10-07.**
+Following the production publication disk failure and read-only proof trace, the owner approved
+saving identical immutable proof components once, with ordered occurrence references retaining
+each question's saved answer, original permission positions, requester, resource, membership
+assumptions and exact Evidence/Derivation/Judgement bindings.
+Replace the oversized calculation header with a compact manifest over separately saved selection
+records and the existing input/uncertainty records; update coupled writers, validation, selected
+proof/route/finding readers and GUI/CLI completion coverage so summaries do not reconstruct every proof.
+Preserve every limitation and its detailed evidence, group-held counting, passive readback and
+atomic publication; this changes storage, not ownership, permission, operation or path semantics.
+The accepted cost is a new Judgement format with strict reference validation, no migration and no
+parallel legacy production implementation; UI wording and layout remain unchanged.
+The approved offline verification includes exact saved-answer comparisons, corruption and
+resource/generation substitutions, isolated explicitly rebuilt defects and restored controls,
+and a synthetic capacity runner covering the observed nine-domain workload of 939,225 nodes,
+653,689 questions across the three existing families, 359 selection resources, 138 fixed targets
+and 1,586,470 uncertainty records, with high-, low- and no-sharing controls.
+Measure index construction, checkpointing, sealing, reopening and peak database/WAL/temporary
+storage as well as final size; lab content repetition is not a production savings forecast.
+Fingerprint comparison sources and binaries rather than treating the production executable's
+`9621ea0` version stamp as all compiled source: the identical lab/production executable logs and
+saved lab format 60 establish later compiled features, but not an exact production source manifest.
+This approval is for the next bounded implementation session, not an implemented correction or
+production-capacity acceptance, and does not authorize live access, production judging, package
+replacement, analysis expansion, truncation, processing caps, commit or push.
+Preserve the existing checkout, owner work, original lab bundle, production reports and historical
+verification records; use isolated lab copies and synthetic inputs only.
+
+**Owner-approved SEC-026 implementation and Microsoft verification, 2026-10-07.**
+The owner approved the proposed bounded duplicate-SPN rule on `rules-delivery`, with fixed High
+severity, and required the proposal to be checked against Microsoft documentation before delivery.
+Compare complete captured SPN values case-insensitively across the one captured forest, retaining
+ports, instance names, service-name suffixes, original occurrences and distinct GUID-based owners;
+do not exempt identical HOST/RestrictedKrbHost values or turn repeated values on one owner into duplicates.
+Persist one finding per affected owner with all known matching owners, and keep known duplicates
+when missing evidence prevents a complete inventory; neither finding absence nor recorded attribute
+values prove live authentication, complete attribute visibility or takeover.
+Microsoft's MS-ADTS uniqueness constraints distinguish exact values from alias checking; this
+bounded delivery does not compare sPNMappings aliases or other forests and must say so.
+New guidance explains authentication-name conflicts, requires confirming the intended service owner
+before removing an erroneous registration, and warns against removing Kerberos system registrations.
+High severity and per-owner finding grouping are approved product choices, not Microsoft ratings.
+Sources checked: [SPN format](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/cd328386-4d97-4666-be33-056545c1cad2),
+[uniqueness constraints](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/3c154285-454c-4353-9a99-fb586e806944),
+[setspn and Windows case behavior](https://learn.microsoft.com/windows-server/administration/windows-commands/setspn)
+and [duplicate-SPN troubleshooting](https://learn.microsoft.com/troubleshoot/windows-server/windows-security/kerberos-error-kdc-err-s-principal-unknown-or-not-unique).
+No live query, production-audit change, new capture requirement, package replacement, commit or push
+is included in this rule implementation authorization.
+The [SEC-026 checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution
+build and 550 passing affected-area tests with coverage after the final correct-source rebuild,
+with 1,030 matching code/configuration inputs and all 54 required checks detecting rebuilt defects
+across 17 variants with restored controls.
+The final run uses CI's noncompeting test-collection setting; preceding parallel-run UI/logging
+timeouts remain recorded rather than described as a successful run.
+Normal GUI and CLI judging now schedule SEC-026 during the existing captured-object pass and
+publish its full-value duplicate assessment afterward; saved readback validates typed owner/occurrence
+evidence against the selected evidence seal and judgement generation without rerunning analysis.
+Judgement format 61 stores this evidence; Evidence and Derivation remain unchanged, so judging the
+owner's completed sealed capture can add SEC-026 without another capture.
+The owner's in-progress production run and existing package were not changed, and lab/display/
+production acceptance remains outstanding.
+
+The owner subsequently requested committing and pushing SEC-026 on the existing rules branch
+and providing a new-session handoff for the next rule; this does not approve SEC-083's proposed
+Critical severity or implementation scope, replace the production package, or authorize a merge to main.
+
+**SEC-083 is an opt-in capture, disabled by default, 2026-10-07.**
+The owner chose the predecessor's model for Group Policy Preferences password detection: checking
+every XML file beneath every GPO adds too much recurring SYSVOL capture time for one legacy
+condition that a customer can check deliberately once, then normally leave disabled on later
+audits if the environment was clean.
+Enabling the option scans for non-empty `cpassword` occurrence metadata and preserves known
+occurrences beside explicit enumeration, read and parse gaps; disabling it must record that
+SEC-083 was not scanned and must never turn finding absence into a clean verdict.
+The ordinary SYSVOL capture remains enabled for its other evidence, and neither a previous clean
+scan nor a disabled later scan proves that no policy changed between captures.
+The owner approved placing an unchecked **Optional SYSVOL check** in the existing **Scope you are
+authorizing** card, never remembering the choice between audits, with the label **Scan Group
+Policy XML for legacy stored passwords** and wording that states the recursive cost and that
+disabled means **Not scanned**, not **Passed**.
+The unattended equivalent is `--scan-gpp-passwords`.
+Implemented and offline verified on `rules-delivery`: ordinary captures no longer enumerate or
+read XML files for this check, while an opted-in capture retains occurrence metadata and records
+`NotRequested`, `Read`, `PartiallyRead` or `Unreadable` independently for every policy.
+Evidence format 14 stores that capability-specific coverage; the full solution rebuilt
+successfully, 346 focused tests passed with noncompeting test collections, and four isolated
+rebuilt defects were detected before a forced restored-source rebuild passed.
+The first attempted restored control reused mutated incremental-build output and was rejected;
+forcing `Rebuild` established the accepted provenance.
+Finding wording, file-level grouping and severity remain approval-gated, and the owner's running
+production audit and package were not accessed or changed.
+
+**Owner-directed rule delivery during production acceptance, 2026-10-07.**
+While the owner-operated production audit runs, the owner requested the remaining-rule inventory
+and practical implementation groupings, and wants rule work to proceed on one branch in the
+existing checkout rather than creating separate trees.
+The local `rules-delivery` branch was created in the sole active `SecureAD.Next` checkout, carrying
+existing uncommitted governing-document updates without altering the production package.
+This supersedes waiting for the running audit to finish before preparing rule delivery; production
+acceptance remains open, and individual rule severity, scope and evidence-extension decisions in
+the reviewed handoff remain approval-gated rather than implicitly accepted.
+All 13 retained rule-handoff documents were verified against their saved SHA-256 manifest before
+planning; the migration map is a proposed disposition, not a requirement to create every old ID.
+
+**Owner-started production audit and cleanup pause, 2026-10-07.**
+The owner reports a new production audit running with his latest build and expects it to take
+many hours; he directed stopping local cleanup for now and requested the remaining application
+work to be laid out.
+This records an owner-operated run in progress, not verified executable provenance, successful
+completion or acceptance of the saved results, and grants no agent access to the production forest.
+
+**Owner-approved project TEMP followup, 2026-10-07.**
+The owner approved cleaning verified SecureAD temporary leftovers from `C:\Temp` and the user
+TEMP directory while preserving unique lab/performance inputs and unrelated applications' files.
+The [completed pass](../.v-temp-inventory-20261007-663a/cleanup-result.json) removed 13.96 GiB of
+identified synthetic tests and empty directory trees, retaining available reports and leaving
+2.96 GiB of unclassified project/lab/benchmark/package contents plus junctions for separate review.
+
+**Owner-completed folder rename and stray-folder cleanup approval, 2026-10-07.**
+The owner renamed the independent active checkout from `SecureAD.Next-stage7` to `SecureAD.Next`;
+its branch remains main and its Git storage remains local and independent.
+He then approved inspecting and cleaning the previously uninventoried sibling
+`SecureAD.Next-stray-2026-09-30`, preserving useful measurements and unique inputs rather than
+deleting its 50.58 GiB by name; the empty followup directory was removed non-recursively.
+Historical stage7 absolute paths refer to the same checkout before this rename.
+The [stray cleanup](../.v-stray-cleanup-20261007-4f82/cleanup-result.json) subsequently reclaimed
+41.45 GiB, retaining 9.13 GiB of unique material under `next/artifacts/retired-stray-20260930`
+with a hash-verified duplicate mapping; both obsolete sibling folders are now removed.
 
 **Owner-authorized reconciliation and main integration, 2026-10-07.**
 The owner requested reconciling uncommitted/unpushed work across the local checkouts and merging

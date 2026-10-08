@@ -136,6 +136,10 @@ public sealed class ControlEdgeLayoutTests
         [59] = "3E3D77775421AA925A605003D349669A515E00DD0525079169BB9533589BA7CB",
         // Observed format-60 structural totals; all historical layout anchors remain unchanged.
         [60] = "B3BAE0EA13D16E442D28ED3F5928856CAEAF7C1F50FEEE7244D0281C5537E3E4",
+        // Observed SEC-026 saved-evidence layout; historical versions remain unchanged.
+        [61] = "2565E5A72A0599AC936672496D21F458F4C0A7AE6F47C5956BBDF029B459DD1C",
+        // Observed shared path-proof layout; all earlier checkpoints remain unchanged.
+        [62] = "71DD9CE407C92C3451A76E337A6B89E6136BDC51920B47534434063871B31F21",
     };
 
     [Fact]

@@ -27,18 +27,13 @@ internal static class PathProofStorage
         command.ExecuteNonQuery();
     }
 
-    internal sealed class Writer : IBufferWriter<byte>, IDisposable
+    internal sealed class Writer : IDisposable
     {
         private readonly SqliteCommand _insertProof;
         private readonly SqliteCommand _insertChunk;
         private readonly CancellationToken _cancellationToken;
-        private readonly byte[] _chunk = new byte[ChunkSize];
-        private byte[] _buffer = [];
-        private IncrementalHash? _hash;
+        private readonly Stack<Document> _available = [];
         private long _id;
-        private long _length;
-        private long _chunks;
-        private int _used;
 
         internal Writer(SqliteConnection connection, SqliteTransaction transaction, CancellationToken cancellationToken)
         {
@@ -59,113 +54,139 @@ internal static class PathProofStorage
             _insertChunk.CommandText = "INSERT INTO path_proof_chunk VALUES ($id,$ordinal,$data)";
             _insertChunk.Parameters.Add("$id", SqliteType.Integer);
             _insertChunk.Parameters.Add("$ordinal", SqliteType.Integer);
-            _insertChunk.Parameters.Add("$data", SqliteType.Blob).Value = _chunk;
+            _insertChunk.Parameters.Add("$data", SqliteType.Blob);
             _insertChunk.Prepare();
         }
 
-        internal Reference Write<T>(T value)
+        internal Reference Write<T>(T value) => Write(value, ProofSerialization.Options);
+
+        internal Reference Write<T>(T value, JsonSerializerOptions options)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            _id = checked(_id + 1);
-            _length = _chunks = _used = 0;
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            _hash = hash;
+            var id = _id = checked(_id + 1);
+            var document = _available.TryPop(out var reusable) ? reusable : new Document(this);
             try
             {
-                // The stream serializer can buffer a scalar collection. Commit UTF-8 segments
-                // directly, retaining at most a serializer segment and one database fragment.
-                Tier0PathCalculation.WriteJson(this, value);
-                FlushChunk();
+                document.Start(id);
+                Tier0PathCalculation.WriteJson(document, value, options);
+                var fingerprint = document.Finish();
                 _cancellationToken.ThrowIfCancellationRequested();
-                _insertProof.Parameters["$id"].Value = _id;
-                _insertProof.Parameters["$length"].Value = _length;
-                _insertProof.Parameters["$chunks"].Value = _chunks;
+                _insertProof.Parameters["$id"].Value = id;
+                _insertProof.Parameters["$length"].Value = document.Length;
+                _insertProof.Parameters["$chunks"].Value = document.Chunks;
                 if (_insertProof.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
-                return new(_id, hash.GetHashAndReset());
+                return new(id, fingerprint);
             }
             finally
             {
+                document.Reset();
+                _available.Push(document);
+            }
+        }
+
+        private sealed class Document(Writer owner) : IBufferWriter<byte>, IDisposable
+        {
+            private readonly byte[] _chunk = new byte[ChunkSize];
+            private byte[] _buffer = [];
+            private IncrementalHash? _hash;
+            private long _id;
+            private int _used;
+            internal long Length { get; private set; }
+            internal long Chunks { get; private set; }
+
+            internal void Start(long id)
+            {
+                _id = id;
+                Length = Chunks = _used = 0;
+                _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            }
+
+            public void Advance(int count)
+            {
+                if (count < 0 || count > _buffer.Length) throw new ArgumentOutOfRangeException(nameof(count));
+                owner._cancellationToken.ThrowIfCancellationRequested();
+                var bytes = _buffer.AsSpan(0, count);
+                (_hash ?? throw new InvalidOperationException("No path proof is being written.")).AppendData(bytes);
+                Length = checked(Length + count);
+                while (!bytes.IsEmpty)
+                {
+                    var take = Math.Min(ChunkSize - _used, bytes.Length);
+                    bytes[..take].CopyTo(_chunk.AsSpan(_used));
+                    _used += take;
+                    bytes = bytes[take..];
+                    if (_used == ChunkSize) Flush();
+                }
+            }
+
+            public Memory<byte> GetMemory(int sizeHint = 0)
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
+                owner._cancellationToken.ThrowIfCancellationRequested();
+                var minimum = Math.Max(sizeHint, ChunkSize);
+                if (_buffer.Length < minimum)
+                {
+                    var replacement = ArrayPool<byte>.Shared.Rent(minimum);
+                    if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                    _buffer = replacement;
+                }
+                return _buffer;
+            }
+
+            public Span<byte> GetSpan(int sizeHint = 0) => GetMemory(sizeHint).Span;
+
+            private void Flush()
+            {
+                if (_used == 0) return;
+                owner._cancellationToken.ThrowIfCancellationRequested();
+                owner._insertChunk.Parameters["$id"].Value = _id;
+                owner._insertChunk.Parameters["$ordinal"].Value = Chunks;
+                owner._insertChunk.Parameters["$data"].Value = _chunk;
+                owner._insertChunk.Parameters["$data"].Size = _used;
+                if (owner._insertChunk.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
+                Chunks = checked(Chunks + 1);
+                _used = 0;
+            }
+
+            internal byte[] Finish()
+            {
+                Flush();
+                return (_hash ?? throw Tier0PathStorage.InvalidProof()).GetHashAndReset();
+            }
+
+            internal void Reset()
+            {
+                _hash?.Dispose();
                 _hash = null;
             }
-        }
 
-        public void Advance(int count)
-        {
-            if (count < 0 || count > _buffer.Length) throw new ArgumentOutOfRangeException(nameof(count));
-            _cancellationToken.ThrowIfCancellationRequested();
-            var bytes = _buffer.AsSpan(0, count);
-            (_hash ?? throw new InvalidOperationException("No path proof is being written.")).AppendData(bytes);
-            _length = checked(_length + count);
-            while (!bytes.IsEmpty)
+            public void Dispose()
             {
-                var take = Math.Min(ChunkSize - _used, bytes.Length);
-                bytes[..take].CopyTo(_chunk.AsSpan(_used));
-                _used += take;
-                bytes = bytes[take..];
-                if (_used == ChunkSize) FlushChunk();
-            }
-        }
-
-        public Memory<byte> GetMemory(int sizeHint = 0)
-        {
-            ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
-            _cancellationToken.ThrowIfCancellationRequested();
-            var minimum = Math.Max(sizeHint, ChunkSize);
-            if (_buffer.Length < minimum)
-            {
-                var replacement = ArrayPool<byte>.Shared.Rent(minimum);
+                Reset();
                 if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-                _buffer = replacement;
+                _buffer = [];
+                Array.Clear(_chunk);
             }
-            return _buffer;
-        }
-
-        public Span<byte> GetSpan(int sizeHint = 0) => GetMemory(sizeHint).Span;
-
-        private void FlushChunk()
-        {
-            if (_used == 0) return;
-            _cancellationToken.ThrowIfCancellationRequested();
-            _insertChunk.Parameters["$id"].Value = _id;
-            _insertChunk.Parameters["$ordinal"].Value = _chunks;
-            _insertChunk.Parameters["$data"].Size = _used;
-            if (_insertChunk.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
-            _chunks = checked(_chunks + 1);
-            _used = 0;
         }
 
         public void Dispose()
         {
             _insertChunk.Dispose();
             _insertProof.Dispose();
-            if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
-            _buffer = [];
-            Array.Clear(_chunk);
+            foreach (var document in _available) document.Dispose();
+            _available.Clear();
         }
     }
 
     internal static T Read<T>(SqliteConnection connection, long id, string fingerprint,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) => Read<T>(connection, id, fingerprint, cancellationToken, ProofSerialization.Options);
+
+    internal static T Read<T>(SqliteConnection connection, long id, string fingerprint,
+        CancellationToken cancellationToken, JsonSerializerOptions options)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        using var query = connection.CreateCommand();
-        query.CommandText = "SELECT byte_length,chunk_count FROM path_proof WHERE id=$id";
-        query.Parameters.AddWithValue("$id", id);
-        long length;
-        long chunks;
-        using (var read = query.ExecuteReader())
-        {
-            if (id <= 0 || !read.Read()) throw Tier0PathStorage.InvalidProof();
-            length = read.GetInt64(0);
-            chunks = read.GetInt64(1);
-            if (length <= 0 || chunks != (length - 1) / ChunkSize + 1) throw Tier0PathStorage.InvalidProof();
-        }
-        query.CommandText = "SELECT ordinal,length(data),rowid FROM path_proof_chunk WHERE proof_id=$id ORDER BY ordinal";
-        using var rows = query.ExecuteReader();
-        using var stream = new ChunkStream(connection, rows, length, chunks, fingerprint, cancellationToken);
+        using var stream = Open(connection, id, fingerprint, cancellationToken);
         try
         {
-            var value = JsonSerializer.Deserialize<T>(stream, ProofSerialization.Options) ?? throw Tier0PathStorage.InvalidProof();
+            var value = JsonSerializer.Deserialize<T>(stream, options) ?? throw Tier0PathStorage.InvalidProof();
             stream.RequireComplete();
             cancellationToken.ThrowIfCancellationRequested();
             return value;
@@ -176,7 +197,43 @@ internal static class PathProofStorage
         }
     }
 
-    private sealed class ChunkStream(SqliteConnection connection, SqliteDataReader rows, long length, long chunks, string fingerprint,
+    internal static bool Matches<T>(SqliteConnection connection, Reference reference, T value,
+        JsonSerializerOptions options, CancellationToken cancellationToken)
+    {
+        using var stream = Open(connection, reference.Id, Convert.ToHexString(reference.Fingerprint), cancellationToken);
+        using var comparison = new ComparisonBuffer(stream);
+        Tier0PathCalculation.WriteJson(comparison, value, options);
+        return comparison.Finish();
+    }
+
+    private static ChunkStream Open(SqliteConnection connection, long id, string fingerprint, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var query = connection.CreateCommand();
+        try
+        {
+            query.CommandText = "SELECT byte_length,chunk_count FROM path_proof WHERE id=$id";
+            query.Parameters.AddWithValue("$id", id);
+            long length;
+            long chunks;
+            using (var read = query.ExecuteReader())
+            {
+                if (id <= 0 || !read.Read()) throw Tier0PathStorage.InvalidProof();
+                length = read.GetInt64(0);
+                chunks = read.GetInt64(1);
+                if (length <= 0 || chunks != (length - 1) / ChunkSize + 1) throw Tier0PathStorage.InvalidProof();
+            }
+            query.CommandText = "SELECT ordinal,length(data),rowid FROM path_proof_chunk WHERE proof_id=$id ORDER BY ordinal";
+            return new(connection, query, query.ExecuteReader(), length, chunks, fingerprint, cancellationToken);
+        }
+        catch
+        {
+            query.Dispose();
+            throw;
+        }
+    }
+
+    private sealed class ChunkStream(SqliteConnection connection, SqliteCommand command, SqliteDataReader rows, long length, long chunks, string fingerprint,
         CancellationToken cancellationToken) : Stream
     {
         private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -249,8 +306,56 @@ internal static class PathProofStorage
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) _hash.Dispose();
+            if (disposing)
+            {
+                _hash.Dispose();
+                rows.Dispose();
+                command.Dispose();
+            }
             base.Dispose(disposing);
+        }
+    }
+
+    private sealed class ComparisonBuffer(ChunkStream source) : IBufferWriter<byte>, IDisposable
+    {
+        private byte[] _buffer = [];
+        private readonly byte[] _read = new byte[ChunkSize];
+        private bool _equal = true;
+
+        public void Advance(int count)
+        {
+            var remaining = _buffer.AsSpan(0, count);
+            while (!remaining.IsEmpty)
+            {
+                var wanted = Math.Min(remaining.Length, _read.Length);
+                var read = source.Read(_read.AsSpan(0, wanted));
+                if (read != wanted || !remaining[..wanted].SequenceEqual(_read.AsSpan(0, wanted))) _equal = false;
+                remaining = remaining[wanted..];
+            }
+        }
+
+        public Memory<byte> GetMemory(int sizeHint = 0)
+        {
+            if (_buffer.Length < Math.Max(sizeHint, ChunkSize))
+            {
+                if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
+                _buffer = ArrayPool<byte>.Shared.Rent(Math.Max(sizeHint, ChunkSize));
+            }
+            return _buffer;
+        }
+
+        public Span<byte> GetSpan(int sizeHint = 0) => GetMemory(sizeHint).Span;
+
+        internal bool Finish()
+        {
+            while (source.Read(_read) != 0) _equal = false;
+            source.RequireComplete();
+            return _equal;
+        }
+
+        public void Dispose()
+        {
+            if (_buffer.Length != 0) ArrayPool<byte>.Shared.Return(_buffer, clearArray: true);
         }
     }
 

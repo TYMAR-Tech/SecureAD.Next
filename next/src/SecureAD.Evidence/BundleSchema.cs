@@ -88,7 +88,9 @@ public static class BundleSchema
     // at 12 meant it returned a pass on exactly the bundles it is there to stop - a check that goes
     // green while measuring nothing. The two numbers answer different questions and neither may
     // stand in for the other; F-S1-1 records the coupling that was removed to keep them apart.
-    public const int Version = 13;
+    // 14 records the per-policy outcome of the optional SEC-083 XML scan. Version 13 always ran
+    // that scan and cannot state whether a later capture deliberately omitted it.
+    public const int Version = 14;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -829,7 +831,13 @@ public static class BundleSchema
             outcome                  TEXT    NOT NULL
                                      CHECK (outcome IN ('Read', 'PartiallyRead', 'Unreadable')),
             reason                   TEXT    NULL
-                                     CHECK ((outcome = 'Read') = (reason IS NULL))
+                                     CHECK ((outcome = 'Read') = (reason IS NULL)),
+            gpp_password_scan_outcome TEXT   NOT NULL
+                                     CHECK (gpp_password_scan_outcome IN
+                                            ('NotRequested', 'Read', 'PartiallyRead', 'Unreadable')),
+            gpp_password_scan_reason TEXT    NULL
+                                     CHECK ((gpp_password_scan_outcome IN ('NotRequested', 'Read'))
+                                            = (gpp_password_scan_reason IS NULL))
         )
         """,
 

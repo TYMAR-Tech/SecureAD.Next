@@ -18,6 +18,28 @@ public sealed class CommandLineTests
         Assert.False(CommandLine.Parse(["--library", "synthetic"])!.IncludeEnatelSso);
     }
 
+    [Fact]
+    public void GppPasswordScanningIsDisabledUnlessRequested()
+    {
+        Assert.False(CommandLine.Parse(["--library", "synthetic"])!.ScanGppPasswords);
+    }
+
+    [Fact]
+    public void GppPasswordScanningCanBeRequestedForACapture()
+    {
+        Assert.True(CommandLine.Parse(
+            ["--library", "synthetic", "--capture", "--scan-gpp-passwords"])!.ScanGppPasswords);
+    }
+
+    [Theory]
+    [InlineData("--preview")]
+    [InlineData("--validate")]
+    public void GppPasswordScanningIsRefusedWhereNoCaptureOccurs(string mode)
+    {
+        Assert.Null(CommandLine.Parse(
+            ["--library", "synthetic", mode, "--scan-gpp-passwords"]));
+    }
+
     [Theory]
     [InlineData("--capture")]
     [InlineData("--preview")]

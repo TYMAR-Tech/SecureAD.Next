@@ -146,19 +146,23 @@ internal static class Tier0PathCalculation
     }
 
     internal static string HolderKey(string sid, string? scope) => sid + "\0" + (scope ?? string.Empty);
-    internal static string Fingerprint<T>(T value)
+    internal static string Fingerprint<T>(T value) => Fingerprint(value, ProofSerialization.Options);
+
+    internal static string Fingerprint<T>(T value, JsonSerializerOptions options)
     {
         // The stream overload can still buffer a whole scalar collection. Consume committed
         // UTF-8 segments directly; only an individual value can require a larger buffer.
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         using var buffer = new FingerprintBuffer(hash);
-        WriteJson(buffer, value);
+        WriteJson(buffer, value, options);
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    internal static void WriteJson<T>(IBufferWriter<byte> buffer, T value)
+    internal static void WriteJson<T>(IBufferWriter<byte> buffer, T value) => WriteJson(buffer, value, ProofSerialization.Options);
+
+    internal static void WriteJson<T>(IBufferWriter<byte> buffer, T value, JsonSerializerOptions options)
     {
-        var options = ProofSerialization.Options;
+        ArgumentNullException.ThrowIfNull(options);
         using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions
         {
             Encoder = options.Encoder,

@@ -964,6 +964,26 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     public string ObjectScopeHelp => ScopeText("Help");
     public string ExcludedClassesHeading => ScopeText("ExcludedClasses");
 
+    private bool _scanGppPasswords;
+
+    /// <summary>The optional SEC-083 XML scan for this audit; never remembered for another.</summary>
+    public bool ScanGppPasswords
+    {
+        get => _scanGppPasswords;
+        set
+        {
+            if (MayChangeObjectScope)
+                SetProperty(ref _scanGppPasswords, value);
+        }
+    }
+
+    public string ScanGppPasswordsLabel => "Scan Group Policy XML for legacy stored passwords";
+
+    public string ScanGppPasswordsHelp =>
+        "Off by default. This recursively reads XML files beneath every Group Policy Object and can add significant SYSVOL time. "
+        + "Enable it for an older or acquired environment, or one that has not been checked before. "
+        + "When disabled, SEC-083 is recorded as Not scanned - not Passed.";
+
     private static string ScopeText(string key) =>
         ScopeWording.GetString(key, CultureInfo.CurrentUICulture) ?? throw new InvalidOperationException(key);
 
@@ -1869,7 +1889,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             var outcome = await _capture
                 .RunAsync(
                     Location.Path!, forest: null, Overrides(), Attestations(),
-                    _concurrency.Effective, IncludeEnatelSso, _stopping.Token)
+                    _concurrency.Effective, IncludeEnatelSso, ScanGppPasswords, _stopping.Token)
                 .ConfigureAwait(true);
 
             Report = Describe(outcome);

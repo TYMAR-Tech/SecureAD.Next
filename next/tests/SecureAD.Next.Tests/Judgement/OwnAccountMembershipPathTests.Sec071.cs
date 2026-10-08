@@ -170,12 +170,13 @@ public sealed partial class OwnAccountMembershipPathTests
         var before = Snapshot(directory);
         var page = reader.ReadPathRiskPage(UserDn, PathRiskVerdict.UnexpectedRoute, null, CancellationToken.None);
         var combined = Assert.Single(page.Questions, question => question.Risk.Family == PathRequesterFamily.MembershipDacl);
+        using var connection = RiskDatabase(reader, writableCopy: false);
         Assert.Equal((ControlEvaluationState.Unknown, (bool?)null),
             (combined.Risk.OrdinaryAddReadiness, combined.Risk.CapturedMemberPresent));
-        Assert.Equal(Tier0PathCalculation.Fingerprint(new SavedMembershipDaclProof(combined.Membership!, combined.SourceFingerprint)),
+        Assert.Equal(PathProofVerification.SourceFingerprint(connection, reader.Description, PathRequesterFamily.MembershipDacl,
+                new SavedMembershipDaclProof(combined.Membership!, combined.SourceFingerprint)),
             combined.Risk.SourceProofFingerprint);
         Assert.Equal(before, Snapshot(directory));
-        using var connection = RiskDatabase(reader, writableCopy: false);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT path_json(proof) FROM tier0_path_calculation WHERE id=1";
         using var header = JsonDocument.Parse((string)command.ExecuteScalar()!);

@@ -109,6 +109,9 @@ public sealed class CoverageIdRecipeTests
         // is all this recipe reads, so the same value is the correct outcome rather than a missed
         // change.
         [13] = "57cf8ba5a9e7fb10",
+
+        // Version 14 adds optional GPP scan coverage, not a change to the declared-domain identity.
+        [14] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

@@ -116,20 +116,23 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
             connection.Open();
             using var command = connection.CreateCommand();
             PathProofVerification.EnableJsonReads(connection);
-            command.CommandText = "SELECT json_extract(path_json(proof),'$.Family'),path_json(source_proof) FROM path_requester_risk ORDER BY id";
+            using var judgement = JudgementReader.Open(bundle).Value;
+            command.CommandText = "SELECT json_extract(path_json(proof),'$.Family'),source_proof,hex(source_fingerprint) FROM path_requester_risk ORDER BY id";
             using var read = command.ExecuteReader();
             var families = new Dictionary<string, List<JsonElement>>
             { ["Requesters"] = [], ["OwnAccounts"] = [], ["MembershipDacls"] = [] };
             while (read.Read())
             {
-                var family = Enum.Parse<PathRequesterFamily>(read.GetString(0)) switch
+                var kind = Enum.Parse<PathRequesterFamily>(read.GetString(0));
+                var family = kind switch
                 {
                     PathRequesterFamily.RequesterDacl => "Requesters",
                     PathRequesterFamily.OwnAccountMembership => "OwnAccounts",
                     PathRequesterFamily.MembershipDacl => "MembershipDacls",
                     _ => throw new InvalidDataException("Unrecognized saved requester family."),
                 };
-                using var json = JsonDocument.Parse(read.GetString(1));
+                using var json = JsonDocument.Parse(PathProofVerification.ExpandedSourceJson(connection, judgement.Description,
+                    kind, read.GetInt64(1), read.GetString(2)));
                 families[family].Add(json.RootElement.Clone());
             }
             var header = JsonSerializer.SerializeToElement(families, ProofSerialization.Options);

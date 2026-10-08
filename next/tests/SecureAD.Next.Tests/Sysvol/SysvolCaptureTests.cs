@@ -307,7 +307,7 @@ public sealed class SysvolCaptureTests : IDisposable
             .WithDescriptor(PolicyPath, @"Machine\Preferences\Groups\Groups.xml", ADescriptor())
             .WithListedButUnopenableFile(PolicyPath, @"Machine\Preferences\Groups\Groups.xml");
 
-        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()), scanGppPasswords: true);
 
         var policy = Assert.Single(coverage.Policies);
 
@@ -334,6 +334,75 @@ public sealed class SysvolCaptureTests : IDisposable
         var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
 
         Assert.Equal(GpoReadOutcome.Read, Assert.Single(coverage.Policies).Outcome);
+    }
+
+    [Fact]
+    public async Task GppPasswordScanningIsSkippedAndRecordedAsNotRequestedByDefault()
+    {
+        var path = @"Machine\Preferences\Groups\Groups.xml";
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithFile(
+                PolicyPath,
+                path,
+                Bytes("<Groups><User><Properties userName=\"legacy\" cpassword=\"secret\"/></User></Groups>"))
+            .WithDescriptor(PolicyPath, path, ADescriptor());
+
+        var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
+
+        Assert.Equal(["0"], Query(bundle, "SELECT COUNT(*) FROM gpo_stored_credential"));
+        Assert.Equal(
+            ["NotRequested|"],
+            Query(
+                bundle,
+                "SELECT gpp_password_scan_outcome || '|' || COALESCE(gpp_password_scan_reason, '') "
+                + "FROM sysvol_gpo_coverage"));
+    }
+
+    [Fact]
+    public async Task RequestedGppPasswordScanningStoresOnlyOccurrenceMetadataAndCompleteCoverage()
+    {
+        var path = @"Machine\Preferences\Groups\Groups.xml";
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithFile(
+                PolicyPath,
+                path,
+                Bytes("<Groups><User><Properties userName=\"legacy\" cpassword=\"secret\"/></User></Groups>"))
+            .WithDescriptor(PolicyPath, path, ADescriptor());
+
+        var bundle = await CaptureAsync(
+            reader, Inventory(OnePolicy()), scanGppPasswords: true);
+
+        Assert.Equal(
+            [$"{path}|User|legacy|userName"],
+            Query(
+                bundle,
+                "SELECT relative_path || '|' || element_type || '|' || account_name || '|' "
+                + "|| source_attribute FROM gpo_stored_credential"));
+        Assert.Equal(
+            ["Read|"],
+            Query(
+                bundle,
+                "SELECT gpp_password_scan_outcome || '|' || COALESCE(gpp_password_scan_reason, '') "
+                + "FROM sysvol_gpo_coverage"));
+    }
+
+    [Fact]
+    public async Task RequestedGppPasswordScanningRecordsParseFailureRatherThanLookingClean()
+    {
+        var path = @"Machine\Preferences\Groups\Groups.xml";
+        var reader = new InMemorySysvolFileReader()
+            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithFile(PolicyPath, path, Bytes("<Groups><User>"))
+            .WithDescriptor(PolicyPath, path, ADescriptor());
+
+        var coverage = await ReadAsync(
+            reader, Inventory(OnePolicy()), scanGppPasswords: true);
+
+        var policy = Assert.Single(coverage.Policies);
+        Assert.Equal(GppPasswordScanOutcome.PartiallyRead, policy.GppPasswordScanOutcome);
+        Assert.Contains("Groups.xml", policy.GppPasswordScanReason, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -365,7 +434,7 @@ public sealed class SysvolCaptureTests : IDisposable
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
             .WithDescriptor(PolicyPath, @"Machine\Scripts\settings.xml", ADescriptor());
 
-        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()), scanGppPasswords: true);
 
         var only = Assert.Single(coverage.Policies);
         Assert.True(only.Outcome == GpoReadOutcome.Read, only.Reason);
@@ -389,7 +458,7 @@ public sealed class SysvolCaptureTests : IDisposable
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
             .WithDescriptor(PolicyPath, @"Machine\Scripts\settings.xml", ADescriptor());
 
-        var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
+        var bundle = await CaptureAsync(reader, Inventory(OnePolicy()), scanGppPasswords: true);
 
         Assert.Equal(
             ["1"],
@@ -417,7 +486,7 @@ public sealed class SysvolCaptureTests : IDisposable
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
             .Denying(PolicyPath, @"Machine\Scripts\settings.xml");
 
-        var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
+        var coverage = await ReadAsync(reader, Inventory(OnePolicy()), scanGppPasswords: true);
 
         Assert.Equal(GpoReadOutcome.PartiallyRead, Assert.Single(coverage.Policies).Outcome);
     }
@@ -680,21 +749,38 @@ public sealed class SysvolCaptureTests : IDisposable
         Assert.Equal(PolicyPath, policy.FileSysPath);
     }
 
-    private async Task<SysvolCoverage> ReadAsync(ISysvolFileReader reader, GpoInventory inventory)
+    private async Task<SysvolCoverage> ReadAsync(
+        ISysvolFileReader reader,
+        GpoInventory inventory,
+        bool? scanGppPasswords = null)
     {
         using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
 
-        return await new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System).ReadAsync(inventory, CancellationToken.None);
+        var capture = scanGppPasswords is { } scan
+            ? new SysvolCapture(
+                reader, writer, RunLog.Discarded, TimeProvider.System, new CaptureOptions(scan))
+            : new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System);
+
+        return await capture
+            .ReadAsync(inventory, CancellationToken.None);
     }
 
     /// <summary>Runs a SYSVOL capture and seals the bundle, returning its directory.</summary>
-    private async Task<string> CaptureAsync(ISysvolFileReader reader, GpoInventory inventory)
+    private async Task<string> CaptureAsync(
+        ISysvolFileReader reader,
+        GpoInventory inventory,
+        bool? scanGppPasswords = null)
     {
         var directory = Directory.CreateDirectory(_root).FullName;
 
         using var writer = BundleWriter.Create(directory, Started);
 
-        var coverage = await new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System)
+        var capture = scanGppPasswords is { } scan
+            ? new SysvolCapture(
+                reader, writer, RunLog.Discarded, TimeProvider.System, new CaptureOptions(scan))
+            : new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System);
+
+        var coverage = await capture
             .ReadAsync(inventory, CancellationToken.None);
 
         writer.Complete(

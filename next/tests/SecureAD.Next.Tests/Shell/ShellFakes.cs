@@ -698,6 +698,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
     public int? AskedWithDomainsAtOnce { get; private set; }
 
     public bool? AskedToIncludeEnatelSso { get; private set; }
+    public bool? AskedToScanGppPasswords { get; private set; }
 
     public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -706,6 +707,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
         bool includeEnatelSso,
+        bool scanGppPasswords,
         CancellationToken cancellationToken)
     {
         AskedForRoot = libraryRoot;
@@ -713,6 +715,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
         AskedWithExclusions = exclusions;
         AskedWithDomainsAtOnce = domainsAtOnce;
         AskedToIncludeEnatelSso = includeEnatelSso;
+        AskedToScanGppPasswords = scanGppPasswords;
         WasRun = true;
 
         if (Cancels)

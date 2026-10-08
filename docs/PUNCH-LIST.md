@@ -13,6 +13,86 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Checkpoint integration before the Stage 6/7 correction — owner-approved 2026-10-08.**
+The owner authorized a separate shared-proof checkpoint, correction of the three baseline verification failures without weaker checks or changed historical values, and a merge of `rules-delivery` into `main` only after the correct-source full regression and exact-head CI pass.
+The shared-proof checkpoint is committed as `58200ff`, the bounded gate correction passes 132 focused checks plus all seven required cases across five isolated rebuilt defects and restored controls, and the [verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains the exact source/binary provenance and subsequent outcomes.
+The approved integration includes SEC-026 and SEC-083 capture, keeps this checkout and branch, and leaves unrelated diagnostics, the Stage 6/7 correction, new measurements and production operations outside this checkpoint.
+
+**Stage 6/7 design review — completed; balanced correction proposal open, 2026-10-08.**
+The read-only review traced the active GUI/CLI pipeline and retained evidence, verified all 954 compiled inputs against the checkpoint, and supported Tier-0-first assessment plus uncapped backwards membership search without accepting complete attack-path coverage or production capacity.
+The proposed correction factors source-bound assessment work and ordered witnesses before resource-batched evaluation and persistence, addressing preparation, memory, publication and selected readback together rather than adding a depth cutoff or another storage-only patch.
+Implement only under a bounded approved followup with unchanged permission/count/uncertainty/generation semantics apart from explicitly accepted scope corrections; the predecessor depth-five limit and the proof-heavy synthetic result are not production budgets.
+
+**Broad-principal admission contract — P2 open, code-confirmed 2026-10-08.**
+Accepted decision 0116 includes Domain Users among broad principals kept symbolic, but automatic discovery and path requester selection special-case only Everyone and Authenticated Users, allowing resolved broad groups through ordinary candidate/expansion handling.
+The shared principal registry already identifies those groups, while their contribution to the recorded production scope and question volume remains unmeasured.
+Align the automatic boundary in the approved Stage 6/7 followup without dropping source permissions, broad-exposure findings or explicit uncertainty, and verify any intentional result-set change separately from unchanged-answer performance comparisons.
+
+**Active analysis limits outside path depth — P2 open, reviewed 2026-10-08.**
+Normal derivation still uses 500,000 closure entries and 30 minutes, ordinary rule-side membership lookup defaults to 5,000 returned principals, and own-account assessment reuses a Self-Membership check limited to 10,000 relevant permission entries.
+These are active limits, unlike the separately disabled discovery/member-attribution features, and differ from Stage 7's qualified holder walk with no additional depth/result cutoff.
+Their incomplete answers must remain explicit; no reviewed production record proves they caused the publication failure, and changing them requires its own evidence and approval rather than silently treating them as production-capacity guarantees.
+
+**Production judgement exhausted disk during publication — P1 open, 2026-10-07.**
+The production metadata report shows a 20.80 GB main partial file, 62.43 GB WAL and 121.24 MB SHM, but the subsequently authorized read-only size report establishes a 75,533,393,920-byte logical database (18,440,770 pages of 4,096 bytes, zero freelist pages), correcting the earlier claim that the database was only 20.80 GB and the WAL merely excess history; publication failed at deferred index construction and no judgement generation was published.
+The owner-returned v2 report measures `path_proof_chunk` at 60,442,431,488 bytes (80% of Judgement), with 59,017,633,257 bytes of proof content including 47,196,981,473 bytes referenced as requester source proofs and a single 9,041,786,737-byte calculation-header proof; control evidence plus its primary-key index occupies about 4.02 GB and descriptor-entry occurrences about 2.75 GB, so row counts alone would have prioritized the wrong correction.
+All 74 tables were measured and source metadata remained unchanged under deny-write guards; the report's false reconciliation/completeness flag is a diagnostic accounting omission explained by the one 4,096-byte lock-byte page required by SQLite's file-format section 1.4 for this database size (no freelist or pointer-map pages), and the shared-proof correction below is now implemented and offline verified without weakening proof bindings, while production acceptance, package replacement, production judging reruns, commits and pushes remain separately approval-gated.
+
+**Shared requester-proof storage — implemented and offline verified; production acceptance open, 2026-10-08.**
+Judgement 62 replaces repeated source bodies with typed shared components and exact ordered/resource/generation-bound references, replaces the oversized calculation header with a compact manifest over separately saved records and existing uncertainty, and uses saved completion counters plus read/page-scoped reconstruction without changing capture, derivation, permission answers, counting or explicit incompleteness.
+The [verified checkpoint](../.v-shared-path-20261007-7f2c/handoff.json) records a full solution rebuild, 7,420 passing tests with coverage and only three independently reproduced pre-existing failures, all 34 required checks detecting 24 rebuilt defects with restored controls, exact frozen-lab source/input/selection roundtrips, the owner-run current-format lab readback below, 954 matching compiled code/configuration inputs and all 47 earlier layout anchors preserved.
+The full-size synthetic proof workload saved 939,225 nodes, 653,689 questions and 1,586,470 uncertainty records, replacing 47,295,959,913 expanded source bytes and an 18,143,455,537-byte expanded header with a 13,580,939,264-byte completed database and 2,495-byte header at a sampled 25,089,148,257-byte working-file peak; actual publication and passive readback passed, but this targeted workload does not reconstruct other production table volumes or execute capture/derivation/rules/permission evaluation, so production capacity and throughput remain unaccepted and no live access, production rerun, package replacement, commit or push was performed.
+
+**Shared-proof selection persistence cost — P2 open, 2026-10-08.**
+The full-size synthetic run's measured phases total 195.81 minutes, including 143.98 minutes in the combined reference-header sizing and selection-persistence phase, 34.99 minutes in answers/distance/best-route storage and commit, and 6.45 minutes in final publication; these are shared-machine diagnostics, not isolated production writer timings or an end-to-end judging estimate.
+The earlier identical-input pilot reduced the generated database from 726,458,368 to 137,240,576 bytes but added selection lookup work, while read/page-scoped decoding was subsequently corrected and independently mutation-verified without retaining results across reads.
+A further bounded pass should separate generator/reference work from actual persistence, measure repeated component lookup/comparison and small-record writes at the observed forest shape, then propose any additional optimization for approval without dropping witnesses, weakening bindings, limiting coverage or promising a production completion time.
+
+**Pre-existing Evidence 14 regression gates — P2 corrected and offline verified, 2026-10-08.**
+The bounded followup appends the missing format-14 coverage-identity checkpoint and replaces three implicit nullable defaults with explicit choices, retaining the same disabled-scan coverage and all eight historical pins for versions 6-13.
+All 132 focused checks pass with coverage, and the missing pin, each implicit default and a false optional-scan completion are independently detected by five explicitly rebuilt isolated variants with five passing rebuilt controls.
+The original `d187528` failures remain preserved under `.v-shared-path-20261007-7f2c/baseline-existing-gates.trx`; this focused result does not turn that earlier three-failure full run green, and integration still requires its own full regression and exact-head CI.
+
+**Existing-capture delivery compatibility — P1 open, 2026-10-07.**
+The proof-storage correction changes only Judgement, so its analysis requirement is re-judging with the original sealed Evidence and completed Derivation rather than recapture or re-derivation.
+The supplied lab copy actually contains Evidence 13 and Derivation 16, while `rules-delivery` now requires Evidence 14 because of the separate SEC-083 capture change; the production and lab logs identify the same executable, but the production report does not independently state its Evidence format.
+The current checkout must not be presented as ready to rejudge that older capture: a compatible maintenance delivery needs separate authorization and verification, without silently migrating evidence, undoing current capture work, replacing the production package or directing a needless recapture.
+
+**Owner-run current-format lab — completed and readback verified, 2026-10-08 UTC.**
+The supplied `ad.lab-20261008-034144` bundle uses Evidence 14, Derivation 16 and Judgement 62, published 8,441 objects with 20 rules, and passed seal/integrity/binding checks plus normal readback of all 463 questions across 38 pages and eight requester route views on a verified copy.
+Its executable hash matches the locally published package, its logged engine MVID matches the retained DLL, and the matching PDB's 122 recorded source documents match the checkout; Judgement occupies 44,642,304 bytes with a 3,184-byte calculation header, while `CompletedDegraded` correctly retains 22 unknown combined-authorization questions affecting one requester's SEC-071 outcome.
+This validates the new lab run, not production-scale capacity or a clean security verdict; the owner is considering a new production capture, the recommended interim mode is CLI `--capture` without automatic analysis, and no agent production access, package replacement or original-bundle modification was performed.
+
+**SEC-026 duplicate SPNs — implemented and offline verified on rules-delivery, 2026-10-07.**
+The owner approved fixed High per-owner findings for duplicate complete captured SPN values after checking Microsoft documentation; the rule preserves original occurrences, distinct forest-scoped owners, ports/instances/suffixes, explicit incomplete evidence and special-name review without claiming alias equivalence or authentication/takeover success.
+The [verified checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution build, 550 affected-area tests passing with coverage after a correct-source rebuild using CI's noncompeting test-collection setting, 1,030 matching code/configuration inputs and all 54 required behavior checks detecting 17 rebuilt defects with restored controls; the initial parallel UI/logging timeouts are retained as failed attempts, not accepted passes.
+The catalogue now contains 20 rules and Judgement format is 61, with capture/Derivation unchanged and no recapture needed to judge existing sealed evidence; lab/display/production acceptance remains outstanding, and the owner subsequently authorized committing and pushing this checkpoint without changing the production audit, package or budgets.
+
+**Next recommended rule — SEC-083 opt-in capture implemented; finding behavior not approved, 2026-10-07.**
+The unchecked per-audit GUI option and `--scan-gpp-passwords` CLI switch now skip the recursive XML read by default, while opted-in captures preserve non-empty `cpassword` occurrence metadata and per-policy `NotRequested`/`Read`/`PartiallyRead`/`Unreadable` coverage without secret material.
+Evidence format 14, the full solution rebuild and 346 focused passing tests were verified after four isolated rebuilt defects were detected and restored sources were forcibly rebuilt; an earlier incremental restored control was rejected because it reused mutated output.
+Concrete finding wording, file-level grouping and proposed Critical severity remain approval-gated, no SEC-083 judgement ships in this pass, and the production audit/package were not accessed or changed.
+
+**Remaining-rule delivery — owner-selected single branch; inventory reconciled, 2026-10-07.**
+The owner requested adding rules while his production audit runs, using only local branch `rules-delivery` in the existing checkout and no additional worktrees.
+The 13-file reviewed handoff matches its retained hashes; the initial inventory had 19 registrations and 21 proposed new finding/assessment candidates, with SEC-026 now delivered above bringing the shipping catalogue to 20.
+Group subsequent additions only where their evidence and decision scope genuinely overlap, preserve existing shared control products instead of adding duplicate wrapper findings, and settle proposed severities/thresholds/scope before each implementation batch.
+
+**Owner production run — in progress; local cleanup paused, 2026-10-07.**
+The owner reports starting a fresh production audit with his latest build and expects it to run for many hours.
+No new execution log or executable fingerprint has been inspected, so completion, runtime improvement and saved-result acceptance remain unverified.
+Cleanup is paused at his request; the next feature queue remains completion of bounded Stage 7 acceptance followed by reconciling the reviewed rule handoff, with separately recorded reliability corrections and later remediation/report/comparison stages.
+
+**Project TEMP followup — verified test/empty-folder cleanup completed, 2026-10-07.**
+The owner approved cleaning verified project TEMP leftovers in both `C:\Temp` and the user TEMP directory, leaving unrelated applications' files alone.
+The [cleanup record](../.v-temp-inventory-20261007-663a/cleanup-result.json) records 13.96 GiB removed from 1,942 identified synthetic test roots plus 118,828 empty directory nodes removed non-recursively, with available result/provenance records retained.
+The remaining inventoried project-named data is 2.96 GiB, including lab/benchmark bundles, packages and unclassified files; all junctions and unrelated TEMP contents remain untouched, and no source or build behavior changed.
+
+**Stray sibling cleanup — completed after owner-approved inspection, 2026-10-07.**
+The renamed active checkout is `SecureAD.Next` on main, the empty followup sibling was removed non-recursively, and the previously missed `SecureAD.Next-stray-2026-09-30` sibling was inspected rather than treated as disposable by its name.
+The [cleanup record](../.v-stray-cleanup-20261007-4f82/cleanup-result.json) records 41.45 GiB reclaimed from 27 abandoned synthetic test roots and 2,445 SHA-256-identical duplicate files, with 9.13 GiB of unique remaining material moved under `next/artifacts/retired-stray-20260930` and a [duplicate reconstruction map](../.v-stray-cleanup-20261007-4f82/duplicate-path-map.csv).
+Original byte/file totals reconcile exactly with deleted and retained files, canonical copies were rehashed, and the stray sibling was removed only once empty; application source, packages and unique historical inputs were not changed.
+
 **Repository storage — independent checkout and selective consolidation completed, 2026-10-07.**
 The active stage7 checkout now owns its Git database and main history, while retained material from both retired checkouts is consolidated under `next/artifacts` with a [path index](../next/artifacts/history-index.json), original measurements/source snapshots preserved and no application changes.
 The [cleanup summary](../.v-repository-consolidation-20261007-a118/cleanup-summary.json) records another 101.86 GiB reclaimed, 200.05 GiB across both cleanup passes, and 40.96 GiB of retained historical inputs/records/packages; removed material comprises reviewed generated outputs, processed trace caches, abandoned synthetic tests and rebuildable binaries rather than unique capture evidence.

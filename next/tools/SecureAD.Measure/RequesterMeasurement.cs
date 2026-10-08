@@ -96,8 +96,8 @@ internal static class RequesterMeasurement
             var beforeRead = Hash(analysisPath);
             var opened = JudgementReader.Open(bundle);
             Require(opened.IsSuccess, opened.Error?.Description ?? "Reopening failed.");
-            PathRequesterCoverage coverage;
-            using (var reader = opened.Value) coverage = reader.ReadPathRequesterCoverage();
+            PathRequesterSummary coverage;
+            using (var reader = opened.Value) coverage = reader.ReadPathRequesterSummary();
             watch.Stop();
             Save(output, "reopening.json", new { Ms = watch.Elapsed.TotalMilliseconds, AllocatedBytes = GC.GetTotalAllocatedBytes(true) - allocated, Coverage = coverage });
             observer.Enter("IndependentStoredProofInspection");

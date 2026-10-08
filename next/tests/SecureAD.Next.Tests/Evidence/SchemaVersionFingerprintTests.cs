@@ -58,6 +58,8 @@ public sealed class SchemaVersionFingerprintTests
         // 13 - `ace` replaced by `access_entry` and `descriptor_entry`, with the ordinal on the
         // link and the entry unique on ace_hash. P-272.
         [13] = "ec7e88e927de488e",
+        // 14 - per-policy coverage for the optional SEC-083 Group Policy XML scan.
+        [14] = "e28bca65d6c77353",
     };
 
     [Fact]

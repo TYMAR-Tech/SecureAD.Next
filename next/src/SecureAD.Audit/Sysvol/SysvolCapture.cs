@@ -2,6 +2,7 @@ using System.Globalization;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Security;
 
@@ -66,6 +67,7 @@ public sealed class SysvolCapture
     private readonly BundleWriter _writer;
     private readonly IRunLog _log;
     private readonly TimeProvider _time;
+    private readonly CaptureOptions _options;
 
     /// <summary>
     /// Creates a SYSVOL capture writing into <paramref name="writer"/>.
@@ -75,16 +77,29 @@ public sealed class SysvolCapture
     /// <param name="log">The run's operational log.</param>
     /// <param name="time">The diagnostic clock.</param>
     public SysvolCapture(ISysvolFileReader reader, BundleWriter writer, IRunLog log, TimeProvider time)
+        : this(reader, writer, log, time, CaptureOptions.Default)
+    {
+    }
+
+    /// <summary>Creates a SYSVOL capture with the optional reads selected for this run.</summary>
+    public SysvolCapture(
+        ISysvolFileReader reader,
+        BundleWriter writer,
+        IRunLog log,
+        TimeProvider time,
+        CaptureOptions options)
     {
         ArgumentNullException.ThrowIfNull(reader);
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(log);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(options);
 
         _reader = reader;
         _writer = writer;
         _log = log;
         _time = time;
+        _options = options;
     }
 
     /// <summary>
@@ -110,7 +125,13 @@ public sealed class SysvolCapture
     {
         ArgumentNullException.ThrowIfNull(inventory);
 
-        var policies = new List<GpoCoverage>(inventory.UnlocatablePolicies);
+        var policies = new List<GpoCoverage>(
+            inventory.UnlocatablePolicies.Select(policy =>
+                _options.ScanGppPasswords
+                    ? policy.WithGppPasswordScan(
+                        GppPasswordScanOutcome.Unreadable,
+                        policy.Reason ?? "The policy had no readable SYSVOL location.")
+                    : policy));
 
         foreach (var target in inventory.Policies)
         {
@@ -152,7 +173,7 @@ public sealed class SysvolCapture
         }
         catch (PolicyAbandonedException)
         {
-            return progress.Outcome();
+            return WithUnavailableGppScan(progress.Outcome());
         }
     }
 
@@ -167,8 +188,8 @@ public sealed class SysvolCapture
         {
             // The policy's own folder was refused. Nothing beneath it is worth attempting, and
             // reporting the whole policy as unread is the honest answer rather than a partial one.
-            return GpoCoverage.Unreadable(
-                target.GpoGuid, target.DisplayName, target.FileSysPath, root.Error.Description);
+            return WithUnavailableGppScan(GpoCoverage.Unreadable(
+                target.GpoGuid, target.DisplayName, target.FileSysPath, root.Error.Description));
         }
 
         if (root.Value is null)
@@ -176,12 +197,12 @@ public sealed class SysvolCapture
             // The directory says this policy exists and the share does not hold its folder. That is
             // a fact about the customer's forest - an orphaned policy object - and not a failure of
             // this run, but it is still a policy nothing was read from.
-            return GpoCoverage.Unreadable(
+            return WithUnavailableGppScan(GpoCoverage.Unreadable(
                 target.GpoGuid,
                 target.DisplayName,
                 target.FileSysPath,
                 "The policy's folder is not on the SYSVOL share. The directory holds the policy "
-                + "object and its files are missing, so what it configures cannot be known.");
+                + "object and its files are missing, so what it configures cannot be known."));
         }
 
         progress.WriteDescriptor(PolicyRoot, root.Value);
@@ -189,11 +210,20 @@ public sealed class SysvolCapture
         await ReadFolderPermissionsAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadRegistryPoliciesAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadSecurityTemplateAsync(target, progress, cancellationToken).ConfigureAwait(false);
-        await ReadPreferenceFilesAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadScriptPermissionsAsync(target, progress, cancellationToken).ConfigureAwait(false);
+        var gppScan = _options.ScanGppPasswords
+            ? await ReadPreferenceFilesAsync(target, progress, cancellationToken).ConfigureAwait(false)
+            : GppScanCoverage.NotRequested;
 
-        return progress.Outcome();
+        return progress.Outcome().WithGppPasswordScan(gppScan.Outcome, gppScan.Reason);
     }
+
+    private GpoCoverage WithUnavailableGppScan(GpoCoverage coverage) =>
+        _options.ScanGppPasswords
+            ? coverage.WithGppPasswordScan(
+                GppPasswordScanOutcome.Unreadable,
+                coverage.Reason ?? "The optional GPP password scan could not read this policy.")
+            : coverage;
 
     /// <summary>
     /// Reads the permissions on every folder beneath the policy root, per
@@ -226,7 +256,8 @@ public sealed class SysvolCapture
     {
         foreach (var (relativePath, scope) in RegistryPolicyFiles)
         {
-            var file = await ReadFileAsync(target, progress, relativePath, FileExpectation.MayNotExist, cancellationToken)
+            var file = await ReadFileAsync(target, progress, relativePath, FileExpectation.MayNotExist, cancellationToken,
+                    recordContentFailure: null)
                 .ConfigureAwait(false);
 
             if (file is null)
@@ -249,7 +280,8 @@ public sealed class SysvolCapture
     private async Task ReadSecurityTemplateAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
-        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, FileExpectation.MayNotExist, cancellationToken)
+        var file = await ReadFileAsync(target, progress, SecurityTemplateFile, FileExpectation.MayNotExist, cancellationToken,
+                recordContentFailure: null)
             .ConfigureAwait(false);
 
         if (file is null)
@@ -282,7 +314,7 @@ public sealed class SysvolCapture
     /// The files are found by listing the share rather than by trusting the policy's declared
     /// extension list, because what a workstation applies is what is on the share.
     /// </remarks>
-    private async Task ReadPreferenceFilesAsync(
+    private async Task<GppScanCoverage> ReadPreferenceFilesAsync(
         GpoTarget target, PolicyProgress progress, CancellationToken cancellationToken)
     {
         progress.ThrowIfAbandoned();
@@ -293,14 +325,23 @@ public sealed class SysvolCapture
         if (!files.IsSuccess)
         {
             progress.RecordFailure(files.Error);
-            return;
+            return GppScanCoverage.Unreadable(files.Error.Description);
         }
+
+        var failures = new List<string>();
+        var filesRead = 0;
 
         foreach (var relativePath in files.Value)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var content = await ReadFileAsync(target, progress, relativePath, FileExpectation.WasListed, cancellationToken)
+            var content = await ReadFileAsync(
+                    target,
+                    progress,
+                    relativePath,
+                    FileExpectation.WasListed,
+                    cancellationToken,
+                    failures.Add)
                 .ConfigureAwait(false);
 
             if (content is null)
@@ -308,15 +349,32 @@ public sealed class SysvolCapture
                 continue;
             }
 
+            filesRead++;
             var parsed = GroupPolicyPreferenceParser.ParsePreferenceFile(content);
 
             progress.WriteFileErrors(relativePath, parsed.Errors);
+            failures.AddRange(parsed.Errors.Select(error => $"{relativePath}: {error}"));
 
             foreach (var finding in parsed.Findings)
             {
                 progress.WriteStoredCredential(relativePath, finding);
             }
         }
+
+        if (failures.Count == 0)
+        {
+            return GppScanCoverage.Read;
+        }
+
+        var reason = string.Join(" ", failures.Distinct(StringComparer.Ordinal).Take(3));
+        if (failures.Distinct(StringComparer.Ordinal).Skip(3).Any())
+        {
+            reason += " More XML read or parse failures were recorded.";
+        }
+
+        return filesRead == 0 && files.Value.Count > 0
+            ? GppScanCoverage.Unreadable(reason)
+            : GppScanCoverage.PartiallyRead(reason);
     }
 
     /// <summary>
@@ -385,13 +443,15 @@ public sealed class SysvolCapture
     /// decides what an absent file means, and nothing else here can tell the two apart.
     /// </param>
     /// <param name="cancellationToken">Stops the read.</param>
+    /// <param name="recordContentFailure">Additional content-only coverage for the optional XML scan; null for ordinary files.</param>
     /// <returns>The bytes, or null if the file is not there or could not be read.</returns>
     private async Task<byte[]?> ReadFileAsync(
         GpoTarget target,
         PolicyProgress progress,
         string relativePath,
         FileExpectation expectation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? recordContentFailure)
     {
         progress.ThrowIfAbandoned();
         var file = await _reader
@@ -400,6 +460,7 @@ public sealed class SysvolCapture
 
         if (!file.IsSuccess)
         {
+            recordContentFailure?.Invoke($"{relativePath}: {file.Error.Description}");
             progress.RecordFailure(file.Error);
             return null;
         }
@@ -415,6 +476,8 @@ public sealed class SysvolCapture
             // it as "absent" let the policy keep reporting complete coverage.
             if (expectation == FileExpectation.WasListed)
             {
+                recordContentFailure?.Invoke(
+                    $"{relativePath}: the file was listed and then could not be opened.");
                 progress.RecordVanishedContents(relativePath);
             }
 
@@ -432,6 +495,21 @@ public sealed class SysvolCapture
         }
 
         return file.Value;
+    }
+
+    private sealed record GppScanCoverage(GppPasswordScanOutcome Outcome, string? Reason)
+    {
+        public static GppScanCoverage NotRequested { get; } =
+            new(GppPasswordScanOutcome.NotRequested, null);
+
+        public static GppScanCoverage Read { get; } =
+            new(GppPasswordScanOutcome.Read, null);
+
+        public static GppScanCoverage PartiallyRead(string reason) =>
+            new(GppPasswordScanOutcome.PartiallyRead, reason);
+
+        public static GppScanCoverage Unreadable(string reason) =>
+            new(GppPasswordScanOutcome.Unreadable, reason);
     }
 
     /// <summary>Reads and stores the permissions on one path inside the policy's folder.</summary>

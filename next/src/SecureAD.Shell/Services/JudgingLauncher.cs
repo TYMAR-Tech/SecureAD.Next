@@ -104,7 +104,7 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
 
         using var reader = opened.Value!;
         var stored = reader.Read();
-        var pathRequesters = requesterPolicy == PathRequesterPolicy.Disabled ? null : reader.ReadPathRequesterCoverage();
+        var pathRequesters = requesterPolicy == PathRequesterPolicy.Disabled ? null : reader.ReadPathRequesterSummary(cancellationToken);
 
         var bySeverity = stored.Findings
             .GroupBy(f => f.Severity)

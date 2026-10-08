@@ -194,11 +194,22 @@ public sealed class CaptureRun
         CapturePlan plan,
         string bundleDirectory,
         IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        CancellationToken cancellationToken) =>
+        await RunAsync(plan, bundleDirectory, exclusions, CaptureOptions.Default, cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <summary>Reads the planned forest with the optional evidence reads selected for this run.</summary>
+    public async Task<CaptureRunResult> RunAsync(
+        CapturePlan plan,
+        string bundleDirectory,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        CaptureOptions options,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(exclusions);
+        ArgumentNullException.ThrowIfNull(options);
 
         // The denominator, recorded before anything is read. A run that worked out afterwards how
         // much of the forest it had covered would be measuring against whatever it managed to
@@ -487,7 +498,7 @@ public sealed class CaptureRun
             "reading the policy share",
             [new RunLogDetail("policies", declaredPolicies)]);
 
-        var sysvol = await new SysvolCapture(_sysvolFiles, writer, _log, _time)
+        var sysvol = await new SysvolCapture(_sysvolFiles, writer, _log, _time, options)
             .ReadAsync(sink.Policies, cancellationToken)
             .ConfigureAwait(false);
 

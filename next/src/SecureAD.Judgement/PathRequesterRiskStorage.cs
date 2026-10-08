@@ -16,6 +16,7 @@ internal static class PathRequesterRiskStorage
         CREATE TABLE path_requester_risk (id INTEGER PRIMARY KEY, requester TEXT NOT NULL COLLATE NOCASE,
             question_key TEXT NOT NULL UNIQUE, verdict TEXT NOT NULL,
             source_proof INTEGER NOT NULL REFERENCES path_proof(id), proof INTEGER NOT NULL REFERENCES path_proof(id),
+            source_fingerprint BLOB NOT NULL CHECK(length(source_fingerprint)=32),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         CREATE INDEX ix_path_risk_requester ON path_requester_risk(requester,id);
         CREATE INDEX ix_path_risk_group ON path_requester_risk(requester,verdict,id);
@@ -28,11 +29,21 @@ internal static class PathRequesterRiskStorage
 
     private sealed record Authority(MembershipRouteSummary Routes, PathRiskAuthorityEvidence Evidence);
 
+    internal static IReadOnlyList<PathProofStorage.Reference> WriteSources(PathSharedProofStorage shared,
+        IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
+        IReadOnlyList<SavedMembershipDaclProof> membershipDacls, CancellationToken token) =>
+        Questions(requesters, ownAccounts, membershipDacls).Select(question =>
+        {
+            token.ThrowIfCancellationRequested();
+            return shared.Write(question.SourceProof);
+        }).ToArray();
+
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction,
         JudgementDescription description, JudgingInputs sources, PathInputs inputs, bool selectionRequested,
         IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
         IReadOnlyList<SavedMembershipDaclProof> membershipDacls, string calculationFingerprint,
-        PathProofStorage.Writer proofs, CancellationToken cancellationToken, BestSupportedRouteSelection bestRoutes)
+        PathProofStorage.Writer proofs, CancellationToken cancellationToken, BestSupportedRouteSelection bestRoutes,
+        IReadOnlyList<PathProofStorage.Reference> sourceReferences)
     {
         sources.RequireFor(description);
         var authorities = new Dictionary<string, Authority>(StringComparer.OrdinalIgnoreCase);
@@ -40,18 +51,21 @@ internal static class PathRequesterRiskStorage
         var counts = Enum.GetValues<PathRequesterFamily>().ToDictionary(family => family, _ => new int[4]);
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO path_requester_risk(requester,question_key,verdict,source_proof,proof,fingerprint) VALUES ($requester,$key,$verdict,$source,$proof,$hash)";
+        insert.CommandText = "INSERT INTO path_requester_risk(requester,question_key,verdict,source_proof,proof,fingerprint,source_fingerprint) VALUES ($requester,$key,$verdict,$source,$proof,$hash,$sourcehash)";
         var requesterParameter = insert.Parameters.Add("$requester", SqliteType.Text);
         var keyParameter = insert.Parameters.Add("$key", SqliteType.Text);
         var verdictParameter = insert.Parameters.Add("$verdict", SqliteType.Text);
         var sourceParameter = insert.Parameters.Add("$source", SqliteType.Integer);
         var proofParameter = insert.Parameters.Add("$proof", SqliteType.Integer);
         var hashParameter = insert.Parameters.Add("$hash", SqliteType.Blob);
+        var sourceHashParameter = insert.Parameters.Add("$sourcehash", SqliteType.Blob);
         insert.Prepare();
+        var sourceIndex = 0;
         foreach (var question in Questions(requesters, ownAccounts, membershipDacls))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var source = proofs.Write(question.SourceProof);
+            if (sourceIndex >= sourceReferences.Count) throw Tier0PathStorage.InvalidProof();
+            var source = sourceReferences[sourceIndex++];
             bestRoutes.Proof(question.SourceProof, source.Id, Convert.ToHexString(source.Fingerprint));
             var answer = Qualify(question, Convert.ToHexString(source.Fingerprint));
             counts[question.Family][(int)answer.Verdict]++;
@@ -60,10 +74,12 @@ internal static class PathRequesterRiskStorage
             keyParameter.Value = Key(answer);
             verdictParameter.Value = answer.Verdict.ToString();
             sourceParameter.Value = source.Id;
+            sourceHashParameter.Value = source.Fingerprint;
             proofParameter.Value = proof.Id;
             hashParameter.Value = proof.Fingerprint;
             if (insert.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
         }
+        if (sourceIndex != sourceReferences.Count) throw Tier0PathStorage.InvalidProof();
         var families = counts.Select(pair => new PathRiskFamilyCoverage(pair.Key, pair.Value.Sum(),
             pair.Value[0], pair.Value[1], pair.Value[2], pair.Value[3])).ToArray();
         var requested = selectionRequested || families.Any(family => family.Questions != 0);
@@ -288,6 +304,8 @@ internal static class PathRequesterRiskStorage
         command.Parameters.AddWithValue("$verdict", verdict.ToString());
         command.Parameters.AddWithValue("$after", after?.AfterId ?? 0);
         command.Parameters.AddWithValue("$limit", PathRiskPage.PageSize + 1);
+        var shared = new PathSharedProofStorage(connection, description, cancellationToken);
+        using var proofScope = shared.BeginRead();
         using (var read = command.ExecuteReader())
             while (read.Read())
             {
@@ -298,7 +316,7 @@ internal static class PathRequesterRiskStorage
                     break;
                 }
                 var risk = ReadAssessment(connection, read, description, coverage, cancellationToken);
-                questions.Add(ReadQuestion(connection, read.GetInt64(6), risk, read.GetInt64(5), cancellationToken));
+                questions.Add(ReadQuestion(connection, description, read.GetInt64(6), risk, read.GetInt64(5), cancellationToken, shared));
             }
         command.Parameters.Clear();
         command.CommandText = "SELECT COUNT(*) FROM path_anchor WHERE target=$target";
@@ -324,14 +342,19 @@ internal static class PathRequesterRiskStorage
         using var read = command.ExecuteReader();
         if (!read.Read()) throw Tier0PathStorage.InvalidProof();
         var risk = ReadAssessment(connection, read, description, coverage, token);
-        var result = ReadQuestion(connection, read.GetInt64(6), risk, read.GetInt64(5), token);
+        var result = ReadQuestion(connection, description, read.GetInt64(6), risk, read.GetInt64(5), token);
         if (read.Read() || risk.Authorization != ControlEvaluationState.Established) throw Tier0PathStorage.InvalidProof();
         return result;
     }
 
-    private static PathRiskQuestion ReadQuestion(SqliteConnection connection, long id, PathRequesterRiskAssessment risk,
-        long sourceProof, CancellationToken cancellationToken)
+    private static PathRiskQuestion ReadQuestion(SqliteConnection connection, JudgementDescription description, long id, PathRequesterRiskAssessment risk,
+        long sourceProof, CancellationToken cancellationToken) =>
+        ReadQuestion(connection, description, id, risk, sourceProof, cancellationToken, null);
+
+    private static PathRiskQuestion ReadQuestion(SqliteConnection connection, JudgementDescription description, long id, PathRequesterRiskAssessment risk,
+        long sourceProof, CancellationToken cancellationToken, PathSharedProofStorage? shared)
     {
+        shared ??= new PathSharedProofStorage(connection, description, cancellationToken);
         PathRiskQuestion question;
         Guid generation;
         Guid? derivation;
@@ -347,8 +370,7 @@ internal static class PathRequesterRiskStorage
         switch (risk.Family)
         {
             case PathRequesterFamily.RequesterDacl:
-                var direct = PathProofStorage.Read<SavedRequesterDaclProof>(connection, sourceProof,
-                    risk.SourceProofFingerprint, cancellationToken);
+                var direct = shared.Read<SavedRequesterDaclProof>(sourceProof, risk.SourceProofFingerprint);
                 var dacl = direct.Assessment;
                 if (dacl?.Request is null) throw Tier0PathStorage.InvalidProof();
                 RequesterDaclProofs.RequireMembershipEvidence(dacl, cancellationToken);
@@ -359,8 +381,7 @@ internal static class PathRequesterRiskStorage
                     dacl.EvidenceSeal, dacl.Request.RequesterDn, dacl.Request.TargetDn);
                 break;
             case PathRequesterFamily.OwnAccountMembership:
-                var own = PathProofStorage.Read<SavedOwnAccountMembershipProof>(connection, sourceProof,
-                    risk.SourceProofFingerprint, cancellationToken);
+                var own = shared.Read<SavedOwnAccountMembershipProof>(sourceProof, risk.SourceProofFingerprint);
                 var membership = own.Assessment;
                 if (membership?.Request is null || membership.Permission is null) throw Tier0PathStorage.InvalidProof();
                 question = new(id, risk, own.SourceFingerprint, own.Steps, null, membership, null);
@@ -373,8 +394,7 @@ internal static class PathRequesterRiskStorage
                 kind = membership.Request.PermissionKind;
                 break;
             case PathRequesterFamily.MembershipDacl:
-                var combined = PathProofStorage.Read<SavedMembershipDaclProof>(connection, sourceProof,
-                    risk.SourceProofFingerprint, cancellationToken);
+                var combined = shared.Read<SavedMembershipDaclProof>(sourceProof, risk.SourceProofFingerprint);
                 var value = combined.Assessment;
                 if (value?.Request is null || value.Membership?.Permission is null) throw Tier0PathStorage.InvalidProof();
                 if (value.Dacl is { } combinedDacl)
@@ -420,26 +440,44 @@ internal static class PathRequesterRiskStorage
     }
 
     internal static PathRequesterProofs ReadProofs(SqliteConnection connection, JudgementDescription description,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) => ReadProofs(connection, description, cancellationToken, null);
+
+    internal static PathRequesterProofs ReadProofs(SqliteConnection connection, JudgementDescription description,
+        CancellationToken cancellationToken, string? requesterDn)
     {
-        var coverage = ReadCoverage(connection, description, cancellationToken);
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT requester,question_key,proof,fingerprint,verdict,source_proof,id FROM path_requester_risk ORDER BY id";
-        using var read = command.ExecuteReader();
         var requesters = new List<SavedRequesterDaclProof>();
         var ownAccounts = new List<SavedOwnAccountMembershipProof>();
         var membershipDacls = new List<SavedMembershipDaclProof>();
-        while (read.Read())
+        foreach (var value in ReadQuestions(connection, description, cancellationToken, requesterDn))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var value = ReadQuestion(connection, read.GetInt64(6),
-                ReadAssessment(connection, read, description, coverage, cancellationToken), read.GetInt64(5), cancellationToken);
             if (value.Requester is { } requester) requesters.Add(new(requester, value.SourceFingerprint));
             else if (value.OwnAccount is { } own) ownAccounts.Add(new(own, value.SourceFingerprint, value.Steps));
             else if (value.Membership is { } membership) membershipDacls.Add(new(membership, value.SourceFingerprint));
             else throw Tier0PathStorage.InvalidProof();
         }
         return new(requesters, ownAccounts, membershipDacls);
+    }
+
+    internal static void ValidateProofs(SqliteConnection connection, JudgementDescription description, CancellationToken token)
+    {
+        foreach (var _ in ReadQuestions(connection, description, token, null)) token.ThrowIfCancellationRequested();
+    }
+
+    private static IEnumerable<PathRiskQuestion> ReadQuestions(SqliteConnection connection, JudgementDescription description,
+        CancellationToken token, string? requesterDn)
+    {
+        var coverage = ReadCoverage(connection, description, token);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT requester,question_key,proof,fingerprint,verdict,source_proof,id FROM path_requester_risk "
+            + (requesterDn is null ? "" : "WHERE requester=$requester ") + "ORDER BY id";
+        if (requesterDn is not null) command.Parameters.AddWithValue("$requester", requesterDn);
+        using var read = command.ExecuteReader();
+        while (read.Read())
+        {
+            token.ThrowIfCancellationRequested();
+            yield return ReadQuestion(connection, description, read.GetInt64(6),
+                ReadAssessment(connection, read, description, coverage, token), read.GetInt64(5), token);
+        }
     }
 
     internal static void RequirePublishable(SqliteConnection connection)
@@ -466,8 +504,8 @@ internal static class PathRequesterRiskStorage
         if ((long)command.ExecuteScalar()! != expected) throw Tier0PathStorage.InvalidProof();
     }
 
-    private static string Key(PathRequesterRiskAssessment value) => string.Join('\0', value.Family.ToString(),
-        value.RequesterDn.ToUpperInvariant(), value.TargetDn.ToUpperInvariant(), value.GroupDn?.ToUpperInvariant(), value.PermissionKind?.ToString());
+    private static string Key(PathRequesterRiskAssessment value) => PathRequesterSelector.Key(value.Family,
+        value.RequesterDn, value.TargetDn, value.GroupDn, value.PermissionKind);
 
     private static T Decode<T>(string json, byte[] fingerprint)
     {

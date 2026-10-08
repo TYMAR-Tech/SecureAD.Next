@@ -93,6 +93,7 @@ internal sealed record CommandLine(
         "SecureAD.Cli.Resources.CaptureObjectScope", typeof(CommandLine).Assembly);
 
     public bool IncludeEnatelSso { get; init; }
+    public bool ScanGppPasswords { get; init; }
     public CaptureObjectScope ObjectScope => CaptureObjectScope.For(IncludeEnatelSso);
     public string ClassScopeDescription => string.Format(CultureInfo.CurrentCulture,
         ScopeText("ExcludedClasses"), string.Join(", ", ObjectScope.ExcludedClasses));
@@ -115,6 +116,7 @@ internal sealed record CommandLine(
             "  securead --library <directory> [--forest <name>] [--concurrent <count>]",
             "           [--controller <domain>=<host>]... [--validate | --preview | --capture]",
             "           [--include-enatel-sso]",
+            "           [--scan-gpp-passwords]",
             "  securead --derive <bundle directory>",
             "  securead --judge <bundle directory>",
             "  securead --describe <bundle directory> [--sizes]",
@@ -195,6 +197,7 @@ internal sealed record CommandLine(
         var sizes = false;
         int? concurrency = null;
         var includeEnatelSso = false;
+        var scanGppPasswords = false;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -202,6 +205,10 @@ internal sealed record CommandLine(
             {
                 case "--include-enatel-sso":
                     includeEnatelSso = true;
+                    break;
+
+                case "--scan-gpp-passwords":
+                    scanGppPasswords = true;
                     break;
 
                 case "--library" when i + 1 < args.Length:
@@ -296,6 +303,7 @@ internal sealed record CommandLine(
                 || overrides.Count > 0
                 || concurrency is not null
                 || includeEnatelSso
+                || scanGppPasswords
                 || verbs > 1
                 // --sizes governs what a description measures, and nothing else performs a
                 // measurement to govern. Refused rather than ignored beside --derive or --judge,
@@ -333,14 +341,19 @@ internal sealed record CommandLine(
         if ((string.IsNullOrWhiteSpace(library) && !previewOnly)
             || (validateOnly && previewOnly)
             || (captureOnly && (validateOnly || previewOnly))
-            || (concurrency is not null && (validateOnly || previewOnly)))
+            || (concurrency is not null && (validateOnly || previewOnly))
+            || (scanGppPasswords && (validateOnly || previewOnly)))
         {
             return null;
         }
 
         return new CommandLine(
             library, forest, overrides, validateOnly, previewOnly, captureOnly, DeriveOnly: null,
-            JudgeOnly: null, concurrency) { IncludeEnatelSso = includeEnatelSso };
+            JudgeOnly: null, concurrency)
+        {
+            IncludeEnatelSso = includeEnatelSso,
+            ScanGppPasswords = scanGppPasswords,
+        };
     }
 
     /// <summary>

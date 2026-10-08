@@ -135,6 +135,7 @@ internal interface ICaptureLauncher
     /// nothing there and passing one would suggest otherwise.
     /// </param>
     /// <param name="includeEnatelSso">Includes the three otherwise-excluded Enatel SSO classes for this run.</param>
+    /// <param name="scanGppPasswords">Runs the optional recursive SEC-083 XML scan for this audit.</param>
     /// <param name="cancellationToken">Stops the run; it still records why it stopped.</param>
     Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -143,5 +144,6 @@ internal interface ICaptureLauncher
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
         bool includeEnatelSso,
+        bool scanGppPasswords,
         CancellationToken cancellationToken);
 }

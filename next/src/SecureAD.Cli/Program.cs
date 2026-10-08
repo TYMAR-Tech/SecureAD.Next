@@ -9,6 +9,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 
 namespace SecureAD.Cli;
 
@@ -196,6 +197,7 @@ internal static class Program
                 ImmutableDictionary<string, AttestedExclusion>.Empty,
                 Warn,
                 options.ObjectScope,
+                new CaptureOptions(options.ScanGppPasswords),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -600,7 +602,7 @@ internal static class Program
             var openedCoverage = JudgementReader.Open(bundleDirectory);
             if (!openedCoverage.IsSuccess) return Failed;
             using var coverageReader = openedCoverage.Value;
-            if (coverageReader.ReadPathRequesterCoverage().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
+            if (coverageReader.ReadPathRequesterSummary().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
                 return Failed;
         }
 
