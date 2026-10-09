@@ -46,15 +46,13 @@ internal static class Tier0DistanceStorage
 
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction, JudgementDescription description,
         PathInputs inputs, string calculationFingerprint, IReadOnlyList<OwnershipAuditStorage.TargetRow> recorded,
-        IReadOnlyList<Tier0PathNode> nodes, PathRequesterRouteIndex routes, PathCalculationStorage.Selection? selection,
+        IReadOnlyDictionary<string, Tier0PathNode> nodes, PathRequesterRouteIndex routes, PathCalculationStorage.Selection? selection,
         IEnumerable<string> checkedRequesters, CancellationToken cancellationToken)
     {
-        var byDn = nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         if (inputs.Availability == PathInputAvailability.Recorded ? nodes.Count != recorded.Count : nodes.Count != 0)
             throw Tier0PathStorage.InvalidProof();
         var classified = inputs.Classifications.Where(value => value.State == Tier0State.Established)
             .Select(value => value.Target).ToHashSet();
-        var fixedTargets = inputs.FixedTargets.ToHashSet();
         var checkedObjects = checkedRequesters.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var classifiedCount = 0;
         var fixedCount = 0;
@@ -71,10 +69,11 @@ internal static class Tier0DistanceStorage
         foreach (var row in recorded)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            byDn.TryGetValue(row.Identity.DistinguishedName, out var node);
-            if (node is not null && node.Subject != row.Identity) throw Tier0PathStorage.InvalidProof();
+            nodes.TryGetValue(row.Identity.DistinguishedName, out var node);
+            if (node is not null && node.Subject != row.Identity
+                || inputs.Availability == PathInputAvailability.Recorded && node is null) throw Tier0PathStorage.InvalidProof();
             var distance = node is null ? null : routes.SupportedDistance(node);
-            var isFixed = fixedTargets.Contains(row.Identity);
+            var isFixed = inputs.IsFixedTarget(row.Identity, cancellationToken);
             var isClassified = classified.Contains(row.Identity);
             var facts = new Tier0DistanceFacts(node is null ? Tier0DistanceVerdict.NotAssessed
                     : isFixed ? Tier0DistanceVerdict.FixedTarget

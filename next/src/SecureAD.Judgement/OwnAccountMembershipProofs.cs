@@ -161,7 +161,7 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
             steps.Add(next);
             current = parent;
         }
-        if (current.MembershipDistance != 0 || !inputs.FixedTargets.Contains(current.Subject)) throw Tier0PathStorage.InvalidProof();
+        if (current.MembershipDistance != 0 || !inputs.IsFixedTarget(current.Subject, cancellationToken)) throw Tier0PathStorage.InvalidProof();
         return steps;
     }
 

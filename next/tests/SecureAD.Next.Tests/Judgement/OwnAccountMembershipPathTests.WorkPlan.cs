@@ -236,7 +236,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.Equal(fingerprint, BundleSealing.HashFile(path));
     }
 
-    private static void RewriteRequesterWork(PrerequisiteFixture fixture)
+    private static void RewriteRequesterWork(PrerequisiteFixture fixture, Action<PathRequesterWorkPhase>? beginPhase = null)
     {
         using (var clear = fixture.Connection.CreateCommand())
         {
@@ -249,7 +249,7 @@ public sealed partial class OwnAccountMembershipPathTests
         }
         using var statements = new PreparedStatements(fixture.Connection);
         Tier0PathStorage.Write(fixture.Connection, fixture.Description, fixture.Sources, [], [], CancellationToken.None, [], true,
-            _ => { }, null, statements);
+            beginPhase ?? (_ => { }), null, statements);
     }
 
     private static string WorkJson<T>(T value) => JsonSerializer.Serialize(value, ProofSerialization.Options);

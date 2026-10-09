@@ -228,9 +228,16 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
         command.Parameters.AddWithValue("$id", id);
         using var read = command.ExecuteReader();
         if (!read.Read()) throw Tier0PathStorage.InvalidProof();
-        var question = ReadQuestion(read, description);
+        RequireQuestion(read, description, offset: 0, value);
+        if (read.Read()) throw Tier0PathStorage.InvalidProof();
+    }
+
+    internal static void RequireQuestion(SqliteDataReader read, JudgementDescription description, int offset,
+        PathRequesterRiskAssessment value)
+    {
+        var question = ReadQuestion(read, description, offset);
         if (question.Family != value.Family || question.RequesterDn != value.RequesterDn || question.TargetDn != value.TargetDn
-            || question.GroupDn != value.GroupDn || question.PermissionKind != value.PermissionKind || read.Read())
+            || question.GroupDn != value.GroupDn || question.PermissionKind != value.PermissionKind)
             throw Tier0PathStorage.InvalidProof();
     }
 
@@ -281,14 +288,16 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
 
     private const string Columns = "SELECT id,family,requester,target,group_dn,permission_kind,question_key,fingerprint FROM path_requester_work";
 
-    private static Question ReadQuestion(SqliteDataReader read, JudgementDescription description)
+    private static Question ReadQuestion(SqliteDataReader read, JudgementDescription description, int offset = 0)
     {
-        if (!Enum.TryParse<PathRequesterFamily>(read.GetString(1), out var family) || !Enum.IsDefined(family)
-            || family.ToString() != read.GetString(1)) throw Tier0PathStorage.InvalidProof();
-        var value = new Question(read.GetInt64(0), family, read.GetString(2), read.GetString(3),
-            read.IsDBNull(4) ? null : read.GetString(4), read.IsDBNull(5) ? null : ReadKind(read.GetString(5)));
+        if (read.IsDBNull(offset) || !Enum.TryParse<PathRequesterFamily>(read.GetString(offset + 1), out var family)
+            || !Enum.IsDefined(family) || family.ToString() != read.GetString(offset + 1)) throw Tier0PathStorage.InvalidProof();
+        var value = new Question(read.GetInt64(offset), family, read.GetString(offset + 2), read.GetString(offset + 3),
+            read.IsDBNull(offset + 4) ? null : read.GetString(offset + 4),
+            read.IsDBNull(offset + 5) ? null : ReadKind(read.GetString(offset + 5)));
         Validate(value);
-        if (value.Key != read.GetString(6) || Fingerprint(description, value) != Convert.ToHexString((byte[])read.GetValue(7)))
+        if (value.Key != read.GetString(offset + 6)
+            || Fingerprint(description, value) != Convert.ToHexString((byte[])read.GetValue(offset + 7)))
             throw Tier0PathStorage.InvalidProof();
         return value;
     }

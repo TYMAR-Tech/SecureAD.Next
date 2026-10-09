@@ -154,7 +154,11 @@ internal static class PathRequesterRiskStorage
             using (var command = _connection.CreateCommand())
             {
                 command.Transaction = _transaction;
-                command.CommandText = "SELECT id,source_proof,source_fingerprint,qualification,fingerprint FROM temp.path_requester_answer ORDER BY id";
+                command.CommandText = """
+                    SELECT a.id,a.source_proof,a.source_fingerprint,a.qualification,a.fingerprint,
+                        w.id,w.family,w.requester,w.target,w.group_dn,w.permission_kind,w.question_key,w.fingerprint
+                    FROM temp.path_requester_answer a LEFT JOIN path_requester_work w ON w.id=a.id ORDER BY a.id
+                    """;
                 using var read = command.ExecuteReader();
                 var count = 0;
                 while (read.Read())
@@ -165,7 +169,7 @@ internal static class PathRequesterRiskStorage
                     if (qualified.SourceProofFingerprint != Convert.ToHexString((byte[])read.GetValue(2)))
                         throw Tier0PathStorage.InvalidProof();
                     var answer = qualified.Bind(_description, calculationFingerprint);
-                    PathRequesterWorkPlan.RequireQuestion(_connection, _description, read.GetInt64(0), answer);
+                    PathRequesterWorkPlan.RequireQuestion(read, _description, offset: 5, answer);
                     var proof = _proofs.Write(answer);
                     insert.Parameters["$id"].Value = read.GetInt64(0);
                     insert.Parameters["$requester"].Value = answer.RequesterDn;
@@ -216,7 +220,7 @@ internal static class PathRequesterRiskStorage
                 if (step.From != reached) throw Tier0PathStorage.InvalidProof();
                 reached = step.To;
             }
-            if (!_inputs.FixedTargets.Contains(reached)) throw Tier0PathStorage.InvalidProof();
+            if (!_inputs.IsFixedTarget(reached, _token)) throw Tier0PathStorage.InvalidProof();
             if (!_targets.TryGetValue(reached.DistinguishedName, out var target))
             {
                 target = _sources.Bundle.ReadObjectAttributes(reached.DistinguishedName) ?? throw Tier0PathStorage.InvalidProof();

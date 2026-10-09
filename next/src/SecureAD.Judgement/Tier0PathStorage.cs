@@ -209,6 +209,7 @@ internal static class Tier0PathStorage
                 node = node with { RequesterRoute = routeIndex.Requester(node) };
                 node = node with { OwnAccountRoute = routeIndex.OwnAccount(node) };
                 result[index] = node with { MembershipDaclRoute = routeIndex.MembershipDacl(node) };
+                nodeIndex[node.Subject.DistinguishedName] = result[index];
                 diagnostic?.Counter("objectsProcessed", index + 1);
             }
             return result;
@@ -231,7 +232,7 @@ internal static class Tier0PathStorage
             ("$proof", header.Id), ("$hash", header.Fingerprint));
         answers.Complete(Convert.ToHexString(header.Fingerprint), offlineSelection, work.Count);
         Tier0DistanceStorage.Write(connection, transaction, description, inputs, Convert.ToHexString(header.Fingerprint),
-            recorded, nodes, routeIndex, prepared.Selection, answers.CheckedRequesters, cancellationToken);
+            recorded, nodeIndex, routeIndex, prepared.Selection, answers.CheckedRequesters, cancellationToken);
         BestSupportedRouteStorage.Write(connection, transaction, proofs,
             bestRoutes.Results(recorded, Convert.ToHexString(header.Fingerprint)), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();

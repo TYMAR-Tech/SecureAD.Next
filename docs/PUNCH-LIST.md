@@ -13,10 +13,50 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Verified coordinated redesign - owner-requested commit then measurement, 2026-10-09.**
-The owner requested committing the completed requester/Stage 6 checkpoint on `rules-delivery` and then measuring, without another rewrite or broad review.
-Compare the committed candidate against the retained pre-redesign control on identical protected lab and reproducible nine-domain pilot inputs with matched repeats, exact saved-answer/binding checks and whole-judging, publication, selected-readback, memory and storage records.
-Preserve all originals, frozen records and unrelated owner work; use retained tooling without new harness code, live access, production-volume runs, new budgets, package replacement or push, and report the actual improvement/regression/inconclusive outcome.
+**Preparation/result-completion checkpoint - owner-authorized commit, 2026-10-09.**
+The owner requested committing the verified shared-membership/result-package implementation, its related tests/documents and the explicitly requested lab/production data boundary after the final 7,601-test gate.
+Keep unrelated earlier UI-instruction, mockup, solution and diagnostic work outside this commit, preserving all prior evidence and failed-attempt records.
+No push, package replacement/build, new timing campaign or live production operation is included; owner-side performance acceptance, Domain Users and SYSVOL remain separate.
+
+**Remaining Stage 7 result package - implemented and offline verified; production acceptance outstanding, 2026-10-09.**
+Qualification/grading/distance publication now share owned exact fixed-target lookup, completion streams saved questions and answers through one checked join, and distance writing reuses the updated node index, preserving all saved answers/witnesses/counts/bindings in unchanged Judgement 63.
+The final full regression passed 7,601/7,601 with changed-runtime coverage, all 21 new cases detected 13 isolated rebuilt defects with passing restorations, five complete saved contracts match the preserved control, and the 665-answer fixture performs zero per-answer plan queries.
+The approved preparation/result-completion slices are implemented with 932 prior source/test files, eight owner inputs and historical evidence unchanged; owner-side acceptance, Domain Users and SYSVOL remain separate, with no new timing campaign, live access, UI/policy/budget change, package replacement, commit or push.
+
+**Result-package full-gate startup abort - P2 verification resolved; cause unconfirmed, 2026-10-09.**
+The first covered full run returned no executed test cases after the unchanged three-minute inactivity watchdog fired, the host aborted and the dump collector produced no dump.
+The zero-test result is failed verification, not acceptance; retain its TRX/log/partial coverage and do not infer a product-code stall or a proven infrastructure cause from it.
+After the isolated defect work finished, fresh source/discovery smoke and the sequential full covered gate passed all 7,601 tests with the unchanged watchdog and frozen fixtures; the initial zero-test abort remains separate and its cause is not inferred.
+
+**Result-package missing-node check - P1 resolved, 2026-10-09.**
+The deliberately removed early missing-node guard still passed the new test because later summary validation rejected the incomplete result, so the test did not measure early refusal.
+The corrected check puts the missing recorded object first, requires zero distance rows written, detects the explicitly rebuilt defect, and passes its rebuilt restoration and final full regression.
+Retain the original undetected-defect attempt separately; no frozen fixture, production guard or historical result is weakened.
+
+**Shared membership preparation - implemented and offline verified; subsequent result package verified above, 2026-10-09.**
+Admission and ownership/path validation now share owned captured-source indexes and witness preparation, membership paths remain compact until needed, and disposed/cancelled owners release/refuse their cached context, preserving every ordered result and binding in unchanged Judgement 63.
+The final full regression passed 7,580/7,580 with coverage of all three changed runtime assemblies, all 35 new cases detected 30 rebuilt isolated defects with passing restorations, the adapted value-visit case detected its rebuilt defect/restoration, and five complete saved contracts match the preserved control exactly.
+The other 925 source/test files, eight owner inputs and historical records remain unchanged; the subsequent Stage 7 result-package slice is verified above, with Domain Users/SYSVOL/production acceptance separate and no new timing campaign, live access, UI/policy/budget change, package replacement, commit or push.
+
+**Shared-membership targeted gate inactivity failure - P2 verification resolved; original cause unconfirmed, 2026-10-09.**
+The first covered targeted run reported 215 passed assertions and no assertion failures, but returned a failing exit after the unchanged three-minute inactivity watchdog fired and its dump collector produced no dump.
+This attempt is retained as failed verification, not a passing gate; its stall location and cause are not established by the completed TRX.
+Fresh isolated smoke checks and the final full 7,580-case gate pass with the unchanged watchdog, the three changed runtime assemblies covered, and the intended one-copy member-value threshold proven by rebuilt defect/restoration controls; no original stall cause or frozen security-result change is inferred.
+
+**Performance-data boundary - owner-confirmed, 2026-10-09.**
+The owner's small three-domain lab checks behavior and its data can return to this development box, while the complex nine-domain production forest is approximately 25 years old and only its run log and summary can return here.
+Do not request production captures, databases or other exports; use approved lab/synthetic evidence and aggregate facts from the permitted records, keeping identifying log content private and distinguishing local modelling from actual production scale.
+The imported-production-capture proposal is withdrawn, and any owner-side offline re-judging needs separate approval with data staying there; this clarification authorizes no live trial, new implementation/harness/workload, measurement, commit or push.
+
+**Coordinated redesign - committed as `c146af8`; general performance acceptance failed, 2026-10-09.**
+Three alternating matched pairs against pre-redesign `750ae4a` preserved all twelve complete saved-result comparisons, but median whole-judging changes were +1.8/+6.3/-0.8/-2.2% for high/low/no-sharing/lab, with low sharing slower in every pair and saved Judgement 0.8-7.1% larger in every case.
+Allocation fell 21.9-35.3% and lab control/ownership phases fell 22.0/12.8%, but sampled private memory rose on all synthetic cases, the synthetic inputs omit full-control/ownership transitions and the small timings do not establish a general speed/storage win or production acceptance.
+Retain the correctness-verified commit, exact inputs/results and source/binary provenance without promoting it as a performance fix, replacing the production package or starting another rewrite; originals and unrelated owner work remain intact, with no live access, new budgets, full-volume campaign or push.
+
+**Measurement Stage 6 verifier - P1 resolved before the campaign, 2026-10-09.**
+The retained runner silently skips obsolete full-control/ownership table names and therefore does not verify the complete Stage 6 saved-result contract.
+The corrected verifier requires current tables, enumerates complete saved control/full-control/ownership answers and exact counts outside the timer, and detects five isolated rebuilt defects with exact passing restorations on frozen synthetic fixtures.
+Preserve the original runner and past measurements, leave product code, workloads and timing/memory collection unchanged, then continue the approved offline campaign.
 
 **Stage 6 prepared-reference result production - implemented and offline verified; measurement follows, 2026-10-09.**
 Resource-local control/full-control/ownership production and ownership-candidate readback now carry owned checked references through the existing writers, preserving every ordered occurrence, saved answer, count, uncertainty and binding in unchanged Judgement 63.

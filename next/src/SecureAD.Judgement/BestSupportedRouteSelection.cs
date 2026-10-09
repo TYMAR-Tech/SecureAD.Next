@@ -63,7 +63,7 @@ internal sealed class BestSupportedRouteSelection(SqliteConnection connection, J
             if (step.From != current) throw Tier0PathStorage.InvalidProof();
             current = step.To;
         }
-        if (!inputs.FixedTargets.Contains(endpoint)) throw Tier0PathStorage.InvalidProof();
+        if (!inputs.IsFixedTarget(endpoint, cancellationToken)) throw Tier0PathStorage.InvalidProof();
         var assumptions = new List<RouteCondition>();
         if (steps.Any(step => step.Kind == Tier0PathStepKind.OwnAccountMembership))
         {

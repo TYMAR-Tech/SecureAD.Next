@@ -51,6 +51,164 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-authorized preparation/result-completion checkpoint commit, 2026-10-09.**
+After the full 7,601-test gate and rebuilt defect/restoration controls, the owner requested
+committing the verified shared-membership and Stage 7 result-completion changes.
+Include their related tests, governing-document updates and the explicitly requested lab/production
+data-transfer instructions, while preserving unrelated earlier UI-instruction, mockup, solution
+and diagnostic work outside this commit.
+This request authorizes the checkpoint commit only, not a push, package build/replacement,
+new performance campaign, live audit or production-data transfer.
+Production-sized owner-side acceptance remains outstanding and its permitted return is still
+only the run log and summary.
+
+**Remaining Stage 7 result-package slice implemented and offline verified, 2026-10-09.**
+The fixed-target projection now owns its ordered values and shares one exact-identity lookup
+across qualification, continuation checks, best-route grading and distance publication, rather
+than scanning the entire fixed-target list for each answer.
+Completion streams staged answers and their saved work questions through one checked join,
+removing the per-answer plan lookup while retaining canonical key/fingerprint, family, requester,
+target, group and permission-kind validation before any successful commit.
+Distance publication reuses the existing node index after requester-route matching instead of
+rebuilding another forest index, and refuses missing recorded rows before writing their results.
+Judgement 63 and every saved meaning, count, uncertainty, route-selection rule and passive
+selected read remain unchanged; no new table, format, migration, scope or processing limit was added.
+The final full offline regression passed **7,601/7,601 tests** with coverage of Judgement,
+Derivation and Evidence, and all **21 new behavior cases** detected **13 isolated explicitly rebuilt
+defects** with passing rebuilt restorations.
+The 665-answer fixture uses one checked completion join, zero per-answer work-plan queries and
+one fixed-target index; the distance writer consumes the existing index without enumerating
+it into a replacement, preserving the newly matched requester distances.
+Five complete saved-result comparisons on identical frozen synthetic inputs match the preserved
+pre-package control exactly, and 932 prior source/test files plus eight owner inputs remain hash-equal.
+The initial zero-test covered startup abort, new fixture collisions and initially undetected
+early-refusal defect remain failed attempts; the missing-node check was corrected to require
+zero written rows with the missing subject first, then detected its rebuilt defect/restoration.
+This completes the currently approved prepared membership/result-completion implementation
+slices, not a measured production performance claim or final Stage 6/7 feature acceptance.
+Commit/build packaging and owner-side production-sized re-judging remain future explicitly
+authorized steps, with only production run logs/summaries returning here.
+Domain Users policy handling and capture/SYSVOL remain separate work; existing changes/evidence
+are preserved and no new timing campaign, live access, package replacement, commit or push occurred.
+
+**Owner-approved remaining Stage 7 result-package slice, 2026-10-09.**
+After the verified shared-membership checkpoint, the owner explicitly requested continuing
+with the next slice of the coordinated redesign.
+Carry owned, checked generation-bound results and supporting-material references through
+the remaining path-product preparation, writers and publication instead of rebuilding the
+same package at each boundary; replace the redundant production path rather than adding
+parallel implementations or an expanded whole-forest cache.
+Preserve every saved answer and ordered witness, source/resource binding, counts, uncertainty,
+shortest/best-supported route selection, passive selected readback and atomic publication
+on cancellation or failure.
+No screen, supported-path family, assessment policy, Domain Users handling, discovery/depth
+or processing budget change is included.
+Verification is synthetic/offline exact-output, work-count, lifetime and binding/failure checks,
+with isolated explicitly rebuilt defects/restorations and the final correct-source regression
+gate, preserving the uncommitted shared-membership work and all historical evidence.
+The lab/production data boundary remains unchanged; no new timing campaign, live access,
+recapture, package replacement, commit or push is authorized by this continuation.
+
+**Shared membership preparation implemented and offline verified, 2026-10-09.**
+Assessment admission and later ownership/path-input qualification now reuse one owned captured
+membership snapshot and its identity/domain/asset indexes rather than rebuilding the forest index
+at each boundary; caller mutations cannot alter the protected values or substitute a prior index
+after the source collection changes.
+Saved nesting still uses the existing shared graph, but expansion retains compact parent-linked
+paths and materializes a path body only when that member's route is consumed, without changing
+member order, cycles, first-supported routes, qualified-walk depth or existing rule-side budgets.
+Group-witness validation reuses owned captured attributes and source fingerprints while checking
+every witness, resource, group type, capture time, original ordinal and terminal trustee.
+The requester context is released with its owner and refuses cancelled/disposed reuse, including
+mid-enumeration, rather than silently returning a partial requester set.
+Judgement 63, Evidence 14, Derivation 16 and saved meanings remain unchanged.
+The final full offline regression passed **7,580/7,580 tests**, with focused coverage of all three
+changed runtime assemblies; **35 new cases** detected **30 isolated rebuilt defects** with passing
+restorations, and the adapted original-member-value work-count case detected the independently
+rebuilt borrowing defect with its passing restoration.
+The production admission/path flow builds one source snapshot and one captured index, the
+48-link fixture creates no path bodies before a selected read, and 64 group-witness validations
+prepare four source objects and three source fingerprints.
+Five complete saved-result comparisons on identical frozen synthetic inputs match the preserved
+pre-slice control exactly; the other 925 source/test files and eight owner inputs remain hash-equal.
+The failed covered startup/watchdog attempts, initial test-fixture errors and stale incremental
+copied-test attempt remain separate records rather than accepted verification.
+These are correctness/work-count/lifetime results, not a new timing campaign or a production saving.
+Wider Stage 7 result-package production remains the next unfinished redesign slice; Domain Users
+policy handling, SYSVOL and production acceptance remain separate, with all transfer restrictions
+and existing work preserved and no live access, package replacement, commit or push performed.
+
+**Owner-approved shared membership preparation, 2026-10-09.**
+The owner requested finishing the coordinated redesign before his later production-environment
+testing and explicitly authorized starting the shared membership-preparation slice.
+Reuse one protected, generation-bound set of owned identity/membership facts and compact indexes
+across assessment admission and path-input preparation, replacing redundant preparation rather
+than retaining parallel production paths or a second expanded whole-forest cache.
+Preserve every original membership occurrence, ordered witness, resource-specific authorization,
+scope/expectedness/counting, independent routes, explicit incomplete or unsupported results,
+shortest/best-supported selection and exact Evidence/Derivation/Judgement binding.
+No UI, assessment-policy, Domain Users handling, discovery/depth/processing budget or stored-result
+meaning change is included; verify synthetic/offline exact outputs, work counts, lifetime and
+binding refusals with isolated explicitly rebuilt defects/restorations and the correct-source
+regression gate.
+The production-data boundary remains unchanged: lab data can return here, but only production
+run logs and summaries can return from the owner's environment.
+The wider Stage 7 result-package work remains the next separate unfinished slice; this request
+does not authorize a new timing campaign, live access, recapture, package replacement, commit or push.
+
+**Owner-confirmed laboratory and production-data boundary, 2026-10-09.**
+The owner has a small three-domain lab, useful for checking behavior but not production scale,
+and a complex nine-domain production forest approximately 25 years old.
+Lab information, including captured bundles, can be brought back to this development box without
+the production transfer restriction.
+From production, only the run log and run summary can be returned here; production captures,
+databases, profiling dumps and other exports must not be requested or become prerequisites to local work.
+Supplied logs and summaries may carry identifiers: keep that content sensitive and out of commits
+and published results, while using their aggregate workload and timing facts for local investigation.
+The recommendation to profile an imported production capture is withdrawn and was not approved.
+Approved lab/synthetic investigation must distinguish modelled performance from actual production
+acceptance; matching nine domain names or counts does not reproduce the real forest's history and complexity.
+Separately approved owner-side offline re-judging can measure a production-sized capture inside
+his environment, with only the permitted log/summary returned; this is not a request for a new live
+audit, a production package replacement or a default prerequisite to development-side work.
+The clarification authorizes this documentation correction, not new implementation, measurement
+tooling/runs, production access, recapture, deletion of retained evidence, commit or push.
+
+**Committed redesign measured offline; general performance acceptance failed, 2026-10-09.**
+The verified requester/Stage 6 redesign was committed as `c146af8` on `rules-delivery`, without
+pushing or including the unrelated instruction, solution, diagnostic or mockup work.
+Three alternating matched pairs compared that exact committed source with the retained pre-redesign
+`750ae4a` source, using the same protected lab and existing nine-domain synthetic inputs through the
+shared production judging policy, all rules, publication and fresh-process selected readback.
+All twelve comparisons retained exact canonical saved answers and counts, including the corrected
+complete Stage 6 verifier; all six repeated outputs for each workload match.
+
+| Workload | Requester questions | Median complete judging before | Median after | Time change | Saved Judgement change |
+|---|---:|---:|---:|---:|---:|
+| High prerequisite sharing | 2,160 | 10.31 s | 10.50 s | 1.8% slower | 7.1% larger |
+| Low prerequisite sharing | 2,160 | 12.45 s | 13.23 s | 6.3% slower | 6.4% larger |
+| No prerequisite sharing | 1,620 | 28.44 s | 28.22 s | 0.8% faster | 3.2% larger |
+| Protected lab | 463 | 10.66 s | 10.43 s | 2.2% faster | 0.8% larger |
+
+Low sharing was slower in every matched pair; the other small shifts do not establish a convincing
+overall speed improvement, and no case made the saved result smaller.
+Temporary memory allocation over the run fell 21.9-35.3%, but that is memory churn, not RAM held at
+once: sampled private-memory peaks rose 1.8/5.7/12.0% across the synthetic cases and fell 6.4% on the lab.
+The lab's complete admitted-control phase fell 22.0% and ownership phase fell 12.8%; those component
+gains did not establish the requested whole-run performance win.
+Account-selection diagnostic time rose across all cases, but the redesign moved preparation/storage
+work between phases, so this is not an isolated causal estimate or permission for another rewrite.
+
+The synthetic cases contain 4,001 captured targets and no full-control summaries or owner transitions;
+the lab covers 8,441 targets, 1,237 control edges, 102 full-control summaries and 243 unknown/uncounted
+owner transitions, and the no-sharing case still lacks a positive post-membership DACL result.
+Memory/storage peaks are sampled every 100 ms; fresh-process readback does not purge the operating
+system cache, and these development-machine pilots are not a production forecast or capacity acceptance.
+Keep the committed, correctness-verified checkpoint, but do not promote it as a performance fix or
+replace the production package on the strength of these measurements.
+No further implementation, optimization, full-volume campaign, live access or push is authorized by
+this measurement outcome; wider preparation/path-package work, Domain Users and SYSVOL remain open.
+
 **Owner-requested commit followed by offline measurement, 2026-10-09.**
 After the completed Stage 6 checkpoint, the owner explicitly requested "commit then measure".
 Commit the coherent verified requester/Stage 6 redesign and its related tests/documentation on
@@ -63,6 +221,18 @@ Record the outcome as a measured improvement, regression or inconclusive result 
 correctness alone as performance success; the pilots do not establish production-scale acceptance.
 No new measurement-harness code, production-volume campaign, live access, recapture, production budget,
 package replacement or push is included in this request.
+
+**Owner-approved measurement-verifier correction, 2026-10-09.**
+The retained whole-judging pilot verifier names obsolete full-control and ownership tables and
+silently skips them, so it does not establish the complete Stage 6 result equality required here.
+The owner approved correcting only the saved-result verifier outside the timed judging section:
+require the current tables, compare saved control/full-control/ownership answers and exact counts,
+and prove the correction with isolated rebuilt deliberate defects and restored controls.
+Keep the original runner and historical results unchanged, with no product-code, workload,
+timed judging call or timing/memory collection changes; then continue the requested offline comparison.
+The corrected verifier passed all five frozen synthetic cases and detected five rebuilt isolated
+missing-table/enumeration/proof-loss defects with exact rebuilt restorations; the timed production-call
+and sampler region is byte-identical to the retained runner.
 
 **Stage 6 prepared-reference result production implemented and offline verified, 2026-10-09.**
 Control/full-control and ownership production now carry owned resource-local permission occurrences
@@ -5303,6 +5473,13 @@ expected to help most exactly where it has not yet been measured. And the batch 
 chosen number, not a tuned one; the laboratory showed its cost depends on the disk underneath it.
 
 ## The forest this is built for
+
+**Environment distinction, reconfirmed by the owner 2026-10-09.**
+The small laboratory has three domains and is suitable for correctness checks, not scale acceptance.
+Production has nine domains and approximately 25 years of accumulated complexity; lab captures can
+return to the development box, but only production run logs and summaries can return here.
+Synthetic scale testing is informed by the observed production workload below, not a claim that
+matching object or domain counts reproduces that complexity.
 
 **Latest completed-production baseline, 2026-10-08, from the supplied log and portable summary.**
 These are the current observed workload and logical file lengths; the earlier dated measurements

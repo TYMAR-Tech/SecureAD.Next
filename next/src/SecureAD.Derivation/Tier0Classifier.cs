@@ -71,7 +71,8 @@ public static class Tier0Classifier
         ArgumentNullException.ThrowIfNull(input);
         if (!binding.IsSupported) throw new ArgumentException(null, nameof(binding));
         cancellationToken.ThrowIfCancellationRequested();
-        return new(binding.DerivationGenerationId == input.DerivationGenerationId ? input.Objects : [], cancellationToken);
+        return binding.DerivationGenerationId == input.DerivationGenerationId
+            ? input.Index(cancellationToken) : new CapturedIndex([], cancellationToken);
     }
 
     private static Tier0Classification QualifyIndexed(Tier0InputBinding binding, Tier0Target target,
@@ -340,7 +341,7 @@ public static class Tier0Classifier
         && !string.IsNullOrWhiteSpace(name) && name.Contains('.', StringComparison.Ordinal)
         && Uri.CheckHostName(name) == UriHostNameType.Dns ? name : null;
 
-    private sealed class CapturedIndex
+    internal sealed class CapturedIndex
     {
         private readonly Dictionary<string, List<ObjectAttributes>> objects = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<ObjectAttributes>> domains = new(StringComparer.OrdinalIgnoreCase);

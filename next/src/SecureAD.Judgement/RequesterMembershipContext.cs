@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.Metrics;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
@@ -23,12 +24,16 @@ public sealed record RequesterResourceContext(Tier0Target ResourceDomain, IReadO
         && ReadDomains.Contains(ResourceDomain.DomainFqdn, StringComparer.OrdinalIgnoreCase);
 }
 
-internal sealed class RequesterMembershipContext
+internal sealed class RequesterMembershipContext : IDisposable
 {
+    internal const string MeterName = "SecureAD.Judgement.MembershipPreparation";
+    private static readonly Meter Meter = new(MeterName);
+    private static readonly Counter<long> AttributePreparations = Meter.CreateCounter<long>("membership.attribute_preparations");
+    private static readonly Counter<long> SourceFingerprints = Meter.CreateCounter<long>("membership.source_fingerprints");
     private readonly DerivationReader _derivation;
     private readonly Tier0InputBinding _binding;
-    private readonly Func<string, ObjectAttributes?> _read;
-    private readonly IReadOnlyDictionary<string, Tier0Target> _identities;
+    private Func<string, ObjectAttributes?>? _read;
+    private readonly Dictionary<string, Tier0Target> _identities = new(StringComparer.OrdinalIgnoreCase);
     private readonly IReadOnlyDictionary<string, NamingContextKind> _contexts;
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<(string Sid, string Scope), List<Tier0Target>> _bySid = [];
@@ -41,6 +46,7 @@ internal sealed class RequesterMembershipContext
     private string? _scopeFingerprint;
     private readonly Dictionary<string, Tier0Target?> _domainRoots = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, RequesterResourceContext> _resources = new(StringComparer.OrdinalIgnoreCase);
+    private bool _disposed;
 
     private sealed record Expansion(PrincipalExpansion Members, string Fingerprint,
         IReadOnlyList<(PathRequesterSelectionReason Reason, string Dn)> Limitations)
@@ -57,11 +63,13 @@ internal sealed class RequesterMembershipContext
     {
         if (derivation.Description.GenerationId != binding.DerivationGenerationId
             || derivation.Description.EvidenceSeal != binding.EvidenceSeal) throw Tier0PathStorage.InvalidProof();
-        (_derivation, _binding, _read, _identities, _contexts, _cancellationToken) =
-            (derivation, binding, read, identities, contexts, cancellationToken);
-        foreach (var identity in identities.Values)
+        (_derivation, _binding, _read, _contexts, _cancellationToken) =
+            (derivation, binding, read, contexts, cancellationToken);
+        foreach (var pair in identities)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var identity = pair.Value;
+            _identities.Add(pair.Key, identity);
             if (identity.Sid is not { } sid) continue;
             var key = Key(sid, identity.SidScope);
             if (!_bySid.TryGetValue(key, out var values)) _bySid[key] = values = [];
@@ -79,13 +87,18 @@ internal sealed class RequesterMembershipContext
 
     internal void RequireBinding(Tier0InputBinding binding)
     {
+        RequireUsable();
         if (_binding != binding) throw Tier0PathStorage.InvalidProof();
     }
 
-    internal bool HasForestScope => _readDomains is not null;
+    internal bool HasForestScope
+    {
+        get { RequireUsable(); return _readDomains is not null; }
+    }
 
     internal void BindForestScope(RunScope scope)
     {
+        RequireUsable();
         var fingerprint = Tier0PathCalculation.Fingerprint(scope);
         if (_scopeFingerprint is not null && _scopeFingerprint != fingerprint) throw Tier0PathStorage.InvalidProof();
         _scopeFingerprint = fingerprint;
@@ -104,17 +117,25 @@ internal sealed class RequesterMembershipContext
         return value;
     }
 
-    internal ObjectAttributes? Holder(PermissionTrustee trustee, Tier0Target resource) =>
-        trustee.Sid == "S-1-5-10" ? Attributes(resource.DistinguishedName)
-        : Sid.IsBuiltinDomain(trustee.Sid) ? Resolve(trustee.Sid, resource.DomainFqdn) is { } local ? Attributes(local.DistinguishedName) : null
-        : trustee.DistinguishedName is { } dn ? Attributes(dn) : null;
+    internal ObjectAttributes? Holder(PermissionTrustee trustee, Tier0Target resource)
+    {
+        RequireUsable();
+        return trustee.Sid == "S-1-5-10" ? Attributes(resource.DistinguishedName)
+            : Sid.IsBuiltinDomain(trustee.Sid) ? Resolve(trustee.Sid, resource.DomainFqdn) is { } local ? Attributes(local.DistinguishedName) : null
+            : trustee.DistinguishedName is { } dn ? Attributes(dn) : null;
+    }
 
     internal RequesterTrusteeEvidence Trustee(ObjectAttributes user, ObjectAttributes resource, PermissionTrustee trustee,
-        ObjectAttributes? holder, string forest) =>
-        RequesterTrusteeReading.ReadSameForest(user, resource, trustee, holder, forest, _readDomains ?? throw Tier0PathStorage.InvalidProof());
+        ObjectAttributes? holder, string forest)
+    {
+        RequireUsable();
+        return RequesterTrusteeReading.ReadSameForest(user, resource, trustee, holder, forest,
+            _readDomains ?? throw Tier0PathStorage.InvalidProof());
+    }
 
     private Tier0Target? KnownDomain(Tier0Target identity)
     {
+        RequireUsable();
         if (_readDomains is null || identity.DomainFqdn is null || !_readDomains.Contains(identity.DomainFqdn) || !Domain(identity))
             return null;
         if (!_domainRoots.TryGetValue(identity.NamingContext, out var root))
@@ -131,19 +152,22 @@ internal sealed class RequesterMembershipContext
             || Same(Sid.IssuingDomain(identity.Sid), root.Sid) ? root : null;
     }
 
-    internal bool Qualified(ObjectAttributes? source, Tier0Target? identity) =>
-        source is not null && identity is { ObjectGuid: not null, IsValid: true }
-        && Tier0Target.From(source, identity.NamingContext) == identity
-        && !RequesterTrusteeReading.HasClass(source, "foreignSecurityPrincipal")
-        && !Same(source.Find("isDeleted")?.OnlyValue?.Text, "TRUE")
-        && (identity.Sid is null || Resolve(identity.Sid, identity.SidScope) == identity);
+    internal bool Qualified(ObjectAttributes? source, Tier0Target? identity)
+    {
+        RequireUsable();
+        return source is not null && identity is { ObjectGuid: not null, IsValid: true }
+            && Tier0Target.From(source, identity.NamingContext) == identity
+            && !RequesterTrusteeReading.HasClass(source, "foreignSecurityPrincipal")
+            && !Same(source.Find("isDeleted")?.OnlyValue?.Text, "TRUE")
+            && (identity.Sid is null || Resolve(identity.Sid, identity.SidScope) == identity);
+    }
 
     internal IEnumerable<(string RequesterDn, RequesterMembershipEvidence Evidence)> Requesters(string holderDn)
     {
         var expansion = ExpansionFor(holderDn);
         foreach (var member in expansion.Members.Members ?? [])
         {
-            _cancellationToken.ThrowIfCancellationRequested();
+            RequireUsable();
             if (member.PathFromRoot.Count < 3 || Resolve(member.Sid, member.Scope) is not { } identity
                 || !User(Attributes(identity.DistinguishedName))) continue;
             yield return (identity.DistinguishedName, Read(identity.DistinguishedName, holderDn));
@@ -155,7 +179,7 @@ internal sealed class RequesterMembershipContext
         var expansion = ExpansionFor(holderDn, true);
         foreach (var member in expansion.Members.Members ?? [])
         {
-            _cancellationToken.ThrowIfCancellationRequested();
+            RequireUsable();
             if (Resolve(member.Sid, member.Scope) is not { } identity || !User(Attributes(identity.DistinguishedName))) continue;
             yield return (identity.DistinguishedName, Read(identity.DistinguishedName, holderDn, true));
         }
@@ -169,6 +193,7 @@ internal sealed class RequesterMembershipContext
 
     internal IReadOnlyList<(string GroupDn, RequesterMembershipEvidence Evidence)> Groups(string holderDn, Tier0Target resource)
     {
+        RequireUsable();
         if (!_identities.TryGetValue(holderDn, out var holder) || !InResourceForest(holder, resource)) return [];
         var expansion = ExpansionFor(holderDn, true);
         if (expansion.Groups is null)
@@ -176,7 +201,7 @@ internal sealed class RequesterMembershipContext
             var result = new List<(string, RequesterMembershipEvidence)>();
             foreach (var member in expansion.Members.Members ?? [])
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                RequireUsable();
                 if (Resolve(member.Sid, member.Scope) is not { } identity || !Global(Attributes(identity.DistinguishedName))) continue;
                 result.Add((identity.DistinguishedName, Read(identity.DistinguishedName, holderDn, true)));
             }
@@ -185,10 +210,13 @@ internal sealed class RequesterMembershipContext
         return expansion.Groups.Where(route => AppliesToResource(route.Evidence, resource)).ToArray();
     }
 
-    internal bool AppliesToResource(RequesterMembershipEvidence evidence, Tier0Target resource) =>
-        evidence.Links.Count != 0 && evidence.Links.All(link =>
+    internal bool AppliesToResource(RequesterMembershipEvidence evidence, Tier0Target resource)
+    {
+        RequireUsable();
+        return evidence.Links.Count != 0 && evidence.Links.All(link =>
             InResourceForest(link.Member, resource) && InResourceForest(link.Group, resource)
             && ((link.GroupType & 0x0f) is not (4 or 5) || Same(link.Group.DomainFqdn, resource.DomainFqdn)));
+    }
 
     internal RequesterMembershipEvidence Read(string requesterDn, string holderDn) => Read(requesterDn, holderDn, false);
 
@@ -202,7 +230,7 @@ internal sealed class RequesterMembershipContext
         {
             for (var index = member.PathFromRoot.Count - 1; index > 0; index--)
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                RequireUsable();
                 var domain = _identities[holderDn].DomainFqdn;
                 var fromSid = member.PathFromRoot[index];
                 var groupSid = member.PathFromRoot[index - 1];
@@ -221,7 +249,7 @@ internal sealed class RequesterMembershipContext
 
     private Expansion ExpansionFor(string holderDn, bool sameForest)
     {
-        _cancellationToken.ThrowIfCancellationRequested();
+        RequireUsable();
         var key = (sameForest ? "forest\0" : "global\0") + holderDn;
         if (_expansions.TryGetValue(key, out var existing)) return existing;
         var holder = _identities.GetValueOrDefault(holderDn) ?? throw Tier0PathStorage.InvalidProof();
@@ -247,7 +275,7 @@ internal sealed class RequesterMembershipContext
 
         bool Qualify((string Sid, string Scope) parent, (string Sid, string Scope) child)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
+            RequireUsable();
             var group = Resolve(parent.Sid, parent.Scope);
             var member = Resolve(child.Sid, child.Scope);
             if (group is null || member is null)
@@ -300,14 +328,15 @@ internal sealed class RequesterMembershipContext
         return link;
     }
 
-    internal static void RequireGroupSources(RequesterMembershipEvidence evidence, Tier0Target origin, Tier0Target resource,
-        string trusteeSid, Func<string, ObjectAttributes?> attributes, CancellationToken cancellationToken,
-        RequesterMembershipContext context)
+    internal void RequireGroupSources(RequesterMembershipEvidence evidence, Tier0Target origin, Tier0Target resource,
+        string trusteeSid, CancellationToken cancellationToken)
     {
+        RequireUsable();
+        cancellationToken.ThrowIfCancellationRequested();
         if (evidence.Links is not { Count: > 0 } || evidence.SourceFingerprint is not { Length: 64 }
             || !Enum.IsDefined(evidence.Verdict) || evidence.Limitations is null) throw Tier0PathStorage.InvalidProof();
-        if (!Global(attributes(origin.DistinguishedName))
-            || !context.AppliesToResource(evidence, resource)) throw Tier0PathStorage.InvalidProof();
+        if (!Global(Attributes(origin.DistinguishedName))
+            || !AppliesToResource(evidence, resource)) throw Tier0PathStorage.InvalidProof();
         var current = origin;
         var seen = new HashSet<Tier0Target> { origin };
         foreach (var link in evidence.Links)
@@ -315,10 +344,10 @@ internal sealed class RequesterMembershipContext
             cancellationToken.ThrowIfCancellationRequested();
             if (link is null || link.Member != current || link.Group is null || link.Witness is null
                 || !seen.Add(link.Group)) throw Tier0PathStorage.InvalidProof();
-            var member = attributes(link.Member.DistinguishedName);
-            var group = attributes(link.Group.DistinguishedName);
+            var member = Attributes(link.Member.DistinguishedName);
+            var group = Attributes(link.Group.DistinguishedName);
             if (member is null || group is null
-                || !context.Qualified(member, link.Member) || !context.Qualified(group, link.Group)
+                || !Qualified(member, link.Member) || !Qualified(group, link.Group)
                 || !RequesterTrusteeReading.SupportsSecurityNesting(group, member)
                 || member.Find("sIDHistory")?.HasValue == true || group.Find("sIDHistory")?.HasValue == true
                 || Tier0Target.From(member, link.Member.NamingContext) != link.Member
@@ -329,7 +358,7 @@ internal sealed class RequesterMembershipContext
                 || group.Find("member")?.Values.Any(value => value.Ordinal == link.Witness.Ordinal && value.Stored == link.Witness.Value) != true
                 || link.SourceFingerprint != Tier0PathCalculation.Fingerprint(new
                 {
-                    Member = Tier0PathCalculation.Fingerprint(member), Group = Tier0PathCalculation.Fingerprint(group),
+                    Member = Fingerprint(link.Member.DistinguishedName), Group = Fingerprint(link.Group.DistinguishedName),
                 })) throw Tier0PathStorage.InvalidProof();
             current = link.Group;
         }
@@ -343,7 +372,7 @@ internal sealed class RequesterMembershipContext
             values = new(StringComparer.OrdinalIgnoreCase);
             foreach (var value in Attributes(group)?.Find("member")?.Values ?? [])
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                RequireUsable();
                 if (!string.IsNullOrWhiteSpace(value.Text)) values.TryAdd(value.Text, value);
             }
             _memberValues.Add(group, values);
@@ -355,13 +384,22 @@ internal sealed class RequesterMembershipContext
         _bySid.TryGetValue(Key(sid, scope), out var values) && values.Count == 1 ? values[0] : null;
     private ObjectAttributes? Attributes(string dn)
     {
-        if (!_attributes.TryGetValue(dn, out var value)) _attributes[dn] = value = _read(dn);
+        RequireUsable();
+        if (!_attributes.TryGetValue(dn, out var value))
+        {
+            _attributes[dn] = value = (_read ?? throw Tier0PathStorage.InvalidProof())(dn)?.Snapshot();
+            AttributePreparations.Add(1, new KeyValuePair<string, object?>("derivation", _binding.DerivationGenerationId.ToString("D")));
+        }
         return value;
     }
     private string Fingerprint(string dn)
     {
+        RequireUsable();
         if (!_fingerprints.TryGetValue(dn, out var value))
+        {
             _fingerprints[dn] = value = Tier0PathCalculation.Fingerprint(Attributes(dn));
+            SourceFingerprints.Add(1, new KeyValuePair<string, object?>("derivation", _binding.DerivationGenerationId.ToString("D")));
+        }
         return value;
     }
     private bool Domain(Tier0Target identity) => _contexts.TryGetValue(identity.NamingContext, out var kind)
@@ -373,4 +411,28 @@ internal sealed class RequesterMembershipContext
         && !RequesterTrusteeReading.HasClass(source, "computer");
     private static (string, string) Key(string sid, string? scope) => (sid.ToUpperInvariant(), (scope ?? "").ToUpperInvariant());
     private static bool Same(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private void RequireUsable()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _read = null;
+        _identities.Clear();
+        _bySid.Clear();
+        _attributes.Clear();
+        _fingerprints.Clear();
+        _memberValues.Clear();
+        _links.Clear();
+        _expansions.Clear();
+        _domainRoots.Clear();
+        _resources.Clear();
+        _readDomains = null;
+        _scopeFingerprint = null;
+    }
 }

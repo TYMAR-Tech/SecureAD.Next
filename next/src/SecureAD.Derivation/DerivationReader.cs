@@ -773,7 +773,7 @@ public sealed class DerivationReader : IDisposable
             expanded.Add(new ExpandedPrincipal(
                 identity.Sid ?? string.Empty,
                 identity.Scope ?? string.Empty,
-                PathTo(memberId, walkFrom, parent, identities),
+                PathTo(memberId, walkFrom, parent, identities, Description.GenerationId),
                 reachedEverythingBelow && !claimedSomethingUnidentified));
         }
 
@@ -805,27 +805,65 @@ public sealed class DerivationReader : IDisposable
     /// <param name="rootId">Where the walk started.</param>
     /// <param name="parent">What first reached each principal.</param>
     /// <param name="identities">SID text by dictionary id.</param>
+    /// <param name="generation">The source generation for preparation diagnostics.</param>
     private static IReadOnlyList<string> PathTo(
         int memberId,
         int rootId,
         Dictionary<int, int> parent,
-        Dictionary<int, (string Sid, string Scope)> identities)
+        Dictionary<int, (string Sid, string Scope)> identities,
+        Guid generation)
+        => new ParentLinkedPath(memberId, rootId, parent, identities, generation);
+
+    private sealed class ParentLinkedPath : IReadOnlyList<string>
     {
-        var path = new List<string>();
-        var current = memberId;
+        private readonly int _member;
+        private readonly int _root;
+        private readonly Dictionary<int, int> _parents;
+        private readonly Dictionary<int, (string Sid, string Scope)> _identities;
+        private readonly Guid _generation;
+        private string[]? _values;
 
-        while (true)
+        internal ParentLinkedPath(int member, int root, Dictionary<int, int> parents,
+            Dictionary<int, (string Sid, string Scope)> identities, Guid generation)
         {
-            path.Add(identities.GetValueOrDefault(current).Sid ?? string.Empty);
-
-            if (current == rootId || !parent.TryGetValue(current, out var next))
-                break;
-
-            current = next;
+            (_member, _root, _parents, _identities, _generation) = (member, root, parents, identities, generation);
+            var count = 1;
+            var current = member;
+            while (current != root && parents.TryGetValue(current, out current)) count++;
+            Count = count;
+            CapturedMembershipInput.RecordCompactPath(generation);
         }
 
-        path.Reverse();
-        return path;
+        public int Count { get; }
+        public string this[int index]
+        {
+            get
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(index);
+                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
+                return Values[index];
+            }
+        }
+
+        private string[] Values
+        {
+            get
+            {
+                if (_values is not null) return _values;
+                var values = new string[Count];
+                var current = _member;
+                for (var index = Count - 1; index >= 0; index--)
+                {
+                    values[index] = _identities.GetValueOrDefault(current).Sid ?? string.Empty;
+                    if (current == _root || !_parents.TryGetValue(current, out current)) break;
+                }
+                CapturedMembershipInput.RecordMaterializedPath(_generation);
+                return _values = values;
+            }
+        }
+
+        public IEnumerator<string> GetEnumerator() => ((IEnumerable<string>)Values).GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     /// <summary>

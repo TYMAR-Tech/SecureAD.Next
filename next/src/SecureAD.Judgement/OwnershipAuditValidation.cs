@@ -67,13 +67,12 @@ internal static class OwnershipAuditValidation
             throw OwnershipAuditStorage.InvalidProof();
         var input = sources.ReadMembershipInput();
         if (input.DerivationGenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
-        var identities = input.Objects.GroupBy(item => item.DistinguishedName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
         foreach (var row in rows.Where(item => item.Selection == OwnershipScopeState.Included))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!identities.TryGetValue(row.Identity.DistinguishedName, out var objects) || objects.Length != 1
-                || OwnershipAuditRun.Target(objects[0], contexts.Value) != row.Identity) throw OwnershipAuditStorage.InvalidProof();
+            var subject = input.FindUnique(row.Identity.DistinguishedName, cancellationToken);
+            if (subject is null || OwnershipAuditRun.Target(subject, contexts.Value) != row.Identity)
+                throw OwnershipAuditStorage.InvalidProof();
         }
         var seedByDn = seeds.ToDictionary(item => item.Target, StringComparer.OrdinalIgnoreCase);
         if (seeds.Any(seed => !targets.ContainsKey(seed.Target))) throw OwnershipAuditStorage.InvalidProof();
@@ -142,10 +141,10 @@ internal static class OwnershipAuditValidation
                 if (link.GroupMembership is { } membership)
                 {
                     if (link.WitnessIsOwner || capability != ControlCapability.CanWriteDacl) throw OwnershipAuditStorage.InvalidProof();
-                    RequesterMembershipContext.RequireGroupSources(membership, controller.Identity, affected.Identity,
-                        link.WitnessTrustee, bundle.ReadObjectAttributes, cancellationToken,
-                        membershipContext ??= sources.RequesterMemberships(header.Input, targets.ToDictionary(pair => pair.Key,
-                            pair => pair.Value.Identity, StringComparer.OrdinalIgnoreCase), cancellationToken));
+                    membershipContext ??= sources.RequesterMemberships(header.Input, targets.ToDictionary(pair => pair.Key,
+                        pair => pair.Value.Identity, StringComparer.OrdinalIgnoreCase), cancellationToken);
+                    membershipContext.RequireGroupSources(membership, controller.Identity, affected.Identity,
+                        link.WitnessTrustee, cancellationToken);
                 }
                 relations[index] = Tier0RelevanceRelation.FromCapturedPermission(header.Input, controller.Identity,
                     affected.Identity, capability, new(link.WitnessTarget, link.WitnessOrdinal,

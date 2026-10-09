@@ -20,7 +20,7 @@ namespace SecureAD.Next.Tests.Derivation;
 /// recursion; a walk without one does not return a wrong answer, it does not return.
 /// </para>
 /// </remarks>
-public sealed class PrincipalExpansionTests
+public sealed partial class PrincipalExpansionTests
 {
     private static readonly DateTimeOffset Started = new(2026, 9, 3, 9, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Finished = Started.AddMinutes(1);
