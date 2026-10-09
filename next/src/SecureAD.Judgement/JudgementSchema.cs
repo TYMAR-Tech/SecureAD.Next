@@ -132,8 +132,8 @@ public static class JudgementSchema
     /// <para>60 saves distinct structural member totals and separate missing-reference and evidence
     /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
-    // Format 62 shares path proof components and binds separately stored selection/input records.
-    public const int Version = 62;
+    // Format 63 binds canonical requester work independently of resource-batched proof production.
+    public const int Version = 63;
 
     private static readonly string[] TableDdl =
     [

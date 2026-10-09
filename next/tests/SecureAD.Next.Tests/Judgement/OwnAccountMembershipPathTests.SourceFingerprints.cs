@@ -66,7 +66,7 @@ public sealed partial class OwnAccountMembershipPathTests
 
         var direct = Enumerable.Range(0, accounts).SelectMany(index => new[] { CoreDn, "DC=contoso,DC=com" }
             .Select(target => new RequesterDaclProofs.Question(new(PrerequisiteUser(index), target), null))).ToArray();
-        var directProofs = RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var directProofs = RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, direct, CancellationToken.None, fixture.Memberships);
         Assert.Equal(accounts * 2, directProofs.Count);
         Assert.Equal((1L, 2L, accounts * 2L, accounts * 2L),

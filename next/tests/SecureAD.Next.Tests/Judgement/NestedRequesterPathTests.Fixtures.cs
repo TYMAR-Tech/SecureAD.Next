@@ -174,7 +174,7 @@ public sealed partial class NestedRequesterPathTests
         }
         var memberships = new RequesterMembershipContext(sources.OpenDerivation().Value, inputs.Input!, Read, identities,
             sources.ReadNamingContexts().Value, CancellationToken.None);
-        return Assert.Single(RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs,
+        return Assert.Single(RequesterBatchEvaluation.Create(connection, reader.Description, sources, identities, inputs,
             [new(new(UserDn, CoreDn), null)], CancellationToken.None, memberships)).Assessment;
     }
 

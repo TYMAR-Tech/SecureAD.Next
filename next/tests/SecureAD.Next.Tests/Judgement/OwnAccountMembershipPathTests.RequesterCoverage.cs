@@ -409,9 +409,14 @@ public sealed partial class OwnAccountMembershipPathTests
 
         JudgeCoverage(directory, log: log);
 
-        Assert.Equal(Enum.GetNames<PathRequesterWorkPhase>(), log.Saying("path-requester-phase")
+        var completed = log.Saying("path-requester-phase")
             .Where(value => RecordingRunLog.Value(value, "completed") == "True")
-            .Select(value => RecordingRunLog.Value(value, "phase")).ToArray());
+            .ToArray();
+        var phases = completed.Select(value => RecordingRunLog.Value(value, "phase")).ToArray();
+        Assert.Equal(new[] { "PreparingPaths", "SelectingQuestions", "OwnAccountMembership", "RequesterDacl",
+            "MembershipDacl", "WritingProofs" }, phases);
+        Assert.Equal(Enum.GetNames<PathRequesterWorkPhase>().Order(StringComparer.Ordinal), phases.Order(StringComparer.Ordinal));
+        Assert.All(completed, value => Assert.Equal("execution-segment", RecordingRunLog.Value(value, "scope")));
     }
 
     private string CoverageCapture() => Capture(coreDescriptor: $"O:SYG:SYD:(A;;WD;;;{UserSid})(A;;WD;;;{TargetSid})");

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Documentation;
@@ -50,11 +51,14 @@ public sealed class DocumentEncodingGateTests
         Windows1252().GetString(Encoding.UTF8.GetBytes("—"))[..2];
 
     [Fact]
-    public void NoDocumentCarriesTextFromAWindows1252RoundTrip()
+    public void NoDocumentCarriesTextFromAWindows1252RoundTrip() =>
+        RequireUncorruptedDocuments(RepositoryLocation.Root());
+
+    private static void RequireUncorruptedDocuments(string root)
     {
         var corrupted = new List<string>();
 
-        foreach (var file in Documents())
+        foreach (var file in Documents(root, _ => { }))
         {
             var text = File.ReadAllText(file, Encoding.UTF8);
             var hits = 0;
@@ -66,7 +70,7 @@ public sealed class DocumentEncodingGateTests
             }
 
             if (hits > 0)
-                corrupted.Add($"  {hits,5} sequences  {Relative(file)}");
+                corrupted.Add($"  {hits,5} sequences  {Path.GetRelativePath(root, file).Replace('\\', '/')}");
         }
 
         Assert.True(
@@ -102,17 +106,165 @@ public sealed class DocumentEncodingGateTests
             StringComparison.Ordinal);
     }
 
-    /// <summary>Every markdown document in the repository, build output excluded.</summary>
-    private static IEnumerable<string> Documents() =>
-        Directory.EnumerateFiles(RepositoryLocation.Root(), "*.md", SearchOption.AllDirectories)
-            .Where(NotBuildOutput)
-            .OrderBy(f => f, StringComparer.Ordinal);
+    [Theory]
+    [InlineData("bin")]
+    [InlineData("BIN")]
+    [InlineData("obj")]
+    [InlineData("Obj")]
+    [InlineData(".git")]
+    [InlineData(".vs")]
+    [InlineData(".idea")]
+    [InlineData("packages")]
+    [InlineData("Debug")]
+    [InlineData("Release")]
+    [InlineData("TestResults")]
+    [InlineData("testresult-retained")]
+    public void DocumentScanPrunesGeneratedDirectoriesBeforeEnteringThem(string directory)
+    {
+        using var tree = new DocumentTree();
+        var document = tree.Write(@"docs\required.md", "Real document.");
+        tree.Write(Path.Combine("next", directory, "deep", "excluded.md"), "Not source.");
+        var entered = new List<string>();
 
-    private static bool NotBuildOutput(string file) =>
-        !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-        && !file.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+        var files = Documents(tree.Root, entered.Add).ToArray();
 
-    private static string Relative(string file) =>
-        Path.GetRelativePath(RepositoryLocation.Root(), file).Replace('\\', '/');
+        Assert.Equal(document, Assert.Single(files));
+        Assert.DoesNotContain(entered, path => path.StartsWith(Path.Combine(tree.Root, "next", directory),
+            StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData(@".v-campaign\next\docs\excluded.md")]
+    [InlineData(@".vt-campaign\deep\excluded.md")]
+    [InlineData(@".t-df-campaign\deep\excluded.md")]
+    [InlineData(@".m-df-campaign\deep\excluded.md")]
+    [InlineData(@"t-1234aBcD\deep\excluded.md")]
+    [InlineData(@"verification-output\deep\excluded.md")]
+    [InlineData(@"LabBundles\deep\excluded.md")]
+    [InlineData(@"Lab Databases\deep\excluded.md")]
+    [InlineData(@"next\artifacts\source-copy\excluded.md")]
+    [InlineData(@"next\.t\deep\excluded.md")]
+    [InlineData(@"next\lab-validation-campaign\deep\excluded.md")]
+    public void DocumentScanPrunesLocalEvidenceBeforeEnteringIt(string relative)
+    {
+        using var tree = new DocumentTree();
+        var document = tree.Write(@"docs\required.md", "Real document.");
+        tree.Write(relative, "Historical evidence.");
+        var entered = new List<string>();
+        var parts = relative.Split(Path.DirectorySeparatorChar);
+        var excluded = Path.Combine(tree.Root, parts[0] == "next" ? Path.Combine(parts[0], parts[1]) : parts[0]);
+
+        var files = Documents(tree.Root, entered.Add).ToArray();
+
+        Assert.Equal(document, Assert.Single(files));
+        Assert.DoesNotContain(entered, path => path.StartsWith(excluded, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("README.md")]
+    [InlineData(@"docs\specs\required.md")]
+    [InlineData(@".github\instructions\new.instructions.md")]
+    [InlineData(@"next\src\required.md")]
+    [InlineData(@"next\tests\fixtures\required.md")]
+    [InlineData(@"lab\README.md")]
+    [InlineData(@"docs\artifacts\required.md")]
+    [InlineData(@"docs\.v-real-documents\required.md")]
+    [InlineData(@"docs\.t\required.md")]
+    [InlineData(@"docs\t-1234abcd\required.md")]
+    [InlineData(@"next\.v-real-documents\required.md")]
+    [InlineData(@"t-not-a-temp-root\required.md")]
+    public void DocumentScanStillInspectsRealAndUncommittedDocuments(string relative)
+    {
+        using var tree = new DocumentTree();
+        var document = tree.Write(relative, "Real document, without a Git inventory.");
+        tree.Write(@"docs\not-markdown.txt", "Not Markdown.");
+
+        Assert.Equal(document, Assert.Single(Documents(tree.Root, _ => { })));
+    }
+
+    [Theory]
+    [InlineData("—")]
+    [InlineData("–")]
+    [InlineData("…")]
+    public void PrunedDocumentScanStillRejectsCorruptedSourceText(string character)
+    {
+        using var tree = new DocumentTree();
+        tree.Write(@"docs\clean.md", "Correct text.");
+        tree.Write(@"docs\specs\damaged.md", Windows1252().GetString(Encoding.UTF8.GetBytes(character)));
+
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => RequireUncorruptedDocuments(tree.Root));
+
+        Assert.Contains("docs/specs/damaged.md", error.Message, StringComparison.Ordinal);
+        Assert.Contains("1 sequences", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PrunedDocumentScanAcceptsCorrectTextWithoutReadingCorruptLocalEvidence()
+    {
+        using var tree = new DocumentTree();
+        tree.Write(@"docs\correct.md", "Correct punctuation — – …");
+        tree.Write(@".v-frozen\docs\historical.md", Windows1252().GetString(Encoding.UTF8.GetBytes("—")));
+
+        RequireUncorruptedDocuments(tree.Root);
+    }
+
+    [Fact]
+    public void PrunedDocumentScanDoesNotTurnAnUnreadableSourceFileIntoSuccess()
+    {
+        using var tree = new DocumentTree();
+        var document = tree.Write(@"docs\locked.md", "Required source.");
+        using var locked = new FileStream(document, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        Assert.Throws<IOException>(() => RequireUncorruptedDocuments(tree.Root));
+    }
+
+    private static IEnumerable<string> Documents(string root, Action<string> entering)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.TryPop(out var directory))
+        {
+            entering(directory);
+            foreach (var file in Directory.EnumerateFiles(directory, "*.md", SearchOption.TopDirectoryOnly))
+                yield return file;
+            foreach (var child in Directory.EnumerateDirectories(directory))
+                if (IsSourceDirectory(root, child)) pending.Push(child);
+        }
+    }
+
+    private static bool IsSourceDirectory(string root, string directory)
+    {
+        var relative = Path.GetRelativePath(root, directory);
+        var parent = Path.GetDirectoryName(relative);
+        var name = Path.GetFileName(relative);
+        if (new[] { "bin", "obj", ".git", ".vs", ".idea", "packages", "Debug", "Release" }
+                .Contains(name, StringComparer.OrdinalIgnoreCase)
+            || name.StartsWith("TestResult", StringComparison.OrdinalIgnoreCase)) return false;
+
+        // These ignored paths hold captures, frozen source copies and verification results,
+        // not current documents. Their names elsewhere must not hide real source.
+        if (string.IsNullOrEmpty(parent) &&
+            (new[] { ".v-", ".vt-", ".t-df-", ".m-df-" }.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                || Regex.IsMatch(name, "^t-[0-9a-f]{8}$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                || new[] { "verification-output", "LabBundles", "Lab Databases" }.Contains(name, StringComparer.OrdinalIgnoreCase)))
+            return false;
+        return !string.Equals(parent, "next", StringComparison.OrdinalIgnoreCase)
+            || !(new[] { "artifacts", ".t" }.Contains(name, StringComparer.OrdinalIgnoreCase)
+                || name.StartsWith("lab-validation-", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private sealed class DocumentTree : IDisposable
+    {
+        internal string Root { get; } = Path.Combine(Path.GetTempPath(), "document-scan-" + Guid.NewGuid().ToString("N"));
+
+        internal string Write(string relative, string text)
+        {
+            var path = Path.Combine(Root, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, text, Encoding.UTF8);
+            return path;
+        }
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
 }

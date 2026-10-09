@@ -189,7 +189,7 @@ public sealed partial class OwnAccountMembershipPathTests
             ? new SavedMembershipDaclProof(combined with { Steps = combined.Steps.Select((step, index) =>
                 index == 0 ? step with { Kind = (Tier0PathStepKind)999 } : step).ToArray() }, new string('f', 64))
             : new SavedRequesterDaclProof(combined.Dacl!, new string('f', 64));
-        selections.Proof(proof, 1, new string('f', 64));
+        selections.Proof(proof, 1, new string('f', 64), 1);
         var row = Assert.Single(selections.Results(OwnershipAuditStorage.Targets(connection), new string('a', 64)),
             value => value.Subject.DistinguishedName == UserDn);
         Assert.Equal((1, 1), (row.CompleteCandidates, row.UngradedCandidates));

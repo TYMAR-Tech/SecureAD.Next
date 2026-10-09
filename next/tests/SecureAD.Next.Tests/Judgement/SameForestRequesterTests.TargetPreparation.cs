@@ -38,7 +38,7 @@ public sealed partial class SameForestRequesterTests
         var expected = questions.Select(question => Assert.Single(TargetPermissionReference.Create(connection, reader.Description,
             sources, identities, inputs, [question.Request], CancellationToken.None, null, memberships, currentSourceFingerprints: true))).ToArray();
 
-        var actual = RequesterDaclProofs.Create(connection, reader.Description, sources, identities, inputs, questions,
+        var actual = RequesterBatchEvaluation.Create(connection, reader.Description, sources, identities, inputs, questions,
             CancellationToken.None, memberships);
 
         Assert.Equal(JsonSerializer.Serialize(expected, ProofSerialization.Options), JsonSerializer.Serialize(actual, ProofSerialization.Options));

@@ -27,13 +27,13 @@ public enum PathRequesterWorkPhase
     PreparingPaths,
     /// <summary>Select source-backed questions, without deciding their answers.</summary>
     SelectingQuestions,
-    /// <summary>Evaluate existing requester DACL questions.</summary>
+    /// <summary>Prepare shared targets and evaluate captured requester DACL questions.</summary>
     RequesterDacl,
-    /// <summary>Evaluate own-account membership with existing continuations.</summary>
+    /// <summary>Prepare pre-change membership answers and evaluate their existing continuations.</summary>
     OwnAccountMembership,
     /// <summary>Evaluate obtained membership followed by requester DACL authorization.</summary>
     MembershipDacl,
-    /// <summary>Reconcile and store the complete proof batch.</summary>
+    /// <summary>Finalize saved proof references, coverage and route selections.</summary>
     WritingProofs,
 }
 

@@ -19,7 +19,7 @@ public sealed partial class OwnAccountMembershipPathTests
             fixture.Identities, fixture.Inputs, [request], CancellationToken.None, null, fixture.Memberships, currentSourceFingerprints: true));
         Assert.Equal(ControlEvaluationState.Established, expected.Assessment.Authorization);
 
-        var actual = Assert.Single(RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var actual = Assert.Single(RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, [new(request, null)], CancellationToken.None, fixture.Memberships));
 
         Assert.Equal(JsonSerializer.Serialize(expected, ProofSerialization.Options), JsonSerializer.Serialize(actual, ProofSerialization.Options));

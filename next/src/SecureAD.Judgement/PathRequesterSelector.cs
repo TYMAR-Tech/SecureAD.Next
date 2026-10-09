@@ -8,53 +8,41 @@ namespace SecureAD.Judgement;
 internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> readAttributes,
     Func<string, ObjectPermissions?> readPermissions, PathInputs inputs,
     IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyDictionary<string, NamingContextKind> contexts,
-    CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
+    CancellationToken cancellationToken, PostPassDiagnostics? diagnostic, IPathRequesterSelectionSink sink)
 {
     internal PathRequesterSelector(BundleReader bundle, PathInputs inputs,
         IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyDictionary<string, NamingContextKind> contexts,
-        CancellationToken cancellationToken, PostPassDiagnostics? diagnostic)
-        : this(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs, nodes, contexts, cancellationToken, diagnostic) { }
+        CancellationToken cancellationToken, PostPassDiagnostics? diagnostic, IPathRequesterSelectionSink sink)
+        : this(bundle.ReadObjectAttributes, bundle.ReadPermissions, inputs, nodes, contexts, cancellationToken, diagnostic, sink) { }
 
     internal const int Version = 5;
     internal RequesterMembershipContext? Memberships { get; init; }
     private const int WriteDacl = 0x40000;
     private readonly Dictionary<string, ObjectAttributes?> _attributes = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ObjectPermissions?> _permissions = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<PathRequesterSelectionLimitation> _limitations = [];
-    private readonly Dictionary<string, Candidate> _candidates = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Sid, string? Scope), int> _identityCounts = [];
     private readonly HashSet<string> _fixedTargets = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<PathRequesterSelectionWitness>> _terminals = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _requesterFingerprints = new(StringComparer.OrdinalIgnoreCase);
     private long _questionsConsidered;
     private long _sourcesFingerprinted;
+    private long _distinctQuestions;
 
-    private sealed class Candidate(PathRequesterCandidate original)
+    internal PathRequesterSelectionScan Select()
     {
-        private readonly HashSet<PathRequesterSelectionWitness> _seen = new(original.Witnesses);
-        private readonly List<PathRequesterSelectionWitness> _witnesses = new(original.Witnesses);
-
-        internal void Include(IEnumerable<PathRequesterSelectionWitness> witnesses)
-        {
-            foreach (var witness in witnesses)
-                if (_seen.Add(witness)) _witnesses.Add(witness);
-        }
-
-        internal PathRequesterCandidate Finish() => original with { Witnesses = _witnesses.ToArray() };
-    }
-
-    internal PathRequesterSelection Select()
-    {
+        ArgumentNullException.ThrowIfNull(sink);
         cancellationToken.ThrowIfCancellationRequested();
         Limit(PathRequesterSelectionReason.OtherPathFamiliesNotSelected, null, null, null);
         if (inputs.UncertaintyRegions.Count != 0) Limit(PathRequesterSelectionReason.CapturedInputUncertainty, null, null, null);
         if (inputs.Availability != PathInputAvailability.Recorded)
         {
             Limit(PathRequesterSelectionReason.InputsUnavailable, null, null, null);
-            return Result(false, []);
+            return Result(false);
         }
 
         var resources = PrepareLookups();
+        _permissions.Clear();
+        _attributes.Clear();
         diagnostic?.Part("selecting-questions");
         diagnostic?.Counter("resourcesTotal", resources.Count);
         var processed = 0L;
@@ -62,6 +50,18 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
         {
             cancellationToken.ThrowIfCancellationRequested();
             var permissions = Permissions(dn);
+            SelectResource(dn, permissions);
+            diagnostic?.Part("fingerprinting-sources");
+            sink.Source(new(dn, SourceFingerprint(dn)));
+            _permissions.Clear();
+            _attributes.Clear();
+            diagnostic?.Counter("resourcesProcessed", ++processed);
+            diagnostic?.Part("selecting-questions");
+        }
+        return Result(true);
+
+        void SelectResource(string dn, ObjectPermissions? permissions)
+        {
             if (permissions is null || permissions.Availability != DescriptorAvailability.Read
                 || permissions.DaclState == DaclState.Unreadable || permissions.DaclCompleteness != DaclCompleteness.Complete)
                 Limit(PathRequesterSelectionReason.DescriptorUnavailable, dn, null, null);
@@ -69,8 +69,7 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
             if (Qualification(dn, dn) is { } resourceIssue)
             {
                 Limit(resourceIssue, dn, null, null);
-                diagnostic?.Counter("resourcesProcessed", ++processed);
-                continue;
+                return;
             }
             foreach (var entry in permissions?.Entries ?? [])
             {
@@ -109,11 +108,7 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
                     }
                 }
             }
-            diagnostic?.Counter("resourcesProcessed", ++processed);
         }
-        diagnostic?.Part("fingerprinting-sources");
-        return Result(true, resources.Order(StringComparer.OrdinalIgnoreCase)
-            .Select(dn => new PathRequesterSelectionSource(dn, SourceFingerprint(dn))).ToArray());
     }
 
     internal static RequesterDaclRequest[] Requests(PathRequesterSelection selection) => selection.Candidates
@@ -250,31 +245,24 @@ internal sealed class PathRequesterSelector(Func<string, ObjectAttributes?> read
     {
         cancellationToken.ThrowIfCancellationRequested();
         diagnostic?.Counter("questionsConsidered", ++_questionsConsidered);
-        var key = Key(family, requester, target, group, kind);
-        if (_candidates.TryGetValue(key, out var existing))
-        {
-            existing.Include(witnesses);
-            return;
-        }
         if (!_requesterFingerprints.TryGetValue(requester, out var fingerprint))
         {
             _requesterFingerprints[requester] = fingerprint = Tier0PathCalculation.Fingerprint(Attributes(requester));
             diagnostic?.Counter("accountsFingerprinted", _requesterFingerprints.Count);
         }
-        _candidates.Add(key, new(new(family, requester, target, group, kind, fingerprint, witnesses)));
-        diagnostic?.Counter("distinctQuestions", _candidates.Count);
+        if (sink.Include(new(family, requester, target, group, kind, fingerprint, witnesses)))
+            diagnostic?.Counter("distinctQuestions", ++_distinctQuestions);
     }
 
-    private PathRequesterSelection Result(bool complete, PathRequesterSelectionSource[] sources) => new(Version, inputs.JudgementGenerationId,
-        Tier0PathCalculation.Fingerprint(inputs), complete, _candidates.Values.Select(candidate => candidate.Finish()).OrderBy(Key, StringComparer.Ordinal).ToArray(), sources,
-        _limitations.OrderBy(value => Tier0PathCalculation.Fingerprint(value), StringComparer.Ordinal).ToArray());
+    private PathRequesterSelectionScan Result(bool complete) => new(Version, inputs.JudgementGenerationId,
+        Tier0PathCalculation.Fingerprint(inputs), complete);
     internal static string Key(PathRequesterCandidate value) => Key(value.Family, value.RequesterDn, value.TargetDn, value.GroupDn, value.PermissionKind);
     internal static string Key(PathRequesterFamily family, string requester, string target, string? group, OwnAccountMembershipPermissionKind? kind) =>
         family + "\0" + requester.ToUpperInvariant() + "\0" + target.ToUpperInvariant() + "\0" + group?.ToUpperInvariant() + "\0" + kind;
     private static (string Sid, string? Scope) IdentityKey(string sid, string? scope) => (sid.ToUpperInvariant(), scope?.ToUpperInvariant());
     private static int Mask(OwnAccountMembershipPermissionKind kind) => kind == OwnAccountMembershipPermissionKind.SelfMembership ? 0x08 : 0x20;
     private void Limit(PathRequesterSelectionReason reason, string? resource, PermissionEntry? entry, string? member) =>
-        _limitations.Add(new(reason, resource, entry?.Ordinal, entry?.Trustee.Sid, member));
+        sink.Limit(new(reason, resource, entry?.Ordinal, entry?.Trustee.Sid, member));
     private static bool Same(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
     private bool Fixed(string dn) => _fixedTargets.Contains(dn);
     private bool Group(string dn) => Attributes(dn) is { } value && RequesterTrusteeReading.HasClass(value, "group");

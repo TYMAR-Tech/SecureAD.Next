@@ -51,6 +51,208 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-requested commit followed by offline measurement, 2026-10-09.**
+After the completed Stage 6 checkpoint, the owner explicitly requested "commit then measure".
+Commit the coherent verified requester/Stage 6 redesign and its related tests/documentation on
+`rules-delivery`, leaving unrelated instruction, mockup, diagnostic-project and solution work intact.
+Then compare the committed candidate with the retained pre-redesign control on identical protected
+lab and reproducible nine-domain pilot inputs using existing retained tooling, with matched repeats,
+complete judging/publication and selected-readback costs, actual work counts, memory/storage records
+and exact saved-answer/source-binding checks.
+Record the outcome as a measured improvement, regression or inconclusive result rather than accepting
+correctness alone as performance success; the pilots do not establish production-scale acceptance.
+No new measurement-harness code, production-volume campaign, live access, recapture, production budget,
+package replacement or push is included in this request.
+
+**Stage 6 prepared-reference result production implemented and offline verified, 2026-10-09.**
+Control/full-control and ownership production now carry owned resource-local permission occurrences
+and membership explanations through checked references, without repeated source preparation for
+each answer or retaining a new whole-forest proof cache.
+Ownership-candidate reads share verified values only within the selected resource, refuse changed
+databases or foreign/disposed contexts, and retain every original occurrence and consumer binding.
+Judgement 63, the security evaluators, assessment scope, expectedness, counting, full-control support,
+owner-transition uncertainty and passive selected readback remain unchanged.
+The 128-holder fixture prepares 128 permission occurrences, one complete source sequence and one
+membership explanation; its ownership read retains 16,384 occurrences while decoding 128 shared
+permission values and one membership explanation.
+All **864 affected cases** passed with coverage, **245 architecture/behavior cases** passed with
+coverage, and the final correct-source full regression passed **7,545/7,545 tests with coverage**.
+All **28 new behavior cases** detected **25 isolated explicitly rebuilt defects**, with passing
+rebuilt restorations; the initially unsound rollback/lifetime checks were corrected and their
+undetected attempts retained rather than counted as verification.
+Five complete selected-result comparisons on identical synthetic sealed inputs match the preserved
+pre-slice control exactly, covering full control, ordered denial, OWNER RIGHTS, NULL DACL and unreadable
+evidence; only the new publication identity is normalized, not source or derivation bindings.
+The other 922 source/test files and eight owner instruction/diagnostic inputs remain hash-equal to
+the preserved control, and the active checkout never carried a deliberate defect.
+Measurements follow this slice as the owner requested; no timing campaign, live access, new budget,
+package replacement, screen change, commit or push was performed.
+Wider shared membership/admission preparation, later path-package work, the Domain Users policy
+discrepancy, SYSVOL and production acceptance remain separate outstanding work.
+
+**Owner-approved Stage 6 prepared-reference result production, 2026-10-09.**
+The owner explicitly requested continuing with the planned control/full-control/ownership
+redesign and measuring afterward, rather than stopping for a comparison of the preceding slices.
+Prepare immutable resource-local permission evidence and exact membership explanations once
+per resource batch, then carry checked references through producers, ownership-candidate readback
+and the existing shared-evidence writers; release expanded evidence at the resource boundary.
+Preserve Judgement 63, Evidence and Derivation formats, every original occurrence and ordered witness,
+resource/generation binding, admission, authorization, uncertainty, expectedness, counting,
+full-control support links, existing-owner conclusions and the unknown/uncounted owner transition.
+Keep selected readers passive and validating, with transaction rollback and atomic publication intact;
+no screen wording, grouping or layout changes are included.
+Verification is synthetic/offline exact-output, work-count, lifetime and reference-integrity checks,
+isolated explicitly rebuilt defects and restoration controls, followed by the correct-source build,
+affected coverage and full regression gate, preserving all existing work and historical evidence.
+Performance measurement follows this implementation slice; no new timing campaign, production-volume
+run, budget, live access, recapture, package replacement, commit or push is included here.
+Wider membership preparation, later path-package work, the Domain Users policy discrepancy and SYSVOL
+remain separate unfinished work.
+
+**Owner-requested next-session continuation, 2026-10-09.**
+After the verified direct requester-plan producer, the owner requested moving the remaining
+redesign into a new session because this one had run long.
+Carry forward the recommended Stage 6 prepared-reference control/full-control/ownership
+producer-to-writer slice, presenting its concrete scope and offline verification for approval
+before implementation or new measurements; at that handoff the recommendation was not implementation-approved.
+Continue on `rules-delivery` in this checkout without another worktree or repeated broad review,
+preserving all uncommitted implementation/evidence and subsequent owner instruction/mockup work.
+
+**Owner-approved direct requester-plan production, 2026-10-08.**
+The owner authorized continuing in this session with the next bounded slice: write distinct
+requester questions and shared ordered selection witnesses directly into the generation-bound
+work plan, rather than first accumulating the full selection and three request arrays.
+Prepare and release resource-specific selection evidence at its resource boundary, retain
+every selection reason and source binding, and connect the saved plan to the existing batched
+evaluators, qualification and passive readback.
+Replace the accumulating production path, without changing questions, authorization semantics,
+uncertainty, counts, route selection, Domain Users policy, analysis scope, depth limits or screens.
+Verification remains synthetic/offline with exact-output/work-count checks, isolated rebuilt
+defects and restored controls, then a final correct-source regression gate; preserve the preceding
+requester slice, scanner correction, all owner work and historical evidence.
+No new timing campaign, full-volume measurement, capture/live access, package replacement,
+commit or push is authorized by this implementation request.
+
+**Direct requester-plan production implemented and offline verified, 2026-10-09.**
+Automatic question selection now emits directly into the saved generation-bound work plan;
+it no longer accumulates all candidate/witness bodies or creates three full request arrays
+before the existing resource-batched evaluator can begin.
+Question metadata and ordered witness uses are staged compactly, identical witness preparation
+is reused without merging distinct membership-collection occurrences, and the temporary selection
+tables are removed before requester evaluation.
+Resource attribute/permission snapshots are released at the resource boundary, while the existing
+protected identity/membership context, every selection reason, explicit uncertainty, original
+permission counts and security evaluators remain unchanged.
+The stored contract remains Judgement 63: deterministic question/family ordering, including
+supplementary Unicode names, exact resource/source bindings and passive readers are preserved,
+without a new format, migration or legacy path.
+All **1,447 affected cases pass with coverage**, the final isolated full regression passed
+**7,517/7,517 tests with coverage**, and **25 new/adapted behavior cases** detected **14 isolated
+rebuilt defects** with **14 passing rebuilt restoration controls**; the active checkout never
+carried a deliberate defect.
+The 128-question shared-witness fixture required one witness preparation, retained exact question
+and use counts, and deliberate retained-candidate/resource variants were detected by lifetime checks.
+These are correctness/work-count results, not a new timing campaign or a production wall-time claim.
+Shared compact membership facts across the wider admission/path-input preparation, Stage 6 detailed
+control/full-control/ownership result production, the remaining wider result-package work and the
+Domain Users policy discrepancy remain separate unfinished redesign work, with production-scale
+performance and owner-operated acceptance still outstanding.
+
+**Owner-approved documentation-scan correction, 2026-10-08.**
+After the active-checkout document-encoding check hit its three-minute inactivity watchdog,
+the owner authorized skipping build/Git and existing ignored local-evidence directories before
+entering them, while preserving checks of real and uncommitted documents.
+Keep the corruption detector, source-read errors and timeout intact, prove the traversal and
+detector with rebuilt isolated defects and restored controls, and rerun the active targeted gate.
+This is a contained verification correction, not permission to alter product behavior, frozen
+evidence, the outstanding redesign scope or any previous failed-run record.
+The corrected active-checkout gate passed all 54 selected checks with coverage; the encoding
+scan completed in 7.65 seconds with the unchanged three-minute inactivity watchdog.
+All 40 new traversal/detection cases detected five isolated rebuilt defects, and all five
+rebuilt restoration controls passed, covering excluded-directory entry, real/uncommitted
+documents, known-corrupt text and explicit source-read failures.
+The correction leaves the product code and all seven inherited diagnostic inputs unchanged;
+the earlier aborted runs remain failed attempts, and their exact original stall location
+is not established by the successful corrected scan.
+
+**Owner-approved first coordinated-redesign slice, 2026-10-08.**
+Implement one generation-bound requester work plan across the three existing question families,
+from selection through resource-batched assessment, referenced persistence, qualification and
+passive selected readback, without changing their security evaluators or UI semantics.
+Retain every original permission occurrence and ordered witness, exact counts and uncertainty,
+resource-specific authorization, shortest/best-route selection and safe generation publication;
+release batch-local preparation rather than accumulate every expanded answer.
+The owner explicitly reaffirmed that backward compatibility is unnecessary: change the Judgement
+format where needed, without migration or legacy readers, while preserving historical generations
+and leaving Evidence and Derivation unchanged.
+The approved verification uses isolated rebuilt controls and mutations, hash-verified current-format
+lab copies and a nine-domain high/low/no-sharing synthetic pilot of at most 10,000 distinct requester
+questions per case, with matched provenance and preparation, memory, storage and readback records.
+That pilot verifies the implementation; it is not another broad review or a replacement for the
+coordinated redesign, and existing phase-memory snapshots are not measured peaks.
+Stage 6 admission/control/ownership redesign, the recorded Domain Users policy mismatch and SYSVOL
+remain separate from this first unchanged-answer slice; no silent scope reduction or new processing
+limit is authorized.
+Existing work and evidence remain preserved in this checkout, with no full-volume campaign, live
+access, original-capture modification, package replacement, commit or push authorized.
+
+**Requester work-plan lifecycle implemented and offline verified, 2026-10-08.**
+Judgement format 63 now writes a source/generation-bound work list and compact membership-prerequisite references,
+prepares permission resources once, saves direct, own-account and combined answers in 64-question resource pages,
+qualifies those answers without retaining all expanded proofs, and builds route summaries from compact selections.
+Passive reads validate the saved work/resource/answer binding, the complete selected question set, ordered permission
+occurrences and the published generation; cancellation or failure remains inside the existing atomic judgement
+transaction, with no migration or legacy reader.
+All **7,453 offline tests pass with coverage** on the final staged solution; **26 new/adapted behavior cases**
+detected **15 isolated rebuilt defects**, every restored control passed, and five additional immutable-evidence
+defect variants were detected by four additional cases with their restored controls.
+The protected 463-question lab copy and three nine-domain synthetic runs retained exactly equal canonical saved
+results across control and candidate builds: **25,832 lab records**, **14,169 records** for each 2,160-question
+high/low-sharing pilot, and **13,629 records** for the 1,620-question no-prerequisite-sharing pilot.
+The one-run whole-judging timings were mixed and visibly sensitive to run conditions: the final comparison recorded
+17.2→18.3 seconds (high sharing), 23.2→23.2 seconds (low sharing), 54.8→152.4 seconds (no prerequisite sharing),
+and 17.8→18.3 seconds (lab); judgement bytes rose 0.7–7.1%, while sampled private-memory peaks varied by workload.
+Do not call these timings a forecast or performance acceptance: the no-sharing case did not establish a post-membership
+DACL positive route, and the synthetic run's scope-selection/control phases also varied substantially between the
+sequential runs, so the mixed end-to-end values do not isolate requester processing cost.
+At this checkpoint the selector still built its complete candidate/witness collection before the saved work list;
+the later direct requester-plan producer above removes that automatic-selection accumulation boundary.
+Customer-scale production verification, full-scale measurements, the Stage 6 admission/control/ownership redesign,
+the unresolved accepted Domain Users handling discrepancy, SYSVOL work and owner-operated GUI/CLI/display acceptance
+remain outstanding; no live forest was accessed and no package was replaced.
+
+**Owner-requested new-session redesign handoff, 2026-10-08.**
+After the verified merge and completed-production log review, the owner requested a
+[new-session handoff](../.v-stage67-redesign-20261008-9c35/STAGE6-STAGE7-REDESIGN-HANDOFF.md)
+so work can move into the coordinated Stage 6/7 redesign on `rules-delivery` in this checkout.
+Carry forward the preferred generation-bound work plan and resource-batched execution rather
+than repeating the broad review or proposing another isolated speed/storage patch.
+The next session should present one concrete bounded implementation slice and its verification
+for explicit approval, without reopening settled product requirements or treating this handoff
+as blanket permission for new measurements, changed scope/budgets, UI changes or production work.
+
+**Completed production baseline reviewed from the owner's records, 2026-10-08.**
+The supplied summary/log records 12 h 49 m 26 s from capture-session start to the judging
+publication record, excluding later browsing; its processing summaries report capture 4 h 24 m,
+derivation 6 m 26 s and judging 8 h 15 m, with handoff/readback overhead outside those rounded totals.
+The executable fingerprint and judging engine MVID match the previously verified owner-lab
+package, not merely its `d187528` version stamp; the retained
+[baseline record](../.v-prod-completed-20261008-9c35/handoff.json) binds the original text-file hashes,
+build identity, phase counters and later browsing to the published judgement generation.
+Both analysis stages report `CompletedDegraded`, with nine of twenty rules indeterminate.
+The log confirms `scanGppPasswords=False`, while ordinary SYSVOL processing still took 163.52
+minutes; no controlled on/off saving was measured.
+The proof/result-package writing phase took 196.63 minutes versus 11.78 minutes across the three
+requester-family phases, and detailed control/ownership storage took another 53.57/34.02 minutes.
+These are whole phase costs, not isolated SQL or CPU timings; preparation, reference sharing,
+serialization, qualification, publication and browsing remain one design problem.
+The owner corrected the initial 17.85 GB judgement figure as a mistype, said he meant 27, and
+accepted the logged sealing byte count of 28,527,681,536; all three logical sizes and workload
+counts are recorded below under the forest's scale.
+Original files remain unchanged; no production database was opened or independently checked,
+and this review authorizes no implementation, new measurements, live access, rerun, package
+replacement, commit or push.
+
 **Owner-approved checkpoint integration before the Stage 6/7 correction, 2026-10-08.**
 The owner approved committing the completed shared-proof correction separately, addressing the
 three reproduced verification failures without weakening their checks, and merging `rules-delivery`
@@ -5102,6 +5304,36 @@ chosen number, not a tuned one; the laboratory showed its cost depends on the di
 
 ## The forest this is built for
 
+**Latest completed-production baseline, 2026-10-08, from the supplied log and portable summary.**
+These are the current observed workload and logical file lengths; the earlier dated measurements
+below remain historical rather than being rewritten.
+
+| Observed quantity | Value |
+|---|---:|
+| Domains recorded Read | 9 |
+| Objects judged / identities classified | 939,572 |
+| Derived principals | 406,009 |
+| Saved nesting relationships | 2,592,147 |
+| Distinct descriptors classified | 266,434 |
+| Entry positions across those descriptors | 141,140,779 |
+| Detailed assessment targets | 7,240 |
+| Distinct requester questions / requester identities | 653,689 / 6,024 |
+| Group Policy objects processed | 3,457 |
+| Evidence bytes read and hashed at sealing | 19,984,900,096 |
+| Derivation bytes read and hashed at sealing | 3,056,349,184 |
+| Judgement bytes read and hashed at sealing | 28,527,681,536 |
+
+The per-domain summary separately sums 329,483,944 permission occurrences carried by domain
+objects; shared descriptors can be counted for more than one object, so that is not the
+141,140,779-position descriptor workload above.
+The three sealed files total 51,568,930,816 logical bytes, not allocated disk space or peak
+working storage; the highest existing post-pass private-memory snapshot is 13,434,462,208 bytes,
+not a measured process peak or a recommended RAM requirement.
+Completion and the observed successful saved-view reads do not establish complete evidence,
+every saved answer's correctness or controlled before/after performance acceptance.
+See the [retained baseline](../.v-prod-completed-20261008-9c35/handoff.json) for provenance and
+phase/readback qualifications; no new measurement run or production database inspection was made.
+
 **The owner's production forest is the scale that matters, and the laboratory is not it.** Recorded
 because every performance and budget decision has to be argued against a real shape rather than a
 convenient one, and because a session that measures a small synthetic capture and reasons from it
@@ -5172,13 +5404,13 @@ production environment it profiles against. **The owner confirmed them as still 
 2026-09-07.** They are the shape to design and measure against.
 
 **The 17 GB is the owner's own figure for the predecessor's production output, supplied 2026-09-22,**
-and it is the only production *size* measurement this project has. Treat it as the order of magnitude
-to plan against, not as a budget the rebuild must beat: the predecessor stored a deduplicated,
+and it is historical context, superseded for rebuild sizing by the later production records above.
+It is not a budget the rebuild must beat: the predecessor stored a deduplicated,
 canonically ordered, generic-expanded ACL projection and **no raw descriptor bytes at all**, while
 this product keeps the sealed original bytes and every distinction that projection dropped. The two
 are not measuring the same thing, and the rebuild also splits its output into a sealed evidence file
-and a separate judgement file. No production size has been measured for this product, and the
-approved P-249 comparison runs are laboratory runs, so they will not establish one.
+and a separate judgement file. The preserved P-249 laboratory comparisons remain laboratory
+measurements, separate from the subsequently recorded production sizes.
 
 **The laboratory is `ad.lab`, about 8,383 objects, and the owner's words for it are that it "falls
 far short" of production in both scale and complexity.** It is genuinely useful for testing

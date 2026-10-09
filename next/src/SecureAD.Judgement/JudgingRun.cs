@@ -938,10 +938,11 @@ public static class JudgingRun
                 : ControlEdgeDeriver.Derive(subject,
                     permissions: null, controlContext, writer.GenerationId, derivationGeneration, domainSids)
                     with { DescriptorOutcome = DescriptorOutcome(permissions), Uncertainty = DescriptorUncertainty(permissions) };
+            var preparedEdges = ControlEvidencePreparation.Create(edges, writer.GenerationId, derivationGeneration, cancellationToken);
             work.ControlDerive.Stop();
             progress.BeginOperation("store-control-edges");
             work.ControlWrite.Start();
-            writer.WriteControlEdges(edges, OwnershipAuditRun.Target(subject, namingContexts.Value));
+            writer.WritePreparedControlEdges(preparedEdges, OwnershipAuditRun.Target(subject, namingContexts.Value));
             work.ControlWrite.Stop();
             if (tier0Discovery is not null)
             {
@@ -1199,6 +1200,7 @@ public static class JudgingRun
             [
                 new("generation", writer.GenerationId.ToString("D")), new("phase", phase.ToString()),
                 new("selection-requested", offlineSelection.ToString(CultureInfo.InvariantCulture)),
+                new("scope", "execution-segment"),
                 new("completed", completed.ToString(CultureInfo.InvariantCulture)),
                 new("ms", pathWatch.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture)),
             ]);

@@ -60,7 +60,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         if (meaning is not null)
         {
             var key = ValueKey("Meaning", generation, null, 0, meaning);
-            id = Put("Meaning", generation, null, 0, meaning, out _);
+            id = Put("Meaning", generation, null, 0, meaning, out _, preparedKey: null, preparedFingerprint: null);
             session.AddProof(key, id.Value);
         }
         return (id, MeaningBinding(generation, entryKey, meaning));
@@ -68,43 +68,103 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
 
     internal void WriteControlRoutes(ControlEdge edge)
     {
-        var value = WriteRoutes(edge.MembershipRoutes, edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion);
+        WriteControlRoutes(edge, PreparedRoutes.Create(edge.MembershipRoutes, edge.GenerationId,
+            edge.DerivationGenerationId, edge.PrincipalCatalogueVersion));
+    }
+
+    internal void WriteControlRoutes(ControlEdge edge, PreparedRoutes routes)
+    {
+        routes.RequireFor(edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion);
+        var value = WriteRoutes(routes);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "INSERT INTO control_membership_route VALUES ($edge,$value,$hash)";
         command.Parameters.AddWithValue("$edge", edge.Id);
         command.Parameters.AddWithValue("$value", value);
-        command.Parameters.AddWithValue("$hash", ControlBinding(edge, JsonSerializer.Serialize(edge.MembershipRoutes)));
+        command.Parameters.AddWithValue("$hash", ControlBinding(edge, routes.Payload));
         command.ExecuteNonQuery();
     }
 
     internal (long Id, byte[] Fingerprint) WriteFullControlRoutes(FullControlAssessment assessment)
     {
-        var value = WriteRoutes(assessment.Source.MembershipRoutes, assessment.GenerationId,
-            assessment.DerivationGenerationId, assessment.PrincipalCatalogueVersion);
-        return (value, FullControlBinding(assessment, JsonSerializer.Serialize(assessment.Source.MembershipRoutes)));
+        return WriteFullControlRoutes(assessment, PreparedRoutes.Create(assessment.Source.MembershipRoutes,
+            assessment.GenerationId, assessment.DerivationGenerationId, assessment.PrincipalCatalogueVersion));
     }
 
-    private long WriteRoutes(MembershipRouteSummary routes, Guid generation, Guid? derived, int catalogue)
+    internal (long Id, byte[] Fingerprint) WriteFullControlRoutes(FullControlAssessment assessment, PreparedRoutes routes)
+    {
+        routes.RequireFor(assessment.GenerationId, assessment.DerivationGenerationId, assessment.PrincipalCatalogueVersion);
+        return (WriteRoutes(routes), FullControlBinding(assessment, routes.Payload));
+    }
+
+    internal sealed class PreparedRoutes
+    {
+        private readonly Guid _generation;
+        private readonly Guid? _derived;
+        private readonly int _catalogue;
+        private readonly byte[] _fingerprint;
+
+        private PreparedRoutes(MembershipRouteSummary routes, string payload, Guid generation, Guid? derived, int catalogue)
+        {
+            Routes = routes;
+            Payload = payload;
+            _generation = generation;
+            _derived = derived;
+            _catalogue = catalogue;
+            Key = ValueKey("MembershipRoutes", generation, derived, catalogue, payload);
+            _fingerprint = Hash(Key);
+        }
+
+        internal MembershipRouteSummary Routes { get; }
+        internal string Payload { get; }
+        internal string Key { get; }
+        internal byte[] Fingerprint => _fingerprint.ToArray();
+        internal Guid Generation => _generation;
+        internal Guid? Derivation => _derived;
+        internal int Catalogue => _catalogue;
+
+        internal void RequireFor(Guid generation, Guid? derived, int catalogue)
+        {
+            if (_generation != generation || _derived != derived || _catalogue != catalogue)
+                throw FullControlEvaluator.InvalidProof();
+        }
+
+        internal static PreparedRoutes Create(MembershipRouteSummary routes, Guid generation, Guid? derived, int catalogue)
+        {
+            if (routes is null || routes.Memberships is null) throw FullControlEvaluator.InvalidProof();
+            var snapshot = JudgingInputs.FreezeRoutes(routes);
+            ControlEvidencePreparation.PreparingRoutes(generation);
+            return new(snapshot, JsonSerializer.Serialize(snapshot), generation, derived, catalogue);
+        }
+
+        internal static PreparedRoutes Read(MembershipRouteSummary routes, string payload, Guid generation, Guid? derived, int catalogue) =>
+            new(JudgingInputs.FreezeRoutes(routes), payload, generation, derived, catalogue);
+    }
+
+    private long WriteRoutes(PreparedRoutes prepared)
     {
         Active();
-        if (routes is null || routes.Memberships is null) throw FullControlEvaluator.InvalidProof();
-        var payload = JsonSerializer.Serialize(routes);
-        var key = ValueKey("MembershipRoutes", generation, derived, catalogue, payload);
+        var routes = prepared.Routes;
+        var payload = prepared.Payload;
+        var generation = prepared.Generation;
+        var derived = prepared.Derivation;
+        var catalogue = prepared.Catalogue;
+        var key = prepared.Key;
         if (session.TryGetProof(key, out var cached)) return cached;
-        var id = Put("MembershipRoutes", generation, derived, catalogue, payload, out var created);
+        var id = Put("MembershipRoutes", generation, derived, catalogue, payload, out var created, key, prepared.Fingerprint);
         if (created)
             MembershipRouteStorage.Write(connection, transaction, RouteSubject(id), routes);
-        else if (JsonSerializer.Serialize(ReadRoutes(connection, id, generation, derived, catalogue)) != payload)
+        else if (ReadRoutes(connection, id, generation, derived, catalogue).Payload != payload)
             throw FullControlEvaluator.InvalidProof();
         session.AddProof(key, id);
         return id;
     }
 
-    private long Put(string kind, Guid generation, Guid? derived, int catalogue, string payload, out bool created)
+    private long Put(string kind, Guid generation, Guid? derived, int catalogue, string payload, out bool created,
+        string? preparedKey, byte[]? preparedFingerprint)
     {
         Active();
-        var key = ValueKey(kind, generation, derived, catalogue, payload);
+        var key = preparedKey ?? ValueKey(kind, generation, derived, catalogue, payload);
         if (session.TryGetProof(key, out var cached))
         {
             created = false;
@@ -139,13 +199,14 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         [
             ("$kind", kind), ("$version", FormatVersion), ("$generation", generation.ToString("D")),
             ("$derived", derived is { } source ? source.ToString("D") : null), ("$catalogue", catalogue),
-            ("$payload", payload), ("$hash", Hash(key)), ("$lookup", bucket),
+            ("$payload", payload), ("$hash", preparedFingerprint ?? Hash(key)), ("$lookup", bucket),
         ];
         created = true;
         return (long)statements.Bind(insert, transaction, values).ExecuteScalar()!;
     }
 
-    internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge)
+    internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge,
+        ControlEvidenceReadScope? scope)
     {
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT value_id,fingerprint FROM control_membership_route WHERE edge_id=$edge";
@@ -158,23 +219,30 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             id = read.GetInt64(0);
             fingerprint = (byte[])read.GetValue(1);
         }
-        var routes = ReadRoutes(connection, id, edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion);
-        if (!ControlBinding(edge, JsonSerializer.Serialize(routes)).AsSpan().SequenceEqual(fingerprint))
+        var routes = scope is null
+            ? ReadRoutes(connection, id, edge.GenerationId, edge.DerivationGenerationId, edge.PrincipalCatalogueVersion)
+            : scope.Routes(connection, edge, id, () => ReadRoutes(connection, id, edge.GenerationId,
+                edge.DerivationGenerationId, edge.PrincipalCatalogueVersion));
+        if (!ControlBinding(edge, routes.Payload).AsSpan().SequenceEqual(fingerprint))
             throw FullControlEvaluator.InvalidProof();
-        return routes;
+        return routes.Routes;
     }
+
+    internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge) =>
+        ReadControlRoutes(connection, edge, scope: null);
 
     internal static MembershipRouteSummary ReadFullControlRoutes(SqliteConnection connection, FullControlAssessment assessment,
         long id, byte[] fingerprint)
     {
         var routes = ReadRoutes(connection, id, assessment.GenerationId, assessment.DerivationGenerationId, assessment.PrincipalCatalogueVersion);
-        if (!FullControlBinding(assessment, JsonSerializer.Serialize(routes)).AsSpan().SequenceEqual(fingerprint))
+        if (!FullControlBinding(assessment, routes.Payload).AsSpan().SequenceEqual(fingerprint))
             throw FullControlEvaluator.InvalidProof();
-        return routes;
+        return routes.Routes;
     }
 
-    private static MembershipRouteSummary ReadRoutes(SqliteConnection connection, long id, Guid generation, Guid? derived, int catalogue)
+    private static PreparedRoutes ReadRoutes(SqliteConnection connection, long id, Guid generation, Guid? derived, int catalogue)
     {
+        ControlEvidencePreparation.ReadingRoutes(generation);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE id=$id";
         command.Parameters.AddWithValue("$id", id);
@@ -191,7 +259,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         var subject = RouteSubject(id);
         if (!MembershipRouteStorage.Read(connection, subject).TryGetValue(subject, out var routes)
             || JsonSerializer.Serialize(routes) != payload) throw FullControlEvaluator.InvalidProof();
-        return routes;
+        return PreparedRoutes.Read(routes, payload, generation, derived, catalogue);
     }
 
     // THE CONSUMER IS THE ENTRY, NOT THE POSITION IT WAS FOUND AT. It named (target, ordinal) while

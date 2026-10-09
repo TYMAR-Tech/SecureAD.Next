@@ -211,8 +211,8 @@ internal sealed class RequesterMembershipContext
                 links.Add(Link(from, group));
             }
         }
-        var result = new RequesterMembershipEvidence(expansion.Members.Outcome, expansion.Fingerprint, links,
-            expansion.Limitations.Select(value => value.Reason).Distinct().Order().ToArray());
+        var result = new RequesterMembershipEvidence(expansion.Members.Outcome, expansion.Fingerprint, links.ToImmutableArray(),
+            expansion.Limitations.Select(value => value.Reason).Distinct().Order().ToImmutableArray());
         expansion.Routes.Add(requesterDn, result);
         return result;
     }

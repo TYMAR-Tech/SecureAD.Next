@@ -46,7 +46,7 @@ internal static class Tier0DistanceStorage
 
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction, JudgementDescription description,
         PathInputs inputs, string calculationFingerprint, IReadOnlyList<OwnershipAuditStorage.TargetRow> recorded,
-        IReadOnlyList<Tier0PathNode> nodes, PathRequesterRouteIndex routes, PathRequesterSelection? selection,
+        IReadOnlyList<Tier0PathNode> nodes, PathRequesterRouteIndex routes, PathCalculationStorage.Selection? selection,
         IEnumerable<string> checkedRequesters, CancellationToken cancellationToken)
     {
         var byDn = nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase);

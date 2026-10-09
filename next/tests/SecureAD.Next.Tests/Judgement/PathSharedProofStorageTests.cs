@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -90,6 +91,110 @@ public sealed class PathSharedProofStorageTests
         Write(connection, Description(), value with { Witnesses = Enumerable.Repeat(value.Witnesses[0], 100).ToArray() });
         Assert.Single(trace.Sql.Where(sql => sql.Contains("FROM path_shared_proof WHERE kind='Identity'", StringComparison.Ordinal)));
         Assert.Single(trace.Sql.Where(sql => sql.Contains("FROM path_shared_proof WHERE kind='SourceWitness'", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void SharedPathImmutableComponentsArePreparedOnceAcrossProofWrites()
+    {
+        using var connection = Database();
+        var description = Description();
+        using var transaction = connection.BeginTransaction();
+        using var statements = new PreparedStatements(connection);
+        using var proofs = new PathProofStorage.Writer(connection, transaction, CancellationToken.None);
+        var shared = new PathSharedProofStorage(connection, description, CancellationToken.None, proofs, transaction, statements);
+        var sample = Sample("schema");
+        var immutable = sample with { Schema = new JudgingInputs.AttributeSnapshot(sample.Schema) };
+        using var trace = new JudgingInputReuseTests.Statements(connection);
+
+        for (var index = 0; index < 20; index++) shared.Write(immutable with { Occurrence = index });
+
+        Assert.Single(trace.Sql.Where(sql => sql.Contains("FROM path_shared_proof WHERE kind='SchemaEvidence'", StringComparison.Ordinal)));
+        Assert.Single(trace.Sql.Where(sql => sql.Contains("FROM path_shared_proof WHERE kind='Identity'", StringComparison.Ordinal)));
+        Assert.Equal(2, trace.Sql.Count(sql => sql.Contains("FROM path_shared_proof WHERE kind='SourceWitness'", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void SharedPathAttributeSnapshotDetachesBinaryValuesBeforeReuse()
+    {
+        using var connection = Database();
+        var description = Description();
+        using var transaction = connection.BeginTransaction();
+        using var statements = new PreparedStatements(connection);
+        using var proofs = new PathProofStorage.Writer(connection, transaction, CancellationToken.None);
+        var shared = new PathSharedProofStorage(connection, description, CancellationToken.None, proofs, transaction, statements);
+        byte[] original = [1, 2, 3];
+        var source = Sample("schema");
+        var schema = source.Schema.Select(value => value with
+        {
+            Attributes = [new ObjectAttribute("schemaIDGUID", SecureAD.Kernel.Capture.AttributeCardinality.SingleValued,
+                [new AttributeValue(0, null, original)])],
+        }).ToArray();
+        var value = source with { Schema = new JudgingInputs.AttributeSnapshot(schema) };
+        original[0] = 9;
+        value.Schema[0].Attributes[0].Values[0].Bytes![1] = 9;
+
+        var saved = shared.Write(value);
+        var restored = shared.Read<Value>(saved.Id, Convert.ToHexString(saved.Fingerprint));
+
+        Assert.Equal(new byte[] { 1, 2, 3 }, restored.Schema[0].Attributes[0].Values[0].Bytes);
+    }
+
+    [Fact]
+    public void SharedPathImmutableReuseDoesNotRetainCompletedProofInputs()
+    {
+        using var connection = Database();
+        using var transaction = connection.BeginTransaction();
+        using var statements = new PreparedStatements(connection);
+        using var proofs = new PathProofStorage.Writer(connection, transaction, CancellationToken.None);
+        var shared = new PathSharedProofStorage(connection, Description(), CancellationToken.None, proofs, transaction, statements);
+        var weak = WriteTemporarySnapshot(shared);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(weak.IsAlive);
+        GC.KeepAlive(shared);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference WriteTemporarySnapshot(PathSharedProofStorage shared)
+    {
+        var sample = Sample("temporary");
+        var snapshot = new JudgingInputs.AttributeSnapshot(sample.Schema);
+        shared.Write(sample with { Schema = snapshot });
+        return new(snapshot);
+    }
+
+    [Fact]
+    public void SharedPathSelectionWitnessPreparationRetainsEveryOrderedUse()
+    {
+        using var connection = Database();
+        var description = Description();
+        using var transaction = connection.BeginTransaction();
+        using var statements = new PreparedStatements(connection);
+        using var proofs = new PathProofStorage.Writer(connection, transaction, CancellationToken.None);
+        var shared = new PathSharedProofStorage(connection, description, CancellationToken.None, proofs, transaction, statements);
+        using var trace = new JudgingInputReuseTests.Statements(connection);
+        var witness = new PathRequesterSelectionWitness("CN=Target,DC=example", 7, 0x40000, "CN=Holder,DC=example", null);
+        var first = shared.PrepareSelectionWitness(witness);
+        var second = shared.PrepareSelectionWitness(witness with { PermissionOrdinal = 3 });
+        PathProofStorage.Reference[] uses = [first, second, first];
+        var saved = new List<PathProofStorage.Reference>();
+        for (var index = 0; index < 12; index++)
+        {
+            saved.Add(shared.WriteSelectionCandidate(new(index + 1, PathRequesterFamily.RequesterDacl,
+                $"CN=User{index},DC=example", witness.ResourceDn, null, null), new string('a', 64), uses));
+        }
+        var preparationCount = trace.Sql.Count(sql => sql.Contains("FROM path_shared_proof WHERE kind='SelectionWitness'", StringComparison.Ordinal));
+
+        Assert.Equal(2, preparationCount);
+        for (var index = 0; index < saved.Count; index++)
+        {
+            var restored = shared.Read<PathRequesterCandidate>(saved[index].Id, Convert.ToHexString(saved[index].Fingerprint));
+            Assert.Equal($"CN=User{index},DC=example", restored.RequesterDn);
+            Assert.Equal(new[] { 7, 3, 7 }, restored.Witnesses.Select(value => value.PermissionOrdinal));
+        }
     }
 
     [Fact]

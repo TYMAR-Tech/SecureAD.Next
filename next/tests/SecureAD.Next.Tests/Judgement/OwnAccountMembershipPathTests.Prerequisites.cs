@@ -236,7 +236,7 @@ public sealed partial class OwnAccountMembershipPathTests
             "evidence" => fixture.Inputs with { Input = fixture.Inputs.Input! with { EvidenceSeal = new string('f', 64) } },
             _ => fixture.Inputs with { Input = fixture.Inputs.Input! with { DerivationGenerationId = Guid.NewGuid() } },
         };
-        var prerequisites = new OwnAccountMembershipProofs(fixture.Connection, fixture.Description, fixture.Sources,
+        var prerequisites = new OwnAccountBatchEvaluation(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, inputs, CancellationToken.None);
 
         Assert.Throws<InvalidDataException>(() =>
@@ -295,7 +295,7 @@ public sealed partial class OwnAccountMembershipPathTests
         OwnAccountMembershipRequest[] requests = [new(UserDn, TargetDn)];
         var expected = MembershipPrerequisiteReference.OwnAccounts(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, inputs, fixture.Nodes, requests, CancellationToken.None, membershipContinuation: false, currentSourceFingerprints: true);
-        var prerequisites = new OwnAccountMembershipProofs(fixture.Connection, fixture.Description, fixture.Sources,
+        var prerequisites = new OwnAccountBatchEvaluation(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, inputs, CancellationToken.None);
 
         var actual = Assert.Single(prerequisites.Create(fixture.Nodes, requests, membershipContinuation: false));
@@ -360,7 +360,7 @@ public sealed partial class OwnAccountMembershipPathTests
         internal PathInputs Inputs { get; }
         internal Dictionary<string, Tier0PathNode> Nodes { get; } = new(StringComparer.OrdinalIgnoreCase);
         internal RequesterMembershipContext? Memberships { get; }
-        internal OwnAccountMembershipProofs Prerequisites { get; }
+        internal OwnAccountBatchEvaluation Prerequisites { get; }
         private readonly CancellationToken _token;
 
         internal PrerequisiteFixture(string directory, CancellationToken token)
@@ -386,7 +386,7 @@ public sealed partial class OwnAccountMembershipPathTests
         }
 
         internal IReadOnlyList<SavedMembershipDaclProof> Combined(IReadOnlyList<MembershipDaclRequest> requests) =>
-            MembershipDaclProofs.Create(Connection, Description, Sources, Identities, Inputs, Nodes, requests,
+            RequesterBatchEvaluation.Combined(Connection, Description, Sources, Identities, Inputs, Nodes, requests,
                 _token, Memberships, Prerequisites);
 
         public void Dispose()

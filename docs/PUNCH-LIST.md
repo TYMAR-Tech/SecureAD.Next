@@ -13,6 +13,41 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Verified coordinated redesign - owner-requested commit then measurement, 2026-10-09.**
+The owner requested committing the completed requester/Stage 6 checkpoint on `rules-delivery` and then measuring, without another rewrite or broad review.
+Compare the committed candidate against the retained pre-redesign control on identical protected lab and reproducible nine-domain pilot inputs with matched repeats, exact saved-answer/binding checks and whole-judging, publication, selected-readback, memory and storage records.
+Preserve all originals, frozen records and unrelated owner work; use retained tooling without new harness code, live access, production-volume runs, new budgets, package replacement or push, and report the actual improvement/regression/inconclusive outcome.
+
+**Stage 6 prepared-reference result production - implemented and offline verified; measurement follows, 2026-10-09.**
+Resource-local control/full-control/ownership production and ownership-candidate readback now carry owned checked references through the existing writers, preserving every ordered occurrence, saved answer, count, uncertainty and binding in unchanged Judgement 63.
+All 864 affected and 245 architecture/behavior cases passed with coverage, the final full regression passed 7,545/7,545 with coverage, all 28 new cases detected 25 isolated rebuilt defects with passing restorations, and five complete selected-result comparisons match the preserved control exactly.
+Keep `rules-delivery`, all preceding work/evidence and the eight hash-verified owner inputs; measurements are deferred as requested, with wider preparation/path-package work, Domain Users, SYSVOL and production acceptance still open and no live access, UI change, package replacement, commit or push.
+
+**Stage 6 rollback-check correction - P1 resolved, 2026-10-09.**
+The isolated missing-rollback defect passed the new check because a second database connection could not see the writer's still-open transaction, so the original check did not establish rollback.
+The corrected check forces the writer's commit boundary before inspecting rows, detects the explicitly rebuilt missing-rollback defect, and passes its rebuilt restoration and final full regression.
+Retain the original undetected-defect attempt separately; no historical fixture, production rollback policy or measurement record is changed.
+
+**Stage 6 lifetime-check correction - P1 resolved, 2026-10-09.**
+The isolated retained-source defect passed the new lifetime check because the check released the prepared result before testing whether that result retained its caller's collection.
+The check now holds the prepared result alive while requiring the caller's source to be collected, then separately checks that the writer releases the prepared body.
+Both rebuilt caller-source and writer-body retention defects are detected, their rebuilt restorations and the final full regression pass, and the initial undetected attempt remains separate from accepted verification.
+
+**Direct requester-plan producer - implemented and offline verified; production acceptance open, 2026-10-09.**
+Automatic selection now writes distinct generation-bound questions and ordered shared-witness uses directly into the existing work plan, releases resource snapshots and removes selection staging before evaluation, with the exact answers, reasons, counts, limitations and passive readback preserved in unchanged Judgement 63.
+All 1,447 affected cases passed with coverage, the final full regression passed 7,517/7,517 tests with coverage, and all 25 new/adapted cases detected 14 isolated rebuilt defects with 14 passing restorations.
+No new timing campaign or production saving is claimed; wider shared membership/path-input preparation, Stage 6 result producers, wider result-package work and the Domain Users policy discrepancy remain unfinished, with existing work/evidence preserved and no live access, package replacement, commit or push.
+
+**Requester work-plan lifecycle - implemented and offline verified; production acceptance open, 2026-10-08.**
+Judgement format 63 now evaluates and saves all three existing requester families in resource batches and carries compact, generation-bound references through qualification and passive selected readback, preserving answers, evidence order, counts, uncertainty, shortest/best routes and atomic publication without migration.
+The final full suite passed 7,453/7,453 tests with coverage; 26 required behavior cases detected 15 isolated rebuilt defects with passing restorations, four immutable-preparation cases detected five more, and the approved hash-verified lab/synthetic comparisons preserved canonical results exactly.
+The single-run timing comparison was mixed, did not isolate requester costs and is not production acceptance; the later direct producer above removes the earlier full-selection accumulation boundary, while Stage 6 admission/control/ownership redesign, the Domain Users policy discrepancy, SYSVOL and owner-operated GUI/CLI/display acceptance remain open without live access, package replacement, commit or push.
+
+**Completed production baseline - records reviewed; balanced correction remains open, 2026-10-08.**
+The [retained log baseline](../.v-prod-completed-20261008-9c35/handoff.json) establishes 12 h 49 m 26 s to the judging publication record, 939,572 objects, 7,240 detailed targets and 653,689 requester questions on the same fingerprinted executable/engine as the verified owner lab, with derivation and judging `CompletedDegraded`.
+Proof/result-package writing took 196.63 minutes versus 11.78 across the requester-family phases, detailed control/ownership storage took 53.57/34.02 minutes, and ordinary SYSVOL still took 163.52 minutes with the optional XML scan disabled.
+The owner corrected the 17.85 GB mistype and accepted the logged 28,527,681,536-byte Judgement; preserve uncertainty, the supplied originals and qualified browsing/memory evidence when scoping the next correction, without inferring controlled savings, peak capacity, full saved-result acceptance or permission to implement.
+
 **Checkpoint integration before the Stage 6/7 correction — merged as #6, 2026-10-08.**
 The owner explicitly accepted CI run 37814230494 as the full-regression gate, with all 7,427 tests passing on exact head `6ede455`, and #6 merged the rules, shared-proof checkpoint and bounded verification correction as `3c5110b`.
 The retained `rules-delivery` branch was advanced to merged main in this checkout, all seven unrelated diagnostic inputs remain unchanged, and the [verification record](../.v-merge-ready-20261008-9c35/handoff.json) retains 132 focused passes plus seven required cases detecting five rebuilt defects with restored controls.
@@ -22,6 +57,11 @@ The aborted local duplicate is recorded separately below rather than called a pa
 The duplicate local run ended after 3,297 passing tests with no reported assertion failure when the three-minute inactivity watchdog fired, naming `DocumentEncodingGateTests.NoDocumentCarriesTextFromAWindows1252RoundTrip` as the active test.
 That guard recursively enumerates repository Markdown before filtering build output and therefore visits local ignored artifact trees, but this code-confirmed scan scope does not establish the cause of the host exit.
 Retain the TRX, log, sequence and partial coverage under `.v-merge-ready-20261008-9c35`, investigate separately without weakening the guard, and do not reopen the owner-accepted merge gate whose exact-head CI completed all 7,427 tests.
+
+**Document scan traversal — P2 corrected and offline verified, 2026-10-08.**
+The owner-approved scanner prunes generated and existing ignored local-evidence directories before entering them, preserving real/uncommitted document coverage, corruption detection, explicit source-read errors and the unchanged three-minute timeout.
+All 54 active targeted checks passed with coverage, the previously unfinished encoding scan completed in 7.65 seconds, and all 40 new cases detected five isolated rebuilt defects with five passing rebuilt restoration controls.
+Both abort records remain failed attempts with their exact original stall location unconfirmed, and the correction changes no product behavior or inherited diagnostic input.
 
 **Stage 6/7 design review — completed; balanced correction proposal open, 2026-10-08.**
 The read-only review traced the active GUI/CLI pipeline and retained evidence, verified all 954 compiled inputs against the checkpoint, and supported Tier-0-first assessment plus uncapped backwards membership search without accepting complete attack-path coverage or production capacity.
@@ -51,7 +91,7 @@ The full-size synthetic proof workload saved 939,225 nodes, 653,689 questions an
 **Shared-proof selection persistence cost — P2 open, 2026-10-08.**
 The full-size synthetic run's measured phases total 195.81 minutes, including 143.98 minutes in the combined reference-header sizing and selection-persistence phase, 34.99 minutes in answers/distance/best-route storage and commit, and 6.45 minutes in final publication; these are shared-machine diagnostics, not isolated production writer timings or an end-to-end judging estimate.
 The earlier identical-input pilot reduced the generated database from 726,458,368 to 137,240,576 bytes but added selection lookup work, while read/page-scoped decoding was subsequently corrected and independently mutation-verified without retaining results across reads.
-A further bounded pass should separate generator/reference work from actual persistence, measure repeated component lookup/comparison and small-record writes at the observed forest shape, then propose any additional optimization for approval without dropping witnesses, weakening bindings, limiting coverage or promising a production completion time.
+The completed production run above records 196.63 minutes in the broader proof/result-writing phase, so a future bounded followup must distinguish its real preparation/persistence work from benchmark-only reference sizing without dropping witnesses, weakening bindings, limiting coverage or promising a production completion time.
 
 **Pre-existing Evidence 14 regression gates — P2 corrected and offline verified, 2026-10-08.**
 The bounded followup appends the missing format-14 coverage-identity checkpoint and replaces three implicit nullable defaults with explicit choices, retaining the same disabled-scan coverage and all eight historical pins for versions 6-13.

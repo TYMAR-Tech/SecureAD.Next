@@ -116,13 +116,7 @@ internal sealed class JudgingInputs : IDisposable
         foreach (var subject in input.Objects)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            objects.Add(subject with
-            {
-                Attributes = subject.Attributes.Select(attribute => attribute with
-                {
-                    Values = new AttributeValues(attribute.Values),
-                }).ToImmutableArray(),
-            });
+            objects.Add(FreezeAttributes(subject));
         }
         return _membership = input with { Objects = objects.ToImmutable() };
     }
@@ -179,6 +173,12 @@ internal sealed class JudgingInputs : IDisposable
     internal void RequireFor(JudgementDescription description)
     {
         RequireCurrent();
+        RequireProtectedBinding(description);
+    }
+
+    internal void RequireProtectedBinding(JudgementDescription description)
+    {
+        CheckLifetime();
         if (description.EvidenceSeal != EvidenceSeal
             || description.DerivationGenerationId != _derivedFile?.Generation?.GenerationId)
             throw OwnershipAuditStorage.InvalidProof();
@@ -258,10 +258,28 @@ internal sealed class JudgingInputs : IDisposable
         }).ToImmutableArray(),
     };
 
+    private static ObjectAttributes FreezeAttributes(ObjectAttributes subject) => subject with
+    {
+        Attributes = subject.Attributes.Select(attribute => attribute with
+        {
+            Values = new AttributeValues(attribute.Values),
+        }).ToImmutableArray(),
+    };
+
+    internal sealed class AttributeSnapshot(IEnumerable<ObjectAttributes> values) : IReadOnlyList<ObjectAttributes>
+    {
+        private readonly ImmutableArray<ObjectAttributes> _values = values.Select(FreezeAttributes).ToImmutableArray();
+        public int Count => _values.Length;
+        public ObjectAttributes this[int index] => _values[index];
+        public IEnumerator<ObjectAttributes> GetEnumerator() => ((IEnumerable<ObjectAttributes>)_values).GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     // Text records are immutable; binary values need a detached view, just like prepared ACE data.
     private sealed class AttributeValues(IReadOnlyList<AttributeValue> values) : IReadOnlyList<AttributeValue>
     {
-        private readonly AttributeValue[] _values = values.ToArray();
+        private readonly AttributeValue[] _values = values.Select(value =>
+            value.Bytes is null ? value : value with { Bytes = value.Bytes.ToArray() }).ToArray();
         public int Count => _values.Length;
         public AttributeValue this[int index] => _values[index].Bytes is null ? _values[index]
             : _values[index] with { Bytes = _values[index].Bytes!.ToArray() };

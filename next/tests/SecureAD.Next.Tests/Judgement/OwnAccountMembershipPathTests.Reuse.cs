@@ -154,7 +154,7 @@ public sealed partial class OwnAccountMembershipPathTests
         var completed = log.Saying("post-pass status").Where(value => RecordingRunLog.Value(value, "outcome") == "completed"
             && RecordingRunLog.Value(value, "stage") is "Selecting account checks" or "Matching saved answers").ToArray();
 
-        Assert.Equal(4, completed.Length);
+        Assert.Equal(2, completed.Length);
         Assert.All(completed, value => Assert.Equal(reader.Description.GenerationId.ToString("D"), RecordingRunLog.Value(value, "generation")));
         var selection = Assert.Single(completed, value => RecordingRunLog.Value(value, "stage") == "Selecting account checks");
         Assert.Equal("3", RecordingRunLog.Value(selection, "distinctQuestions"));
@@ -162,8 +162,10 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.Equal(RecordingRunLog.Value(selection, "resourcesTotal"), RecordingRunLog.Value(selection, "resourcesFingerprinted"));
         Assert.All(completed.Where(value => RecordingRunLog.Value(value, "stage") == "Matching saved answers"), value =>
         {
-            Assert.Equal(("1", "1", "execution-only"), (RecordingRunLog.Value(value, "answersTotal"),
+            Assert.Equal(("3", "3", "execution-only"), (RecordingRunLog.Value(value, "answersTotal"),
                 RecordingRunLog.Value(value, "answersProcessed"), RecordingRunLog.Value(value, "kind")));
+            Assert.Equal(("1", "1", "1"), (RecordingRunLog.Value(value, "requesterAnswers"),
+                RecordingRunLog.Value(value, "ownAccountAnswers"), RecordingRunLog.Value(value, "membershipDaclAnswers")));
             Assert.Equal(RecordingRunLog.Value(value, "objectsTotal"), RecordingRunLog.Value(value, "objectsProcessed"));
         });
         foreach (var line in log.Saying("post-pass status").Concat(log.Saying("post-pass part")))

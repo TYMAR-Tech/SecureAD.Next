@@ -71,7 +71,7 @@ public sealed partial class OwnAccountMembershipPathTests
             fixture.Description, fixture.Sources, fixture.Identities, inputs, [question.Request], CancellationToken.None,
             question.ObtainedMembership, fixture.Memberships, currentSourceFingerprints: true))).ToArray();
 
-        var actual = RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var actual = RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, inputs, questions, CancellationToken.None, fixture.Memberships);
 
         Assert.Equal(JsonSerializer.Serialize(expected, ProofSerialization.Options), JsonSerializer.Serialize(actual, ProofSerialization.Options));
@@ -98,7 +98,7 @@ public sealed partial class OwnAccountMembershipPathTests
         evidence.Sql.Clear();
         judgement.Sql.Clear();
 
-        var answers = RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var answers = RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, questions, CancellationToken.None, memberships: null);
 
         Assert.Equal(accounts * 2, answers.Count);
@@ -155,7 +155,7 @@ public sealed partial class OwnAccountMembershipPathTests
             [], true, phase => starts[phase] = trace.Sql.Count, null, statements);
         var saved = PathRequesterRiskStorage.ReadProofs(fixture.Connection, fixture.Description, CancellationToken.None);
         var directQueries = trace.Sql.Skip(starts[PathRequesterWorkPhase.RequesterDacl])
-            .Take(starts[PathRequesterWorkPhase.OwnAccountMembership] - starts[PathRequesterWorkPhase.RequesterDacl]).Count(IsDaclEdgeQuery);
+            .Take(starts[PathRequesterWorkPhase.MembershipDacl] - starts[PathRequesterWorkPhase.RequesterDacl]).Count(IsDaclEdgeQuery);
         var combinedQueries = trace.Sql.Skip(starts[PathRequesterWorkPhase.MembershipDacl])
             .Take(starts[PathRequesterWorkPhase.WritingProofs] - starts[PathRequesterWorkPhase.MembershipDacl]).Count(IsDaclEdgeQuery);
         var directTargets = saved.Requesters.Select(proof => proof.Assessment.Request.TargetDn).Distinct(StringComparer.Ordinal).Count();
@@ -165,7 +165,7 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.True(saved.Requesters.Count > directTargets);
         Assert.True(saved.MembershipDacls.Count(proof => proof.Assessment.Dacl is not null) > combinedTargets);
         Assert.Equal(directTargets, directQueries);
-        Assert.Equal(combinedTargets, combinedQueries);
+        Assert.Equal(0, combinedQueries);
         Assert.Equal(saved.Requesters.OrderBy(proof => RequesterDaclProofs.Key(proof.Assessment.Request), StringComparer.Ordinal), saved.Requesters);
     }
 
@@ -176,12 +176,12 @@ public sealed partial class OwnAccountMembershipPathTests
         RequesterDaclProofs.Question[] questions = [new(new(UserDn, CoreDn), null)];
         using var evidence = new JudgingInputReuseTests.Statements(PrerequisiteEvidenceConnection(fixture.Sources.Bundle));
         evidence.Sql.Clear();
-        var first = RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var first = RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, questions, CancellationToken.None, memberships: null);
         var firstReads = DescriptorReads(evidence.Sql);
         evidence.Sql.Clear();
 
-        var second = RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        var second = RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, questions, CancellationToken.None, memberships: null);
 
         Assert.Equal(1, firstReads);
@@ -201,7 +201,7 @@ public sealed partial class OwnAccountMembershipPathTests
         else if (change == "disposed") fixture.Sources.Dispose();
         else Derive(fixture.Reader.BundleDirectory);
 
-        var error = Record.Exception(() => RequesterDaclProofs.Create(fixture.Connection, fixture.Description,
+        var error = Record.Exception(() => RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description,
             fixture.Sources, fixture.Identities, fixture.Inputs, [new(new(UserDn, CoreDn), null)], stopping.Token, fixture.Memberships));
 
         Assert.NotNull(error);
@@ -219,7 +219,7 @@ public sealed partial class OwnAccountMembershipPathTests
         evidence.Sql.Clear();
         judgement.Sql.Clear();
 
-        Assert.Empty(RequesterDaclProofs.Create(fixture.Connection, fixture.Description, fixture.Sources,
+        Assert.Empty(RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description, fixture.Sources,
             fixture.Identities, fixture.Inputs, [], CancellationToken.None, fixture.Memberships));
 
         Assert.Empty(evidence.Sql);
@@ -233,7 +233,7 @@ public sealed partial class OwnAccountMembershipPathTests
         using var stopping = new CancellationTokenSource();
         var questions = new TargetPermissionReference.CancellingList<RequesterDaclProofs.Question>(new(new(UserDn, CoreDn), null), stopping);
 
-        Assert.Throws<OperationCanceledException>(() => RequesterDaclProofs.Create(fixture.Connection, fixture.Description,
+        Assert.Throws<OperationCanceledException>(() => RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description,
             fixture.Sources, fixture.Identities, fixture.Inputs, questions, stopping.Token, fixture.Memberships));
         Assert.Equal(2, questions.Visits);
     }

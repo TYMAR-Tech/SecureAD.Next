@@ -31,6 +31,7 @@ internal static class Tier0PathStorage
             outcome TEXT NOT NULL, proof INTEGER NOT NULL REFERENCES path_proof(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         """);
         PathCalculationStorage.CreateTables(connection);
+        PathRequesterWorkPlan.CreateTables(connection);
     }
 
     internal static void Write(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
@@ -63,51 +64,159 @@ internal static class Tier0PathStorage
         {
             identities = recorded.ToDictionary(row => row.Identity.DistinguishedName, row => row.Identity, StringComparer.OrdinalIgnoreCase);
         }
+        var nodeIndex = nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase);
         var memberships = offlineSelection || requests.Count != 0 || membershipDaclRequests.Count != 0
             ? RequesterMembershipContext.Create(sources, identities, inputs, cancellationToken) : null;
-        PathRequesterSelection? selection = null;
-        if (offlineSelection)
-        {
-            beginPhase(PathRequesterWorkPhase.SelectingQuestions);
-            selection = WithDiagnostic("Selecting account checks", diagnostic =>
-                Selector(sources, inputs, nodes, cancellationToken, diagnostic, memberships).Select());
-            requests = PathRequesterSelector.Requests(selection);
-            ownAccountRequests = PathRequesterSelector.OwnAccounts(selection);
-            membershipDaclRequests = PathRequesterSelector.MembershipDacls(selection);
-        }
-        beginPhase(PathRequesterWorkPhase.RequesterDacl);
-        var requesterQuestions = requests.OrderBy(RequesterDaclProofs.Key, StringComparer.Ordinal)
-            .Select(request => new RequesterDaclProofs.Question(request, null)).ToArray();
-        var requesters = RequesterDaclProofs.Create(connection, description, sources, identities, inputs, requesterQuestions,
-            cancellationToken, memberships);
-        var routeIndex = new PathRequesterRouteIndex();
-        if (requesters.Count != 0)
-            Match("requester-permission", requesters.Count,
-                diagnostic => routeIndex.AddRequesters(requesters, cancellationToken, diagnostic),
-                node => node with { RequesterRoute = routeIndex.Requester(node) });
-        beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
-        var prerequisites = new OwnAccountMembershipProofs(connection, description, sources, identities, inputs, cancellationToken);
-        IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts = ownAccountRequests.Count == 0 ? []
-            : prerequisites.Create(nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), ownAccountRequests);
-        if (ownAccounts.Count != 0)
-            Match("own-account-membership", ownAccounts.Count,
-                diagnostic => routeIndex.AddOwnAccounts(ownAccounts, cancellationToken, diagnostic),
-                node => node with { OwnAccountRoute = routeIndex.OwnAccount(node) });
-        beginPhase(PathRequesterWorkPhase.MembershipDacl);
-        IReadOnlyList<SavedMembershipDaclProof> membershipDacls = membershipDaclRequests.Count == 0 ? []
-            : MembershipDaclProofs.Create(connection, description, sources, identities, inputs,
-            nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase), membershipDaclRequests, cancellationToken, memberships, prerequisites);
-        if (membershipDacls.Count != 0)
-            Match("membership-permission", membershipDacls.Count,
-                diagnostic => routeIndex.AddMembershipDacls(membershipDacls, cancellationToken, diagnostic),
-                node => node with { MembershipDaclRoute = routeIndex.MembershipDacl(node) });
-        beginPhase(PathRequesterWorkPhase.WritingProofs);
         sources.RequireFor(description);
         ownership?.RequireFor(connection, description);
-        Reconcile(selection, requesters, ownAccounts, membershipDacls);
-        using var transaction = connection.BeginTransaction();
+        Execute(connection, null, "PRAGMA temp_store=FILE");
+        using var transaction = connection.BeginTransaction(deferred: false);
+        ownership?.RequireFor(connection, description);
         using var proofs = new PathProofStorage.Writer(connection, transaction, cancellationToken);
         var shared = new PathSharedProofStorage(connection, description, cancellationToken, proofs, transaction, statements);
+        using var plan = new PathRequesterWorkPlan(connection, transaction, description, sources, cancellationToken);
+        PathCalculationStorage.RecordSet work;
+        PathCalculationStorage.Preparation prepared;
+        using (var selectionStorage = offlineSelection
+            ? new PathRequesterSelectionStorage(connection, transaction, description, sources, shared, statements, cancellationToken) : null)
+        {
+            PathRequesterSelectionScan? scan = null;
+            if (selectionStorage is not null)
+            {
+                beginPhase(PathRequesterWorkPhase.SelectingQuestions);
+                scan = WithDiagnostic("Selecting account checks", diagnostic =>
+                    Selector(sources, inputs, nodeIndex, cancellationToken, diagnostic, memberships, selectionStorage).Select());
+            }
+            work = selectionStorage is null ? plan.Write(requests, ownAccountRequests, membershipDaclRequests)
+                : plan.Write(selectionStorage.Questions());
+            prepared = WithDiagnostic("Preparing requester work", diagnostic =>
+            {
+                diagnostic?.Counter("distinctQuestions", work.Count);
+                diagnostic?.Part("save-inputs-and-selection");
+                var selection = selectionStorage?.Complete(scan ?? throw InvalidProof());
+                return PathCalculationStorage.Prepare(connection, transaction, description, inputs, selection, shared, cancellationToken);
+            });
+        }
+        requests = [];
+        ownAccountRequests = [];
+        membershipDaclRequests = [];
+        var routeIndex = new PathRequesterRouteIndex();
+        using var answers = new PathRequesterRiskStorage.Writer(connection, transaction, description, sources, inputs,
+            proofs, shared, bestRoutes, cancellationToken);
+        var prerequisites = new OwnAccountMembershipProofs(connection, description, sources, identities, inputs, cancellationToken);
+        beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
+        WithDiagnostic("Preparing membership prerequisites", diagnostic =>
+        {
+            var groups = plan.MembershipGroups().ToArray();
+            diagnostic?.Counter("resourcesTotal", groups.Length);
+            diagnostic?.Part("prepare-evaluate-save");
+            var evaluated = 0L;
+            var saved = 0L;
+            var processed = 0L;
+            foreach (var group in groups)
+            {
+                foreach (var proof in prerequisites.PrepareResource(group, plan.MembershipRequests(group)))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var reference = shared.PrepareOwnAccount(proof.Assessment);
+                    plan.SaveMembership(proof, reference);
+                    diagnostic?.Counter("uniquePrerequisites", ++evaluated);
+                    if (plan.OwnQuestion(proof.Assessment.Request) is not { } question) continue;
+                    var continued = prerequisites.WithMembershipContinuation(proof, nodeIndex);
+                    var continuedReference = ReferenceEquals(continued.Assessment, proof.Assessment)
+                        ? reference : shared.PrepareOwnAccount(continued.Assessment);
+                    answers.Write(question, continued, continuedReference);
+                    routeIndex.AddOwnAccounts([continued], cancellationToken, null);
+                    diagnostic?.Counter("answersSaved", ++saved);
+                }
+                diagnostic?.Counter("resourcesProcessed", ++processed);
+            }
+            return evaluated;
+        });
+        var daclPhase = PathRequesterWorkPhase.RequesterDacl;
+        var membershipPhaseVisited = false;
+        beginPhase(daclPhase);
+        WithDiagnostic("Evaluating requester resource batches", diagnostic =>
+        {
+            var targets = plan.DaclTargets().ToArray();
+            diagnostic?.Counter("resourcesTotal", targets.Length);
+            if (targets.Length == 0) return 0L;
+            var preparation = new RequesterDaclProofs.Preparation(connection, description, sources, identities, inputs,
+                cancellationToken, memberships);
+            var processed = 0L;
+            var saved = 0L;
+            foreach (var targetDn in targets)
+            {
+                if (daclPhase != PathRequesterWorkPhase.RequesterDacl)
+                    beginPhase(daclPhase = PathRequesterWorkPhase.RequesterDacl);
+                diagnostic?.Part("prepare-target");
+                var target = preparation.PrepareTarget(targetDn);
+                diagnostic?.Part("evaluate-qualify-save");
+                foreach (var page in plan.DaclQuestions(targetDn).Chunk(PathRequesterWorkPlan.PageSize))
+                {
+                    sources.RequireFor(description);
+                    using var reading = shared.BeginRead();
+                    diagnostic?.Counter("activeQuestionPage", page.Length);
+                    foreach (var question in page)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var phase = question.Family == PathRequesterFamily.RequesterDacl
+                            ? PathRequesterWorkPhase.RequesterDacl : PathRequesterWorkPhase.MembershipDacl;
+                        if (daclPhase != phase) beginPhase(daclPhase = phase);
+                        membershipPhaseVisited |= phase == PathRequesterWorkPhase.MembershipDacl;
+                        if (question.Family == PathRequesterFamily.RequesterDacl)
+                        {
+                            var proof = target.Assess(new(new(question.RequesterDn, question.TargetDn), null), null);
+                            answers.Write(question, proof, null);
+                            routeIndex.AddRequesters([proof], cancellationToken, null);
+                        }
+                        else
+                        {
+                            var membership = plan.ReadMembership(new(question.RequesterDn, question.GroupDn!)
+                                { PermissionKind = question.PermissionKind!.Value }, shared);
+                            var dacl = membership.Proof.Assessment.Obtainability == ControlEvaluationState.Established
+                                ? target.Assess(new(new(question.RequesterDn, question.TargetDn), membership.Proof.Assessment),
+                                    membership.CanonicalFingerprint) : null;
+                            var proof = MembershipDaclProofs.Combine(new(question.RequesterDn, question.GroupDn!, question.TargetDn)
+                                { PermissionKind = question.PermissionKind!.Value }, membership.Proof, dacl);
+                            answers.Write(question, proof, membership.Reference);
+                            routeIndex.AddMembershipDacls([proof], cancellationToken, null);
+                        }
+                        diagnostic?.Counter("answersSaved", ++saved);
+                    }
+                }
+                diagnostic?.Counter("activeQuestionPage", 0);
+                diagnostic?.Counter("resourcesProcessed", ++processed);
+            }
+            return saved;
+        });
+        if (!membershipPhaseVisited) beginPhase(PathRequesterWorkPhase.MembershipDacl);
+        var families = answers.Families(offlineSelection);
+        nodes = WithDiagnostic("Matching saved answers", diagnostic =>
+        {
+            diagnostic?.Part("match-compact-route-selections");
+            diagnostic?.Counter("answersTotal", work.Count);
+            diagnostic?.Counter("answersProcessed", families.Sum(value => (long)value.StoredAssessments));
+            diagnostic?.Counter("requesterAnswers", families.Single(value => value.Family == PathRequesterFamily.RequesterDacl).StoredAssessments);
+            diagnostic?.Counter("ownAccountAnswers", families.Single(value => value.Family == PathRequesterFamily.OwnAccountMembership).StoredAssessments);
+            diagnostic?.Counter("membershipDaclAnswers", families.Single(value => value.Family == PathRequesterFamily.MembershipDacl).StoredAssessments);
+            diagnostic?.Counter("objectsTotal", nodes.Count);
+            var result = new Tier0PathNode[nodes.Count];
+            for (var index = 0; index < nodes.Count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var node = nodes[index];
+                node = node with { RequesterRoute = routeIndex.Requester(node) };
+                node = node with { OwnAccountRoute = routeIndex.OwnAccount(node) };
+                result[index] = node with { MembershipDaclRoute = routeIndex.MembershipDacl(node) };
+                diagnostic?.Counter("objectsProcessed", index + 1);
+            }
+            return result;
+        });
+        beginPhase(PathRequesterWorkPhase.WritingProofs);
+        sources.RequireFor(description);
+        // The snapshot was checked under the writer lock. Our own path writes have since
+        // advanced total_changes(), but another writer cannot replace the ownership inputs.
         foreach (var node in nodes)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -116,17 +225,13 @@ internal static class Tier0PathStorage
                 ("$target", node.Subject.DistinguishedName), ("$outcome", node.Reachability.ToString()),
                 ("$proof", proof.Id), ("$hash", proof.Fingerprint)).ExecuteNonQuery() != 1) throw InvalidProof();
         }
-        var sourceReferences = PathRequesterRiskStorage.WriteSources(shared, requesters, ownAccounts, membershipDacls, cancellationToken);
-        var header = PathCalculationStorage.Write(connection, transaction, description, inputs, nodes.Count, selection,
-            requesters, ownAccounts, membershipDacls, sourceReferences, proofs, shared, cancellationToken);
+        var header = PathCalculationStorage.Write(description, prepared, nodes.Count, families, work,
+            answers.SourceReferences(work.Count), proofs);
         Execute(connection, transaction, "INSERT INTO tier0_path_calculation VALUES (1,$proof,$hash)",
             ("$proof", header.Id), ("$hash", header.Fingerprint));
-        PathRequesterRiskStorage.Write(connection, transaction, description, sources, inputs, offlineSelection,
-            requesters, ownAccounts, membershipDacls, Convert.ToHexString(header.Fingerprint), proofs, cancellationToken, bestRoutes, sourceReferences);
+        answers.Complete(Convert.ToHexString(header.Fingerprint), offlineSelection, work.Count);
         Tier0DistanceStorage.Write(connection, transaction, description, inputs, Convert.ToHexString(header.Fingerprint),
-            recorded, nodes, routeIndex, selection, requesters.Select(value => value.Assessment.Request.RequesterDn)
-                .Concat(ownAccounts.Select(value => value.Assessment.Request.RequesterDn))
-                .Concat(membershipDacls.Select(value => value.Assessment.Request.RequesterDn)), cancellationToken);
+            recorded, nodes, routeIndex, prepared.Selection, answers.CheckedRequesters, cancellationToken);
         BestSupportedRouteStorage.Write(connection, transaction, proofs,
             bestRoutes.Results(recorded, Convert.ToHexString(header.Fingerprint)), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
@@ -154,27 +259,6 @@ internal static class Tier0PathStorage
             }
         }
 
-        void Match(string family, int count, Action<PostPassDiagnostics?> index, Func<Tier0PathNode, Tier0PathNode> match)
-        {
-            nodes = WithDiagnostic("Matching saved answers", diagnostic =>
-            {
-                diagnostic?.Part(family + "-index");
-                diagnostic?.Counter("answersTotal", count);
-                diagnostic?.Counter("answersProcessed", 0);
-                index(diagnostic);
-                diagnostic?.Part(family + "-matching");
-                diagnostic?.Counter("objectsTotal", nodes.Count);
-                var processed = 0L;
-                var result = new Tier0PathNode[nodes.Count];
-                for (var i = 0; i < nodes.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    result[i] = match(nodes[i]);
-                    diagnostic?.Counter("objectsProcessed", ++processed);
-                }
-                return result;
-            });
-        }
     }
 
     private static (SavedPathInputs Inputs, Header? Header) ReadSaved(
@@ -371,19 +455,19 @@ internal static class Tier0PathStorage
     {
         var expected = selected.Order(StringComparer.Ordinal).ToArray();
         var actual = evaluated.Order(StringComparer.Ordinal).ToArray();
-        // Equal totals can conceal a missing question replaced by a duplicate or a different target.
         if (expected.Distinct(StringComparer.Ordinal).Count() != expected.Length
             || !expected.SequenceEqual(actual, StringComparer.Ordinal)) throw InvalidProof();
     }
 
-    private static PathRequesterSelector Selector(JudgingInputs sources, PathInputs inputs, IReadOnlyList<Tier0PathNode> nodes,
-        CancellationToken cancellationToken, PostPassDiagnostics? diagnostic, RequesterMembershipContext? memberships)
+    private static PathRequesterSelector Selector(JudgingInputs sources, PathInputs inputs, IReadOnlyDictionary<string, Tier0PathNode> nodes,
+        CancellationToken cancellationToken, PostPassDiagnostics? diagnostic, RequesterMembershipContext? memberships,
+        IPathRequesterSelectionSink sink)
     {
         sources.RequireCurrent();
         var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw InvalidProof();
-        return new(sources.Bundle, inputs, nodes.ToDictionary(node => node.Subject.DistinguishedName, StringComparer.OrdinalIgnoreCase),
-            contexts.Value, cancellationToken, diagnostic) { Memberships = memberships };
+        return new(sources.Bundle, inputs, nodes,
+            contexts.Value, cancellationToken, diagnostic, sink) { Memberships = memberships };
     }
 
     internal static Tier0PathNode? ReadNode(SqliteConnection connection, string target, CancellationToken cancellationToken)

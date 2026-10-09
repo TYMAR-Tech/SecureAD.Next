@@ -216,7 +216,9 @@ public sealed class PostPassDiagnosticsTests
         using var reader = opened.Value;
         var generation = reader.Read().Description.GenerationId.ToString("D");
         var completed = log.Lines.Where(item => item.Message == "post-pass status" && item.Value("outcome") == "completed").ToArray();
-        Assert.Equal(new[] { "scope-selection", "admitted-control", "ownership-assessment", "Publishing judgement" }, completed.Select(item => item.Value("stage")));
+        Assert.Equal(new[] { "scope-selection", "admitted-control", "ownership-assessment", "Preparing requester work",
+            "Preparing membership prerequisites", "Evaluating requester resource batches", "Matching saved answers",
+            "Publishing judgement" }, completed.Select(item => item.Value("stage")));
         Assert.All(completed, item => Assert.Equal(generation, item.Value("generation")));
         var scope = Completed(log, "scope-selection");
         Assert.True(long.Parse(scope.Value("candidateFactsTotal")!, System.Globalization.CultureInfo.InvariantCulture) > 0);

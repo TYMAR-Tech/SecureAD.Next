@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 internal sealed class BestSupportedRouteSelection(SqliteConnection connection, JudgementDescription description,
     PathInputs inputs, CancellationToken cancellationToken)
 {
-    private readonly Dictionary<string, (int Complete, int Ungraded, BestRouteCandidate? Best)> _selected = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, (int Complete, int Ungraded, BestRouteCandidate? Best, long Order)> _selected = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<long, string> _permissionSignatures = [];
     private readonly Dictionary<string, HashSet<RouteGradingLimitation>> _limitations = new(StringComparer.OrdinalIgnoreCase);
 
@@ -15,7 +15,7 @@ internal sealed class BestSupportedRouteSelection(SqliteConnection connection, J
     {
         RememberPermission(edge);
         Add(new(step.From, step.To, Direct(1, Signature([step], step.To)),
-            RouteSourceKind.Terminal, null, Tier0PathCalculation.Fingerprint(edge), step));
+            RouteSourceKind.Terminal, null, Tier0PathCalculation.Fingerprint(edge), step), 0);
     }
 
     internal void Memberships(IReadOnlyList<Tier0PathNode> nodes)
@@ -35,11 +35,11 @@ internal sealed class BestSupportedRouteSelection(SqliteConnection connection, J
             signatures.Add(node.Subject.DistinguishedName, signature);
             endpoints.Add(node.Subject.DistinguishedName, endpoint);
             Add(new(node.Subject, endpoint, Direct(node.MembershipDistance!.Value, signature),
-                seed ? RouteSourceKind.FixedTarget : RouteSourceKind.Membership, null, null, null));
+                seed ? RouteSourceKind.FixedTarget : RouteSourceKind.Membership, null, null, null), 0);
         }
     }
 
-    internal void Proof(object source, long proofId, string fingerprint)
+    internal void Proof(object source, long proofId, string fingerprint, long order)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var (subject, state, steps, own, kind) = source switch
@@ -88,24 +88,26 @@ internal sealed class BestSupportedRouteSelection(SqliteConnection connection, J
             step.Kind == Tier0PathStepKind.OwnAccountMembership ? RouteFeasibility.Conditional : RouteFeasibility.Direct,
             step.Kind == Tier0PathStepKind.OwnAccountMembership ? assumptions : [],
             RouteConfidence.High, 1, "")).ToArray(), Signature(steps, endpoint));
-        Add(new(subject, endpoint, grade, kind, proofId, fingerprint, null));
+        Add(new(subject, endpoint, grade, kind, proofId, fingerprint, null), order);
     }
 
     private void Ungraded(Tier0Target subject, RouteGradingLimitation reason)
     {
         var previous = _selected.GetValueOrDefault(subject.DistinguishedName);
-        _selected[subject.DistinguishedName] = (checked(previous.Complete + 1), checked(previous.Ungraded + 1), previous.Best);
+        _selected[subject.DistinguishedName] = (checked(previous.Complete + 1), checked(previous.Ungraded + 1), previous.Best, previous.Order);
         if (!_limitations.TryGetValue(subject.DistinguishedName, out var reasons))
             _limitations.Add(subject.DistinguishedName, reasons = []);
         reasons.Add(reason);
     }
 
-    private void Add(BestRouteCandidate candidate)
+    private void Add(BestRouteCandidate candidate, long order)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var previous = _selected.GetValueOrDefault(candidate.Subject.DistinguishedName);
+        var comparison = previous.Best is null ? -1 : SupportedRouteGrade.Compare(candidate.Grade, previous.Best.Grade);
+        var replace = comparison < 0 || comparison == 0 && order < previous.Order;
         _selected[candidate.Subject.DistinguishedName] = (checked(previous.Complete + 1), previous.Ungraded,
-            previous.Best is null || SupportedRouteGrade.Compare(candidate.Grade, previous.Best.Grade) < 0 ? candidate : previous.Best);
+            replace ? candidate : previous.Best, replace ? order : previous.Order);
     }
 
     internal IEnumerable<BestRouteSelection> Results(IReadOnlyList<OwnershipAuditStorage.TargetRow> targets, string calculation)
