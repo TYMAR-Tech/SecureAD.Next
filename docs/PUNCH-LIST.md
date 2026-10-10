@@ -13,6 +13,86 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Checkpoint integration and owner lab acceptance - authorized and offline verified; lab acceptance outstanding, 2026-10-10.**
+The owner requested committing all pending work, merging `rules-delivery` into `main` and pushing both branches, retaining the Stage 6/7 preparation, Enatel corrections, SEC-062, diagnostics, decisions and mockups.
+The integrated Release solution rebuild, all 2,225 affected checks including the original solution-registration guard, and all three diagnostic self-tests pass, while the owner's planned lab testing remains outstanding rather than completed acceptance.
+Preserve local evidence and compact verification artifacts outside the commit, retain owner solution edits and all current source/mockups, and verify remote commit identities without waiting for CI; no assistant live access, production testing, new performance campaign or application UI implementation is authorized.
+
+**SEC-062 broad administrative-group membership - HIGH; implemented and offline verified, 2026-10-10.**
+The owner approved direct and valid security-nested broad membership into domain-qualified Domain Admins and BUILTIN Administrators plus forest-root Enterprise/Schema Admins, with one finding per affected target group and symbolic broad sources/compact recorded links rather than per-account expansion or exact route counts.
+The shared GUI/CLI scheduler and Judgement 64 typed readback are wired, with 2,177 affected checks passing and all 39 new rule-behavior methods detecting a deliberately broken implementation across 43 distinct defects and 48 rebuilt passing restorations.
+Missing target inventory, captured-input gaps, foreign/scoped identity and distribution-only routes remain distinct from established membership, all historical anchors and preceding owner work are preserved, and no live access, measurement campaign, UI layout/theme change, commit or push occurred; SEC-083 remains deferred to the end.
+
+**Capture-scope diagnostic solution registration - LOW; resolved and integration verified, 2026-10-10.**
+The architecture check previously reported the standalone capture-scope diagnostic's two source files as absent from the solution's compile inventory, although its own project and delivered executable were separately built and verified.
+The owner-authorized all-work integration now registers that existing project with the normal solution build while preserving the owner's judgement-diagnostic registration.
+The Release solution rebuild, original architecture guard and all three diagnostic self-tests pass without changing diagnostic behavior, weakening the guard or including generated binaries/captures.
+
+**SEC-062 verification-order control - HIGH; corrected and rebuilt negative control verified, 2026-10-10.**
+A deliberately unsorted production copy survived the first order check because reversing capture order did not reverse the canonically stored membership input that actually reached the rule.
+The check now also reverses the rule's actual prepared input, and the page/body comparisons serialize the concrete evidence type rather than its empty abstract base.
+The explicitly rebuilt unsorted copy now fails the order check and the restored sources pass, a separately corrupted paged derivation binding fails the concrete-body comparison, and all original failed attempts/recipes and compact provenance are retained.
+
+**SEC-062 broad judging regression attempt - LOW; cancelled incomplete run retained, 2026-10-10.**
+An additional whole-judging-subsystem run produced three identifiable failures before it remained active without a final result, so it was stopped rather than called a pass or restarted as an unbounded full-suite campaign.
+The new evidence-kind sample and current-format assertion were corrected and verified in the final targeted suite, while the diagnostic source-registration failure was independently reproduced in the preserved pre-rule baseline.
+Retain the unfinished run log and its input paths separately from the 2,177 completed affected checks; this is not a claim that the current full suite has passed.
+
+**Remaining-rule delivery - owner priority; SEC-083 deferred to the end, 2026-10-10.**
+The owner requested starting the remaining rules, then explicitly deferred the legacy GPP stored-password finding SEC-083 until the end rather than approving its proposed first-slice severity, wording or grouping.
+Its optional XML password scan remains disabled by default, ordinary GPO/SYSVOL evidence still supports other policy rules, and the next slice must come from another remaining current-evidence family.
+Continue bounded rule delivery with existing shared permission/path products and owner approval for new finding behavior, preserving all uncommitted work/evidence and the completed production baseline without restarting optimization, live access, unapproved capture extensions, UI changes, commit or push.
+
+**Owner priority - finishing rules/features; further optimization deferred, 2026-10-10.**
+The owner explicitly prefers finishing the application and returning to performance/storage work after rules and features are implemented, unless there is a concrete, worthwhile gain.
+Continue the existing approved functional build sequence with normal correctness/regression checks, keeping proof compression and duplicate-selection tuning out of the critical path and retaining the completed production run as the future baseline.
+Raise demonstrated gains or product-blocking performance issues as bounded proposals rather than automatically restarting optimization, while false security conclusions still require correction and no new measurement/harness, storage redesign, capture-scope change, production operation, commit or push is authorized.
+
+**Post-redesign performance/storage candidates - MEDIUM; deferred until rules/features are delivered, 2026-10-10.**
+The approved redesign slices are complete, but the current production account-selection phase took 1,370,147 ms for 5,308,853 candidate considerations and 653,688 distinct questions, with the reachable selection sink serializing headers and issuing duplicate-check database operations for repeated candidates.
+Resource-local reuse of already checked selection keys/witnesses is a bounded speed candidate, while lossless compression of currently uncompressed JSON path-proof payloads is a likely payload-size candidate whose effect on the 25,171,054,592-byte complete store requires a fresh table-space breakdown rather than the old failed-run report.
+Neither is an established whole-run gain or a mandatory redesign remainder, and the broader 5,345,931 ms evaluate/qualify/save batch cannot be assigned to one cause from its combined timer; the owner deferred these candidates in favor of rule/feature delivery, preserving answers, witness order, incompleteness and bindings without authorizing code changes, new measurement/harness, production export/access, commit or push.
+
+**Corrected-scope production audit - completed; substantial observed speed/size improvement, 2026-10-10.**
+The returned Release `1c38fd6` log identifies executable SHA-256 `698C7B6A44E04BA1774274B6F408E85335EC4F11FD8402775A50CDF5A26F490C`, the six approved exclusions and successful publication, with capture/judging at 2h32m/4h38m versus 4h24m/8h15m and start-to-published elapsed falling 12h49m26s to 7h16m22s (-43.29%).
+All three seals completed and logical file bytes fell 51,568,930,816 to 38,560,964,608 (-25.22%, Evidence -48.30%), while 540,483 objects, 7,243 targets and 653,688 requester questions were processed with all 20 rules recorded and nine Indeterminate.
+Retain the supplied original text and fingerprints as a combined new-build/changed-scope production result, not an isolated redesign estimate or complete-evidence/every-answer acceptance; the Enatel-specific summary is still the old capture, new class counts remain outstanding, and no code change, live access, new measurement campaign, recapture, commit or push is authorized.
+
+**Selected-view production browsing delay - MEDIUM; open, observed without causal diagnosis, 2026-10-10.**
+The same completed run logs an initial directory-tree opening at 52,680.198 ms and a selected saved-control-edge read at 92,197.099 ms, among 31 successful navigations and one cancelled Permissions read.
+These are later saved-view costs rather than audit-time work or evidence that the new capture/analysis failed, and no particular storage, hashing or permission-processing cause has been established.
+Preserve this separate finding and the original log without restarting performance work, changing readback guarantees, requesting production data beyond logs/summaries or blocking the observed audit improvement.
+
+**Enatel account-class capture scope - HIGH; implemented and offline verified, production confirmation pending, 2026-10-10.**
+The owner's diagnostic 3.0.1 summary for the existing format-14 production capture confirms 403,562 distinct Enatel instances (42.95% of 939,572 objects), including 136,899 storage objects and 262,158 `enatelSSOAccount` objects, all in domain partitions rather than schema definitions.
+The owner-approved default now also excludes `enatelSSOAccount` in Evidence 16 while retaining other Enatel administration/configuration and the inclusion option, with 1,132 affected tests and 39 checker cases passing and all six capture/format plus ten checker defects detected in isolated rebuilt sources with passing restorations.
+Checker 3.0.2 reads sealed formats 14/15/16 and flags prior default account-scope gaps, and the subsequent owner-run log records the new default scope, 399,089 fewer objects and complete faster publication; actual new class-count confirmation remains outstanding, originals and all uncommitted work remain unchanged, and no assistant production operation, recapture, rejudging, commit or push occurred.
+
+**Owner-operated corrected-scope production trial - completed; actual new class-count confirmation outstanding, 2026-10-10.**
+The new supplied log records a complete capture and published judgment under the account-plus-storage exclusion scope, establishing the elapsed times and logical sizes above rather than an interrupted-run estimate.
+Preserve the earlier executable, sealed evidence and all logs/summaries, and obtain only the new run's read-only Enatel count summary for final class-absence confirmation; the supplied Enatel report still belongs to the old capture.
+This fresh result measures total audit length for the new build and corrected scope rather than isolating the Stage 6/7 redesign, with no assistant production operation, new development measurement campaign, commit or push authorized.
+
+**P-224 Enatel storage class/name mismatch - HIGH; old-capture counts confirmed, corrected real-controller acceptance pending, 2026-10-10.**
+The owner-approved correction targets `enatelSSOStorage`, which [Quest KB 4256730](https://support.quest.com/kb/4256730/how-to-calculate-the-number-of-esso-user-licenses-used) identifies as the class for V2/V3-named storage containers, preserving DNS, the other named exclusions and the per-run inclusion option.
+All 1,126 affected tests and 31 standalone diagnostic cases pass, four capture/format defects, thirteen diagnostic defects and one inaccurate-refusal variant were detected with rebuilt restorations, and historical pinned fingerprints remain unchanged with append-only format-15 entries.
+The owner's diagnostic 3.0.1 summary confirms 136,899 storage objects missed by the old V3-name exclusion, and the subsequent account-plus-storage owner-run log now confirms the recorded default scope, complete publication and improved times/sizes; actual new class-absence and full saved-answer acceptance remain outstanding, with original evidence/preceding work unchanged and no assistant live access, recapture, rejudging, credential extraction, unrelated UI change, commit or push.
+
+**Compact, high-contrast Home mockup - preview delivered; UI paused for external-monitor access, 2026-10-09.**
+Following the initial light/charcoal previews, the owner requested charcoal only, shorter grid rows with date/time on one line and less space throughout the page without making the main text tiny.
+A refreshed standalone charcoal preview is delivered at laptop/larger logical window sizes, preserving existing actions, domain-scope grouping and the distinction between processing states and verified security conclusions.
+The owner has now paused UI work until external-monitor access, so retain the previews and resume only at his request; application wording/layout/theme changes still require separate approval with the production run, saved evidence and all existing uncommitted work preserved and no performance campaign, commit or push authorized.
+
+**Owner lab Release results - processing published; readback/production acceptance outstanding, 2026-10-09.**
+The supplied log identifies Release `1c38fd6`, three Read domains and 8,441 judged objects, with capture/derivation/judging at 20.1/2.4/36.1 seconds, 59 detailed targets, 463 requester questions and the previous 6/18/5/11 finding severity totals; only SEC-071 remains indeterminate.
+Judgement is 44,990,464 bytes versus the earlier 44,642,304 (+0.78%), and judging is 36.1 versus 33.0 seconds (+9.4%) across separate fresh captures, with work moved between phases and the inherited ten-second file-open sealing delay still present rather than an established cause or controlled saving.
+Retain the supplied originals and build-bound analysis without publishing identifiers; saved-answer equality, GUI checks and actual production scale remain unverified, with no new run, code change, live access, package replacement, commit or push authorized by this review.
+
+**Owner-operated Release acceptance - lab first, production environment afterward, 2026-10-09.**
+The owner is publishing through Visual Studio and will test his small three-domain lab before taking the candidate to the nine-domain production environment; the intended preparation/result-completion checkpoint is `1c38fd6`.
+Keep actual published-binary identity, lab functional checks and production-sized performance explicitly outstanding until results are supplied, preserving the existing captures/results and the rule that only production run logs and summaries return here.
+This is an owner-operated test plan, not a passing release gate or authorization for assistant publishing, live access, recapture, package replacement, new tooling/runs, commit or push.
+
 **Preparation/result-completion checkpoint - owner-authorized commit, 2026-10-09.**
 The owner requested committing the verified shared-membership/result-package implementation, its related tests/documents and the explicitly requested lab/production data boundary after the final 7,601-test gate.
 Keep unrelated earlier UI-instruction, mockup, solution and diagnostic work outside this commit, preserving all prior evidence and failed-attempt records.
@@ -153,10 +233,10 @@ The owner approved fixed High per-owner findings for duplicate complete captured
 The [verified checkpoint](../.v-sec026-20261007-67ac/handoff.json) records a successful full solution build, 550 affected-area tests passing with coverage after a correct-source rebuild using CI's noncompeting test-collection setting, 1,030 matching code/configuration inputs and all 54 required behavior checks detecting 17 rebuilt defects with restored controls; the initial parallel UI/logging timeouts are retained as failed attempts, not accepted passes.
 The catalogue now contains 20 rules and Judgement format is 61, with capture/Derivation unchanged and no recapture needed to judge existing sealed evidence; lab/display/production acceptance remains outstanding, and the owner subsequently authorized committing and pushing this checkpoint without changing the production audit, package or budgets.
 
-**Next recommended rule — SEC-083 opt-in capture implemented; finding behavior not approved, 2026-10-07.**
+**SEC-083 opt-in capture implemented; finding deferred to the end by the owner, 2026-10-10.**
 The unchecked per-audit GUI option and `--scan-gpp-passwords` CLI switch now skip the recursive XML read by default, while opted-in captures preserve non-empty `cpassword` occurrence metadata and per-policy `NotRequested`/`Read`/`PartiallyRead`/`Unreadable` coverage without secret material.
 Evidence format 14, the full solution rebuild and 346 focused passing tests were verified after four isolated rebuilt defects were detected and restored sources were forcibly rebuilt; an earlier incremental restored control was rejected because it reused mutated output.
-Concrete finding wording, file-level grouping and proposed Critical severity remain approval-gated, no SEC-083 judgement ships in this pass, and the production audit/package were not accessed or changed.
+The owner deferred the finding until the end on 2026-10-10, so concrete wording, grouping and proposed Critical severity remain unapproved, no SEC-083 judgment ships or starts as the next rule, and the production audit/package are unchanged.
 
 **Remaining-rule delivery — owner-selected single branch; inventory reconciled, 2026-10-07.**
 The owner requested adding rules while his production audit runs, using only local branch `rules-delivery` in the existing checkout and no additional worktrees.
@@ -464,7 +544,7 @@ The logged module identity and 105 compiler-recorded source checksums match the 
 This is successful owner-run completion with an operational timing comparison, not a controlled speedup, identical-answer comparison or production acceptance; the owner requested continuing performance work while preserving all artifacts and without agent-run live access, timed campaigns, packaging, commit or push.
 
 **Intermittent sealing delay — medium severity, open; file-open call measured at ten seconds, 2026-10-04.**
-Earlier logs alternated between fast sealing and approximately ten-second sealing phases, and the latest detailed log isolates 10,042.115 ms to opening the judgement file before reads or hash calculation.
+Earlier logs alternated between fast sealing and approximately ten-second sealing phases, the 2026-10-04 detail isolated 10,042.115 ms to opening Judgement, and the supplied 2026-10-09 lab log again records 10,126.762 ms opening versus 29.543 ms reading and 193.813 ms hashing.
 The application-side location is established but the responsible operating-system, file-system or other component is not, so no specific root cause or fix is claimed.
 A targeted local lab file-access trace is the next diagnostic recommendation, with no code change, weaker corruption checks, security-tool disablement or production trace export authorized by this review.
 
@@ -1075,7 +1155,7 @@ evidence.
 | ID | Item | Status | Blocked on |
 |---|---|---|---|
 | P-227 | **`ParallelDomainCaptureTests.DomainsOnDifferentControllersAreReadAtTheSameTime` failed the overlap assertion in the original two-processor full run and in CI for `385e312` and `00a5e8f` — medium severity, cause unconfirmed.** The original run passed 4,934 of 4,935 and its isolated case passed; CI 35120525736 passed 5,270 of 5,271 and CI 35174500509 passed 5,389 of 5,390, both reporting “The domains never overlapped, so they were read one after another” at line 72, which does not establish the same cause or replace the separate local results. Preserve the failed `two-processors-uninstrumented-a181e5c39ac34f4f98599d23dc8036d1.trx` and passing `two-processors-isolated-capture-0b34ffc364164add828fd4f4a35a8b8e.trx` under `next/artifacts/host-parity-validation/`, the earlier CI records under `next/artifacts/p234-ci-review/35120525736-95a36508bf64441f8c27f6a4a5173be3/`, and the new metadata/failed-step log under `next/artifacts/stage7-enterprise-ca-validation/37e2af93ddd741329736ca392d070b7f/ci-35174500509/` for bounded investigation without weakening the watchdog or assertion. | open — repeated full-run/CI failure; passing runs are not closure | Cause and failure impact not established; no blanket Stage 7 prerequisite |
-| P-224 | **New captures exclude the three named Enatel SSO metadata classes by default, with the approved per-run wizard checkbox and `--include-enatel-sso` option to include them.** Evidence schema 12 records the actual class exclusions, the dashboard discloses them and comparisons qualify different scopes, while DNS exclusions, other classes and credential-attribute policy remain unchanged. All 4,769 offline tests pass in normal and two-processor local runs, all 53 focused behavior cases detected intended defects across six mutation variants, and 67 focused cases pass under separate coverage; existing evidence and historical checkpoints are preserved, while live-controller and manual screen checks remain unperformed. | closed — implemented and offline verified | — |
+| P-224 | **The approved default now excludes vendor-documented `enatelSSOStorage` and the subsequently approved `enatelSSOAccount`, while the old production summary confirms 136,899 storage instances were captured under the obsolete V3-name selector.** Evidence 16 and checker 3.0.2 are offline verified, and the new owner-run log records both exclusions, 399,089 fewer objects, complete publication and substantially better times/sizes without changing historical evidence or pinned values. Actual new class-absence and full saved-answer confirmation remain outstanding; only logs/summaries return, unrelated work and originals remain preserved, and no assistant live access, recapture, rejudging, credential extraction, commit or push occurred. | implemented — completed production improvement observed; new class counts pending | HIGH |
 | P-225 | **The locally reproduced capture-fixture timeout is addressed by running both capture and its coordinating driver outside the test runner's synchronization context.** The 30-second watchdog and existing cancellation assertions are unchanged, and explicit-build negative controls detect inherited runner context and removal of active-domain cancellation. The 4,769-test local checkpoint passed normally and with two processors advertised, CI subsequently passed at `0e2e7a1`, and the failed CI log for `018ed81` remains preserved. | closed — locally and CI verified | — |
 | P-211 | **GUI controller choices now reach capture under the forest's declared DNS domain identity, fixing `CAP-004`.** The view model uses the authoritative naming-context/DNS mapping rather than converting names, while discovery still refuses another forest's domain or an ineligible controller. Real window-to-launcher-to-discovery tests cover selected controllers, non-convertible declared name pairs and both refusals, with targeted mutations proving the checks detect broken behavior. | closed — implemented and offline verified | — |
 | P-212 | **A declared domain with no candidate controllers now retains its authoritative DNS name through the launcher, fixing `CAP-005`.** The complete `CapturePlan.DomainDnsNames` mapping reaches the GUI, so its exclusion attestation passes the production capture-plan validation without weakening identity checks. Offline tests carry a GUI-generated attestation through a successful sealed synthetic capture, and deliberately dropping the missing domain's identity makes the boundary regressions fail. | closed — implemented and offline verified | — |

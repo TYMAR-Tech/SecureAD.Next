@@ -47,5 +47,6 @@ public static class RuleCatalogue
         new UnexpectedTier0Route(),
         new CircularGroupMembership(),
         new DuplicateServicePrincipalNames(),
+        new BroadAdministrativeGroupMembership(),
     ];
 }

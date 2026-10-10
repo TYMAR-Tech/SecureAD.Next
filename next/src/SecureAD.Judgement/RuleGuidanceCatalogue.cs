@@ -26,6 +26,11 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-062", "Group membership", MitreTechnique: null,
+            WhyItMatters: BroadAdministrativeGroupMembership.Explanation,
+            WhatToDo: BroadAdministrativeGroupMembership.Guidance,
+            About: BroadAdministrativeGroupMembership.MembershipSummary + "\n\n" + BroadAdministrativeGroupMembership.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-026", "Kerberos", MitreTechnique: null,
             WhyItMatters: DuplicateServicePrincipalNames.Explanation,
             WhatToDo: DuplicateServicePrincipalNames.Guidance,

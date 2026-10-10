@@ -112,6 +112,11 @@ public sealed class CoverageIdRecipeTests
 
         // Version 14 adds optional GPP scan coverage, not a change to the declared-domain identity.
         [14] = "57cf8ba5a9e7fb10",
+
+        // Version 15 corrects class scope, which remains separate from the declared-domain identity.
+        [15] = "57cf8ba5a9e7fb10",
+        // Version 16 adds account metadata to class scope; the domain identity is unchanged.
+        [16] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

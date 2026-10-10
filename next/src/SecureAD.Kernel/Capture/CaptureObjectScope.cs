@@ -13,13 +13,13 @@ public sealed record CaptureObjectScope
 
     private CaptureObjectScope(bool includeEnatelSso) => IncludeEnatelSso = includeEnatelSso;
 
-    /// <summary>Whether the three Enatel SSO classes are included in this run.</summary>
+    /// <summary>Whether the otherwise-excluded Enatel SSO metadata classes are included in this run.</summary>
     public bool IncludeEnatelSso { get; }
 
     /// <summary>The classes deliberately not read by this capture.</summary>
     public IReadOnlyList<string> ExcludedClasses => IncludeEnatelSso ? DnsExclusions : DefaultExclusions;
 
-    /// <summary>New runs exclude DNS and the three Enatel SSO metadata classes.</summary>
+    /// <summary>New runs exclude DNS and the named Enatel SSO metadata classes.</summary>
     public static CaptureObjectScope Default { get; } = new(false);
 
     /// <summary>The inclusion-only override restores Enatel objects while leaving DNS excluded.</summary>

@@ -6,10 +6,10 @@ namespace SecureAD.Next.Tests.Capture;
 public sealed class CaptureObjectScopeTests
 {
     [Fact]
-    public void TheDefaultExcludesOnlyDnsAndTheThreeNamedEnatelClasses()
+    public void TheDefaultExcludesOnlyDnsAndTheNamedEnatelMetadataClasses()
     {
         Assert.Equal(
-            ["dnsNode", "dnsZone", "enatelSSOAccountParameter", "enatelUserManagedAuth", "enatelSSOStorageV3"],
+            ["dnsNode", "dnsZone", "enatelSSOAccountParameter", "enatelUserManagedAuth", "enatelSSOStorage", "enatelSSOAccount"],
             CaptureObjectScope.Default.ExcludedClasses);
     }
 

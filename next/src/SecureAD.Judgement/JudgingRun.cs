@@ -717,13 +717,16 @@ public static class JudgingRun
             // would find nothing inside every group it asked about and report a scoped delegation
             // as safe - which is worse than silence, and is why this refuses instead.
             if (wanted.Contains(
-                nameof(DerivedFactKind.PrincipalExpansion), StringComparer.OrdinalIgnoreCase))
+                nameof(DerivedFactKind.PrincipalExpansion), StringComparer.OrdinalIgnoreCase)
+                || wanted.Contains(nameof(DerivedFactKind.AdministrativeMembership), StringComparer.OrdinalIgnoreCase))
             {
                 if (!derivation.NestingWasDerived())
                 {
+                    var membershipFact = wanted.Contains(nameof(DerivedFactKind.AdministrativeMembership), StringComparer.OrdinalIgnoreCase)
+                        ? DerivedFactKind.AdministrativeMembership : DerivedFactKind.PrincipalExpansion;
                     var refusal = Failure(
                         "DerivedFactsAbsent",
-                        $"A scheduled rule reads {DerivedFactKind.PrincipalExpansion}, and this "
+                        $"A scheduled rule reads {membershipFact}, and this "
                         + "bundle's derivation carries no group nesting to walk. Expanding a group "
                         + "over nothing finds nothing inside it, so every delegation would look "
                         + "scoped and every broad principal would go unreported. This judging "
@@ -737,6 +740,30 @@ public static class JudgingRun
                 // Captured by reference to the open reader, the same way permissions are read off
                 // the open bundle. Both live as long as the loop below, and no longer.
                 var reader = derivation;
+
+                if (wanted.Contains(nameof(DerivedFactKind.AdministrativeMembership), StringComparer.OrdinalIgnoreCase))
+                {
+                    var contexts = inputs.ReadNamingContexts();
+                    if (!contexts.IsSuccess)
+                    {
+                        log.Record(JudgePhase, contexts.Error, []);
+                        return Result<JudgementRunState>.Failure(contexts.Error);
+                    }
+                    var membership = inputs.ReadMembershipInput();
+                    if (!membership.Objects.Any(source => RequesterTrusteeReading.HasClass(source, "group")))
+                    {
+                        var refusal = Failure("DerivedFactsAbsent",
+                            "Administrative membership evidence contains no captured groups to assess. No absence of broad administrative membership can be established.",
+                            bundleDirectory);
+                        log.Record(JudgePhase, refusal.Error!, []);
+                        return refusal;
+                    }
+                    context = context with
+                    {
+                        AdministrativeMembership = AdministrativeMembershipIndex.Create(membership,
+                            inputs.Binding(), contexts.Value, cancellationToken),
+                    };
+                }
 
                 // MEMOISED FOR THE RUN, because the same principal is asked about once per object.
                 // Every computer under one organisational unit inherits the same delegation, so a

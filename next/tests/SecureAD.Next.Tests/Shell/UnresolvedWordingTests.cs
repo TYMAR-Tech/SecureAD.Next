@@ -16,6 +16,26 @@ namespace SecureAD.Next.Tests.Shell;
 public sealed class UnresolvedWordingTests
 {
     [Theory]
+    [InlineData("AdministrativeMembership.NotDerived")]
+    [InlineData("AdministrativeMembership.MembershipIncomplete")]
+    [InlineData("AdministrativeMembership.IdentityUnreadable")]
+    public void Sec062UnavailableEvidenceDoesNotClaimProtectedAccountAnalysisOrARecaptureRemedy(string token)
+    {
+        var text = UnresolvedWording.For(token);
+        Assert.Equal("The membership or identity evidence needed to complete this administrative-group assessment is unavailable or could not be verified. "
+            + "Recorded positive links do not establish that all other membership has been assessed.", text);
+        Assert.DoesNotContain("protected", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("would settle", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Sec062UnsupportedScopeIsNotDescribedAsIncompleteCapture()
+    {
+        Assert.Equal("The captured membership relationship has unsupported or contradictory group scope; this run cannot establish authorization through that relationship.",
+            UnresolvedWording.For("AdministrativeMembership.MembershipScopeUnsupported"));
+    }
+
+    [Theory]
     [InlineData("NestingCycles.MembershipIncomplete")]
     [InlineData("NestingCycles.NotDerived")]
     [InlineData("NestingCycles.IdentityUnreadable")]

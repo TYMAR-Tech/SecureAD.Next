@@ -31,9 +31,9 @@ public sealed class CaptureReviewBoundaryTests
 
     [Theory]
     [InlineData(false, false, 3, First)]
-    [InlineData(true, false, 6, First)]
+    [InlineData(true, false, 7, First)]
     [InlineData(false, true, 3, Second)]
-    [InlineData(true, true, 6, Second)]
+    [InlineData(true, true, 7, Second)]
     public async Task TheWizardScopeControlsActualPagedCaptureAndFailover(
         bool includeEnatelSso, bool failover, int expectedObjects, string expectedController)
     {
@@ -54,7 +54,7 @@ public sealed class CaptureReviewBoundaryTests
     }
 
     [Theory]
-    [InlineData(false, 5)]
+    [InlineData(false, 6)]
     [InlineData(true, 2)]
     public async Task RecordedScopeSurvivesPreflightEvidenceAndDashboard(bool includeEnatelSso, int excludedCount)
     {
@@ -72,7 +72,7 @@ public sealed class CaptureReviewBoundaryTests
         Assert.Equal((excludedCount, excludedCount, !includeEnatelSso),
             (reader.Description.ExcludedObjectClasses.Count,
                 preflight.RootElement.GetProperty("ExcludedObjectClasses").GetArrayLength(),
-                dashboard.ObjectClassScopeStatement.Contains("enatelSSOStorageV3", StringComparison.Ordinal)));
+                dashboard.ObjectClassScopeStatement.Contains(", enatelSSOStorage,", StringComparison.Ordinal)));
     }
 
     private static async Task<string> CaptureScopeAsync(Fixture fixture, bool includeEnatelSso)
@@ -86,6 +86,66 @@ public sealed class CaptureReviewBoundaryTests
         await screen.StartAsync();
         Assert.True(screen.BundleDirectory is not null, screen.Problem ?? screen.Report);
         return screen.BundleDirectory!;
+    }
+
+    [Theory]
+    [InlineData(false, false, 0)]
+    [InlineData(false, true, 0)]
+    [InlineData(true, false, 2)]
+    [InlineData(true, true, 2)]
+    public async Task VendorStorageClassIsFilteredRegardlessOfTheChildCn(
+        bool includeEnatelSso, bool failover, long expectedStorageObjects)
+    {
+        var fixture = new Fixture();
+        fixture.VendorStorageObjects(failover);
+        var directory = await CaptureScopeAsync(fixture, includeEnatelSso);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(DISTINCT object_id) FROM objectclass_value "
+            + "WHERE value='enatelSSOStorage' COLLATE NOCASE";
+        Assert.Equal(expectedStorageObjects, command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(*) FROM captured_object WHERE distinguished_name=$dn";
+        command.Parameters.AddWithValue("$dn", "CN=enatelSSOStorageV3,CN=ordinary," + Root);
+        Assert.Equal(1L, command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(*) FROM captured_object o "
+            + "JOIN partition_coverage p ON p.coverage_id=o.coverage_id "
+            + "WHERE o.distinguished_name=$dn AND p.naming_context_kind='Schema'";
+        command.Parameters["$dn"].Value = "CN=enatelSSOStorage," + Schema;
+        Assert.Equal(1L, command.ExecuteScalar());
+    }
+
+    [Theory]
+    [InlineData(false, false, 0)]
+    [InlineData(false, true, 0)]
+    [InlineData(true, false, 2)]
+    [InlineData(true, true, 2)]
+    public async Task AccountClassScopeControlsChildrenAcrossPagesAndFailover(
+        bool includeEnatelSso, bool failover, long expectedAccounts)
+    {
+        var fixture = new Fixture();
+        fixture.AccountMetadataObjects(failover);
+        var directory = await CaptureScopeAsync(fixture, includeEnatelSso);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = BundleLayout.EvidencePath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(DISTINCT object_id) FROM objectclass_value "
+            + "WHERE value='enatelSSOAccount' COLLATE NOCASE";
+        Assert.Equal(expectedAccounts, command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(DISTINCT object_id) FROM objectclass_value "
+            + "WHERE value='enatelAdminProfile' COLLATE NOCASE";
+        Assert.Equal(1L, command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(*) FROM captured_object WHERE distinguished_name=$dn";
+        command.Parameters.AddWithValue("$dn", "CN=enatelSSOAccount,CN=ordinary," + Root);
+        Assert.Equal(1L, command.ExecuteScalar());
+        command.Parameters["$dn"].Value = "CN=retained-ordinary,CN=enatelSSOStorageV3,CN=user," + Root;
+        Assert.Equal(1L, command.ExecuteScalar());
     }
 
     [Theory]
@@ -468,7 +528,7 @@ public sealed class CaptureReviewBoundaryTests
         internal void ScopeObjects(bool failover)
         {
             string[] classes = ["user", "group", "unanticipatedSecurityExtension",
-                "ENATELSSOACCOUNTPARAMETER", "enatelUserManagedAuth", "enatelSSOStorageV3", "dnsNode", "dnsZone"];
+                "ENATELSSOACCOUNTPARAMETER", "enatelUserManagedAuth", "enatelSSOStorage", "enatelSSOAccount", "dnsNode", "dnsZone"];
             var byDn = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var at = 0; at < classes.Length; at++)
             {
@@ -479,6 +539,40 @@ public sealed class CaptureReviewBoundaryTests
                         ("objectClass", ["top", classes[at]]));
             }
             DecorateConnections = source => new ScopedDirectory(source, byDn, failover);
+        }
+
+        internal void VendorStorageObjects(bool failover)
+        {
+            // Quest KB 4256730: V2/V3 are CNs; both use objectClass=enatelSSOStorage.
+            var classes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["CN=enatelSSOStorageV2,CN=user," + Root] = "enatelSSOStorage",
+                ["CN=enatelSSOStorageV3,CN=user," + Root] = "ENATELSSOSTORAGE",
+                ["CN=enatelSSOStorageV3,CN=ordinary," + Root] = "user",
+                ["CN=enatelSSOStorage," + Schema] = "classSchema",
+            };
+            foreach (var model in new[] { Bootstrap, Secondary })
+                foreach (var entry in classes)
+                    model.AddObject(entry.Key, ("objectGUID", [Guid.NewGuid().ToByteArray()]),
+                        ("objectClass", ["top", entry.Value]));
+            DecorateConnections = source => new ScopedDirectory(source, classes, failover);
+        }
+
+        internal void AccountMetadataObjects(bool failover)
+        {
+            var classes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["CN=account-first,CN=enatelSSOStorageV3,CN=user," + Root] = "enatelSSOAccount",
+                ["CN=retained-admin," + Root] = "enatelAdminProfile",
+                ["CN=enatelSSOAccount,CN=ordinary," + Root] = "user",
+                ["CN=retained-ordinary,CN=enatelSSOStorageV3,CN=user," + Root] = "user",
+                ["CN=account-later,CN=enatelSSOStorageV2,CN=user," + Root] = "ENATELSSOACCOUNT",
+            };
+            foreach (var model in new[] { Bootstrap, Secondary })
+                foreach (var entry in classes)
+                    model.AddObject(entry.Key, ("objectGUID", [Guid.NewGuid().ToByteArray()]),
+                        ("objectClass", ["top", entry.Value]));
+            DecorateConnections = source => new ScopedDirectory(source, classes, failover);
         }
 
         internal void NoCandidate(string namingContext = Orphan, string dns = OrphanDns) =>
@@ -576,6 +670,9 @@ public sealed class CaptureReviewBoundaryTests
             if (_remaining is null)
             {
                 var whole = await inner.SendAsync(request, cancellationToken);
+                // Exercise named scope objects on both sides of the page boundary.
+                whole = whole with { Entries = whole.Entries
+                    .OrderBy(entry => classes.ContainsKey(entry.DistinguishedName) ? 0 : 1).ToArray() };
                 _remaining = whole with { Entries = whole.Entries.Skip(4).ToArray() };
                 page = whole with { Entries = whole.Entries.Take(4).ToArray(),
                     Completeness = PageCompleteness.MoreToCome, PagingCookie = [9, 1] };

@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 20 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 21 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,257 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**Owner-authorized checkpoint integration and lab testing, 2026-10-10.**
+The owner requested committing all current work, merging `rules-delivery` into `main` and pushing
+both branches, including the completed Stage 6/7 preparation changes, corrected Enatel scope,
+SEC-062, existing diagnostics, governing decisions and visual mockups.
+Register the existing capture-scope diagnostic in the solution so the normal repository build
+includes it, preserving the owner's judgement-diagnostic registration.
+The integrated Release solution rebuild and all 2,225 affected checks pass, including the original
+solution-registration guard, and the capture-scope diagnostic, judgement diagnostic and failure
+collector pass their synthetic offline self-tests.
+The owner will test this checkpoint in his lab; that acceptance remains outstanding, and the
+request does not authorize assistant live access, a production run, further performance work or
+application UI implementation.
+
+**SEC-062 approved implementation slice, 2026-10-10.**
+Report High-severity broad direct membership and valid nesting through security groups into
+each domain's Domain Admins and BUILTIN Administrators, plus the forest-root Enterprise Admins
+and Schema Admins.
+Produce one finding per affected administrative group, retaining symbolic broad identities and
+a compact set of captured membership links, including alternative chains, without expanding
+them into individual accounts or claiming an exact count of every possible route.
+Use the existing scoped identity and broad-principal registry; other operator groups and
+endpoint-local Administrators inventory are outside this rule.
+Keep incomplete captured evidence and unsupported group identity/scope explicit, retain proved
+positive membership alongside uncertainty about other routes, and do not treat distribution-only
+nesting as authorization.
+The owner also approved this explanation and remediation wording:
+"Broad membership reaches this administrative group through the recorded security-group
+relationships. Review and remove unintended broad membership paths, replace them with
+role-specific security groups, and check the other recorded routes before concluding the
+exposure is removed. This finding does not prove a successful logon or account takeover."
+The owner approved separate unresolved-result wording rather than the protected-account wording:
+"The captured membership relationship has unsupported or contradictory group scope; this run
+cannot establish authorization through that relationship."
+For missing or unverified membership/identity evidence he approved:
+"The membership or identity evidence needed to complete this administrative-group assessment
+is unavailable or could not be verified. Recorded positive links do not establish that all other
+membership has been assessed."
+Implementation and verification are offline only; the implementation approval itself authorizes
+no new performance campaign, live access, capture extension, UI layout/theme change, commit or
+push, with checkpoint integration separately approved above.
+The slice is implemented in the shared GUI/unattended rule catalogue and saved Judgement 64
+readback, including explicit refusal of an empty/unavailable administrative-group inventory.
+Offline verification passed 2,177 affected checks; 43 distinct deliberately broken implementations
+were detected with 48 explicit defect/restoration rebuilds, and every one of the 39 new rule
+behavior checks has a detected defect witness.
+This completes SEC-062's approved bounded scope, not all remaining rules or Stage 6/7 acceptance.
+
+**Owner priority: remaining rules first; SEC-083 deferred to the end, 2026-10-10.**
+The owner explicitly requested starting the remaining rule delivery now, following the completed
+production improvement and deferral of speculative optimization.
+When SEC-083 was proposed as the first rule, he clarified that its legacy Group Policy Preferences
+stored-password finding should be left until the end, referring to the 2014 Microsoft correction.
+Do not propose it again as the immediate next rule or treat its already-built optional capture scan
+as finding-implementation approval; its severity, wording and grouping remain unapproved.
+The optional XML password scan stays disabled by default, while ordinary GPO/SYSVOL capture
+remains enabled for other rule evidence.
+Proceed through the remaining current-evidence rule families in bounded approved slices,
+preserving the shared permission/path contracts and avoiding new performance campaigns,
+live access, unapproved capture extensions, UI changes, commits or pushes.
+
+**Owner priority: finish rules and features before further optimization, 2026-10-10.**
+After the completed production improvement, the owner explicitly prefers finishing the application
+over further performance/storage experiments and wants to return to those after rules and features
+are implemented, unless there is a concrete, worthwhile gain.
+Defer the proposed proof-compression and duplicate-selection tuning; neither is a prerequisite
+to the existing approved functional build sequence or remaining feature acceptance.
+Keep the completed 7 h 16 m 22 s / 38,560,964,608-byte production run and its exact log/build
+provenance as the baseline for later comparisons, with the changed capture scope and existing
+analysis limits stated.
+Continue normal correctness, regression and functional verification, and fix errors that would
+make the product report false results rather than deferring them as optimization.
+Raise any demonstrably worthwhile performance gain or product-blocking performance problem as
+a bounded proposal before changing direction; this priority decision is not standing approval
+for another optimization campaign, storage redesign, measurement harness, scope cut or live run.
+Existing UI implementation approval and external-monitor requirements, production-data boundaries,
+evidence preservation and the prohibition on unsolicited commit/push remain unchanged.
+
+**Corrected-scope production run completed with substantial observed improvement, 2026-10-10.**
+The owner returned the new log and portable summary and reports much better times and smaller
+files after the Enatel storage/account exclusions.
+The log identifies Release `1c38fd6`, executable SHA-256
+`698C7B6A44E04BA1774274B6F408E85335EC4F11FD8402775A50CDF5A26F490C`, and judging-engine MVID
+`37a2863d-6e36-4f62-b44e-8f86d03d23a3`; the published binary/source and database headers were
+not independently inspected here, and the scope corrections remain uncommitted.
+Capture records the six approved DNS/Enatel exclusions, nine Read domains and the optional GPP
+password scan off; all 11 partition counts reconcile to 540,483 captured/judged objects.
+
+| Observed measure | Prior completed October 8 run | New October 10 run |
+|---|---:|---:|
+| Capture, portable summary | 4 h 24 m | 2 h 32 m |
+| Derivation, portable summary | 6 m 26 s | 4 m 10 s |
+| Judging, portable summary | 8 h 15 m | 4 h 38 m |
+| Capture-start to published-return timestamps | 12 h 49 m 26 s | 7 h 16 m 22 s |
+| Evidence logical bytes | 19,984,900,096 | 10,332,127,232 |
+| Derivation logical bytes | 3,056,349,184 | 3,057,782,784 |
+| Judgement logical bytes | 28,527,681,536 | 25,171,054,592 |
+
+The observed whole-run saving is 5 h 33 m 4 s (43.29%), and total sealed logical bytes fall
+51,568,930,816 to 38,560,964,608 (25.22%); Evidence falls 48.30% and Judgement 11.77%.
+Admitted-control work falls 59.56 to 12.69 minutes, ownership assessment 39.38 to 21.73 minutes,
+and all recorded path segments combined 254.71 to 174.56 minutes.
+Every repeated requester-family segment is summed; preparation/evaluation/storage work moved
+between phase labels, so the smaller final proof-writing label alone is not its net saving.
+Detailed targets are 7,243 versus 7,240 and requester questions 653,688 versus 653,689.
+Judging published `CompletedDegraded`, all 20 rule outcomes are recorded, and nine remain
+Indeterminate; completion is not complete evidence or equality of every saved answer.
+The 399,089-object reduction is within 32 of the old report's 399,057 storage/account instances,
+strong operational evidence for corrected scope but not a substitute for new actual class counts.
+The supplied Enatel-specific summary still describes October 8; no new checker 3.0.2 summary
+confirming storage/account absence has been supplied.
+This is a real combined production speed/size improvement for the new build and narrower approved
+scope, not an identical-evidence comparison isolating the Stage 6/7 redesign or declaring excluded
+SSO objects harmless.
+Original text records, historical measurements and all existing uncommitted work are preserved,
+with no new application code, timing campaign, live access, recapture, commit or push.
+
+**Owner-approved Enatel account metadata exclusion, 2026-10-10.**
+After reviewing the old capture's 262,158 `enatelSSOAccount` instances, the owner explicitly asked
+to exclude that class as well as storage and the previously named metadata classes.
+He reports starting another audit and intends to stop it; cancellation has not been confirmed,
+and no assistant production action is authorized.
+Add only `enatelSSOAccount` to the default LDAP class exclusions, keeping DNS, the other named
+metadata exclusions and the per-run inclusion option, while retaining other Enatel administration,
+configuration and schema definitions.
+The current storage-only build has already been used to start a run, so record this scope as
+Evidence format 16 under the previously approved no-compatibility policy, without relabelling or
+changing format-14/15 captures.
+The updated standalone forensic checker may read sealed formats 14/15/16 and distinguish the old
+storage-name defect from the account metadata omitted by prior default scopes; this is not
+application compatibility or migration.
+The account exclusion is implemented and verified offline: 1,132 affected tests and all 39
+standalone checker cases pass, six deliberately broken capture/format variants and ten checker
+variants were detected in isolated rebuilt sources, and every restored variant passed.
+The actual account class is tested on both sides of a page boundary and after failover, with
+explicit inclusion restoring it and other Enatel administration, ordinary objects with misleading
+names, and ordinary descendants remaining captured.
+Checker 3.0.2 distinguishes actual account instances, prior default scopes lacking that exclusion,
+and the explicit inclusion option while reading sealed formats 14/15/16.
+Corrected sources were explicitly rebuilt after the isolated defects; production counts/runtime
+and real-controller confirmation remain outstanding.
+No permission-analysis change, wider Enatel exclusion, UI wording/layout change, production
+operation, recapture, rejudging, commit or push is authorized by this correction.
+
+**Owner-supplied production Enatel instance counts, 2026-10-10.**
+The owner returned the read-only diagnostic 3.0.1 summary for the existing format-14 capture
+started 2026-10-08, not a new corrected-scope audit.
+It reports 403,562 distinct objects with an Enatel objectClass among 939,572 captured objects
+(42.95%), all attributed to domain partitions.
+Of these, 136,899 carry the vendor-documented `enatelSSOStorage` class, 262,158 carry
+`enatelSSOAccount`, and the remaining 4,505 span twenty other observed Enatel classes.
+The report records the obsolete V3-name exclusion and explicitly reports the storage-class gap;
+the reported diagnostic version and assembly identity match the delivered 3.0.1 checker.
+Configuration and Schema together hold 30,013 objects (3.19% of the capture), separately from
+the Enatel instances, so those partitions do not explain this vendor-object population.
+The per-class Enatel counts reconcile exactly to the distinct-instance count in this report;
+24,903 captured objects have no usable objectClass values, so additional vendor instances among
+them cannot be ruled out.
+The storage-only correction did not exclude `enatelSSOAccount`, and excluding a parent's class
+in a subtree query does not prune its children.
+The owner subsequently approved adding this account class to the optional SSO metadata
+exclusions; do not broaden that decision to all Enatel administrative/configuration objects.
+These counts confirm the old capture problem and expose a larger remaining class-scope gap,
+not a measured runtime saving or proof that the newly corrected filter worked on a real controller.
+Only the supplied text summary was read on the development box; preserve the original and
+its fingerprint without importing production evidence, changing capture code or inferring that
+the current judgment was cancelled.
+
+**Owner considering a fresh corrected-scope production trial, 2026-10-10.**
+The owner has obtained the Enatel counts from his existing capture and may stop the current
+judgment, publish a new Release build with the approved storage-class correction, and run a fresh
+production audit to establish its actual capture/derivation/judging duration.
+Stopping and publishing have not been reported as completed; this is an owner-operated plan,
+not authorization for assistant production access, cancellation, publishing, recapture or a new
+development measurement campaign.
+The corrected LDAP class exclusions affect new capture only; rejudging existing evidence cannot
+remove the objects, and the corrected application refuses its older format.
+Preserve the earlier executable, sealed capture and available log/summary; a cancelled judgment
+does not supply a completed judging duration.
+The new run must identify the actual executable and recorded corrected class scope, with the
+per-run Enatel inclusion option off, and confirm actual stored instance counts through the
+read-only checker once the selected run is no longer active.
+This measures the total audit with corrected scope, not an isolated before/after estimate of the
+Stage 6/7 redesign; only production run logs and summaries return here.
+
+**Owner production test in progress; Home UI work paused for external-monitor access, 2026-10-09.**
+The owner reports that his production-environment run is in progress and may take many hours,
+and initially requested UI work while it runs.
+No production outcome, performance acceptance or authorization to interfere with that run is
+inferred; only its run log and summary can return here.
+The owner asked how WPF adapts to display resolution; the accepted design requirement already
+calls for readable text, responsive use of available window space and per-monitor DPI handling,
+not uniform enlargement of a fixed-layout application.
+The existing shell already declares PerMonitorV2 and opens maximized with a flexible content row;
+the remaining presentation work must be scoped at the page/control level and previewed at
+small/large window sizes before owner-approved application wording/layout changes.
+This discussion is not approval of a new breakpoint, automatic whole-app zoom, replacement
+layout/theme, runtime edit, production operation, commit or push.
+The owner subsequently supplied the Home screenshot and requested a reimagined, more compact
+layout with much stronger contrast and less white/pale blue-grey, followed by a visual mockup.
+This supersedes the earlier preserve-layout preference for the Home preview only; initial
+high-contrast light and charcoal treatments were previewed at laptop and larger logical window
+sizes while retaining existing capabilities, scope grouping and evidence qualifications.
+After those previews, the owner requested charcoal only and a further compact layout mockup:
+grid rows are still too tall, date/time must stay on one line, and the whole page should use less
+space without making the main text tiny.
+The owner subsequently decided to pause UI work until he has access to his external monitor.
+Preserve the delivered previews and resume UI refinement only when he requests it; rendered
+large-window mockups are not his monitor acceptance.
+Application wording/layout/theme implementation still requires separate owner approval.
+
+**Owner-supplied three-domain lab log/summary reviewed, 2026-10-09.**
+The newly published executable reports `1c38fd6` and Release, with process SHA-256
+`BE3B72633BCB03F211174919B1FFBA9AF4CDA07EE1CF249E40EFC85607B7273F` and judging-engine
+MVID `cc7b0277-8b29-4913-8b33-35c411177104`; the actual published binary/source documents
+were not independently inspected.
+The fresh capture sealed in 20.1 seconds, derivation completed in 2.4 seconds and judging
+published `CompletedDegraded` in 36.1 seconds for 8,441 objects across the three lab domains.
+All 19 ordinary rules succeeded; SEC-071 remained indeterminate as in the earlier owner lab,
+with the same severity totals of 6 Critical, 18 High, 5 Medium and 11 Low findings.
+Detailed assessment again processed 59 targets and automatic selection retained 463 questions
+across 215 direct, 60 own-account and 188 combined assessments; these aggregate matches do
+not prove equality of every saved answer or acceptance of the selected GUI views.
+The seal log records Evidence 11,386,880 bytes, Derivation 19,836,928 bytes and Judgement
+44,990,464 bytes; the earlier owner lab recorded 44,642,304 Judgement bytes, so the new result
+is 348,160 bytes (0.78%) larger.
+The earlier owner lab judged in 33.0 seconds, versus 36.1 seconds now (9.4% longer), but these
+were fresh separate captures, not controlled repeated judging of identical sealed input.
+WritingProofs logged 3,585.9 to 1,632.6 milliseconds, while preparation/qualification/storage
+moved between phases; this is not an isolated or whole-run saving claim.
+Final sealing again spent about ten seconds in the file-opening operation: 10,126.762 ms now
+versus 10,378.946 ms before, while current reads and hashing took 29.543 and 193.813 ms.
+The inherited file-open delay remains an observed cost with an unconfirmed cause, not a new
+rewrite regression or permission to remove verification or change security/storage settings.
+The original supplied log/summary and compact build-bound analysis are retained unchanged.
+This establishes completed lab processing/publication, not full functional readback or production
+scale acceptance; no new run, database inspection, implementation, live access, commit or push was made.
+
+**Owner-operated Release publishing and acceptance order, 2026-10-09.**
+The owner is publishing the Release build through Visual Studio and will test the small
+three-domain lab first, then take the candidate into his nine-domain production environment
+for testing.
+The committed preparation/result-completion checkpoint is `1c38fd6`; identify the actual
+published executable/engine from its build records rather than assuming an old publish folder
+or a version stamp contains that source.
+Lab functional acceptance and actual production-sized performance remain outstanding until
+the owner supplies results; publishing or completing a run alone is not acceptance.
+Lab information can return here, but the production return remains only its run log and summary,
+with existing captures/results preserved and no imported production evidence required.
+This records the owner's publishing/testing plan, not authorization for assistant-run publishing,
+live access, capture, package replacement, new measurement tooling, commit or push.
 
 **Owner-authorized preparation/result-completion checkpoint commit, 2026-10-09.**
 After the full 7,601-test gate and rebuilt defect/restoration controls, the owner requested
@@ -4751,8 +5002,12 @@ findings is authorized, and corrected finding text is produced when judging runs
 
 ## Enatel SSO object capture scope
 
-**Owner-approved default and presentation, tracked as P-224.** New captures exclude
-`enatelSSOAccountParameter`, `enatelUserManagedAuth` and `enatelSSOStorageV3` by default.
+**Owner-approved default and presentation, tracked as P-224; storage selector corrected
+2026-10-09 and account scope added 2026-10-10.** New Evidence format 16 captures exclude
+`enatelSSOAccountParameter`, `enatelUserManagedAuth`, the vendor-documented `enatelSSOStorage`
+class and the owner-approved `enatelSSOAccount` class by default.
+The old V3-name selector was a confirmed defect: V2/V3 identify storage container names, not
+the documented LDAP class.
 On the wizard's review page, an **Object classes** section below the domain list offers
 **Include Enatel SSO metadata objects**, unchecked for each new audit and not saved as a setting.
 Its help says: “Excluded by default to reduce capture volume. Excluded objects and their permissions
@@ -4769,6 +5024,80 @@ and show class exclusions separately. Existing captures must not be rewritten or
 the new default; the historical two-thirds observation is not a measured speedup for this change.
 The existing no-compatibility decision (`0001`) still applies: an older evidence format is refused,
 not migrated, and original files are preserved.
+
+**Owner-reported production counterexample, 2026-10-09.** The owner reports seeing Enatel objects
+in the last production run and disputes that the exclusions are working; the subsequent returned
+summary confirms 136,899 storage instances under the obsolete V3-name exclusion.
+Existing request and simulated-controller tests cover the named classes, paging, wizard
+scope and failover, but do not establish exclusion behavior against an actual Enatel-enabled
+directory or the contents of that production capture.
+The old recognised-class allow-list and the rebuild's named vendor exclusions are not
+equivalent for other Enatel classes.
+Verify the saved run's actual class scope and counts of Enatel object instances, separately from
+schema definitions, before attributing the larger workload or claiming the scope works in production.
+Production evidence stays there; only counts included in the permitted summary and run log may
+return.
+The owner explicitly approved preparing a read-only saved-capture check to run inside his
+environment, reporting actual Enatel instance class counts, recorded exclusions and schema
+definitions without contacting the directory, changing evidence or disturbing the current run.
+The standalone Windows x64 checker is prepared and verified offline; its summary binds counts to
+the verified evidence seal, keeps domain/configuration/schema totals separate, and exports no
+object, forest, domain or controller names.
+Synthetic checks include excluded instances, additional vendor classes and incomplete class data;
+the existing sealed lab has no Enatel instances and is not production exclusion acceptance.
+The returned summary establishes the old capture's reported instance counts; await a completed
+corrected-scope run before claiming runtime effects or real-controller correction acceptance.
+Scope changes beyond the separately approved storage/account-class exclusions, live access, recapture,
+rejudging, commit and push are not authorized.
+
+**Vendor anchor supplied by the owner and verified, 2026-10-09.**
+[Quest KB 4256730](https://support.quest.com/kb/4256730/how-to-calculate-the-number-of-esso-user-licenses-used)
+documents the LDAP search `(objectClass=enatelSSOStorage)` for containers named
+`enatelSSOStorageV2` and `enatelSSOStorageV3`.
+[KB 4349194](https://support.quest.com/kb/4349194/where-and-how-does-quest-enterprise-single-sign-on-qesso-store-user-credentials-)
+identifies `CN=enatelSSOStorageV3` as the child object under the user, and
+[KB 4256318](https://support.quest.com/kb/4256318/how-to-remove-enterprise-sso-data-assigned-to-a-user)
+lists child object names, not a complete LDAP class catalogue.
+A common name is not an object class: the old NOT-objectClass clause for the V3 name did
+not exclude an instance carrying the documented `enatelSSOStorage` class.
+This is a confirmed selector defect for that documented class; the owner's returned summary
+counts 136,899 such instances, while its runtime contribution remains unmeasured.
+The request/simulated-controller tests were anchored to the chosen names rather than the vendor's
+schema distinction, so their passing results did not prove the intended storage objects were
+excluded.
+The first delivered diagnostic reports the actual class in its all-Enatel table, but treats it as outside
+the recorded exclusion list and may return exit 0; that exit is not proof that the intended Enatel
+scope worked.
+The approved bounded correction targets the documented storage class, retains DNS and the
+per-run inclusion option, and verify the query and diagnostic against vendor-derived class/name
+fixtures rather than a blanket prefix or child-name exclusion.
+This does not authorize excluding all SSO application configuration, altering security judgments,
+extracting credential values, changing old captures or interfering with the current production run.
+The owner explicitly approved correcting the documented storage-class selector and the checker
+and tests, keeping the other class scope and the per-run inclusion option unchanged.
+He separately approved Evidence format 15: old captures remain untouched and the corrected
+application refuses them rather than relabelling the old scope.
+The standalone forensic diagnostic may inspect the existing format 14 and corrected format 15
+read-only, binding counts to the seal; that is not application backward compatibility, migration,
+permission analysis or authorization to recapture.
+The owner also approved the format-refusal wording saying that both data layout and capture-scope
+meaning are versioned, that the evidence is undamaged and should be read with the build that wrote
+it, and that bundles are not migrated; a scope-only change must not claim different tables.
+No live operation, performance campaign, unrelated UI wording/layout change, commit or push is included.
+The correction is implemented and offline verified: 1,126 affected evidence/capture/CLI/GUI tests
+passed, all 31 standalone diagnostic cases passed, and four capture/format defects, thirteen
+diagnostic defects and one inaccurate-refusal variant were detected in isolated explicitly rebuilt
+sources and passed restoration.
+No existing pinned fingerprint was edited; format-15 entries were appended with unchanged table
+and domain-identity hashes, because only the capture-scope meaning changed.
+The updated 3.0.1 diagnostic inspects sealed formats 14/15 and returns a failing result when
+documented storage instances are present under the obsolete V3-name exclusion, while respecting
+the explicit inclusion option and distinguishing schema definitions.
+The corrected application explicitly refuses the preserved format-14 lab while the diagnostic reads
+the same hash-verified copy, with original file hashes and timestamps unchanged.
+The returned production summary confirms the old capture's 136,899 storage instances and the
+larger separate account-class population; runtime effects and corrected real-controller verification
+remain outstanding, and the running older build and its capture are unaffected by this correction.
 
 ## Capture preflight: domains with no controller
 
@@ -5481,9 +5810,34 @@ return to the development box, but only production run logs and summaries can re
 Synthetic scale testing is informed by the observed production workload below, not a claim that
 matching object or domain counts reproduces that complexity.
 
-**Latest completed-production baseline, 2026-10-08, from the supplied log and portable summary.**
-These are the current observed workload and logical file lengths; the earlier dated measurements
-below remain historical rather than being rewritten.
+**Latest completed-production workload, 2026-10-10, with approved Enatel metadata exclusions.**
+These counts come from the supplied log/summary, not a database imported from production.
+
+| Observed quantity | Value |
+|---|---:|
+| Domains recorded Read / captured partitions | 9 / 11 |
+| Objects captured and judged | 540,483 |
+| Domain / Configuration / Schema objects | 510,468 / 24,944 / 5,071 |
+| Derived principals | 405,982 |
+| Saved nesting relationships | 2,593,737 |
+| Distinct descriptors classified | 132,043 |
+| Entry positions across those descriptors | 70,216,555 |
+| Detailed assessment targets | 7,243 |
+| Distinct requester questions / requester identities | 653,688 / 6,024 |
+| Selection resources | 359 |
+| Domain object permission occurrences, separately counted | 257,173,028 |
+| Evidence / Derivation / Judgement logical bytes | 10,332,127,232 / 3,057,782,784 / 25,171,054,592 |
+
+The class scope excludes storage/account metadata as approved; do not use these lower counts to
+claim complete SSO coverage, a production expansion budget or that every analysis is supported.
+The descriptor counts are the final logged counters at all 540,483 objects, and are not the same
+quantity as permission occurrences summed across domain objects.
+All three sealed file lengths reconcile to 38,560,964,608 logical bytes, not allocated disk space
+or peak working storage; the prior records below remain historical.
+Actual new Enatel class counts and complete saved-answer/GUI acceptance remain unverified.
+
+**Prior completed-production baseline, 2026-10-08, from the supplied log and portable summary.**
+These are the pre-exclusion observed workload and logical file lengths, retained without rewriting.
 
 | Observed quantity | Value |
 |---|---:|

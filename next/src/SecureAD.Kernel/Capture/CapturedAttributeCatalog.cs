@@ -510,8 +510,10 @@ public static class CapturedAttributeCatalog
     /// Vendor metadata classes excluded by default under the owner's P-224 scope decision.
     /// Inclusion restores these objects only, not credential attributes or DNS objects.
     /// </summary>
+    // Quest KB 4256730 queries objectClass=enatelSSOStorage; V2/V3 are child CNs, not that class.
+    // Filtering storage objects does not prune their account children from a subtree search.
     public static IReadOnlyList<string> EnatelSsoObjectClasses { get; } = Array.AsReadOnly<string>(
-        ["enatelSSOAccountParameter", "enatelUserManagedAuth", "enatelSSOStorageV3"]);
+        ["enatelSSOAccountParameter", "enatelUserManagedAuth", "enatelSSOStorage", "enatelSSOAccount"]);
 
     /// <summary>
     /// Every distinct attribute the catalogue asks for anywhere, ordered so the list reads the same

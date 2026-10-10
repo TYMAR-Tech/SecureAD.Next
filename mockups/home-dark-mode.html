@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecureAD — dark-mode home preview</title>
+<style>
+:root{color-scheme:dark;--background:#10151d;--surface:#1c2532;--text:#f1f5fa;--muted:#bcc9da;--border:#65778e;--blue:#225fc0;--group:#293f5b;--header:#2b394c;--nav:#111923}
+*{box-sizing:border-box}body{margin:0;font:14px/1.4 "Segoe UI",Arial,sans-serif;color:var(--text);background:var(--background)}
+.preview{padding:8px 20px;background:#151e2a;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}.preview strong{color:var(--text)}
+.titlebar{height:25px;padding:2px 8px;background:#18212d;font-size:12px;display:flex;justify-content:space-between}.window-controls{letter-spacing:20px}
+nav{height:42px;background:var(--nav);color:var(--text);display:flex;align-items:stretch}.brand{padding:6px 18px;font-size:23px;font-weight:600}.build{font-size:12px;font-weight:400;margin-left:8px;color:var(--muted)}.tab{display:flex;align-items:center;padding:0 19px;color:#d7e0ec}.tab.active{background:#2d4059;color:#fff;font-weight:600;box-shadow:inset 0 -3px #8bbcff}
+main{padding:20px;max-width:1600px;margin:auto}.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}.hero{padding:18px;display:flex;justify-content:space-between;gap:24px;min-height:133px}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:4px}h1{font-size:23px;margin:0 0 6px;font-weight:600}.description{color:var(--muted);margin:0;max-width:1040px}.hero-actions{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;flex-shrink:0}.hint{font-size:12px;color:var(--muted);margin-top:6px}
+button{font:inherit;border-radius:3px;border:1px solid #8294ad;padding:7px 14px;background:#2c3a4d;color:var(--text);cursor:default}.primary{background:var(--blue);border-color:#82b2fa;color:#fff;font-weight:600}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #8bbcff;outline-offset:3px}
+.library{margin-top:12px;padding:14px;min-height:83px;display:flex;align-items:center;justify-content:space-between}.label{color:var(--muted);margin-bottom:4px}.path{font-size:12px;color:var(--muted)}.columns{display:grid;grid-template-columns:minmax(0,2.15fr) minmax(330px,1fr);gap:14px;margin-top:12px}.panel-title{padding:10px 14px;background:var(--header);border-bottom:1px solid var(--border);font-size:17px;font-weight:600}.help{padding:10px 12px;color:var(--muted);font-size:12px}.table-scroll{max-height:326px;overflow:auto;margin:0 12px;scrollbar-color:#7b8ba1 #17202c}table{width:100%;border-collapse:collapse;text-align:left}th{font-size:12px;background:#253245;color:#d8e5f5;padding:6px 8px;font-weight:600;position:sticky;top:0}td{padding:9px 8px;border-bottom:1px solid #526278;vertical-align:top}.run{font-weight:600;color:#a7ceff}.group td{background:var(--group);border-top:1px solid #6983a5;border-bottom:1px solid #6983a5;color:#e0edff;font-weight:600;padding:8px}.count{font-size:12px;font-weight:400;color:#c5d5e9}.selected td{background:#223a57}.footnote{padding:10px 12px;color:var(--muted);font-size:12px}
+.detail-scroll{max-height:434px;overflow:auto;scrollbar-color:#7b8ba1 #17202c}.detail-heading{padding:15px 14px 10px;background:#253245;border-bottom:1px solid var(--border)}.detail-heading h2{font-size:23px;margin:2px 0;font-weight:600}.id{font:12px Consolas,monospace;color:#d1deee}.detail-body{padding:14px}.statuses{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:10px}.status-value{font-weight:600}.detail-body p{margin:10px 0}.open{width:100%}.separator{border:0;border-top:1px solid var(--border);margin:14px 0}label{display:block;color:var(--muted);margin:10px 0 4px}input,textarea{width:100%;border:1px solid #8294ad;border-radius:3px;background:#111a26;color:var(--text);font:inherit;padding:10px}input{height:44px}textarea{height:92px;resize:none}
+@media(max-width:1000px){.hero{gap:12px}.hero-actions{max-width:190px}.hint{text-align:right}.columns{grid-template-columns:minmax(0,1.7fr) minmax(310px,1fr)}.run{overflow-wrap:anywhere}}
+@media(max-width:760px){main{padding:12px}.columns{grid-template-columns:1fr}.hero{flex-direction:column}.hero-actions{align-items:flex-start;max-width:none}.hint{text-align:left}nav{height:auto;flex-wrap:wrap}.tab{padding:10px}.detail-scroll{max-height:none}}
+</style>
+</head>
+<body>
+<div class="preview"><strong>Design preview only.</strong> Same home-screen layout and wording; dark-mode colors. Sample runs, no directory connection, and no working audit actions.</div>
+<div class="titlebar"><span>▣ SecureAD</span><span class="window-controls" aria-hidden="true">− □ ×</span></div>
+<nav aria-label="Application navigation"><div class="brand">SecureAD<span class="build">build AC</span></div><span class="tab active">Home</span><span class="tab">Dashboard</span><span class="tab">Rules</span><span class="tab">Assets</span><span class="tab">Settings</span></nav>
+<main>
+<section class="panel hero">
+<div><div class="eyebrow">Active Directory security auditing</div><h1>Capture once. Investigate offline.</h1><p class="description">SecureAD captures your Active Directory forest as sealed evidence. Explore objects, permissions, group membership and security findings from that saved capture, without reconnecting to the directory.</p></div>
+<div class="hero-actions"><button class="primary" type="button">New audit</button><div class="hint">Review scope before capture starts</div></div>
+</section>
+<section class="panel library"><div><div class="label">Run library</div><div class="path">C:\Users\ba.admin\Downloads\SecureAD</div></div><button type="button">Choose run library...</button></section>
+<div class="columns">
+<section class="panel"><div class="panel-title">Saved runs</div><div class="help">Select a run to see its details. Runs with the same recorded domain scope are grouped together.</div><div class="table-scroll"><table aria-label="Sample saved runs"><thead><tr><th style="width:23%">Run</th><th style="width:22%">When (local time)</th><th style="width:11%">Capture</th><th>Analysis</th></tr></thead><tbody>
+<tr class="group"><td colspan="4">ad.lab + ba.ad.lab + ph.ad.lab<div class="count">3 run(s)</div></td></tr>
+<tr class="selected"><td class="run">ad.lab-20261009-010825</td><td>09 Oct 2026<br>1:08 AM</td><td>Finished</td><td>Judged</td></tr>
+<tr><td class="run">ad.lab-20261008-034907</td><td>08 Oct 2026<br>3:49 AM</td><td>Finished</td><td>Judged</td></tr>
+<tr><td class="run">ad.lab-20261008-034144</td><td>08 Oct 2026<br>3:41 AM</td><td>Finished</td><td>Judged</td></tr>
+<tr class="group"><td colspan="4">Scope not established - these runs could not be opened<div class="count">4 run(s)</div></td></tr>
+<tr><td class="run">ad.lab-20261007-051833</td><td>07 Oct 2026<br>5:18 AM</td><td>Finished</td><td>Judged</td></tr>
+</tbody></table></div><div class="footnote">Listed capture and analysis states are not a security verdict. Evidence is checked when a run is opened, not merely selected in this list.</div></section>
+<section class="panel"><div class="detail-scroll"><div class="detail-heading"><div class="eyebrow">Selected run</div><h2>ad.lab-20261009-010825</h2><div class="id">ad.lab-20261009-010825</div></div><div class="detail-body"><div class="statuses"><div><div class="label">Capture</div><div class="status-value">Finished</div></div><div><div class="label">Analysis</div><div class="status-value">Judged</div></div></div><p>This run is finished. Its evidence is checked when you open it.</p><button type="button" class="primary open">Open run</button><hr class="separator"><label for="run-name">Run name</label><input id="run-name" readonly><label for="notes">Notes</label><textarea id="notes" readonly></textarea></div></div></section>
+</div>
+</main>
+</body>
+</html>

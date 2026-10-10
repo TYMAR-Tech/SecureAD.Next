@@ -66,6 +66,9 @@ public enum DerivedFactKind
     PrincipalExpansion,
     /// <summary>Recorded circular membership components, including direct group self-loops.</summary>
     NestingCycles,
+
+    /// <summary>Source-bound broad administrative membership, separate from protected-account derivation.</summary>
+    AdministrativeMembership,
 }
 
 /// <summary>
@@ -202,6 +205,7 @@ public sealed record JudgingContext(
     internal IReadOnlyDictionary<string, NamingContextKind>? NamingContexts { get; init; }
     internal Func<string, ObjectAttributes?>? ControlPrincipals { get; init; }
     internal CircularMembershipIndex? NestingCycles { get; init; }
+    internal AdministrativeMembershipIndex? AdministrativeMembership { get; init; }
 
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only

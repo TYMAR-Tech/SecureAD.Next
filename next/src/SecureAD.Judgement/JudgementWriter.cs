@@ -598,6 +598,7 @@ public sealed class JudgementWriter : IDisposable
         diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
         CircularMembershipStorage.RequirePublishable(_connection);
+        AdministrativeMembershipStorage.RequirePublishable(_connection, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
@@ -805,6 +806,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case BroadAdministrativeMembershipEvidence membership:
+                AdministrativeMembershipStorage.Write(_connection, transaction, findingId, GenerationId, membership);
+                break;
             case DuplicateSpnEvidence duplicate:
                 DuplicateSpnStorage.Write(_connection, transaction, findingId, GenerationId, duplicate);
                 break;

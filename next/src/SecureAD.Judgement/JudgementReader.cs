@@ -938,7 +938,10 @@ public sealed partial class JudgementReader : IDisposable
         cy.generation                       AS cy_generation,
         spn.proof                           AS spn_proof,
         spn.fingerprint                     AS spn_fingerprint,
-        spn.generation                      AS spn_generation
+        spn.generation                      AS spn_generation,
+        am.proof                            AS am_proof,
+        am.fingerprint                      AS am_fingerprint,
+        am.generation                       AS am_generation
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -957,6 +960,7 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_tier0_route z ON z.finding_id = f.finding_id
         LEFT JOIN finding_circular_membership cy ON cy.finding_id = f.finding_id
         LEFT JOIN finding_duplicate_spn spn ON spn.finding_id = f.finding_id
+        LEFT JOIN finding_broad_administrative_membership am ON am.finding_id = f.finding_id
         LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
@@ -1024,7 +1028,18 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (ruleId == "SEC-026")
+        if (ruleId == "SEC-062")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("am_proof")))
+                throw new InvalidDataException("The broad administrative-membership finding has no saved evidence.");
+            evidence = AdministrativeMembershipStorage.Read(reader.GetString(reader.GetOrdinal("am_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("am_fingerprint")), reader.GetString(reader.GetOrdinal("am_generation")),
+                Description, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
+                Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId == "SEC-026")
         {
             if (reader.IsDBNull(reader.GetOrdinal("spn_proof")))
                 throw new InvalidDataException("The duplicate-SPN finding has no saved evidence.");
