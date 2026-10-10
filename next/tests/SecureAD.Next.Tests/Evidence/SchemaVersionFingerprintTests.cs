@@ -60,6 +60,10 @@ public sealed class SchemaVersionFingerprintTests
         [13] = "ec7e88e927de488e",
         // 14 - per-policy coverage for the optional SEC-083 Group Policy XML scan.
         [14] = "e28bca65d6c77353",
+        // 15 - corrected Enatel storage-class semantics; the tables and indexes are unchanged.
+        [15] = "e28bca65d6c77353",
+        // 16 - account metadata exclusion; the tables and indexes are unchanged.
+        [16] = "e28bca65d6c77353",
     };
 
     [Fact]
@@ -71,8 +75,8 @@ public sealed class SchemaVersionFingerprintTests
             ExpectedByVersion.TryGetValue(BundleSchema.Version, out var expected),
             $"No schema fingerprint is pinned for version {BundleSchema.Version}, and this build "
             + $"produces '{actual}'.\n\n"
-            + "If the schema was changed, raising the version was right and this row is what "
-            + "records it - add it. If the version was raised without the schema changing, the "
+            + "If the schema or capture semantics changed, raising the version was right and this row is what "
+            + "records the table shape - add it. If neither changed, the "
             + "version should not have moved: every bundle written under the old number is now "
             + "refused for nothing.");
 

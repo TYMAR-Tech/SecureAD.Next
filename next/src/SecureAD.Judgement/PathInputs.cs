@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics.Metrics;
 using SecureAD.Derivation;
 
 namespace SecureAD.Judgement;
@@ -65,7 +67,44 @@ public sealed record PathInputs(Guid JudgementGenerationId, PathInputAvailabilit
     Tier0InputBinding? Input, Tier0Coverage Coverage, IReadOnlyList<Tier0Target> FixedTargets,
     IReadOnlyList<Tier0Classification> Classifications, IReadOnlyList<Tier0RelevanceRelation> AdmissionRelationships,
     IReadOnlyList<long> PermissionIds, IReadOnlyList<PathUncertaintyRegion> UncertaintyRegions,
-    SelfMembershipSummary? RequesterDiscovery);
+    SelfMembershipSummary? RequesterDiscovery)
+{
+    private FixedTargetValues _fixedTargets = new(FixedTargets);
+
+    /// <summary>Owned ordered targets; metadata-only copies share their exact lookup safely.</summary>
+    public IReadOnlyList<Tier0Target> FixedTargets
+    {
+        get => _fixedTargets;
+        init => _fixedTargets = value is FixedTargetValues owned ? owned : new(value);
+    }
+
+    internal bool IsFixedTarget(Tier0Target target, CancellationToken token) =>
+        _fixedTargets.ContainsTarget(target, JudgementGenerationId, token);
+
+    private sealed class FixedTargetValues(IReadOnlyList<Tier0Target> targets) : ReadOnlyCollection<Tier0Target>(targets.ToArray())
+    {
+        private static readonly Meter Meter = new("SecureAD.Judgement.PathPackage");
+        private static readonly Counter<long> Indexes = Meter.CreateCounter<long>("path.fixed_target_indexes");
+        private HashSet<Tier0Target>? _index;
+
+        internal bool ContainsTarget(Tier0Target target, Guid generation, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (_index is null)
+            {
+                var index = new HashSet<Tier0Target>();
+                foreach (var value in this)
+                {
+                    token.ThrowIfCancellationRequested();
+                    index.Add(value);
+                }
+                _index = index;
+                Indexes.Add(1, new KeyValuePair<string, object?>("generation", generation.ToString("D")));
+            }
+            return _index.Contains(target);
+        }
+    }
+}
 
 /// <summary>
 /// The bounded saved-input projection needed to display one selected path.

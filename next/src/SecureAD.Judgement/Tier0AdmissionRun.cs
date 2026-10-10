@@ -141,8 +141,10 @@ internal static class Tier0AdmissionRun
             var permissions = bundle.ReadPermissions(decision.Target.DistinguishedName);
             assessment?.Part("evaluate-control");
             var evaluation = ControlEdgeDeriver.Derive(subject, permissions, context, generation, derivationGeneration, domainSid);
+            assessment?.Part("prepare-control-proof");
+            var prepared = ControlEvidencePreparation.Create(evaluation, generation, derivationGeneration, cancellationToken);
             assessment?.Part("store-control");
-            ControlEdgeStorage.Assess(connection, statements, session, evaluation);
+            ControlEdgeStorage.Assess(connection, statements, session, prepared);
             admitted++;
             assessment?.TargetFinished();
         }

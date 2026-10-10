@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
@@ -29,9 +28,10 @@ internal static class FullControlStorage
             edge_id INTEGER NOT NULL UNIQUE REFERENCES control_edge(id), PRIMARY KEY(assessment_id, edge_id));
         """);
 
-    internal static void Write(SqliteConnection connection, SqliteTransaction transaction, ControlObjectEvaluation result,
+    internal static void Write(SqliteConnection connection, SqliteTransaction transaction, ControlEvidencePreparation prepared,
         IReadOnlyList<ControlEdge> storedEdges, SharedPermissionStorage sharedEntries, bool manifestExists = false)
     {
+        var result = prepared.Value;
         // Under Tier-0 gating the stream already recorded a manifest row of zero for this object,
         // because every captured object gets its descriptor record whether or not it is assessed.
         // Inserting a second would collide; the count is corrected here instead.
@@ -42,11 +42,11 @@ internal static class FullControlStorage
             Execute(connection, transaction, "INSERT INTO full_control_manifest VALUES ($target,$count)",
                 ("$target", result.Target), ("$count", result.FullControlAssessments.Count));
         if (result.FullControlAssessments.Count == 0) return;
-        var entries = result.FullControlAssessments[0].Source.Entries;
-        var serializedEntries = JsonSerializer.Serialize(entries, ProofSerialization.Options);
+        var sourceEntries = prepared.Source ?? throw FullControlEvaluator.InvalidProof();
+        var entries = sourceEntries.Entries;
         Execute(connection, transaction, "INSERT INTO full_control_source VALUES ($target,$count,$fingerprint)",
-            ("$target", result.Target), ("$count", entries.Count), ("$fingerprint", SHA256.HashData(Encoding.UTF8.GetBytes(serializedEntries))));
-        for (var position = 0; position < entries.Count; position++)
+            ("$target", result.Target), ("$count", entries.Length), ("$fingerprint", sourceEntries.Fingerprint));
+        for (var position = 0; position < entries.Length; position++)
         {
             var entry = entries[position];
             var reference = sharedEntries.Write(result.Target, result.FullControlAssessments[0].GenerationId, entry);
@@ -54,13 +54,11 @@ internal static class FullControlStorage
                 ("$target", result.Target), ("$position", position), ("$ordinal", entry.Ordinal), ("$entry", reference.Id),
                 ("$fingerprint", reference.Fingerprint));
         }
-        foreach (var assessment in result.FullControlAssessments)
+        foreach (var item in prepared.Assessments)
         {
-            FullControlEvaluator.Validate(assessment, storedEdges);
-            if (!FullControlEvaluator.Same(assessment.Source.Target, result.Target)
-                || JsonSerializer.Serialize(assessment.Source.Entries, ProofSerialization.Options) != serializedEntries) throw FullControlEvaluator.InvalidProof();
+            var assessment = item.Value;
             var supports = assessment.IsCounted ? storedEdges.Where(edge => FullControlEvaluator.Supports(assessment.Source, edge)).ToArray() : [];
-            var routes = sharedEntries.Proofs.WriteFullControlRoutes(assessment);
+            var routes = sharedEntries.Proofs.WriteFullControlRoutes(assessment, item.Routes);
             var stored = JsonSerializer.SerializeToNode(assessment with { Id = 0, Source = assessment.Source with { Entries = [] } }, ProofSerialization.Options)!;
             if (stored["Source"] is not JsonObject source || !source.Remove("MembershipRoutes")) throw FullControlEvaluator.InvalidProof();
             Execute(connection, transaction, """

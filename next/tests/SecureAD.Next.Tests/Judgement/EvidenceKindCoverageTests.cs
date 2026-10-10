@@ -50,6 +50,20 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(new BroadAdministrativeGroupMembership().Definition, "CN=Renamed domain administrators,DC=contoso,DC=com",
+            new BroadAdministrativeMembershipEvidence(ThisCapture, Guid.NewGuid(), new('a', 64),
+                SecureAD.Derivation.PrincipalClassificationRegistry.Version, BroadAdministrativeGroupMembership.PolicyVersion,
+                "DC=contoso,DC=com", "CN=Configuration,DC=contoso,DC=com", Guid.NewGuid(), [], [], [], [], true, []),
+            read =>
+            {
+                var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(read);
+                Assert.Equal(2, evidence.Principals.Count);
+                Assert.Equal("S-1-5-21-1-2-3-513", Assert.Single(evidence.BroadSources).Sid);
+                var witness = Assert.Single(Assert.Single(evidence.Links).Witnesses);
+                Assert.Equal(("member", 0, "CN=Renamed broad global group,DC=contoso,DC=com"),
+                    (witness.Attribute, witness.Ordinal, witness.Value));
+                Assert.True(evidence.IsComplete);
+            }),
         new Sample(new DuplicateServicePrincipalNames().Definition, "CN=SPN owner,DC=contoso,DC=com",
             new DuplicateSpnEvidence(ThisCapture, "contoso.com", Guid.NewGuid(), [], []),
             read =>
@@ -432,9 +446,11 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     public void EveryEvidenceKindSurvivesTheGridsPagingPath()
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
-            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence))
+            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
+                or BroadAdministrativeMembershipEvidence))
                 .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
-            .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1)).ToArray();
+            .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1))
+            .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings()).ToArray();
 
         foreach (var sample in Samples)
         {

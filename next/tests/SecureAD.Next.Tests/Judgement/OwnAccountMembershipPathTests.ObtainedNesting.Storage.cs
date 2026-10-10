@@ -183,7 +183,7 @@ public sealed partial class OwnAccountMembershipPathTests
         var input = reader.ReadPathInputs();
         RequesterMembershipContext.Create(sources, identities, input, CancellationToken.None);
         identities.Reset();
-        var prerequisites = new OwnAccountMembershipProofs(connection, reader.Description, sources, identities, input, CancellationToken.None);
+        var prerequisites = new OwnAccountBatchEvaluation(connection, reader.Description, sources, identities, input, CancellationToken.None);
         var assessments = prerequisites.Create(new Dictionary<string, Tier0PathNode>(),
             Enumerable.Repeat(original.Request, 8).ToArray(), membershipContinuation: false);
         Assert.Equal(8, assessments.Count);

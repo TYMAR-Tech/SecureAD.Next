@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
@@ -22,12 +23,23 @@ internal sealed class PathSharedProofStorage
     private readonly Func<string, byte[]> _lookupHash;
     private readonly Dictionary<Type, JsonSerializerOptions> _inline = [];
     private readonly HashSet<long> _reading = [];
+    private readonly ConditionalWeakTable<object, Dictionary<(Type Type, string? Resource), Link>> _immutable = new();
     private Dictionary<PreparedKey, Link>? _prepared;
     private Dictionary<long, Decoded>? _decoded;
     private string? _resource;
 
     private readonly record struct PreparedKey(Type Type, object Value, string? Resource);
     private sealed record Decoded(string Kind, string Fingerprint, object Value);
+    internal sealed record PreparedOwnAccount(PathSharedProofStorage Owner, long Id, string Fingerprint,
+        OwnAccountMembershipAssessment Assessment);
+    private sealed record PreparedSource<T>(T Assessment, string SourceFingerprint);
+    private sealed record PreparedOwnSource(Link Assessment, string SourceFingerprint, IReadOnlyList<Tier0PathStep> Steps);
+    private sealed record PreparedCombined(MembershipDaclRequest Request, Link Membership, Link? Dacl,
+        ControlEvaluationState Authorization, IReadOnlyList<MembershipDaclIssue> Issues, IReadOnlyList<Tier0PathStep> Steps,
+        string AuthorizationContext, Guid GenerationId, Guid? DerivationGenerationId, string EvidenceSeal);
+    private sealed record PreparedCandidate(PathRequesterFamily Family, string RequesterDn, string TargetDn,
+        string? GroupDn, OwnAccountMembershipPermissionKind? PermissionKind, string RequesterFingerprint,
+        IEnumerable<Link> Witnesses, PathRequesterSourceState Verdict);
     private sealed class PreparedKeyComparer : IEqualityComparer<PreparedKey>
     {
         public bool Equals(PreparedKey x, PreparedKey y) =>
@@ -92,7 +104,10 @@ internal sealed class PathSharedProofStorage
         command.ExecuteNonQuery();
     }
 
-    internal PathProofStorage.Reference Write<T>(T value)
+    internal PathProofStorage.Reference Write<T>(T value) => Preparing(() =>
+        (_writer ?? throw new InvalidOperationException("This shared proof reader cannot write.")).Write(value, Options));
+
+    private T Preparing<T>(Func<T> action)
     {
         // Hashing, exact comparison and writing traverse the same immutable proof snapshot.
         // Prepare each child once within this call, never retain caller identities across writes.
@@ -100,10 +115,70 @@ internal sealed class PathSharedProofStorage
         _prepared = new(new PreparedKeyComparer());
         try
         {
-            return (_writer ?? throw new InvalidOperationException("This shared proof reader cannot write.")).Write(value, Options);
+            return action();
         }
         finally { _prepared = previous; }
     }
+
+    internal PreparedOwnAccount PrepareOwnAccount(OwnAccountMembershipAssessment value) => Preparing(() =>
+    {
+        if (value.GenerationId != _description.GenerationId || value.DerivationGenerationId != _description.DerivationGenerationId
+            || value.EvidenceSeal != _description.EvidenceSeal) throw Tier0PathStorage.InvalidProof();
+        var link = Put(value, "OwnAccount", value.Target?.DistinguishedName ?? value.Request.TargetDn);
+        return new PreparedOwnAccount(this, link.Id, link.Fingerprint, value);
+    });
+
+    internal OwnAccountMembershipAssessment ReadOwnAccount(long id, string fingerprint, out PreparedOwnAccount reference)
+    {
+        using var scope = BeginRead();
+        var value = Get<OwnAccountMembershipAssessment>(new(id, fingerprint), "OwnAccount",
+            value => value.Target?.DistinguishedName ?? value.Request.TargetDn);
+        reference = new(this, id, fingerprint, value);
+        return value;
+    }
+
+    internal PathProofStorage.Reference WriteSource(object value, PreparedOwnAccount? membership) => Preparing(() =>
+    {
+        if (_writer is null || _transaction?.Connection != _connection)
+            throw new InvalidOperationException("Prepared path writes require their original active transaction.");
+        Link Own(OwnAccountMembershipAssessment assessment)
+        {
+            if (membership is null || !ReferenceEquals(membership.Owner, this)
+                || !ReferenceEquals(membership.Assessment, assessment)) throw Tier0PathStorage.InvalidProof();
+            return new(membership.Id, membership.Fingerprint);
+        }
+        return value switch
+        {
+            SavedRequesterDaclProof direct when membership is null => _writer.Write(new PreparedSource<Link>(
+                Put(direct.Assessment, "RequesterDacl", direct.Assessment.Target?.DistinguishedName ?? direct.Assessment.Request.TargetDn),
+                direct.SourceFingerprint), Options),
+            SavedOwnAccountMembershipProof own => _writer.Write(new PreparedOwnSource(Own(own.Assessment), own.SourceFingerprint, own.Steps), Options),
+            SavedMembershipDaclProof combined => _writer.Write(new PreparedSource<PreparedCombined>(
+                new(combined.Assessment.Request, Own(combined.Assessment.Membership),
+                    combined.Assessment.Dacl is { } dacl
+                        ? Put(dacl, "RequesterDacl", dacl.Target?.DistinguishedName ?? dacl.Request.TargetDn) : null,
+                    combined.Assessment.Authorization, combined.Assessment.Issues, combined.Assessment.Steps,
+                    combined.Assessment.AuthorizationContext, combined.Assessment.GenerationId,
+                    combined.Assessment.DerivationGenerationId, combined.Assessment.EvidenceSeal),
+                combined.SourceFingerprint), Options),
+            _ => throw Tier0PathStorage.InvalidProof(),
+        };
+    });
+
+    internal PathProofStorage.Reference PrepareSelectionWitness(PathRequesterSelectionWitness witness) =>
+        Preparing(() =>
+        {
+            var link = Put(witness, "SelectionWitness", null);
+            return new PathProofStorage.Reference(link.Id, Convert.FromHexString(link.Fingerprint));
+        });
+
+    internal PathProofStorage.Reference WriteSelectionCandidate(PathRequesterWorkPlan.Question question,
+        string requesterFingerprint, IEnumerable<PathProofStorage.Reference> witnesses) => Preparing(() =>
+        (_writer ?? throw new InvalidOperationException("This shared proof reader cannot write.")).Write(
+            new PreparedCandidate(question.Family, question.RequesterDn, question.TargetDn, question.GroupDn,
+                question.PermissionKind, requesterFingerprint,
+                witnesses.Select(reference => new Link(reference.Id, Convert.ToHexString(reference.Fingerprint))),
+                PathRequesterSourceState.Recorded), Options));
 
     internal T Read<T>(long id, string fingerprint)
     {
@@ -140,6 +215,9 @@ internal sealed class PathSharedProofStorage
             throw new InvalidOperationException("Shared proof writes require their original active transaction.");
         var key = new PreparedKey(typeof(T), value ?? throw Tier0PathStorage.InvalidProof(), resource);
         if (_prepared?.TryGetValue(key, out var prepared) == true) return prepared;
+        Dictionary<(Type, string?), Link>? immutable = IsImmutable(value)
+            ? _immutable.GetOrCreateValue(value!) : null;
+        if (immutable?.TryGetValue((typeof(T), resource), out var stable) == true) return stable;
         var previous = _resource;
         _resource = resource ?? previous;
         try
@@ -179,9 +257,20 @@ internal sealed class PathSharedProofStorage
         Link Remember(Link link)
         {
             _prepared?.Add(key, link);
+            immutable?.Add((typeof(T), resource), link);
             return link;
         }
     }
+
+    private static bool IsImmutable<T>(T value) => value switch
+    {
+        Tier0Target or Tier0Evidence or RequesterMembershipLink or JudgingInputs.AttributeSnapshot => true,
+        RequesterResourceContext resource => resource.ReadDomains is ImmutableArray<string>,
+        RequesterMembershipEvidence membership => membership.Links is ImmutableArray<RequesterMembershipLink>
+            && membership.Limitations is ImmutableArray<PathRequesterSelectionReason>,
+        PathRequesterSelectionWitness witness => witness.Membership is null || IsImmutable(witness.Membership),
+        _ => false,
+    };
 
     private T Get<T>(Link link, string kind, Func<T, string?>? resourceOf)
     {

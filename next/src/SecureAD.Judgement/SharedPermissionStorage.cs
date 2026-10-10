@@ -98,10 +98,50 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         // (target, generation, ordinal, entry) - with presentation taken out of it, and an entry
         // moved to another position, another object or another generation still fails on read.
         var shared = Shared(entry);
+        ControlEvidencePreparation.PreparingPermission(generation);
 
         // JSON is only an exact, transient comparison key, never the stored proof representation.
         var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, shared, boundTo)));
         return (EntryId(generation, shared), fingerprint);
+    }
+
+    internal sealed class PreparedEntry
+    {
+        private readonly string _target;
+        private readonly Guid _generation;
+        private readonly PermissionEntry _entry;
+        private readonly string _content;
+        private readonly string _identity;
+        private readonly byte[] _fingerprint;
+
+        private PreparedEntry(string target, Guid generation, PermissionEntry entry)
+        {
+            _target = target;
+            _generation = generation;
+            _entry = Shared(entry with { ApplicationData = entry.ApplicationData.ToArray() });
+            ControlEvidencePreparation.PreparingPermission(generation);
+            _content = ContentKey(generation, _entry);
+            _identity = Identity(_content);
+            _fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, _entry, default)));
+        }
+
+        internal int Ordinal => _entry.Ordinal;
+        internal static PreparedEntry Create(string target, Guid generation, PermissionEntry entry) => new(target, generation, entry);
+
+        internal (long Id, byte[] Fingerprint) Write(SharedPermissionStorage storage, string target, Guid generation)
+        {
+            if (_target != target || _generation != generation) throw FullControlEvaluator.InvalidProof();
+            storage.RequireActive();
+            return (storage.EntryId(generation, _entry, _content, _identity), _fingerprint.ToArray());
+        }
+    }
+
+    internal (long Id, byte[] Fingerprint) Write(string target, Guid generation, PreparedEntry entry) =>
+        entry.Write(this, target, generation);
+
+    private void RequireActive()
+    {
+        if (transaction.Connection != connection) throw FullControlEvaluator.InvalidProof();
     }
 
     /// <summary>Stores a shared value whose occurrence is bound by the descriptor-list proof.</summary>
@@ -120,6 +160,11 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     {
         var content = ContentKey(generation, entry);
         var hash = Identity(content);
+        return EntryId(generation, entry, content, hash);
+    }
+
+    private long EntryId(Guid generation, PermissionEntry entry, string content, string hash)
+    {
         if (session.TryGetEntry(hash, out var known)) return known;
         if (statements.Bind("SELECT id FROM permission_entry WHERE entry_hash=$hash", transaction,
             ("$hash", hash)).ExecuteScalar() is long found)
@@ -188,6 +233,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
 
     private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
     {
+        ControlEvidencePreparation.ReadingPermission(generation);
         var meaning = Text(read, 10);
         if (read.IsDBNull(20))
         {
@@ -216,6 +262,16 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
             || !SharedProofStorage.MeaningBinding(generation, content, meaning).AsSpan()
                 .SequenceEqual((byte[])read.GetValue(21))) throw FullControlEvaluator.InvalidProof();
         return entry;
+    }
+
+    internal static PermissionEntry ReadOccurrence(SqliteDataReader read, string target, Guid generation, PermissionEntry shared)
+    {
+        if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
+        var entry = shared with { Ordinal = read.GetInt32(ProjectionColumns) };
+        var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry, default)));
+        if (!fingerprint.AsSpan().SequenceEqual((byte[])read.GetValue(ProjectionColumns + 1)))
+            throw FullControlEvaluator.InvalidProof();
+        return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
     }
 
     /// <summary>Reads a shared entry that no single target owns, verifying the row against itself.</summary>

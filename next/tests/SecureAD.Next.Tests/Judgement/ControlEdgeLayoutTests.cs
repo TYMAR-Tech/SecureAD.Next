@@ -140,6 +140,11 @@ public sealed class ControlEdgeLayoutTests
         [61] = "2565E5A72A0599AC936672496D21F458F4C0A7AE6F47C5956BBDF029B459DD1C",
         // Observed shared path-proof layout; all earlier checkpoints remain unchanged.
         [62] = "71DD9CE407C92C3451A76E337A6B89E6136BDC51920B47534434063871B31F21",
+        // Schema 63 keeps the canonical generation-bound requester plan and batch prerequisites.
+        // This observes the new DDL; every historical format checkpoint above is preserved.
+        [63] = "657F2FDEEB8AA4A078AC6ED7A8A28ACAA260EA8E6E4DEB6B5D90A29315976E3A",
+        // Observed SEC-062 typed membership layout; no historical checkpoint is replaced.
+        [64] = "9CCE1CA02BFE4BC2E0F43AE2DE6E660A05AC3BFB4A5243ACC6AD81FE8F4C465F",
     };
 
     [Fact]

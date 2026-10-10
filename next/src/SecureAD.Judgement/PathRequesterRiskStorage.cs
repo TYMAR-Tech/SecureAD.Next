@@ -25,83 +25,185 @@ internal static class PathRequesterRiskStorage
     private sealed record Question(PathRequesterFamily Family, string RequesterDn, string TargetDn,
         string? GroupDn, OwnAccountMembershipPermissionKind? PermissionKind, Tier0Target? Requester,
         ControlEvaluationState Authorization, IReadOnlyList<Tier0PathStep> Steps,
-        ControlEvaluationState? Readiness, bool? MemberPresent, object SourceProof);
+        ControlEvaluationState? Readiness, bool? MemberPresent);
 
     private sealed record Authority(MembershipRouteSummary Routes, PathRiskAuthorityEvidence Evidence);
 
-    internal static IReadOnlyList<PathProofStorage.Reference> WriteSources(PathSharedProofStorage shared,
-        IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> membershipDacls, CancellationToken token) =>
-        Questions(requesters, ownAccounts, membershipDacls).Select(question =>
-        {
-            token.ThrowIfCancellationRequested();
-            return shared.Write(question.SourceProof);
-        }).ToArray();
-
-    internal static void Write(SqliteConnection connection, SqliteTransaction transaction,
-        JudgementDescription description, JudgingInputs sources, PathInputs inputs, bool selectionRequested,
-        IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> membershipDacls, string calculationFingerprint,
-        PathProofStorage.Writer proofs, CancellationToken cancellationToken, BestSupportedRouteSelection bestRoutes,
-        IReadOnlyList<PathProofStorage.Reference> sourceReferences)
+    private sealed record Qualification(string SourceProofFingerprint, PathRequesterFamily Family,
+        string RequesterDn, string TargetDn, string? GroupDn, OwnAccountMembershipPermissionKind? PermissionKind,
+        Tier0Target? ReachedTarget, ControlEvaluationState Authorization, PathRiskVerdict Verdict, PathRiskIssue? Issue,
+        ControlExpectedness? Expectedness, ControlExpectednessReason? ExpectednessReason,
+        PathRiskAuthorityEvidence? CurrentAuthority, ControlEvaluationState? OrdinaryAddReadiness, bool? CapturedMemberPresent)
     {
-        sources.RequireFor(description);
-        var authorities = new Dictionary<string, Authority>(StringComparer.OrdinalIgnoreCase);
-        var targets = new Dictionary<string, ObjectAttributes>(StringComparer.OrdinalIgnoreCase);
-        var counts = Enum.GetValues<PathRequesterFamily>().ToDictionary(family => family, _ => new int[4]);
-        using var insert = connection.CreateCommand();
-        insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO path_requester_risk(requester,question_key,verdict,source_proof,proof,fingerprint,source_fingerprint) VALUES ($requester,$key,$verdict,$source,$proof,$hash,$sourcehash)";
-        var requesterParameter = insert.Parameters.Add("$requester", SqliteType.Text);
-        var keyParameter = insert.Parameters.Add("$key", SqliteType.Text);
-        var verdictParameter = insert.Parameters.Add("$verdict", SqliteType.Text);
-        var sourceParameter = insert.Parameters.Add("$source", SqliteType.Integer);
-        var proofParameter = insert.Parameters.Add("$proof", SqliteType.Integer);
-        var hashParameter = insert.Parameters.Add("$hash", SqliteType.Blob);
-        var sourceHashParameter = insert.Parameters.Add("$sourcehash", SqliteType.Blob);
-        insert.Prepare();
-        var sourceIndex = 0;
-        foreach (var question in Questions(requesters, ownAccounts, membershipDacls))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (sourceIndex >= sourceReferences.Count) throw Tier0PathStorage.InvalidProof();
-            var source = sourceReferences[sourceIndex++];
-            bestRoutes.Proof(question.SourceProof, source.Id, Convert.ToHexString(source.Fingerprint));
-            var answer = Qualify(question, Convert.ToHexString(source.Fingerprint));
-            counts[question.Family][(int)answer.Verdict]++;
-            var proof = proofs.Write(answer);
-            requesterParameter.Value = answer.RequesterDn;
-            keyParameter.Value = Key(answer);
-            verdictParameter.Value = answer.Verdict.ToString();
-            sourceParameter.Value = source.Id;
-            sourceHashParameter.Value = source.Fingerprint;
-            proofParameter.Value = proof.Id;
-            hashParameter.Value = proof.Fingerprint;
-            if (insert.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
-        }
-        if (sourceIndex != sourceReferences.Count) throw Tier0PathStorage.InvalidProof();
-        var families = counts.Select(pair => new PathRiskFamilyCoverage(pair.Key, pair.Value.Sum(),
-            pair.Value[0], pair.Value[1], pair.Value[2], pair.Value[3])).ToArray();
-        var requested = selectionRequested || families.Any(family => family.Questions != 0);
-        var coverage = new PathRiskCoverage(Version, description.GenerationId, description.DerivationGenerationId,
-            description.EvidenceSeal, inputs.Input?.DerivationSeal, calculationFingerprint, PrincipalClassificationRegistry.Version,
-            !requested ? PathRiskAvailability.NotRequested : inputs.Availability == PathInputAvailability.Recorded
-                ? PathRiskAvailability.Recorded : PathRiskAvailability.InputsUnavailable,
-            selectionRequested, inputs.Coverage, families);
-        var header = JsonSerializer.Serialize(coverage, ProofSerialization.Options);
-        Execute(connection, transaction, "INSERT INTO path_risk_product VALUES (1,$proof,$hash)",
-            ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
-        cancellationToken.ThrowIfCancellationRequested();
-        RequireCount(connection, transaction, requesters.Count + ownAccounts.Count + membershipDacls.Count);
-        sources.RequireFor(description);
+        internal PathRequesterRiskAssessment Bind(JudgementDescription description, string calculation) =>
+            new(description.GenerationId, description.DerivationGenerationId, description.EvidenceSeal, calculation,
+                SourceProofFingerprint, Family, RequesterDn, TargetDn, GroupDn, PermissionKind, ReachedTarget,
+                Authorization, Verdict, Issue, Expectedness, ExpectednessReason, CurrentAuthority,
+                OrdinaryAddReadiness, CapturedMemberPresent);
+    }
 
-        PathRequesterRiskAssessment Qualify(Question question, string sourceFingerprint)
+    internal sealed class Writer : IDisposable
+    {
+        private readonly SqliteConnection _connection;
+        private readonly SqliteTransaction _transaction;
+        private readonly JudgementDescription _description;
+        private readonly JudgingInputs _sources;
+        private readonly PathInputs _inputs;
+        private readonly PathProofStorage.Writer _proofs;
+        private readonly PathSharedProofStorage _shared;
+        private readonly BestSupportedRouteSelection _bestRoutes;
+        private readonly CancellationToken _token;
+        private readonly SqliteCommand _stage;
+        private readonly Dictionary<string, Authority> _authorities = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, ObjectAttributes> _targets = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<PathRequesterFamily, int[]> _riskCounts =
+            Enum.GetValues<PathRequesterFamily>().ToDictionary(family => family, _ => new int[4]);
+        private readonly Dictionary<PathRequesterFamily, int[]> _proofCounts =
+            Enum.GetValues<PathRequesterFamily>().ToDictionary(family => family, _ => new int[4]);
+        private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
+
+        internal IEnumerable<string> CheckedRequesters => _checked;
+
+        internal Writer(SqliteConnection connection, SqliteTransaction transaction, JudgementDescription description,
+            JudgingInputs sources, PathInputs inputs, PathProofStorage.Writer proofs, PathSharedProofStorage shared,
+            BestSupportedRouteSelection bestRoutes, CancellationToken token)
         {
-            var result = new PathRequesterRiskAssessment(description.GenerationId, description.DerivationGenerationId,
-                description.EvidenceSeal, calculationFingerprint, sourceFingerprint, question.Family,
+            sources.RequireFor(description);
+            (_connection, _transaction, _description, _sources, _inputs, _proofs, _shared, _bestRoutes, _token) =
+                (connection, transaction, description, sources, inputs, proofs, shared, bestRoutes, token);
+            using var create = connection.CreateCommand();
+            create.Transaction = transaction;
+            create.CommandText = """
+                CREATE TEMP TABLE path_requester_answer (
+                    id INTEGER PRIMARY KEY, source_proof INTEGER NOT NULL,
+                    source_fingerprint BLOB NOT NULL, qualification TEXT NOT NULL, fingerprint BLOB NOT NULL);
+                """;
+            create.ExecuteNonQuery();
+            _stage = connection.CreateCommand();
+            _stage.Transaction = transaction;
+            _stage.CommandText = "INSERT INTO temp.path_requester_answer VALUES ($id,$source,$sourcehash,$qualification,$hash)";
+            foreach (var name in new[] { "$id", "$source", "$sourcehash", "$qualification", "$hash" })
+                _stage.Parameters.AddWithValue(name, DBNull.Value);
+            _stage.Prepare();
+        }
+
+        internal void Write(PathRequesterWorkPlan.Question planned, object proof, PathSharedProofStorage.PreparedOwnAccount? membership)
+        {
+            _token.ThrowIfCancellationRequested();
+            var question = QuestionOf(proof);
+            if (planned.Family != question.Family || planned.RequesterDn != question.RequesterDn
+                || planned.TargetDn != question.TargetDn || planned.GroupDn != question.GroupDn
+                || planned.PermissionKind != question.PermissionKind) throw Tier0PathStorage.InvalidProof();
+            var source = _shared.WriteSource(proof, membership);
+            var sourceHash = Convert.ToHexString(source.Fingerprint);
+            _bestRoutes.Proof(proof, source.Id, sourceHash, planned.Id);
+            var answer = Qualify(question, sourceHash);
+            _riskCounts[question.Family][(int)answer.Verdict]++;
+            var counts = _proofCounts[question.Family];
+            counts[0]++;
+            if (question.Authorization == ControlEvaluationState.Unknown) counts[1]++;
+            if (question.Family != PathRequesterFamily.RequesterDacl)
+            {
+                if (question.MemberPresent is null) counts[2]++;
+                if (question.Readiness == ControlEvaluationState.Unknown) counts[3]++;
+            }
+            _checked.Add(question.RequesterDn);
+            // Qualification consumes the live proof once. Only this compact answer waits for
+            // the final calculation fingerprint; no expanded source proof is replayed at completion.
+            var json = JsonSerializer.Serialize(answer, ProofSerialization.Options);
+            _stage.Parameters["$id"].Value = planned.Id;
+            _stage.Parameters["$source"].Value = source.Id;
+            _stage.Parameters["$sourcehash"].Value = source.Fingerprint;
+            _stage.Parameters["$qualification"].Value = json;
+            _stage.Parameters["$hash"].Value = OwnershipAuditStorage.Hash(json);
+            if (_stage.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
+        }
+
+        internal IReadOnlyList<PathRequesterFamilyCoverage> Families(bool selectionRequested) =>
+            _proofCounts.Select(pair => new PathRequesterFamilyCoverage(pair.Key, selectionRequested ? pair.Value[0] : 0,
+                pair.Value[0], pair.Value[1], pair.Value[2], pair.Value[3])).ToArray();
+
+        internal IEnumerable<PathProofStorage.Reference> SourceReferences(int expected)
+        {
+            using var command = _connection.CreateCommand();
+            command.Transaction = _transaction;
+            command.CommandText = "SELECT id,source_proof,source_fingerprint FROM temp.path_requester_answer ORDER BY id";
+            using var read = command.ExecuteReader();
+            var count = 0;
+            while (read.Read())
+            {
+                _token.ThrowIfCancellationRequested();
+                if (read.GetInt64(0) != ++count) throw Tier0PathStorage.InvalidProof();
+                yield return new(read.GetInt64(1), (byte[])read.GetValue(2));
+            }
+            if (count != expected) throw Tier0PathStorage.InvalidProof();
+        }
+
+        internal void Complete(string calculationFingerprint, bool selectionRequested, int expected)
+        {
+            _sources.RequireFor(_description);
+            using var insert = _connection.CreateCommand();
+            insert.Transaction = _transaction;
+            insert.CommandText = """
+                INSERT INTO path_requester_risk(id,requester,question_key,verdict,source_proof,proof,fingerprint,source_fingerprint)
+                VALUES ($id,$requester,$key,$verdict,$source,$proof,$hash,$sourcehash)
+                """;
+            foreach (var name in new[] { "$id", "$requester", "$key", "$verdict", "$source", "$proof", "$hash", "$sourcehash" })
+                insert.Parameters.AddWithValue(name, DBNull.Value);
+            insert.Prepare();
+            using (var command = _connection.CreateCommand())
+            {
+                command.Transaction = _transaction;
+                command.CommandText = """
+                    SELECT a.id,a.source_proof,a.source_fingerprint,a.qualification,a.fingerprint,
+                        w.id,w.family,w.requester,w.target,w.group_dn,w.permission_kind,w.question_key,w.fingerprint
+                    FROM temp.path_requester_answer a LEFT JOIN path_requester_work w ON w.id=a.id ORDER BY a.id
+                    """;
+                using var read = command.ExecuteReader();
+                var count = 0;
+                while (read.Read())
+                {
+                    _token.ThrowIfCancellationRequested();
+                    if (read.GetInt64(0) != ++count) throw Tier0PathStorage.InvalidProof();
+                    var qualified = Decode<Qualification>(read.GetString(3), (byte[])read.GetValue(4));
+                    if (qualified.SourceProofFingerprint != Convert.ToHexString((byte[])read.GetValue(2)))
+                        throw Tier0PathStorage.InvalidProof();
+                    var answer = qualified.Bind(_description, calculationFingerprint);
+                    PathRequesterWorkPlan.RequireQuestion(read, _description, offset: 5, answer);
+                    var proof = _proofs.Write(answer);
+                    insert.Parameters["$id"].Value = read.GetInt64(0);
+                    insert.Parameters["$requester"].Value = answer.RequesterDn;
+                    insert.Parameters["$key"].Value = Key(answer);
+                    insert.Parameters["$verdict"].Value = answer.Verdict.ToString();
+                    insert.Parameters["$source"].Value = read.GetInt64(1);
+                    insert.Parameters["$sourcehash"].Value = read.GetValue(2);
+                    insert.Parameters["$proof"].Value = proof.Id;
+                    insert.Parameters["$hash"].Value = proof.Fingerprint;
+                    if (insert.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
+                }
+                if (count != expected) throw Tier0PathStorage.InvalidProof();
+            }
+            var families = _riskCounts.Select(pair => new PathRiskFamilyCoverage(pair.Key, pair.Value.Sum(),
+                pair.Value[0], pair.Value[1], pair.Value[2], pair.Value[3])).ToArray();
+            var requested = selectionRequested || families.Any(family => family.Questions != 0);
+            var coverage = new PathRiskCoverage(Version, _description.GenerationId, _description.DerivationGenerationId,
+                _description.EvidenceSeal, _inputs.Input?.DerivationSeal, calculationFingerprint, PrincipalClassificationRegistry.Version,
+                !requested ? PathRiskAvailability.NotRequested : _inputs.Availability == PathInputAvailability.Recorded
+                    ? PathRiskAvailability.Recorded : PathRiskAvailability.InputsUnavailable,
+                selectionRequested, _inputs.Coverage, families);
+            var header = JsonSerializer.Serialize(coverage, ProofSerialization.Options);
+            Execute(_connection, _transaction, "INSERT INTO path_risk_product VALUES (1,$proof,$hash)",
+                ("$proof", header), ("$hash", OwnershipAuditStorage.Hash(header)));
+            RequireCount(_connection, _transaction, expected);
+            _sources.RequireFor(_description);
+        }
+
+        private Qualification Qualify(Question question, string sourceFingerprint)
+        {
+            var result = new Qualification(sourceFingerprint, question.Family,
                 question.RequesterDn, question.TargetDn, question.GroupDn, question.PermissionKind, null,
                 question.Authorization, PathRiskVerdict.Unknown, null, null, null, null, question.Readiness, question.MemberPresent);
-            if (inputs.Availability != PathInputAvailability.Recorded)
+            if (_inputs.Availability != PathInputAvailability.Recorded)
                 return result with { Issue = PathRiskIssue.InputsUnavailable };
             if (question.Authorization == ControlEvaluationState.NotEstablished)
                 return result with { Verdict = PathRiskVerdict.NotEstablished, Issue = PathRiskIssue.AuthorizationNotEstablished };
@@ -114,23 +216,23 @@ internal static class PathRequesterRiskStorage
             var reached = principal;
             foreach (var step in question.Steps)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                _token.ThrowIfCancellationRequested();
                 if (step.From != reached) throw Tier0PathStorage.InvalidProof();
                 reached = step.To;
             }
-            if (!inputs.FixedTargets.Contains(reached)) throw Tier0PathStorage.InvalidProof();
-            if (!targets.TryGetValue(reached.DistinguishedName, out var target))
+            if (!_inputs.IsFixedTarget(reached, _token)) throw Tier0PathStorage.InvalidProof();
+            if (!_targets.TryGetValue(reached.DistinguishedName, out var target))
             {
-                target = sources.Bundle.ReadObjectAttributes(reached.DistinguishedName) ?? throw Tier0PathStorage.InvalidProof();
+                target = _sources.Bundle.ReadObjectAttributes(reached.DistinguishedName) ?? throw Tier0PathStorage.InvalidProof();
                 if (Tier0Target.From(target, reached.NamingContext) != reached) throw Tier0PathStorage.InvalidProof();
-                targets.Add(reached.DistinguishedName, target);
+                _targets.Add(reached.DistinguishedName, target);
             }
-            if (!authorities.TryGetValue(principal.DistinguishedName, out var authority))
+            if (!_authorities.TryGetValue(principal.DistinguishedName, out var authority))
             {
-                var protection = sources.Facts.ProtectedPrincipals.Value;
+                var protection = _sources.Facts.ProtectedPrincipals.Value;
                 var fact = protection?.Lookup(principal.Sid, principal.SidScope);
                 var routes = fact?.MembershipRoutes ?? MembershipRouteSummary.NotDerived;
-                var binding = inputs.Input ?? throw Tier0PathStorage.InvalidProof();
+                var binding = _inputs.Input ?? throw Tier0PathStorage.InvalidProof();
                 var roots = routes.Memberships.SelectMany(group => group.Routes)
                     .Where(route => route.Authorization == MembershipRouteAuthorization.SecurityEnabled
                         && route.Steps.Count != 0 && route.Steps[0].Principal.Sid == principal.Sid)
@@ -140,14 +242,14 @@ internal static class PathRequesterRiskStorage
                 authority = new(routes, new(principal, binding.DerivationGenerationId, binding.DerivationSeal,
                     protection?.CatalogueVersion ?? 0, fact is not null, Tier0PathCalculation.Fingerprint(routes),
                     routes.IncompleteReasons, roots));
-                authorities.Add(principal.DistinguishedName, authority);
+                _authorities.Add(principal.DistinguishedName, authority);
             }
             // Expectedness belongs to the captured requester and actual endpoint, not to a granting
             // group or a membership the route proposes obtaining.
             var holder = new PermissionTrustee(principal.Sid, null, principal.DistinguishedName,
                 principal.DomainFqdn, null, null, null);
-            var expected = ControlEdgeDeriver.Expected(holder, target, sources.Bundle.Description.ForestFqdn,
-                authority.Routes, descriptorComplete: true, effectiveDirectAce: false, sources.ReadDomainSid);
+            var expected = ControlEdgeDeriver.Expected(holder, target, _sources.Bundle.Description.ForestFqdn,
+                authority.Routes, descriptorComplete: true, effectiveDirectAce: false, _sources.ReadDomainSid);
             return result with
             {
                 ReachedTarget = reached, CurrentAuthority = authority.Evidence, Expectedness = expected.State,
@@ -161,31 +263,39 @@ internal static class PathRequesterRiskStorage
                 Issue = expected.State == ControlExpectedness.Unknown ? PathRiskIssue.AuthorityUnknown : null,
             };
         }
+
+        public void Dispose()
+        {
+            _stage.Dispose();
+            using var command = _connection.CreateCommand();
+            command.CommandText = "DROP TABLE IF EXISTS temp.path_requester_answer";
+            command.ExecuteNonQuery();
+        }
     }
 
-    private static IEnumerable<Question> Questions(IReadOnlyList<SavedRequesterDaclProof> requesters,
-        IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts, IReadOnlyList<SavedMembershipDaclProof> membershipDacls)
+    private static Question QuestionOf(object source)
     {
-        foreach (var proof in requesters)
+        if (source is SavedRequesterDaclProof direct)
         {
-            var value = proof.Assessment;
-            yield return new(PathRequesterFamily.RequesterDacl, value.Request.RequesterDn, value.Request.TargetDn,
-                null, null, value.Requester, value.Authorization, value.Steps, null, null, proof);
+            var value = direct.Assessment;
+            return new(PathRequesterFamily.RequesterDacl, value.Request.RequesterDn, value.Request.TargetDn,
+                null, null, value.Requester, value.Authorization, value.Steps, null, null);
         }
-        foreach (var proof in ownAccounts)
+        if (source is SavedOwnAccountMembershipProof own)
         {
-            var value = proof.Assessment;
-            yield return new(PathRequesterFamily.OwnAccountMembership, value.Request.RequesterDn, value.Request.TargetDn,
-                null, value.Request.PermissionKind, value.Requester, value.Obtainability, proof.Steps,
-                value.Permission.Readiness, value.Permission.MemberPresent, proof);
+            var value = own.Assessment;
+            return new(PathRequesterFamily.OwnAccountMembership, value.Request.RequesterDn, value.Request.TargetDn,
+                null, value.Request.PermissionKind, value.Requester, value.Obtainability, own.Steps,
+                value.Permission.Readiness, value.Permission.MemberPresent);
         }
-        foreach (var proof in membershipDacls)
+        if (source is SavedMembershipDaclProof combined)
         {
-            var value = proof.Assessment;
-            yield return new(PathRequesterFamily.MembershipDacl, value.Request.RequesterDn, value.Request.TargetDn,
+            var value = combined.Assessment;
+            return new(PathRequesterFamily.MembershipDacl, value.Request.RequesterDn, value.Request.TargetDn,
                 value.Request.GroupDn, value.Request.PermissionKind, value.Membership.Requester, value.Authorization,
-                value.Steps, value.Membership.Permission.Readiness, value.Membership.Permission.MemberPresent, proof);
+                value.Steps, value.Membership.Permission.Readiness, value.Membership.Permission.MemberPresent);
         }
+        throw Tier0PathStorage.InvalidProof();
     }
 
     internal static PathRiskCoverage ReadCoverage(SqliteConnection connection, JudgementDescription description,
@@ -227,19 +337,19 @@ internal static class PathRequesterRiskStorage
         JudgementDescription description, PathRiskCoverage coverage, string? requesterDn, CancellationToken cancellationToken)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT requester,question_key,proof,fingerprint,verdict FROM path_requester_risk "
+        command.CommandText = "SELECT requester,question_key,proof,fingerprint,verdict,id FROM path_requester_risk "
             + (requesterDn is null ? "ORDER BY requester,id" : "WHERE requester=$requester ORDER BY id");
         if (requesterDn is not null) command.Parameters.AddWithValue("$requester", requesterDn);
         using var read = command.ExecuteReader();
         while (read.Read())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            yield return ReadAssessment(connection, read, description, coverage, cancellationToken);
+            yield return ReadAssessment(connection, read, description, coverage, read.GetInt64(5), cancellationToken);
         }
     }
 
     private static PathRequesterRiskAssessment ReadAssessment(SqliteConnection connection, SqliteDataReader read,
-        JudgementDescription description, PathRiskCoverage coverage, CancellationToken cancellationToken)
+        JudgementDescription description, PathRiskCoverage coverage, long id, CancellationToken cancellationToken)
     {
         var value = PathProofStorage.Read<PathRequesterRiskAssessment>(connection, read.GetInt64(2),
             Convert.ToHexString((byte[])read.GetValue(3)), cancellationToken);
@@ -271,6 +381,7 @@ internal static class PathRequesterRiskStorage
                 || authority.DerivationSeal != coverage.DerivationSeal || authority.MembershipFingerprint is not { Length: 64 }
                 || authority.CapturedAuthorityRoots is null))
                 throw Tier0PathStorage.InvalidProof();
+        PathRequesterWorkPlan.RequireQuestion(connection, description, id, value);
         return value;
     }
 
@@ -315,7 +426,7 @@ internal static class PathRequesterRiskStorage
                     next = new(description.GenerationId, requesterDn, verdict, questions[^1].Id);
                     break;
                 }
-                var risk = ReadAssessment(connection, read, description, coverage, cancellationToken);
+                var risk = ReadAssessment(connection, read, description, coverage, read.GetInt64(6), cancellationToken);
                 questions.Add(ReadQuestion(connection, description, read.GetInt64(6), risk, read.GetInt64(5), cancellationToken, shared));
             }
         command.Parameters.Clear();
@@ -341,7 +452,7 @@ internal static class PathRequesterRiskStorage
             target.ToUpperInvariant(), group?.ToUpperInvariant(), kind?.ToString()));
         using var read = command.ExecuteReader();
         if (!read.Read()) throw Tier0PathStorage.InvalidProof();
-        var risk = ReadAssessment(connection, read, description, coverage, token);
+        var risk = ReadAssessment(connection, read, description, coverage, read.GetInt64(6), token);
         var result = ReadQuestion(connection, description, read.GetInt64(6), risk, read.GetInt64(5), token);
         if (read.Read() || risk.Authorization != ControlEvaluationState.Established) throw Tier0PathStorage.InvalidProof();
         return result;
@@ -476,7 +587,7 @@ internal static class PathRequesterRiskStorage
         {
             token.ThrowIfCancellationRequested();
             yield return ReadQuestion(connection, description, read.GetInt64(6),
-                ReadAssessment(connection, read, description, coverage, token), read.GetInt64(5), token);
+                ReadAssessment(connection, read, description, coverage, read.GetInt64(6), token), read.GetInt64(5), token);
         }
     }
 

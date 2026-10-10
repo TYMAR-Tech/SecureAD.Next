@@ -14,7 +14,7 @@ using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
 
 namespace SecureAD.Next.Tests.Judgement;
 
-public sealed class JudgingInputReuseTests
+public sealed partial class JudgingInputReuseTests
 {
     [Theory]
     [InlineData(false)]

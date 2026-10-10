@@ -43,8 +43,8 @@ public sealed partial class Tier0PathTests(ITestOutputHelper output)
             progress, RunLog.Discarded, CancellationToken.None, selfMembershipDiscoveryBudget: null);
         Assert.True(result.IsSuccess, result.Error?.Description);
 
-        Assert.Equal(new[] { PathRequesterWorkPhase.PreparingPaths, PathRequesterWorkPhase.RequesterDacl,
-            PathRequesterWorkPhase.OwnAccountMembership, PathRequesterWorkPhase.MembershipDacl,
+        Assert.Equal(new[] { PathRequesterWorkPhase.PreparingPaths, PathRequesterWorkPhase.OwnAccountMembership,
+            PathRequesterWorkPhase.RequesterDacl, PathRequesterWorkPhase.MembershipDacl,
             PathRequesterWorkPhase.WritingProofs }, progress.Values);
     }
 

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
@@ -140,6 +141,44 @@ public sealed class RequesterReuseTests
         Assert.DoesNotContain("S-1-5-", text);
     }
 
+    [Fact]
+    public void StreamedSelectorReleasesResourceAttributeAndPermissionSnapshots()
+    {
+        var fixture = new SelectionFixture(8, 6, 2);
+        var sink = new RequesterSelectionEvaluation.Collector();
+        var attributes = new List<WeakReference>();
+        var permissions = new List<WeakReference>();
+        var selector = fixture.Producer(sink, value => Detached(value, attributes), value => Detached(value, permissions));
+
+        var scan = selector.Select();
+        Assert.NotEmpty(sink.Finish(scan).Candidates);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.NotEmpty(attributes);
+        Assert.NotEmpty(permissions);
+        Assert.All(attributes, value => Assert.False(value.IsAlive));
+        Assert.All(permissions, value => Assert.False(value.IsAlive));
+        GC.KeepAlive(selector);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ObjectAttributes Detached(ObjectAttributes value, List<WeakReference> seen)
+    {
+        var snapshot = value with { };
+        seen.Add(new(snapshot));
+        return snapshot;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ObjectPermissions Detached(ObjectPermissions value, List<WeakReference> seen)
+    {
+        var snapshot = value with { };
+        seen.Add(new(snapshot));
+        return snapshot;
+    }
+
     internal sealed class CountingList<T>(IReadOnlyList<T> values) : IReadOnlyList<T>
     {
         internal int Visits { get; private set; }
@@ -230,8 +269,14 @@ public sealed class RequesterReuseTests
         }
 
         internal PathRequesterSelection Select(CancellationToken token = default, PostPassDiagnostics? diagnostic = null) =>
-            new PathRequesterSelector(dn => _attributes.GetValueOrDefault(dn), dn => _permissions.GetValueOrDefault(dn),
-                Inputs, Nodes, _contexts, token, diagnostic).Select();
+            RequesterSelectionEvaluation.Select(dn => _attributes.GetValueOrDefault(dn), dn => _permissions.GetValueOrDefault(dn),
+                Inputs, Nodes, _contexts, token, diagnostic, null);
+
+        internal PathRequesterSelector Producer(IPathRequesterSelectionSink sink,
+            Func<ObjectAttributes, ObjectAttributes> attributes, Func<ObjectPermissions, ObjectPermissions> permissions) =>
+            new(dn => _attributes.GetValueOrDefault(dn) is { } value ? attributes(value) : null,
+                dn => _permissions.GetValueOrDefault(dn) is { } value ? permissions(value) : null,
+                Inputs, Nodes, _contexts, CancellationToken.None, null, sink);
 
         internal PathRequesterSelection Reference() =>
             new RequesterSelectionReference(dn => _attributes.GetValueOrDefault(dn), dn => _permissions.GetValueOrDefault(dn),

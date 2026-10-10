@@ -16,7 +16,6 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
         IReadOnlyList<ObjectAttributes> Schema, SchemaGuidCatalog Catalogue, RequesterMembershipContext? Memberships,
         PathSourceFingerprints Fingerprints);
 
-    private readonly Dictionary<OwnAccountMembershipRequest, SavedOwnAccountMembershipProof> _prerequisites = [];
     private Preparation? _preparation;
 
     internal void RequireFor(SqliteConnection expectedConnection, JudgementDescription expectedDescription,
@@ -33,37 +32,6 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
                 || binding.DerivationGenerationId != description.DerivationGenerationId))
             throw Tier0PathStorage.InvalidProof();
         sources.RequireFor(description);
-    }
-
-    internal IReadOnlyList<SavedOwnAccountMembershipProof> Create(
-        IReadOnlyDictionary<string, Tier0PathNode> nodes, IReadOnlyList<OwnAccountMembershipRequest> requests,
-        bool membershipContinuation = true)
-    {
-        if (requests.Count == 0) return [];
-        RequireFor(connection, description, sources, identities, inputs, cancellationToken);
-        var ordered = requests.OrderBy(Key, StringComparer.Ordinal).ToArray();
-        var result = new SavedOwnAccountMembershipProof[ordered.Length];
-        // Exact spellings preserve the source reader's SQLite name-resolution behavior.
-        foreach (var group in ordered.Select((request, index) => (Request: request, Index: index))
-            .GroupBy(value => value.Request.TargetDn, StringComparer.Ordinal))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var pending = group.Select(value => value.Request).Where(request => !_prerequisites.ContainsKey(request)).Distinct().ToArray();
-            if (pending.Length != 0) PrepareGroup(group.Key, pending);
-            foreach (var (request, index) in group)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var proof = _prerequisites[request];
-                var assessment = proof.Assessment;
-                var steps = membershipContinuation ? Steps(assessment, inputs, nodes, cancellationToken) : [];
-                if (membershipContinuation && assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
-                    assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
-                // Continuation limitations belong to this family, never to the reusable pre-change question.
-                result[index] = proof with { Assessment = assessment, Steps = steps };
-            }
-        }
-        sources.RequireFor(description);
-        return result;
     }
 
     private Preparation Prepare()
@@ -90,11 +58,13 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
             Roots = roots, Schema = schema, Catalogue = catalogue.Entries,
             Contexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray(), Forest = bundle.Description.ForestFqdn,
         }, cancellationToken);
-        return _preparation = new(contexts.Value, schema, catalogue, memberships, fingerprints);
+        return _preparation = new(contexts.Value, new JudgingInputs.AttributeSnapshot(schema), catalogue, memberships, fingerprints);
     }
 
-    private void PrepareGroup(string targetDn, IReadOnlyList<OwnAccountMembershipRequest> requests)
+    internal IEnumerable<SavedOwnAccountMembershipProof> PrepareResource(string targetDn,
+        IReadOnlyList<OwnAccountMembershipRequest> requests)
     {
+        RequireFor(connection, description, sources, identities, inputs, cancellationToken);
         var prepared = Prepare();
         var bundle = sources.Bundle;
         var permissions = bundle.ReadPermissions(targetDn);
@@ -132,6 +102,7 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
         foreach (var request in requests)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (request.TargetDn != targetDn) throw Tier0PathStorage.InvalidProof();
             if (!string.Equals(previousRequester, request.RequesterDn, StringComparison.Ordinal))
             {
                 requester = string.Equals(request.RequesterDn, targetDn, StringComparison.Ordinal) ? target
@@ -142,7 +113,7 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
                 Attributes, permissions, prepared.Schema, prepared.Catalogue, prepared.Contexts, edges[request.PermissionKind],
                 bundle.Description.ForestFqdn, cancellationToken, prepared.Memberships);
             var source = fingerprint.OwnAccount(requester);
-            _prerequisites.Add(request, new(assessment, source, []));
+            yield return new(assessment, source, []);
 
             ObjectAttributes? Attributes(string dn)
             {
@@ -151,6 +122,23 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
                 return holders.TryGetValue(dn, out var holder) ? holder : bundle.ReadObjectAttributes(dn);
             }
         }
+        sources.RequireFor(description);
+    }
+
+    internal SavedOwnAccountMembershipProof WithMembershipContinuation(SavedOwnAccountMembershipProof proof,
+        IReadOnlyDictionary<string, Tier0PathNode> nodes)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        sources.RequireProtectedBinding(description);
+        if (proof.Assessment.GenerationId != description.GenerationId
+            || proof.Assessment.DerivationGenerationId != description.DerivationGenerationId
+            || proof.Assessment.EvidenceSeal != description.EvidenceSeal) throw Tier0PathStorage.InvalidProof();
+        var assessment = proof.Assessment;
+        var steps = Steps(assessment, inputs, nodes, cancellationToken);
+        if (assessment.Obtainability == ControlEvaluationState.Established && steps.Count == 0)
+            assessment = assessment with { Issues = [.. assessment.Issues, OwnAccountMembershipIssue.MembershipContinuationUnresolved] };
+        // The shared pre-change answer must not inherit this family's continuation limitations.
+        return proof with { Assessment = assessment, Steps = steps };
     }
 
     private static IReadOnlyList<Tier0PathStep> Steps(OwnAccountMembershipAssessment assessment, PathInputs inputs,
@@ -173,7 +161,7 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
             steps.Add(next);
             current = parent;
         }
-        if (current.MembershipDistance != 0 || !inputs.FixedTargets.Contains(current.Subject)) throw Tier0PathStorage.InvalidProof();
+        if (current.MembershipDistance != 0 || !inputs.IsFixedTarget(current.Subject, cancellationToken)) throw Tier0PathStorage.InvalidProof();
         return steps;
     }
 

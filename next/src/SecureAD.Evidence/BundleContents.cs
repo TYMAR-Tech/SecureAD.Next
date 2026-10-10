@@ -299,10 +299,9 @@ public sealed record BundleContents
                 "SchemaVersionUnsupported",
                 ErrorSeverity.Failed,
                 $"This bundle was written against schema version {schemaVersion} and this build "
-                + $"reads version {BundleSchema.Version}. It holds tables this build does not know "
-                + "and lacks tables it would read, so describing it would either fail part way or "
-                + "report a shape that is not what is stored. The evidence is undamaged; this "
-                + "product does not migrate a bundle, so read it with the build that wrote it.",
+                + $"reads version {BundleSchema.Version}. This build does not accept that evidence "
+                + "format; both its data layout and capture-scope meaning are versioned. The evidence "
+                + "is undamaged. Read it with the build that wrote it; this product does not migrate bundles.",
                 bundleDirectory);
         }
 

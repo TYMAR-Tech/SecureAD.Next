@@ -40,76 +40,92 @@ internal static class RequesterDaclProofs
         }
     }
 
-    internal static IReadOnlyList<SavedRequesterDaclProof> Create(SqliteConnection connection,
-        JudgementDescription description, JudgingInputs sources, IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs,
-        IReadOnlyList<Question> questions, CancellationToken cancellationToken, RequesterMembershipContext? memberships)
+    internal sealed class Preparation
     {
-        if (questions.Count == 0) return [];
-        sources.RequireFor(description);
-        var bundle = sources.Bundle;
-        var contexts = sources.ReadNamingContexts();
-        if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
-        var orderedContexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray();
-        var fingerprints = new PathSourceFingerprints(PathSourceFamily.RequesterDacl, description, inputs,
-            new { Forest = bundle.Description.ForestFqdn, Contexts = orderedContexts }, cancellationToken);
-        var results = new SavedRequesterDaclProof[questions.Count];
-        // Group preparation is temporary; the result retains the caller's order and every occurrence.
-        foreach (var batch in questions.Select((question, index) =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return (Question: question, Index: index);
-            })
-            .GroupBy(value => value.Question.Request.TargetDn, StringComparer.Ordinal))
+        private readonly SqliteConnection _connection;
+        private readonly JudgementDescription _description;
+        private readonly JudgingInputs _sources;
+        private readonly IReadOnlyDictionary<string, Tier0Target> _identities;
+        private readonly PathInputs _inputs;
+        private readonly CancellationToken _token;
+        private readonly RequesterMembershipContext? _memberships;
+        private readonly IReadOnlyDictionary<string, NamingContextKind> _contexts;
+        private readonly PathSourceFingerprints _fingerprints;
+
+        internal Preparation(SqliteConnection connection, JudgementDescription description, JudgingInputs sources,
+            IReadOnlyDictionary<string, Tier0Target> identities, PathInputs inputs, CancellationToken token,
+            RequesterMembershipContext? memberships)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var permissions = bundle.ReadPermissions(batch.Key);
-            var target = bundle.ReadObjectAttributes(batch.Key);
-            using var query = connection.CreateCommand();
+            sources.RequireFor(description);
+            var contexts = sources.ReadNamingContexts();
+            if (!contexts.IsSuccess) throw Tier0PathStorage.InvalidProof();
+            (_connection, _description, _sources, _identities, _inputs, _token, _memberships, _contexts) =
+                (connection, description, sources, identities, inputs, token, memberships, contexts.Value);
+            _fingerprints = new(PathSourceFamily.RequesterDacl, description, inputs,
+                new { Forest = sources.Bundle.Description.ForestFqdn,
+                    Contexts = contexts.Value.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToArray() }, token);
+        }
+
+        internal Target PrepareTarget(string targetDn)
+        {
+            _token.ThrowIfCancellationRequested();
+            _sources.RequireFor(_description);
+            var bundle = _sources.Bundle;
+            var permissions = bundle.ReadPermissions(targetDn);
+            var target = bundle.ReadObjectAttributes(targetDn);
+            using var query = _connection.CreateCommand();
             query.CommandText = "SELECT id FROM control_edge WHERE target=$target COLLATE NOCASE AND capability='CanWriteDacl' ORDER BY id";
-            query.Parameters.AddWithValue("$target", batch.Key);
+            query.Parameters.AddWithValue("$target", targetDn);
             var ids = new List<long>();
             using (var read = query.ExecuteReader()) while (read.Read())
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                _token.ThrowIfCancellationRequested();
                 ids.Add(read.GetInt64(0));
             }
-            var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(connection, description, id)).ToArray();
+            var edges = ids.Select(id => ControlEdgeStorage.ReadEdge(_connection, _description, id)).ToArray();
             var holders = new Dictionary<string, ObjectAttributes?>(StringComparer.Ordinal);
             foreach (var dn in (permissions?.Entries ?? []).Select(entry => entry.Trustee.DistinguishedName)
                 .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                holders.Add(dn, dn == batch.Key ? target : bundle.ReadObjectAttributes(dn));
+                _token.ThrowIfCancellationRequested();
+                holders.Add(dn, dn == targetDn ? target : bundle.ReadObjectAttributes(dn));
             }
-            var holderValues = holders.Values.ToArray();
-            var fingerprint = fingerprints.PrepareTarget(target, permissions, holderValues);
-            var originals = new OriginalPermissions(edge => ControlEdgeStorage.ReadExactAces(connection, edge), cancellationToken);
-            string? previousRequester = null;
-            ObjectAttributes? requester = null;
-            foreach (var (question, index) in batch)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var request = question.Request;
-                if (previousRequester != request.RequesterDn)
-                {
-                    requester = request.RequesterDn == batch.Key ? target
-                        : holders.TryGetValue(request.RequesterDn, out var holder) ? holder : bundle.ReadObjectAttributes(request.RequesterDn);
-                    previousRequester = request.RequesterDn;
-                }
-                var assessment = RequesterDaclEvaluator.Assess(request, inputs, description, identities,
-                    Attributes, permissions, contexts.Value, edges, bundle.Description.ForestFqdn, cancellationToken,
-                    question.ObtainedMembership, memberships, originals.Matches);
-                var source = fingerprint.RequesterDacl(requester, question.ObtainedMembership, assessment);
-                results[index] = new(assessment, source);
-
-                ObjectAttributes? Attributes(string dn) => dn == request.RequesterDn ? requester : dn == batch.Key ? target
-                    : holders.TryGetValue(dn, out var holder) ? holder : bundle.ReadObjectAttributes(dn);
-            }
-
+            return new(this, targetDn, target, permissions, edges, holders,
+                _fingerprints.PrepareTarget(target, permissions, holders.Values.ToArray()),
+                new(edge => ControlEdgeStorage.ReadExactAces(_connection, edge), _token));
         }
-        cancellationToken.ThrowIfCancellationRequested();
-        sources.RequireFor(description);
-        return results;
+
+        internal sealed class Target(Preparation owner, string targetDn, ObjectAttributes? target,
+            ObjectPermissions? permissions, IReadOnlyList<ControlEdge> edges,
+            IReadOnlyDictionary<string, ObjectAttributes?> holders, PathSourceFingerprints.Target fingerprint,
+            OriginalPermissions originals)
+        {
+            private string? _previousRequester;
+            private ObjectAttributes? _requester;
+
+            internal SavedRequesterDaclProof Assess(Question question, string? obtainedFingerprint)
+            {
+                owner._token.ThrowIfCancellationRequested();
+                owner._sources.RequireProtectedBinding(owner._description);
+                var request = question.Request;
+                if (request.TargetDn != targetDn) throw Tier0PathStorage.InvalidProof();
+                if (_previousRequester != request.RequesterDn)
+                {
+                    _requester = request.RequesterDn == targetDn ? target
+                        : holders.TryGetValue(request.RequesterDn, out var holder) ? holder
+                        : owner._sources.Bundle.ReadObjectAttributes(request.RequesterDn);
+                    _previousRequester = request.RequesterDn;
+                }
+                var assessment = RequesterDaclEvaluator.Assess(request, owner._inputs, owner._description, owner._identities,
+                    Attributes, permissions, owner._contexts, edges, owner._sources.Bundle.Description.ForestFqdn, owner._token,
+                    question.ObtainedMembership, owner._memberships, originals.Matches);
+                var source = fingerprint.RequesterDacl(_requester, question.ObtainedMembership, assessment, obtainedFingerprint);
+                return new(assessment, source);
+
+                ObjectAttributes? Attributes(string dn) => dn == request.RequesterDn ? _requester : dn == targetDn ? target
+                    : holders.TryGetValue(dn, out var holder) ? holder : owner._sources.Bundle.ReadObjectAttributes(dn);
+            }
+        }
     }
 
     internal static void RequireMembershipEvidence(RequesterDaclAssessment assessment, CancellationToken cancellationToken) =>

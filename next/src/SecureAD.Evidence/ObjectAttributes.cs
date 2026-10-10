@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Immutable;
 using Microsoft.Data.Sqlite;
 using SecureAD.Kernel.Capture;
 
@@ -145,6 +147,29 @@ public sealed record ObjectAttributes(
     IReadOnlyList<ObjectAttribute> Attributes,
     string? DomainFqdn)
 {
+    /// <summary>Owns ordered attribute collections and protects binary values from caller mutation.</summary>
+    public ObjectAttributes Snapshot() => this with
+    {
+        Attributes = Attributes.Select(attribute => attribute with
+        {
+            Values = new SnapshotValues(attribute.Values),
+        }).ToImmutableArray(),
+    };
+
+    private sealed class SnapshotValues(IReadOnlyList<AttributeValue> values) : IReadOnlyList<AttributeValue>
+    {
+        private readonly AttributeValue[] _values = values.Select(value =>
+            value.Bytes is null ? value : value with { Bytes = value.Bytes.ToArray() }).ToArray();
+        public int Count => _values.Length;
+        public AttributeValue this[int index] => _values[index].Bytes is null ? _values[index]
+            : _values[index] with { Bytes = _values[index].Bytes!.ToArray() };
+        public IEnumerator<AttributeValue> GetEnumerator()
+        {
+            for (var index = 0; index < Count; index++) yield return this[index];
+        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     /// <summary>
     /// The attribute <paramref name="ldapDisplayName"/> names, or null when the catalogue does not
     /// name it - which is a fact about this build and not about the object.

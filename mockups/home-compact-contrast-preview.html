@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureAD - compact, high-contrast Home mockup</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      background: #10151d;
+      color: #edf2f8;
+    }
+    body { margin: 0; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .review-bar {
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid #536275;
+      background: #161e2a;
+      color: #e5edf8;
+    }
+    .review-title { font-weight: 650; }
+    .review-title small { display: block; font-size: 12px; font-weight: 400; color: #c4d0e0; margin-top: 3px; }
+    .review-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .switch { display: flex; border: 1px solid #71839a; border-radius: 5px; overflow: hidden; }
+    .switch button {
+      border: 0; border-right: 1px solid #71839a; border-radius: 0;
+      padding: 7px 12px; background: #1d2939; color: #e5edf8; min-height: 34px;
+    }
+    .switch button:last-child { border-right: 0; }
+    .switch button[aria-pressed="true"] { background: #cfe1ff; color: #14243c; font-weight: 650; }
+    .board { padding: 22px; overflow: auto; }
+    .app {
+      --canvas: #cfd6df;
+      --surface: #f0f3f7;
+      --surface-subtle: #e3e8ef;
+      --field: #ffffff;
+      --ink: #172232;
+      --muted: #3c4b60;
+      --line: #8b99ad;
+      --heading: #26354a;
+      --heading-text: #f5f8ff;
+      --accent: #104eaa;
+      --accent-text: #ffffff;
+      --selection: #d7e6ff;
+      --selection-ink: #142b4b;
+      --group: #d9e0e9;
+      --link: #123f83;
+      --status: #e0e7f1;
+      --status-ink: #283b55;
+      --danger: #952f36;
+      --focus: #0b4bad;
+      --hover: #e3ebf8;
+      color-scheme: light;
+      width: min(100%, 1360px);
+      height: 760px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--canvas);
+      color: var(--ink);
+      border: 1px solid #67768a;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 18px 48px #0006;
+      container-type: inline-size;
+    }
+    .app[data-theme="dark"] {
+      --canvas: #151b24;
+      --surface: #202936;
+      --surface-subtle: #283444;
+      --field: #161e2a;
+      --ink: #f1f5fc;
+      --muted: #c1cede;
+      --line: #65778f;
+      --heading: #303f54;
+      --heading-text: #f5f8ff;
+      --accent: #b7d5ff;
+      --accent-text: #11243e;
+      --selection: #344e73;
+      --selection-ink: #ffffff;
+      --group: #29384b;
+      --link: #bdd9ff;
+      --status: #33445c;
+      --status-ink: #e8f1ff;
+      --danger: #ffb5bc;
+      --focus: #b7d5ff;
+      --hover: #2a3a51;
+      color-scheme: dark;
+    }
+    .app[data-size="laptop"] { width: 1024px; height: 768px; }
+    .app[data-size="large"] { width: 1800px; height: 1000px; }
+    .app button:focus-visible, .app input:focus-visible, .app textarea:focus-visible,
+    .app summary:focus-visible, .run-row:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .review-bar button:focus-visible { outline: 3px solid #cfe1ff; outline-offset: -4px; }
+    .app-nav {
+      background: #152033; color: #f1f5fc;
+      display: flex; align-items: stretch; flex-wrap: wrap; flex: 0 0 auto;
+      border-bottom: 1px solid #64738a;
+      min-height: 46px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; padding: 0 18px; font-size: 21px; font-weight: 650; }
+    .brand svg { width: 21px; height: 21px; stroke: #c4dbff; }
+    .brand small { color: #c1cede; font-size: 11px; font-weight: 400; margin-left: 3px; }
+    .nav-tabs { display: flex; flex-wrap: wrap; }
+    .app-nav button {
+      padding: 0 18px; min-height: 46px; border: 0; border-radius: 0;
+      background: transparent; color: #dbe6f5;
+    }
+    .app-nav button.active { background: #304666; color: #ffffff; font-weight: 650; box-shadow: inset 0 -3px #b7d5ff; }
+    .app-nav button:hover { background: #28394f; }
+    .workspace { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+    .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 20px; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.35; }
+    h1 { margin: 3px 0 5px; font-size: 22px; line-height: 1.2; font-weight: 650; }
+    .description { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 1040px; }
+    .intro-actions { text-align: right; }
+    .intro-actions .hint { margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .button {
+      min-height: 35px; padding: 7px 13px;
+      border: 1px solid var(--line); border-radius: 4px;
+      background: var(--field); color: var(--ink);
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-weight: 600; line-height: 1.2;
+    }
+    .button:hover { background: var(--hover); }
+    .button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .button.primary:hover { filter: brightness(1.08); }
+    .button svg { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; }
+    .library-bar {
+      display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center; gap: 12px; padding: 8px 10px 8px 13px;
+      background: var(--surface-subtle); border: 1px solid var(--line); border-radius: 5px;
+    }
+    .library-label { font-weight: 650; white-space: nowrap; }
+    .library-label svg { width: 17px; height: 17px; margin-right: 7px; vertical-align: -3px; stroke: var(--muted); fill: none; stroke-width: 1.7; }
+    .library-path { color: var(--muted); font: 12px/1.4 Consolas, monospace; overflow-wrap: anywhere; user-select: text; }
+    .content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 338px); gap: 12px; flex: 1; min-height: 0; }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; min-width: 0; }
+    .runs-panel { display: flex; flex-direction: column; min-height: 0; }
+    .panel-heading {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 12px; background: var(--heading); color: var(--heading-text);
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-heading h2 { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 650; }
+    .panel-heading span { font-size: 12px; color: #d7e3f5; }
+    .help { padding: 8px 12px; font-size: 12px; line-height: 1.4; color: var(--muted); border-bottom: 1px solid var(--line); }
+    .table-scroll { overflow: auto; flex: 1; min-height: 0; scrollbar-color: var(--line) var(--surface-subtle); }
+    table { width: 100%; min-width: 620px; border-collapse: separate; border-spacing: 0; text-align: left; }
+    th { position: sticky; top: 0; z-index: 1; background: var(--surface-subtle); color: var(--muted); padding: 8px 12px; font-size: 12px; font-weight: 650; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th:first-child { width: 40%; }
+    th:nth-child(2) { width: 28%; }
+    th:nth-child(3), th:nth-child(4) { width: 16%; }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.3; vertical-align: middle; }
+    .scope-group td { background: var(--group); color: var(--ink); font-weight: 650; padding: 9px 12px; }
+    .group-layout { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .group-layout small { color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .run-row { cursor: pointer; }
+    .run-row:hover td { background: var(--hover); }
+    .run-row[aria-selected="true"] td { background: var(--selection); color: var(--selection-ink); }
+    .run-row[aria-selected="true"] td:first-child { box-shadow: inset 4px 0 var(--accent); }
+    .run-name { font-weight: 650; color: var(--link); white-space: nowrap; }
+    .run-row[aria-selected="true"] .run-name { color: var(--selection-ink); }
+    .when { white-space: nowrap; }
+    .time { display: inline-block; margin-left: 8px; color: var(--muted); }
+    .run-row[aria-selected="true"] .time { color: var(--selection-ink); }
+    .status { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 3px; background: var(--status); color: var(--status-ink); white-space: nowrap; }
+    .evidence-note { display: flex; gap: 9px; padding: 10px 12px; background: var(--surface-subtle); color: var(--muted); border-top: 1px solid var(--line); font-size: 12px; line-height: 1.45; flex: 0 0 auto; }
+    .info-mark { width: 17px; height: 17px; border: 1px solid var(--muted); border-radius: 50%; flex: 0 0 auto; text-align: center; font-weight: 650; line-height: 15px; margin-top: 1px; }
+    .details-panel { overflow: auto; scrollbar-color: var(--line) var(--surface-subtle); }
+    .selection-heading { padding: 12px 14px; background: var(--heading); color: var(--heading-text); border-bottom: 1px solid var(--line); }
+    .selection-heading .eyebrow { color: #d7e3f5; font-weight: 500; }
+    .selection-heading h2 { margin: 5px 0 0; font-size: 19px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+    .selection-body { padding: 12px 14px 14px; }
+    .states { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 10px; }
+    .state-label { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .state-value { font-size: 15px; font-weight: 650; }
+    .meaning { font-size: 13px; line-height: 1.45; margin: 0 0 10px; color: var(--muted); }
+    .open { width: 100%; }
+    .annotation { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .annotation label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    input, textarea { display: block; width: 100%; border: 1px solid var(--line); border-radius: 3px; padding: 7px 9px; background: var(--field); color: var(--ink); line-height: 1.35; }
+    input { min-height: 35px; }
+    textarea { min-height: 70px; height: 70px; resize: vertical; }
+    .notes-label { margin-top: 11px; }
+    .save { margin-top: 9px; font-size: 12px; }
+    .metadata-warning { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 8px 0 0; }
+    details { border-top: 1px solid var(--line); padding: 10px 0 0; margin-top: 11px; }
+    summary { font-size: 12px; font-weight: 650; color: var(--ink); cursor: pointer; }
+    details p { font-size: 12px; line-height: 1.45; color: var(--muted); margin: 9px 0; overflow-wrap: anywhere; }
+    .run-actions { display: flex; gap: 7px; flex-wrap: wrap; padding-top: 4px; }
+    .run-actions .button { font-size: 12px; justify-content: flex-start; }
+    .run-actions .danger { color: var(--danger); }
+    .app-footer { padding: 6px 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); background: var(--surface-subtle); display: flex; justify-content: space-between; gap: 10px; }
+    .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #142033; color: #f5f8ff; border: 1px solid #c0d1e8; border-radius: 6px; padding: 12px 18px; max-width: min(90vw, 650px); box-shadow: 0 6px 24px #0006; z-index: 5; }
+    .toast[hidden] { display: none; }
+    @media (max-width: 1080px) {
+      .board { padding: 12px; }
+      .review-bar { padding: 10px 12px; }
+    }
+    @media (max-width: 820px) {
+      .review-bar { align-items: flex-start; flex-direction: column; }
+      .app[data-size="standard"] { height: auto; min-height: 768px; }
+    }
+    @container (max-width: 1080px) {
+      .content { grid-template-columns: minmax(0, 1fr) 310px; }
+    }
+    @container (max-width: 820px) {
+      .workspace { min-height: 0; }
+      .content { display: flex; flex-direction: column; }
+      .runs-panel { min-height: 370px; }
+      .table-scroll { max-height: 370px; }
+      .intro { grid-template-columns: 1fr; gap: 10px; }
+      .intro-actions { display: flex; align-items: center; gap: 12px; text-align: left; }
+      .intro-actions .hint { margin-top: 0; }
+      .library-bar { grid-template-columns: 1fr auto; }
+      .library-path { grid-column: 1; grid-row: 2; }
+      .library-bar .button { grid-column: 2; grid-row: 1 / 3; }
+    }
+  </style>
+</head>
+<body>
+  <header class="review-bar">
+    <div class="review-title">Compact Home / contrast study
+      <small>Visual mockup only. Sample runs and illustrative path. No directory connection or real run actions.</small>
+    </div>
+    <div class="review-controls">
+      <div class="switch" aria-label="Preview theme">
+        <button type="button" data-preview-theme="light" aria-pressed="true">Light</button>
+        <button type="button" data-preview-theme="dark" aria-pressed="false">Charcoal</button>
+      </div>
+      <div class="switch" aria-label="Preview window size">
+        <button type="button" data-preview-size="standard" aria-pressed="true">Standard</button>
+        <button type="button" data-preview-size="laptop" aria-pressed="false">Laptop</button>
+        <button type="button" data-preview-size="large" aria-pressed="false">Large window</button>
+      </div>
+    </div>
+  </header>
+  <div class="board">
+    <section id="app" class="app" data-theme="light" data-size="standard" aria-label="Proposed SecureAD Home layout">
+      <nav class="app-nav" aria-label="Application navigation">
+        <div class="brand">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" aria-hidden="true"><path d="M12 2 21 6v6c0 5-5 8-9 10-4-2-9-5-9-10V6z"/><path d="m8 12 3 3 5-6"/></svg>
+          SecureAD <small>build AC</small>
+        </div>
+        <div class="nav-tabs">
+          <button type="button" class="active" aria-current="page" data-mock-action="Home">Home</button>
+          <button type="button" data-mock-action="Dashboard">Dashboard</button>
+          <button type="button" data-mock-action="Rules">Rules</button>
+          <button type="button" data-mock-action="Assets">Assets</button>
+          <button type="button" data-mock-action="Settings">Settings</button>
+        </div>
+      </nav>
+      <main class="workspace">
+        <section class="intro" aria-labelledby="home-title">
+          <div>
+            <div class="eyebrow">Active Directory security auditing</div>
+            <h1 id="home-title">Capture once. Investigate offline.</h1>
+            <p class="description">SecureAD captures your Active Directory forest as sealed evidence. Explore objects, permissions, group membership and security findings from that saved capture, without reconnecting to the directory.</p>
+          </div>
+          <div class="intro-actions">
+            <button class="button primary" type="button" data-mock-action="New audit">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v14M3 10h14"/></svg>New audit
+            </button>
+            <div class="hint">Review scope before capture starts</div>
+          </div>
+        </section>
+        <section class="library-bar" aria-label="Run library">
+          <span class="library-label"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5h6l2 2h8v10H2z"/><path d="M2 5V3h6l2 2h8v2"/></svg>Run library</span>
+          <span class="library-path">C:\SecureAD\Saved runs</span>
+          <button class="button" type="button" data-mock-action="Choose run library">Choose run library...</button>
+        </section>
+        <div class="content">
+          <section class="panel runs-panel" aria-labelledby="saved-runs-title">
+            <header class="panel-heading"><h2 id="saved-runs-title">Saved runs</h2><span>6 run(s)</span></header>
+            <div class="help">Select a run to see its details. Runs with the same recorded domain scope are grouped together.</div>
+            <div class="table-scroll">
+              <table aria-label="Sample saved runs">
+                <thead><tr><th scope="col">Run</th><th scope="col">When (local time)</th><th scope="col">Capture</th><th scope="col">Analysis</th></tr></thead>
+                <tbody>
+                  <tr class="scope-group"><td colspan="4"><div class="group-layout"><span>ad.lab + ba.ad.lab + ph.ad.lab</span><small>6 run(s)</small></div></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="true" data-run="ad.lab-20261009-232429"><td class="run-name">ad.lab-20261009-232429</td><td class="when">09 Oct 2026<span class="time">11:24 PM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="false" data-run="ad.lab-20261009-170715"><td class="run-name">ad.lab-20261009-170715</td><td class="when">09 Oct 2026<span class="time">5:07 PM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="false" data-run="ad.lab-20261009-050729"><td class="run-name">ad.lab-20261009-050729</td><td class="when">09 Oct 2026<span class="time">5:07 AM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="false" data-run="ad.lab-20261009-010825"><td class="run-name">ad.lab-20261009-010825</td><td class="when">09 Oct 2026<span class="time">1:08 AM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="false" data-run="ad.lab-20261008-034907"><td class="run-name">ad.lab-20261008-034907</td><td class="when">08 Oct 2026<span class="time">3:49 AM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                  <tr class="run-row" tabindex="0" aria-selected="false" data-run="ad.lab-20261008-034144"><td class="run-name">ad.lab-20261008-034144</td><td class="when">08 Oct 2026<span class="time">3:41 AM</span></td><td><span class="status">Finished</span></td><td><span class="status">Judged</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="evidence-note"><span class="info-mark" aria-hidden="true">i</span><span>Listed capture and analysis states are not a security verdict. Evidence is checked when a run is opened, not merely selected in this list.</span></div>
+          </section>
+          <aside class="panel details-panel" aria-labelledby="selected-title">
+            <header class="selection-heading"><div class="eyebrow">Selected run</div><h2 id="selected-title">ad.lab-20261009-232429</h2></header>
+            <div class="selection-body">
+              <div class="states"><div><div class="state-label">Capture</div><div class="state-value">Finished</div></div><div><div class="state-label">Analysis</div><div class="state-value">Judged</div></div></div>
+              <p class="meaning">This run is finished. Its evidence is checked when you open it.</p>
+              <button class="button primary open" type="button" data-mock-action="Open run">Open run</button>
+              <form class="annotation" id="annotation-form">
+                <label for="run-name">Run name</label><input id="run-name" autocomplete="off">
+                <label class="notes-label" for="notes">Notes</label><textarea id="notes"></textarea>
+                <button class="button save" type="submit">Save name and notes</button>
+                <p class="metadata-warning">Your name and notes do not change the sealed evidence.</p>
+              </form>
+              <details><summary>Run location</summary><p id="run-location">C:\SecureAD\Saved runs\ad.lab-20261009-232429</p></details>
+              <details><summary>Run actions</summary><p>Analysis actions can take time. Replacing results and deleting runs remain separate, confirmed actions.</p>
+                <div class="run-actions">
+                  <button class="button" type="button" data-mock-action="Set as baseline">Set as baseline</button>
+                  <button class="button danger" type="button" data-mock-action="Discard judgement and judge again">Discard judgement and judge again</button>
+                  <button class="button danger" type="button" data-mock-action="Delete run">Delete run</button>
+                </div>
+              </details>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <footer class="app-footer"><span>Design preview only - no real audit actions or saved-run changes.</span><span>Home / compact layout study</span></footer>
+    </section>
+  </div>
+  <div class="toast" id="mockup-status" role="status" hidden></div>
+  <script>
+    const app = document.getElementById("app");
+    const status = document.getElementById("mockup-status");
+    let timeout;
+    function notify(action) {
+      status.textContent = action + ": mockup only. No files are changed and no directory connection is made.";
+      status.hidden = false;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => { status.hidden = true; }, 4000);
+    }
+    document.querySelectorAll("[data-preview-theme]").forEach(button => {
+      button.addEventListener("click", () => {
+        app.dataset.theme = button.dataset.previewTheme;
+        document.querySelectorAll("[data-preview-theme]").forEach(option => {
+          option.setAttribute("aria-pressed", String(option === button));
+        });
+      });
+    });
+    document.querySelectorAll("[data-preview-size]").forEach(button => {
+      button.addEventListener("click", () => {
+        app.dataset.size = button.dataset.previewSize;
+        document.querySelectorAll("[data-preview-size]").forEach(option => {
+          option.setAttribute("aria-pressed", String(option === button));
+        });
+      });
+    });
+    document.querySelectorAll("[data-mock-action]").forEach(button => {
+      button.addEventListener("click", () => notify(button.dataset.mockAction));
+    });
+    function select(row) {
+      document.querySelectorAll(".run-row").forEach(item => item.setAttribute("aria-selected", String(item === row)));
+      document.getElementById("selected-title").textContent = row.dataset.run;
+      document.getElementById("run-location").textContent = "C:\\SecureAD\\Saved runs\\" + row.dataset.run;
+      document.getElementById("run-name").value = "";
+      document.getElementById("notes").value = "";
+    }
+    document.querySelectorAll(".run-row").forEach(row => {
+      row.addEventListener("click", () => select(row));
+      row.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(row); }
+      });
+    });
+    document.getElementById("annotation-form").addEventListener("submit", event => {
+      event.preventDefault();
+      notify("Save name and notes");
+    });
+    const parameters = new URLSearchParams(location.search);
+    for (const [parameter, attribute] of [["theme", "data-preview-theme"], ["size", "data-preview-size"]]) {
+      const value = parameters.get(parameter);
+      if (value !== null) {
+        const control = Array.from(document.querySelectorAll("[" + attribute + "]")).find(button => button.getAttribute(attribute) === value);
+        if (!control) { throw new Error("Unsupported mockup " + parameter + ": " + value); }
+        control.click();
+      }
+    }
+  </script>
+</body>
+</html>

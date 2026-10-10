@@ -90,7 +90,9 @@ public static class BundleSchema
     // stand in for the other; F-S1-1 records the coupling that was removed to keep them apart.
     // 14 records the per-policy outcome of the optional SEC-083 XML scan. Version 13 always ran
     // that scan and cannot state whether a later capture deliberately omitted it.
-    public const int Version = 14;
+    // 15 records the corrected Enatel storage-class scope; old V3-name scopes are not relabelled.
+    // 16 adds the owner-approved account-class exclusion without relabelling storage-only captures.
+    public const int Version = 16;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another

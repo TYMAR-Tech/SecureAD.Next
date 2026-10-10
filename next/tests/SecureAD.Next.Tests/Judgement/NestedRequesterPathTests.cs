@@ -279,7 +279,7 @@ public sealed partial class NestedRequesterPathTests
         Assert.Equal(18, reads.Count);
         Assert.All(reads.Values, count => Assert.Equal(1, count));
         Assert.Equal(2, memberValues.Count);
-        Assert.All(memberValues.Values, values => Assert.Equal(2 * values.Count + 1, values.Visits));
+        Assert.All(memberValues.Values, values => Assert.Equal(values.Count, values.Visits));
     }
 
     [Fact]

@@ -505,6 +505,9 @@ public sealed class VouchedValueReachabilityGateTests
     /// least one original value; empty and nonempty witness collections drive both outcomes.
     /// 74 adds <c>CapturedMemberReferences.IsComplete</c>: only the displayed references were
     /// resolved, not a membership expansion; explicit resolved/unresolved rows drive both values.
+    /// 75 adds <c>BroadAdministrativeMembershipEvidence.IsComplete</c>: a supported positive
+    /// membership can coexist with capture or scope gaps; complete inputs with no limits and
+    /// incomplete inputs or a nonempty limitation collection drive opposite values.
     /// </para>
     /// </summary>
     [Fact]
@@ -519,7 +522,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -552,6 +555,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "ClassifiedPermissionEntry" && v.Name == "RightsAreComplete");
         Assert.Contains(found, v => v.Type.Name == "RequesterResourceContext" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "BroadAdministrativeMembershipEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipLink" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CapturedMemberReferences" && v.Name == "IsComplete");
     }

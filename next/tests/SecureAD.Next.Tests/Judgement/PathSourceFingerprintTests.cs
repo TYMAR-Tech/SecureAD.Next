@@ -161,6 +161,38 @@ public sealed class PathSourceFingerprintTests
         Assert.Equal(original, target.OwnAccount(material.Requester));
     }
 
+    [Fact]
+    public void RequesterFingerprintPreparationDoesNotRetainCompletedMembershipAnswers()
+    {
+        var (description, inputs) = Binding();
+        var target = new PathSourceFingerprints(PathSourceFamily.RequesterDacl, description, inputs,
+            Material().Shared, CancellationToken.None).PrepareTarget(null, null, []);
+        var weak = FingerprintTemporaryMembership(target, description);
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(weak.IsAlive);
+        GC.KeepAlive(target);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static WeakReference FingerprintTemporaryMembership(PathSourceFingerprints.Target target,
+        JudgementDescription description)
+    {
+        var permission = new SelfMembershipAssessment(new("CN=User,DC=contoso,DC=com", "CN=Group,DC=contoso,DC=com",
+            SelfMembershipOperation.Add, null), description.GenerationId, description.DerivationGenerationId,
+            description.EvidenceSeal, null, null, null, null, null, null, ControlEvaluationState.Unknown,
+            ControlEvaluationState.Unknown, ControlEvaluationState.Unknown, "Unavailable", null, null, null, [], [], []);
+        var membership = new OwnAccountMembershipAssessment(new("CN=User,DC=contoso,DC=com", "CN=Group,DC=contoso,DC=com"),
+            description.GenerationId, description.DerivationGenerationId, description.EvidenceSeal, null, null, permission,
+            ControlEvaluationState.Unknown, OwnAccountMembershipBasis.Unresolved, [], [], [], []);
+        target.RequesterDacl(null, membership, Assessment(description) with
+        { ObtainedMembership = membership.Request });
+        return new(membership);
+    }
+
     [Theory]
     [InlineData("shared")]
     [InlineData("target")]

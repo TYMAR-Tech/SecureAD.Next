@@ -112,19 +112,7 @@ internal sealed class JudgingInputs : IDisposable
         if (_membership is not null) return _membership;
         var input = (_derivation ?? throw OwnershipAuditStorage.InvalidProof()).ReadMembershipInput();
         if (input.DerivationGenerationId != Facts.Description.GenerationId) throw OwnershipAuditStorage.InvalidProof();
-        var objects = ImmutableArray.CreateBuilder<ObjectAttributes>();
-        foreach (var subject in input.Objects)
-        {
-            _cancellationToken.ThrowIfCancellationRequested();
-            objects.Add(subject with
-            {
-                Attributes = subject.Attributes.Select(attribute => attribute with
-                {
-                    Values = new AttributeValues(attribute.Values),
-                }).ToImmutableArray(),
-            });
-        }
-        return _membership = input with { Objects = objects.ToImmutable() };
+        return _membership = input.Prepare(_cancellationToken);
     }
 
     internal Result<IReadOnlyDictionary<string, NamingContextKind>> ReadNamingContexts()
@@ -179,6 +167,12 @@ internal sealed class JudgingInputs : IDisposable
     internal void RequireFor(JudgementDescription description)
     {
         RequireCurrent();
+        RequireProtectedBinding(description);
+    }
+
+    internal void RequireProtectedBinding(JudgementDescription description)
+    {
+        CheckLifetime();
         if (description.EvidenceSeal != EvidenceSeal
             || description.DerivationGenerationId != _derivedFile?.Generation?.GenerationId)
             throw OwnershipAuditStorage.InvalidProof();
@@ -258,17 +252,14 @@ internal sealed class JudgingInputs : IDisposable
         }).ToImmutableArray(),
     };
 
-    // Text records are immutable; binary values need a detached view, just like prepared ACE data.
-    private sealed class AttributeValues(IReadOnlyList<AttributeValue> values) : IReadOnlyList<AttributeValue>
+    private static ObjectAttributes FreezeAttributes(ObjectAttributes subject) => subject.Snapshot();
+
+    internal sealed class AttributeSnapshot(IEnumerable<ObjectAttributes> values) : IReadOnlyList<ObjectAttributes>
     {
-        private readonly AttributeValue[] _values = values.ToArray();
+        private readonly ImmutableArray<ObjectAttributes> _values = values.Select(FreezeAttributes).ToImmutableArray();
         public int Count => _values.Length;
-        public AttributeValue this[int index] => _values[index].Bytes is null ? _values[index]
-            : _values[index] with { Bytes = _values[index].Bytes!.ToArray() };
-        public IEnumerator<AttributeValue> GetEnumerator()
-        {
-            for (var index = 0; index < Count; index++) yield return this[index];
-        }
+        public ObjectAttributes this[int index] => _values[index];
+        public IEnumerator<ObjectAttributes> GetEnumerator() => ((IEnumerable<ObjectAttributes>)_values).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
@@ -276,6 +267,8 @@ internal sealed class JudgingInputs : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _requesterMemberships?.Dispose();
+        _requesterMemberships = null;
         try { _derivation?.Dispose(); }
         finally
         {

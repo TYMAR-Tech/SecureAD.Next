@@ -96,6 +96,9 @@ public enum UnresolvedReason
     /// afternoon. P-163.
     /// </remarks>
     PrincipalDomainNotRead,
+
+    /// <summary>A captured membership hop has unsupported or contradictory authorization scope.</summary>
+    MembershipScopeUnsupported,
 }
 
 /// <summary>

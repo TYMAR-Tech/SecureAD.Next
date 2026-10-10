@@ -33,7 +33,7 @@ public class DashboardViewModelTests
     private const string Bundle = @"C:\runs\ad.lab-20260905";
 
     [Theory]
-    [InlineData(false, "dnsNode, dnsZone, enatelSSOAccountParameter, enatelSSOStorageV3, enatelUserManagedAuth")]
+    [InlineData(false, "dnsNode, dnsZone, enatelSSOAccount, enatelSSOAccountParameter, enatelSSOStorage, enatelUserManagedAuth")]
     [InlineData(true, "dnsNode, dnsZone")]
     public void TheDashboardDisclosesTheRecordedClassScope(bool includeEnatelSso, string names)
     {

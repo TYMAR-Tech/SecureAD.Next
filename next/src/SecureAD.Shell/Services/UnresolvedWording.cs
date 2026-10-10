@@ -30,6 +30,11 @@ namespace SecureAD.Shell.Services;
 internal static class UnresolvedWording
 {
     private static readonly ResourceManager Ownership = new("SecureAD.Shell.Resources.ControlEdgePresentation", typeof(UnresolvedWording).Assembly);
+    private const string AdministrativeEvidenceUnavailable =
+        "The membership or identity evidence needed to complete this administrative-group assessment is unavailable or could not be verified. "
+        + "Recorded positive links do not establish that all other membership has been assessed.";
+    private const string MembershipScopeUnsupported =
+        "The captured membership relationship has unsupported or contradictory group scope; this run cannot establish authorization through that relationship.";
 
     /// <summary>
     /// What to tell an operator about <paramref name="token"/>, as a judging recorded it.
@@ -57,6 +62,14 @@ internal static class UnresolvedWording
                 UnresolvedReason.NotDerived => "Circular membership was not derived for this run.",
                 UnresolvedReason.MembershipIncomplete => "Circular membership could not be assessed completely from this run's captured and derived group data. Recorded loops do not establish that no others exist.",
                 UnresolvedReason.IdentityUnreadable => "A group identity needed for circular membership could not be established from the captured evidence.",
+                _ => $"{token} was undecided, and this version has no plainer way to say why.",
+            };
+
+        if (split[0] == nameof(DerivedFactKind.AdministrativeMembership))
+            return reason switch
+            {
+                UnresolvedReason.NotDerived or UnresolvedReason.MembershipIncomplete or UnresolvedReason.IdentityUnreadable => AdministrativeEvidenceUnavailable,
+                UnresolvedReason.MembershipScopeUnsupported => MembershipScopeUnsupported,
                 _ => $"{token} was undecided, and this version has no plainer way to say why.",
             };
 
@@ -110,6 +123,8 @@ internal static class UnresolvedWording
             UnresolvedReason.IdentityUnreadable =>
                 "These objects carried no readable security identifier, so they could not be "
                 + "matched against anything.",
+
+            UnresolvedReason.MembershipScopeUnsupported => MembershipScopeUnsupported,
 
             UnresolvedReason.ForestIdentityUnreadable =>
                 "The captured forest could not be identified, so schema-scoped owner acceptance "

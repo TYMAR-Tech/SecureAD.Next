@@ -120,8 +120,13 @@ internal static class OwnershipAuditRun
                     assessment?.Counter("ownerCandidateEvaluations", ++candidatesEvaluated);
                 }
             }
+            assessment?.Part("prepare-ownership-proof");
+            var prepared = ControlEvidencePreparation.Create(
+                new(target.Identity.DistinguishedName, target.Identity.Sid, target.Identity.SidScope,
+                    "NotRecorded", ControlUncertainty.None, transitions),
+                description.GenerationId, description.DerivationGenerationId, cancellationToken);
             assessment?.Part("store-ownership");
-            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, transitions,
+            ControlEdgeStorage.AppendOwnership(connection, description, target.Identity.DistinguishedName, prepared,
                 statements, session);
             assessment?.TargetFinished();
             progress.Report(new(objectsRead) { Phase = JudgingPhase.AssessingOwnership });

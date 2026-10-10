@@ -10,7 +10,7 @@ namespace SecureAD.Next.Tests.Evidence;
 public sealed class CaptureObjectScopeStorageTests(ITestOutputHelper output)
 {
     [Theory]
-    [InlineData(false, "dnsNode,dnsZone,enatelSSOAccountParameter,enatelSSOStorageV3,enatelUserManagedAuth")]
+    [InlineData(false, "dnsNode,dnsZone,enatelSSOAccount,enatelSSOAccountParameter,enatelSSOStorage,enatelUserManagedAuth")]
     [InlineData(true, "dnsNode,dnsZone")]
     public void ASealedBundleRecordsTheScopeActuallySelected(bool includeEnatelSso, string expected)
     {
@@ -30,8 +30,9 @@ public sealed class CaptureObjectScopeStorageTests(ITestOutputHelper output)
 
         using var reader = BundleReader.Open(directory).Value;
 
-        Assert.Equal("dnsNode,dnsZone,enatelSSOAccountParameter,enatelSSOStorageV3,enatelUserManagedAuth",
+        Assert.Equal("dnsNode,dnsZone,enatelSSOAccount,enatelSSOAccountParameter,enatelSSOStorage,enatelUserManagedAuth",
             string.Join(",", reader.Description.ExcludedObjectClasses));
+        Assert.Equal(16, reader.Description.SchemaVersion);
     }
 
     [Fact]
@@ -55,6 +56,51 @@ public sealed class CaptureObjectScopeStorageTests(ITestOutputHelper output)
         var error = OpenError(directory);
 
         Assert.Equal("Evidence.SchemaVersionUnsupported", error);
+    }
+
+    [Fact]
+    public void ThePreviousStorageScopeIsRefusedByFormatRatherThanRelabelled()
+    {
+        var directory = WriteBundle(CaptureObjectScope.Default);
+        ModifyAndSeal(directory,
+            "UPDATE bundle SET schema_version=14; "
+            + "DELETE FROM capture_object_class_exclusion WHERE class_name='enatelSSOAccount'; "
+            + "UPDATE capture_object_class_exclusion SET class_name='enatelSSOStorageV3' "
+            + "WHERE class_name='enatelSSOStorage';");
+
+        Assert.Equal("Evidence.SchemaVersionUnsupported", OpenError(directory));
+    }
+
+    [Fact]
+    public void TheObsoleteStorageNameCannotClaimTheCorrectedFormat()
+    {
+        var directory = WriteBundle(CaptureObjectScope.Default);
+        ModifyAndSeal(directory,
+            "UPDATE capture_object_class_exclusion SET class_name='enatelSSOStorageV3' "
+            + "WHERE class_name='enatelSSOStorage';");
+
+        Assert.Equal("Evidence.EvidenceUnreadable", OpenError(directory));
+    }
+
+    [Fact]
+    public void TheStorageOnlyFormatIsRefusedRatherThanRelabelled()
+    {
+        var directory = WriteBundle(CaptureObjectScope.Default);
+        ModifyAndSeal(directory,
+            "UPDATE bundle SET schema_version=15; "
+            + "DELETE FROM capture_object_class_exclusion WHERE class_name='enatelSSOAccount';");
+
+        Assert.Equal("Evidence.SchemaVersionUnsupported", OpenError(directory));
+    }
+
+    [Fact]
+    public void TheStorageOnlyScopeCannotClaimTheAccountExcludingFormat()
+    {
+        var directory = WriteBundle(CaptureObjectScope.Default);
+        ModifyAndSeal(directory,
+            "DELETE FROM capture_object_class_exclusion WHERE class_name='enatelSSOAccount';");
+
+        Assert.Equal("Evidence.EvidenceUnreadable", OpenError(directory));
     }
 
     private string WriteBundle(CaptureObjectScope scope)

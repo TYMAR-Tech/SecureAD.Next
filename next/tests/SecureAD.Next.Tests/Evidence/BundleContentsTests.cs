@@ -218,6 +218,8 @@ public sealed class BundleContentsTests
             BundleSchema.Version.ToString(CultureInfo.InvariantCulture),
             contents.Error.Description,
             StringComparison.Ordinal);
+        Assert.Contains("capture-scope meaning", contents.Error.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("It holds tables", contents.Error.Description, StringComparison.Ordinal);
     }
 
     /// <summary>

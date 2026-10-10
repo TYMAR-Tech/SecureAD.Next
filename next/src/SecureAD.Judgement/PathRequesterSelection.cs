@@ -81,3 +81,13 @@ public sealed record PathRequesterCandidate(PathRequesterFamily Family, string R
 internal sealed record PathRequesterSelection(int Version, Guid JudgementGenerationId, string InputFingerprint,
     bool InputScanCompleted, IReadOnlyList<PathRequesterCandidate> Candidates,
     IReadOnlyList<PathRequesterSelectionSource> Sources, IReadOnlyList<PathRequesterSelectionLimitation> Limitations);
+
+internal sealed record PathRequesterSelectionScan(int Version, Guid JudgementGenerationId,
+    string InputFingerprint, bool InputScanCompleted);
+
+internal interface IPathRequesterSelectionSink
+{
+    bool Include(PathRequesterCandidate candidate);
+    void Source(PathRequesterSelectionSource source);
+    void Limit(PathRequesterSelectionLimitation limitation);
+}

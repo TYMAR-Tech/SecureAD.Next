@@ -14,7 +14,9 @@ internal static class PathCalculationStorage
         string SourceFingerprint);
     internal sealed record Manifest(int Version, Guid Generation, string InputFingerprint, int NodeCount,
         int RequesterCount, int OwnAccountCount, int MembershipDaclCount, string ProofFingerprint,
-        bool OfflineSelection, Selection? Selection, Inputs Inputs, IReadOnlyList<PathRequesterFamilyCoverage> Families);
+        bool OfflineSelection, Selection? Selection, Inputs Inputs, IReadOnlyList<PathRequesterFamilyCoverage> Families,
+        RecordSet Work);
+    internal sealed record Preparation(string InputFingerprint, Selection? Selection, Inputs Inputs);
 
     internal static void CreateTables(SqliteConnection connection)
     {
@@ -33,49 +35,35 @@ internal static class PathCalculationStorage
         command.ExecuteNonQuery();
     }
 
-    internal static PathProofStorage.Reference Write(SqliteConnection connection, SqliteTransaction transaction,
-        JudgementDescription description, PathInputs inputs, int nodes, PathRequesterSelection? selection,
-        IReadOnlyList<SavedRequesterDaclProof> requesters, IReadOnlyList<SavedOwnAccountMembershipProof> ownAccounts,
-        IReadOnlyList<SavedMembershipDaclProof> membershipDacls, IReadOnlyList<PathProofStorage.Reference> sources,
-        PathProofStorage.Writer proofs, PathSharedProofStorage shared, CancellationToken token)
+    internal static Preparation Prepare(SqliteConnection connection, SqliteTransaction transaction,
+        JudgementDescription description, PathInputs inputs, Selection? selection,
+        PathSharedProofStorage shared, CancellationToken token)
     {
-        var inputFingerprint = Tier0PathCalculation.Fingerprint(inputs);
+        if (selection is not null && (selection.Version != PathRequesterSelector.Version
+            || selection.JudgementGenerationId != description.GenerationId
+            || selection.InputScanCompleted != (inputs.Availability == PathInputAvailability.Recorded)
+            || selection.InputFingerprint is not { Length: 64 })) throw Tier0PathStorage.InvalidProof();
+        var inputFingerprint = selection?.InputFingerprint ?? Tier0PathCalculation.Fingerprint(inputs);
         var savedInputs = new Inputs(description.GenerationId, inputs.Availability, inputs.Input, inputs.Coverage,
             WriteRecords(connection, transaction, "FixedTargets", inputs.FixedTargets, shared, token),
             UncertaintySet(connection, token), inputs.RequesterDiscovery, InputFingerprint(connection));
-        var savedSelection = selection is null ? null : new Selection(selection.Version, selection.JudgementGenerationId,
-            selection.InputFingerprint, selection.InputScanCompleted,
-            WriteRecords(connection, transaction, "Candidates", selection.Candidates, shared, token,
-                PathRequesterSelector.Key, value => value.RequesterDn),
-            WriteRecords(connection, transaction, "Sources", selection.Sources, shared, token),
-            WriteRecords(connection, transaction, "Limitations", selection.Limitations, shared, token));
-        int Selected(PathRequesterFamily family) => selection?.Candidates.Count(value => value.Family == family) ?? 0;
-        PathRequesterFamilyCoverage[] families =
-        [
-            new(PathRequesterFamily.RequesterDacl, Selected(PathRequesterFamily.RequesterDacl), requesters.Count,
-                requesters.Count(value => value.Assessment.Authorization == ControlEvaluationState.Unknown), 0, 0),
-            new(PathRequesterFamily.OwnAccountMembership, Selected(PathRequesterFamily.OwnAccountMembership), ownAccounts.Count,
-                ownAccounts.Count(value => value.Assessment.Obtainability == ControlEvaluationState.Unknown),
-                ownAccounts.Count(value => value.Assessment.Permission.MemberPresent is null),
-                ownAccounts.Count(value => value.Assessment.Permission.Readiness == ControlEvaluationState.Unknown)),
-            new(PathRequesterFamily.MembershipDacl, Selected(PathRequesterFamily.MembershipDacl), membershipDacls.Count,
-                membershipDacls.Count(value => value.Assessment.Authorization == ControlEvaluationState.Unknown),
-                membershipDacls.Count(value => value.Assessment.Membership.Permission.MemberPresent is null),
-                membershipDacls.Count(value => value.Assessment.Membership.Permission.Readiness == ControlEvaluationState.Unknown)),
-        ];
-        var manifest = new Manifest(Tier0PathCalculation.Version, description.GenerationId, inputFingerprint, nodes,
-            requesters.Count, ownAccounts.Count, membershipDacls.Count, Tier0PathCalculation.Fingerprint(sources),
-            selection is not null, savedSelection, savedInputs, families);
+        return new(inputFingerprint, selection, savedInputs);
+    }
+
+    internal static PathProofStorage.Reference Write(JudgementDescription description, Preparation prepared, int nodes,
+        IReadOnlyList<PathRequesterFamilyCoverage> families, PathCalculationStorage.RecordSet work,
+        IEnumerable<PathProofStorage.Reference> sources, PathProofStorage.Writer proofs)
+    {
+        int Count(PathRequesterFamily family) => families.Single(value => value.Family == family).StoredAssessments;
+        var manifest = new Manifest(Tier0PathCalculation.Version, description.GenerationId, prepared.InputFingerprint, nodes,
+            Count(PathRequesterFamily.RequesterDacl), Count(PathRequesterFamily.OwnAccountMembership),
+            Count(PathRequesterFamily.MembershipDacl), Tier0PathCalculation.Fingerprint(sources),
+            prepared.Selection is not null, prepared.Selection, prepared.Inputs, families, work);
         return proofs.Write(manifest);
     }
 
     private static RecordSet WriteRecords<T>(SqliteConnection connection, SqliteTransaction transaction, string kind,
-        IReadOnlyList<T> values, PathSharedProofStorage shared, CancellationToken token) =>
-        WriteRecords(connection, transaction, kind, values, shared, token, null, null);
-
-    private static RecordSet WriteRecords<T>(SqliteConnection connection, SqliteTransaction transaction, string kind,
-        IReadOnlyList<T> values, PathSharedProofStorage shared, CancellationToken token,
-        Func<T, string>? key, Func<T, string>? requester)
+        IReadOnlyList<T> values, PathSharedProofStorage shared, CancellationToken token)
     {
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
@@ -104,8 +92,8 @@ internal static class PathCalculationStorage
                 insert.Parameters["$ordinal"].Value = count++;
                 insert.Parameters["$proof"].Value = proof.Id;
                 insert.Parameters["$fingerprint"].Value = proof.Fingerprint;
-                insert.Parameters["$key"].Value = (object?)key?.Invoke(value) ?? DBNull.Value;
-                insert.Parameters["$requester"].Value = (object?)requester?.Invoke(value) ?? DBNull.Value;
+                insert.Parameters["$key"].Value = DBNull.Value;
+                insert.Parameters["$requester"].Value = DBNull.Value;
                 if (insert.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
                 yield return proof;
             }
@@ -143,6 +131,9 @@ internal static class PathCalculationStorage
             throw Tier0PathStorage.InvalidProof();
         RequireSet(inputs.FixedTargets);
         RequireSet(inputs.UncertaintyRegions);
+        RequireSet(value.Work);
+        if ((long)value.RequesterCount + value.OwnAccountCount + value.MembershipDaclCount != value.Work.Count)
+            throw Tier0PathStorage.InvalidProof();
         PathInputStorage.RequireProjection(connection, description, inputs);
         if (value.Selection is { } selection)
         {
@@ -228,6 +219,8 @@ internal static class PathCalculationStorage
         var manifest = Read(connection, description, token);
         if (manifest is null) return;
         PathSharedProofStorage.RequirePublishable(connection, description);
+        PathRequesterWorkPlan.RequirePublishable(connection, description, manifest.Work, token);
+        if (manifest.Selection is not null) PathRequesterWorkPlan.RequireSelectionMatchesWork(connection);
         if (Tier0PathCalculation.Fingerprint(SourceReferences(connection, token)) != manifest.ProofFingerprint
             || UncertaintySet(connection, token) != manifest.Inputs.UncertaintyRegions) throw Tier0PathStorage.InvalidProof();
         ValidateRecords(connection, "FixedTargets", manifest.Inputs.FixedTargets, token);
@@ -244,12 +237,14 @@ internal static class PathCalculationStorage
                 (SELECT COUNT(*) FROM path_calculation_record WHERE kind='Candidates'),
                 (SELECT COUNT(*) FROM path_calculation_record c
                     LEFT JOIN path_requester_risk r ON r.question_key=c.question_key
-                    WHERE c.kind='Candidates' AND (r.id IS NULL OR r.requester<>c.requester))
+                    WHERE c.kind='Candidates' AND (r.id IS NULL OR r.requester<>c.requester)),
+                (SELECT COUNT(*) FROM path_requester_work w LEFT JOIN path_requester_risk r ON r.id=w.id
+                    WHERE r.id IS NULL OR r.question_key<>w.question_key OR r.requester<>w.requester)
             """;
         using var read = command.ExecuteReader();
         if (!read.Read() || read.GetInt64(0) != manifest.NodeCount
             || read.GetInt64(1) != (long)manifest.RequesterCount + manifest.OwnAccountCount + manifest.MembershipDaclCount
-            || read.GetInt64(2) != (manifest.Selection?.Candidates.Count ?? 0) || read.GetInt64(3) != 0)
+            || read.GetInt64(2) != (manifest.Selection?.Candidates.Count ?? 0) || read.GetInt64(3) != 0 || read.GetInt64(4) != 0)
             throw Tier0PathStorage.InvalidProof();
     }
 

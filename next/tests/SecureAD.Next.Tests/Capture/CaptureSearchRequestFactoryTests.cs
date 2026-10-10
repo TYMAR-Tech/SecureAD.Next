@@ -29,17 +29,17 @@ public sealed class CaptureSearchRequestFactoryTests
         request.Controls.OfType<PageResultRequestControl>().Single();
 
     [Fact]
-    public void TheDefaultRequestExcludesTheThreeEnatelClassesAndDns()
+    public void TheDefaultRequestExcludesEnatelMetadataClassesAndDns()
     {
         var request = CaptureSearchRequestFactory.ForUnit(Unit(), Controls());
 
         Assert.Equal("(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))"
             + "(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))"
-            + "(!(objectClass=enatelSSOStorageV3)))", request.Filter);
+            + "(!(objectClass=enatelSSOStorage))(!(objectClass=enatelSSOAccount)))", request.Filter);
     }
 
     [Theory]
-    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorageV3)))")]
+    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorage))(!(objectClass=enatelSSOAccount)))")]
     [InlineData(true, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone)))")]
     public void TheFirstPageUsesTheExplicitClassScope(bool includeEnatelSso, string expected)
     {
@@ -49,7 +49,7 @@ public sealed class CaptureSearchRequestFactoryTests
     }
 
     [Theory]
-    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorageV3)))")]
+    [InlineData(false, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone))(!(objectClass=enatelSSOAccountParameter))(!(objectClass=enatelUserManagedAuth))(!(objectClass=enatelSSOStorage))(!(objectClass=enatelSSOAccount)))")]
     [InlineData(true, "(&(objectClass=*)(!(objectClass=dnsNode))(!(objectClass=dnsZone)))")]
     public void ALaterPageUsesTheExplicitClassScope(bool includeEnatelSso, string expected)
     {

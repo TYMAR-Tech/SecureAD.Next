@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics.Metrics;
 using SecureAD.Evidence;
 
 namespace SecureAD.Derivation;
@@ -11,6 +13,75 @@ public sealed record CapturedMembershipInput(
     bool IsComplete,
     IReadOnlyList<ObjectAttributes> Objects)
 {
+    internal const string MeterName = "SecureAD.Derivation.MembershipPreparation";
+    private static readonly Meter Meter = new(MeterName);
+    private static readonly Counter<long> Snapshots = Meter.CreateCounter<long>("membership.source_snapshots");
+    private static readonly Counter<long> Indexes = Meter.CreateCounter<long>("membership.captured_index_builds");
+    private static readonly Counter<long> CompactPaths = Meter.CreateCounter<long>("membership.compact_paths");
+    private static readonly Counter<long> MaterializedPaths = Meter.CreateCounter<long>("membership.materialized_paths");
+
+    /// <summary>Owns the source once, retaining ordered values and one reusable captured-identity index.</summary>
+    public CapturedMembershipInput Prepare(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Objects is PreparedObjects) return this;
+        return this with { Objects = new PreparedObjects(Objects, DerivationGenerationId, cancellationToken) };
+    }
+
+    /// <summary>Returns a unique captured DN; conflicting occurrences remain unresolved rather than selecting one.</summary>
+    public ObjectAttributes? FindUnique(string distinguishedName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        return Index(cancellationToken).Find(distinguishedName);
+    }
+
+    internal Tier0Classifier.CapturedIndex Index(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Objects is PreparedObjects prepared ? prepared.Index(DerivationGenerationId, cancellationToken)
+            : CreateIndex(Objects, DerivationGenerationId, cancellationToken);
+    }
+
+    private static Tier0Classifier.CapturedIndex CreateIndex(IEnumerable<ObjectAttributes> objects, Guid generation,
+        CancellationToken cancellationToken)
+    {
+        var result = new Tier0Classifier.CapturedIndex(objects, cancellationToken);
+        Indexes.Add(1, Tag(generation));
+        return result;
+    }
+
+    internal static void RecordCompactPath(Guid generation) => CompactPaths.Add(1, Tag(generation));
+    internal static void RecordMaterializedPath(Guid generation) => MaterializedPaths.Add(1, Tag(generation));
+    private static KeyValuePair<string, object?> Tag(Guid generation) => new("derivation", generation.ToString("D"));
+
+    private sealed class PreparedObjects : ReadOnlyCollection<ObjectAttributes>
+    {
+        private Tier0Classifier.CapturedIndex? _index;
+
+        internal PreparedObjects(IReadOnlyList<ObjectAttributes> objects, Guid generation, CancellationToken token)
+            : base(Own(objects, token))
+        {
+            Snapshots.Add(1, Tag(generation));
+        }
+
+        internal Tier0Classifier.CapturedIndex Index(Guid generation, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            return _index ??= CreateIndex(this, generation, token);
+        }
+
+        private static ObjectAttributes[] Own(IReadOnlyList<ObjectAttributes> objects, CancellationToken token)
+        {
+            var result = new List<ObjectAttributes>(objects.Count);
+            foreach (var source in objects)
+            {
+                token.ThrowIfCancellationRequested();
+                result.Add(source.Snapshot());
+            }
+            return result.ToArray();
+        }
+    }
+
     internal static readonly string[] AttributeNames =
     [
         "objectSid", "objectClass", "groupType", "primaryGroupID", "member", "memberOf",

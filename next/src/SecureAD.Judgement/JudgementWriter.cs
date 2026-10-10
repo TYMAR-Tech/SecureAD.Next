@@ -43,6 +43,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly SqliteConnection _connection;
     private readonly IDisposable _writeLock;
     private readonly PreparedStatements _statements;
+    private readonly Guid? _derivationGenerationId;
     private readonly PermissionWriteSession _session = new();
     private SqliteTransaction? _batch;
     private int _batchObjects;
@@ -59,12 +60,14 @@ public sealed class JudgementWriter : IDisposable
     /// <summary>The immutable generation this writer will publish.</summary>
     public Guid GenerationId { get; } = Guid.NewGuid();
 
-    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection, IDisposable writeLock)
+    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection, IDisposable writeLock,
+        Guid? derivationGenerationId)
     {
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
         _writeLock = writeLock;
+        _derivationGenerationId = derivationGenerationId;
         _statements = new PreparedStatements(connection);
     }
 
@@ -240,7 +243,22 @@ public sealed class JudgementWriter : IDisposable
         ThrowIfFinishedWithinObject();
         try
         {
-            ControlEdgeStorage.Write(_connection, Batch(), _statements, evaluation, ownershipTarget, _session);
+            WritePreparedControlEdges(ControlEvidencePreparation.Create(evaluation, GenerationId, _derivationGenerationId), ownershipTarget);
+        }
+        catch
+        {
+            AbandonBatch();
+            throw;
+        }
+    }
+
+    internal void WritePreparedControlEdges(ControlEvidencePreparation evaluation, SecureAD.Derivation.Tier0Target? ownershipTarget)
+    {
+        ThrowIfFinishedWithinObject();
+        try
+        {
+            evaluation.RequireFor(GenerationId, _derivationGenerationId);
+            ControlEdgeStorage.WritePrepared(_connection, Batch(), _statements, evaluation, ownershipTarget, _session);
         }
         catch
         {
@@ -431,7 +449,7 @@ public sealed class JudgementWriter : IDisposable
             Pragma(connection, "synchronous = NORMAL");
             JudgementSchema.CreateTables(connection);
 
-            writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock);
+            writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock, derivationGenerationId);
             writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
             transferred = true;
             return writer;
@@ -580,6 +598,7 @@ public sealed class JudgementWriter : IDisposable
         diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
         CircularMembershipStorage.RequirePublishable(_connection);
+        AdministrativeMembershipStorage.RequirePublishable(_connection, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
@@ -787,6 +806,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case BroadAdministrativeMembershipEvidence membership:
+                AdministrativeMembershipStorage.Write(_connection, transaction, findingId, GenerationId, membership);
+                break;
             case DuplicateSpnEvidence duplicate:
                 DuplicateSpnStorage.Write(_connection, transaction, findingId, GenerationId, duplicate);
                 break;

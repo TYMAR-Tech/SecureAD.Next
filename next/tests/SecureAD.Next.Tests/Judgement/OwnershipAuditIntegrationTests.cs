@@ -14,7 +14,7 @@ using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
 
 namespace SecureAD.Next.Tests.Judgement;
 
-public sealed class OwnershipAuditIntegrationTests(ITestOutputHelper output)
+public sealed partial class OwnershipAuditIntegrationTests(ITestOutputHelper output)
 {
     private const string CoreDn = "CN=Domain Admins,DC=contoso,DC=com";
 
