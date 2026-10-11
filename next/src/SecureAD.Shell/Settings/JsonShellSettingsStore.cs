@@ -62,11 +62,10 @@ internal sealed class JsonShellSettingsStore : IShellSettingsStore
     /// <remarks>
     /// <b>Local rather than roaming, and the distinction is the whole decision.</b>
     /// <c>%LOCALAPPDATA%</c> stays on the machine; <c>%APPDATA%</c> follows the user between them.
-    /// Both settings kept here describe a particular machine - a path to a run library, which is
-    /// expected to be a local disk, and how many domains that machine reads at once, which is a fact
-    /// about its own storage. A roamed <c>D:\audits</c> is a confident answer that is wrong on the
-    /// next machine, which is worse than having no answer and asking; a roamed ceiling chosen for a
-    /// laptop's NVMe disk is the same mistake more quietly. Recorded in
+    /// All settings kept here describe this installation: a run-library path, capture concurrency,
+    /// and its appearance. A roamed <c>D:\audits</c> is a confident answer that is wrong on the
+    /// next machine, which is worse than having no answer and asking; a roamed ceiling or appearance
+    /// is the same category of mistake more quietly. Recorded in
     /// <c>docs/decisions/0047-settings-are-per-user-and-per-machine.md</c>.
     /// </remarks>
     public static string DefaultPath { get; } = Path.Combine(
@@ -94,12 +93,16 @@ internal sealed class JsonShellSettingsStore : IShellSettingsStore
             // not ask for while showing him the number he did. An ABSENT property is a different
             // thing entirely and is not an error: it is every settings file written before this
             // setting existed, and it reads as "not chosen".
-            return stored.DomainsAtOnce is { } ceiling && ceiling < 1
-                ? Failure<ShellSettings>(
+            if (stored.DomainsAtOnce is { } ceiling && ceiling < 1)
+                return Failure<ShellSettings>(
                     $"The settings file asks for {ceiling} domains at a time. It must be 1 or more: "
                     + "a capture allowed to read no domains at once would wait for ever without "
-                    + "appearing to have stopped.")
-                : Result<ShellSettings>.Success(stored);
+                    + "appearing to have stopped.");
+            if (stored.Appearance is { } appearance
+                && !Enum.TryParse<ThemeVariant>(appearance, ignoreCase: true, out _))
+                return Failure<ShellSettings>(
+                    $"The settings file asks for the \"{appearance}\" appearance. It must be Dark or Light.");
+            return Result<ShellSettings>.Success(stored);
         }
         catch (JsonException ex)
         {

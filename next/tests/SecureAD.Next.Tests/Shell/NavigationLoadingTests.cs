@@ -252,7 +252,7 @@ public sealed class NavigationLoadingTests
         screen.OpenObject(new(new(Subject, "Alice", null, "user", Domain)));
         var opened = screen.Opened;
         screen.Pane = AssetsPane.Delegations;
-        Assert.Equal((false, true, opened), (screen.HasOpenObject, screen.ShowsDelegationsListing, screen.Opened));
+        Assert.Equal((true, true, opened), (screen.HasOpenObject, screen.ShowsDelegationsListing, screen.Opened));
     }
 
     [Fact]
@@ -261,11 +261,11 @@ public sealed class NavigationLoadingTests
         var source = Source();
         var screen = Show(source);
         screen.OpenObject(screen.Objects[0]);
-        screen.Opened!.Show(ObjectSectionCatalog.Account);
+        screen.Opened!.Show(ObjectSectionCatalog.Permissions);
         screen.Pane = AssetsPane.Delegations;
         source.Reads.Clear();
         screen.Pane = AssetsPane.Objects;
-        Assert.Equal((ObjectSectionCatalog.Account, ""), (screen.Opened.Selected!.Key, string.Join(",", source.Reads)));
+        Assert.Equal((ObjectSectionCatalog.Permissions, ""), (screen.Opened.Selected!.Key, string.Join(",", source.Reads)));
     }
 
     [Fact]
@@ -295,10 +295,10 @@ public sealed class NavigationLoadingTests
         screen.Opened!.Show(ObjectSectionCatalog.Permissions);
         var old = screen.Opened.ReadCompletion;
         source.CompleteRead = null;
-        screen.Opened.Show(ObjectSectionCatalog.Account);
+        screen.Opened.Show(ObjectSectionCatalog.Overview);
         pending.Release(fail);
         await old;
-        Assert.Equal((ObjectSectionCatalog.Account, false), (screen.Opened.Content?.Key, screen.Opened.HasRefusal));
+        Assert.Equal((ObjectSectionCatalog.Overview, false), (screen.Opened.Content?.Key, screen.Opened.HasRefusal));
     }
 
     [Fact]
@@ -334,7 +334,7 @@ public sealed class NavigationLoadingTests
         screen.OpenObject(screen.Objects[0]);
         screen.Opened!.Show(ObjectSectionCatalog.ControlEdges);
         var controls = Assert.IsType<ControlEdgesSectionViewModel>(screen.Opened.Selected);
-        screen.Opened.Show(ObjectSectionCatalog.Account);
+        screen.Opened.Show(ObjectSectionCatalog.Overview);
         var reads = source.ControlQueries.Count;
         controls.FirstPageCommand.Execute(null);
         Assert.Equal(reads, source.ControlQueries.Count);

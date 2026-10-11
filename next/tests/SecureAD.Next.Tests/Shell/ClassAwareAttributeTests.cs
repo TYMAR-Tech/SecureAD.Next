@@ -32,18 +32,22 @@ public sealed class ClassAwareAttributeTests
     [InlineData("CoMpUtEr", true)]
     public void AccountFieldsFollowCapturedClassRatherThanMissingValues(string objectClass, bool hasOs)
     {
-        var definition = Definition(objectClass, ObjectSectionCatalog.Account);
+        var definition = Definition(objectClass, ObjectSectionCatalog.Overview);
         var captured = Data(objectClass);
-        var empty = new AccountSectionViewModel(definition, captured);
-        var populated = new AccountSectionViewModel(definition, Data(objectClass,
-            Text("operatingSystem", "Example OS"), Text("operatingSystemVersion", "10.0")));
+        var empty = Assert.IsType<AccountSectionViewModel>(new OverviewSectionViewModel(definition,
+            Judgement.ControlEdgeDeriverTests.Permissions(), captured, objectClass).Account);
+        var populated = Assert.IsType<AccountSectionViewModel>(new OverviewSectionViewModel(definition,
+            Judgement.ControlEdgeDeriverTests.Permissions(), Data(objectClass,
+                Text("operatingSystem", "Example OS"), Text("operatingSystemVersion", "10.0")), objectClass).Account);
         string[] common = ["userAccountControl", "adminCount", "pwdLastSet", "accountExpires", "lastLogonTimestamp", "primaryGroupID"];
         var expected = hasOs ? [.. common, "operatingSystem", "operatingSystemVersion"] : common;
 
         Assert.Equal(expected, empty.Values.Select(row => row.Attribute));
         Assert.Equal(expected, populated.Values.Select(row => row.Attribute));
         Assert.All(empty.Values, row => Assert.Equal("No captured value", row.Worded));
-        Assert.All(new AccountSectionViewModel(definition, null).Values, row => Assert.Equal("Not read", row.Worded));
+        var unread = Assert.IsType<AccountSectionViewModel>(new OverviewSectionViewModel(definition,
+            Judgement.ControlEdgeDeriverTests.Permissions(), null, objectClass).Account);
+        Assert.All(unread.Values, row => Assert.Equal("Not read", row.Worded));
     }
 
     [Fact]
@@ -158,17 +162,19 @@ public sealed class ClassAwareAttributeTests
     {
         var (screen, source) = ObjectNavigationTests.Model();
         source.Attributes = Data("user", Text("operatingSystem", "Unexpected OS"), Text("managedBy", "CN=Contact,DC=contoso,DC=com"));
+        source.Permissions = Judgement.ControlEdgeDeriverTests.Permissions(Dn);
         screen.OpenObject(new(new(Dn, "Alice", Guid.NewGuid(), "computer", "DC=contoso,DC=com")));
+        var overview = Assert.IsType<OverviewSectionViewModel>(screen.Opened!.Content);
+        Assert.DoesNotContain(Assert.IsType<AccountSectionViewModel>(overview.Account).Values,
+            row => row.Attribute == "operatingSystem");
         Assert.IsType<UnloadedObjectSectionViewModel>(screen.Opened!.Section(ObjectSectionCatalog.OtherValues));
         source.Reads.Clear();
         screen.Opened.Show(ObjectSectionCatalog.OtherValues);
         var other = Assert.IsType<OtherValuesSectionViewModel>(screen.Opened.Content);
         Assert.Equal(new[] { "operatingSystem", "managedBy" }, other.Values.Select(row => row.Attribute));
         Assert.Empty(source.Reads);
-        screen.Opened.Show(ObjectSectionCatalog.Account);
-        Assert.DoesNotContain(Assert.IsType<AccountSectionViewModel>(screen.Opened.Content).Values, row => row.Attribute == "operatingSystem");
         source.IsCurrent = false;
-        screen.Opened.Show(ObjectSectionCatalog.OtherValues);
+        screen.Opened.Show(ObjectSectionCatalog.Overview);
         Assert.True(screen.Opened.HasRefusal);
         Assert.Null(screen.Opened.Content);
     }

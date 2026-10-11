@@ -21,10 +21,19 @@ public sealed class ObjectNavigationViewTests
     {
         _ = XamlReader.Parse("<UserControl xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" />");
         var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
-        var resources = new ResourceDictionary
+        var resources = new ResourceDictionary();
+        resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Palette.Dark.xaml"),
+        });
+        resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Brushes.xaml"),
+        });
+        resources.MergedDictionaries.Add(new ResourceDictionary
         {
             Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Tree.xaml"),
-        };
+        });
 
         Assert.True(resources.Contains("BorderBrush"));
         Assert.True(resources.Contains("SurfaceRaisedBackground"));

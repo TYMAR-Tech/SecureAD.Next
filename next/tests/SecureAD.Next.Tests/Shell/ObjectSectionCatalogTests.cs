@@ -161,6 +161,17 @@ public sealed class ObjectSectionCatalogTests
             s => s.Key == ObjectSectionCatalog.Findings);
     }
 
+    [Theory]
+    [InlineData("user")]
+    [InlineData("computer")]
+    [InlineData("group")]
+    [InlineData("organizationalUnit")]
+    [InlineData(null)]
+    public void EveryObjectEndsWithTheSharedHelpSection(string? objectClass)
+    {
+        Assert.Equal(ObjectSectionCatalog.Help, ObjectSectionCatalog.For(objectClass)[^1].Key);
+    }
+
     /// <summary>
     /// The findings section claims no attribute, so it cannot take one from another section.
     /// </summary>

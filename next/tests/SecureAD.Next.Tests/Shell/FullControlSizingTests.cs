@@ -28,13 +28,14 @@ public sealed partial class ControlEdgeSizingTests
         var (control, requester) = Tables(pane);
         var summary = Assert.IsType<DataGridRow>(control.ItemContainerGenerator.ContainerFromIndex(0));
         Assert.Equal("Full-control permissions", Assert.IsType<TextBlock>(control.Columns[2].GetCellContent(summary)).Text);
-        Assert.Contains(Descendants<TextBlock>(control), text => text.Text == "Count status");
+        Assert.Contains(Descendants<TextBlock>(pane), text => text.Text == vm.SelectedEdge!.CountStatus);
         var support = vm.Rows.Single(row => row.Capability == "Can change permissions (WRITE_DAC)");
         control.ScrollIntoView(support);
+        vm.SelectedEdge = support;
         Layout(pane, width, height);
         var supportRow = Assert.IsType<DataGridRow>(control.ItemContainerGenerator.ContainerFromItem(support));
         Assert.Equal("Included in full-control count — not counted again",
-            Assert.Single(Descendants<TextBlock>(control.Columns[^1].GetCellContent(supportRow))).Text);
+            Assert.Single(Descendants<TextBlock>(pane), text => text.Text == support.CountStatus).Text);
         AssertInside(supportRow, control);
         vm.SelectedEdge = vm.Rows[0];
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "ControlEvidence"));

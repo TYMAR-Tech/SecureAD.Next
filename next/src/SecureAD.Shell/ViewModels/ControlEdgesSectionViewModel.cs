@@ -9,6 +9,13 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Shell.ViewModels;
 
+internal enum ControlEdgeDetailView
+{
+    Evidence,
+    Requester,
+    Membership,
+}
+
 /// <summary>Two paged views over the same persisted edge product, never an authorization calculation in the screen.</summary>
 internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewModel
 {
@@ -32,6 +39,14 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     [ObservableProperty] private string _counts = "Expected edges hidden: unknown (product not read).";
     [ObservableProperty] private IReadOnlyList<ControlEdgeRowViewModel> _rows = [];
     [ObservableProperty] private ControlEdgeRowViewModel? _selectedEdge;
+    [ObservableProperty] private string _edgeSearchText = "";
+    [ObservableProperty] private ControlEdgeDetailView _detailView;
+    [ObservableProperty] private bool _hasCoverageWarning;
+    [ObservableProperty] private string _analysisSummary = "Not read";
+    [ObservableProperty] private string _captureSummary = "Capture unknown";
+    [ObservableProperty] private string _unexpectedSummary = "Unexpected unknown";
+    [ObservableProperty] private string _unknownSummary = "Unknown unresolved";
+    [ObservableProperty] private string _expectedSummary = "Expected unknown";
     private string _requesterCoverage = "Requester assessments have not been read.";
     private IReadOnlyList<SelfMembershipAssessmentRowViewModel> _requesterAssessments = [];
     private SelfMembershipAssessmentRowViewModel? _selectedRequesterAssessment;
@@ -49,7 +64,48 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     }
 
     public string SupportedScope => ControlEdgePage.SupportedScope;
-    public ControlEdgesSectionViewModel(ObjectSectionDefinition definition) : base(definition) { }
+    public string ObjectName { get; }
+    public string OnObjectQuestion => $"Who can control {ObjectName}?";
+    public string HeldByObjectQuestion => $"What can {ObjectName} control?";
+    public bool ShowsEdgesOnObject
+    {
+        get => !ByHolder;
+        set { if (value) ByHolder = false; }
+    }
+    public bool ShowsEdgesHeldByObject
+    {
+        get => ByHolder;
+        set { if (value) ByHolder = true; }
+    }
+    public bool ShowsHolderColumn => !ByHolder;
+    public bool ShowsTargetColumn => ByHolder;
+    public bool ShowsEvidenceDetails
+    {
+        get => DetailView == ControlEdgeDetailView.Evidence;
+        set { if (value) DetailView = ControlEdgeDetailView.Evidence; }
+    }
+    public bool ShowsRequesterDetails
+    {
+        get => DetailView == ControlEdgeDetailView.Requester;
+        set { if (value) DetailView = ControlEdgeDetailView.Requester; }
+    }
+    public bool ShowsMembershipDetails
+    {
+        get => DetailView == ControlEdgeDetailView.Membership;
+        set { if (value) DetailView = ControlEdgeDetailView.Membership; }
+    }
+    public IReadOnlyList<ControlEdgeRowViewModel> VisibleRows => string.IsNullOrWhiteSpace(EdgeSearchText)
+        ? Rows
+        : Rows.Where(row => Contains(row.Holder) || Contains(row.Target) || Contains(row.Capability)
+            || Contains(row.Evaluation) || Contains(row.Expectedness)).ToArray();
+    public bool HasVisibleRows => VisibleRows.Count != 0;
+    public bool HasNoVisibleRows => !HasVisibleRows;
+    public bool HasSelectedEdge => SelectedEdge is not null;
+    public bool HasNoSelectedEdge => SelectedEdge is null;
+    public ControlEdgesSectionViewModel(ObjectSectionDefinition definition, string objectName = "this object") : base(definition)
+    {
+        ObjectName = string.IsNullOrWhiteSpace(objectName) ? "this object" : objectName;
+    }
 
     public void Configure(bool hasPrincipal, bool selectedIsUser,
         Func<bool, bool, long, Result<ControlEdgePage>> read,
@@ -78,6 +134,8 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     }
     partial void OnByHolderChanged(bool value)
     {
+        EdgeSearchText = "";
+        AnnounceDirection();
         if (!_configuring) FirstPage();
     }
     partial void OnIncludeExpectedChanged(bool value)
@@ -132,6 +190,12 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         RequesterCoverage = "Requester assessments have not been read.";
         Coverage = "Control edges have not been read.";
         Counts = "Expected edges hidden: unknown (product not read).";
+        HasCoverageWarning = false;
+        AnalysisSummary = "Not read";
+        CaptureSummary = "Capture unknown";
+        UnexpectedSummary = "Unexpected unknown";
+        UnknownSummary = "Unknown unresolved";
+        ExpectedSummary = "Expected unknown";
         ThroughMembershipCoverage = MemberAttributionPanelViewModel.Text("SelectPermission");
     }
 
@@ -182,6 +246,12 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             Coverage = result.Error.Description;
             Counts = "Expected edges hidden: unknown (product unreadable).";
             RequesterCoverage = "Requester assessments were not read because control edges could not be read.";
+            HasCoverageWarning = true;
+            AnalysisSummary = "Unreadable";
+            CaptureSummary = "Capture unknown";
+            UnexpectedSummary = "Unexpected unknown";
+            UnknownSummary = "Unknown unresolved";
+            ExpectedSummary = "Expected unknown";
             return;
         }
         var page = result.Value;
@@ -201,11 +271,20 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         if (page.ProductWasDerived && page.IsScopedToDiscovery)
             Coverage += Environment.NewLine + ControlEdgeRowViewModel.Text("DiscoveryScope");
         if (page.OwnershipCoverage is { } ownershipCoverage) Coverage += Environment.NewLine + ownershipCoverage.Description;
+        HasCoverageWarning = !page.ProductWasDerived || !page.CaptureIsComplete || page.UnansweredObjects != 0
+            || page.IsScopedToDiscovery || page.OwnershipCoverage is { } ownership
+            && (!ownership.InputsAvailable || ownership.Execution != OwnershipAssessmentExecution.Completed
+                || !ownership.ScopeCoverage.IsComplete);
         Counts = page.ProductWasDerived
             ? $"{page.UnexpectedCount} unexpected; {page.UnknownCount} expectedness unknown; {page.ExpectedCount} expected "
                 + (IncludeExpected ? "(shown)." : "(hidden).")
             : "Expected edges hidden: unknown (product not derived).";
         if (page.ProductWasDerived) Counts += " " + ControlEdgeRowViewModel.Text("FullControlCounts");
+        AnalysisSummary = page.ProductWasDerived ? "Saved analysis" : "Not derived";
+        CaptureSummary = page.CaptureIsComplete ? "Capture complete" : "Capture incomplete";
+        UnexpectedSummary = $"{page.UnexpectedCount} unexpected";
+        UnknownSummary = $"{page.UnknownCount} unknown";
+        ExpectedSummary = $"{page.ExpectedCount} expected " + (IncludeExpected ? "shown" : "hidden");
         Rows = page.Edges.Select(edge => new ControlEdgeRowViewModel(edge, page.FullControlSupports.ContainsKey(edge.Id)))
             .Concat(page.FullControlAssessments.Select(value => new ControlEdgeRowViewModel(value)))
             .OrderBy(row => row.DisplayOrder).ToArray();
@@ -273,6 +352,38 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         Coverage = message;
         RequesterCoverage = message;
         Counts = "Counts withheld: judgement generations could not be matched.";
+        HasCoverageWarning = true;
+        AnalysisSummary = "Results withheld";
+        CaptureSummary = "Generation mismatch";
+        UnexpectedSummary = "Unexpected withheld";
+        UnknownSummary = "Unknown withheld";
+        ExpectedSummary = "Expected withheld";
+    }
+
+    partial void OnRowsChanged(IReadOnlyList<ControlEdgeRowViewModel> value) => AnnounceRows();
+    partial void OnEdgeSearchTextChanged(string value) => AnnounceRows();
+    partial void OnDetailViewChanged(ControlEdgeDetailView value)
+    {
+        OnPropertyChanged(nameof(ShowsEvidenceDetails));
+        OnPropertyChanged(nameof(ShowsRequesterDetails));
+        OnPropertyChanged(nameof(ShowsMembershipDetails));
+    }
+
+    private bool Contains(string value) => value.Contains(EdgeSearchText.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private void AnnounceDirection()
+    {
+        OnPropertyChanged(nameof(ShowsEdgesOnObject));
+        OnPropertyChanged(nameof(ShowsEdgesHeldByObject));
+        OnPropertyChanged(nameof(ShowsHolderColumn));
+        OnPropertyChanged(nameof(ShowsTargetColumn));
+    }
+
+    private void AnnounceRows()
+    {
+        OnPropertyChanged(nameof(VisibleRows));
+        OnPropertyChanged(nameof(HasVisibleRows));
+        OnPropertyChanged(nameof(HasNoVisibleRows));
     }
 }
 

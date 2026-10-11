@@ -40,6 +40,7 @@ internal static class DelegationText
     public static string SelectedEntryTitle => Get(nameof(SelectedEntryTitle));
     public static string OriginalEvidence => Get(nameof(OriginalEvidence));
     public static string MembershipChain => Get(nameof(MembershipChain));
+    public static string EditSearch => Get(nameof(EditSearch));
 }
 
 internal sealed record DelegationPermissionChoice(DelegationPermission Value, string Name);

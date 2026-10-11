@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
              xmlns:views="clr-namespace:SecureAD.Shell.Views"
+             xmlns:controls="clr-namespace:SecureAD.Shell.Controls"
              Background="{DynamicResource AssetCanvasBackground}">
     <UserControl.Resources>
 
@@ -18,9 +19,9 @@
                 <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TreeNodeIcon}"
                                 Focusable="False" IsHitTestVisible="False" />
                 <TextBlock x:Name="Label" Text="{Binding Name}"
-                           Foreground="{StaticResource PrimaryTextBrush}" />
+                           Foreground="{DynamicResource PrimaryTextBrush}" />
                 <TextBlock Text="not captured" Margin="8,0,0,0"
-                           Foreground="{StaticResource NotEstablishedBrush}"
+                           Foreground="{DynamicResource NotEstablishedBrush}"
                            ToolTip="{Binding Detail}"
                            Visibility="{Binding HasDetail, Converter={StaticResource Shown}}" />
             </StackPanel>
@@ -30,7 +31,7 @@
                      default, and the product tells an operator that a known fact is unknown. -->
                 <DataTrigger Binding="{Binding State}" Value="NotEstablished">
                     <Setter TargetName="Label" Property="Foreground"
-                            Value="{StaticResource NotEstablishedBrush}" />
+                            Value="{DynamicResource NotEstablishedBrush}" />
                 </DataTrigger>
             </HierarchicalDataTemplate.Triggers>
         </HierarchicalDataTemplate>
@@ -39,15 +40,16 @@
 
     <DockPanel Margin="{StaticResource ScreenPadding}">
 
-        <!-- NO SCREEN TITLE. The rail says Assets and the tab says which view, so a heading
-             repeating the word a third time spent a line of vertical space on nothing. Removed on
-             the owner's instruction, 2026-09-03. -->
+        <!-- OBJECTS OWNS NO TOP CHROME. Assets > Objects already names the view, and the selected
+             directory is stated beneath the tree that defines it. Repeating either above both
+             panes, or offering to hide the tree from a row browser, spends vertical space without
+             answering another question. Owner-confirmed 2026-10-10. -->
 
         <!-- No run chosen is a question the operator has not answered, and is not a claim that
              the run captured nothing. -->
         <TextBlock DockPanel.Dock="Top"
                    Text="Choose a run on the Runs screen to see what it captured."
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Margin="0,0,0,8"
                    Visibility="{Binding HasNoRun, Converter={StaticResource Shown}}" />
 
@@ -59,17 +61,17 @@
             <TextBlock Text="{Binding Refusal.Title}" Style="{StaticResource RowTitle}" />
             <TextBox Text="{Binding Refusal.Detail, Mode=OneWay}"
                      Style="{StaticResource SelectableMessage}"
-                     Foreground="{StaticResource FaultBrush}" />
+                     Foreground="{DynamicResource FaultBrush}" />
         </StackPanel>
 
         <TextBlock DockPanel.Dock="Top" Text="{Binding LoadingText}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Visibility="{Binding IsOpeningTree, Converter={StaticResource Shown}}" />
 
         <Grid Visibility="{Binding HasTree, Converter={StaticResource Shown}}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="360" MinWidth="270" />
-                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="{Binding ScopeTreeWidth}" MinWidth="{Binding ScopeTreeMinWidth}" />
+                <ColumnDefinition Width="{Binding ScopeTreeSplitterWidth}" />
                 <ColumnDefinition Width="*" MinWidth="320" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -80,12 +82,12 @@
             <GridSplitter Grid.Column="1" Grid.RowSpan="2" Width="6" HorizontalAlignment="Center"
                           VerticalAlignment="Stretch" ResizeDirection="Columns"
                           ResizeBehavior="PreviousAndNext" ShowsPreview="True"
-                          Background="{StaticResource AttributeCardBorderBrush}"
+                          Background="{DynamicResource AttributeCardBorderBrush}"
                           AutomationProperties.Name="Resize directory pane"
-                          Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}" />
+                          Visibility="{Binding ShowsScopeTree, Converter={StaticResource Shown}}" />
 
             <TextBlock Grid.Column="2" Text="{Binding LoadingText}"
-                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
                        Visibility="{Binding ShowsOtherViewLoading, Converter={StaticResource Shown}}" />
 
             <StackPanel Grid.Column="2"
@@ -93,15 +95,15 @@
                 <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
                 <TextBox Text="{Binding ViewRefusal.Detail, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource FaultBrush}" />
+                         Foreground="{DynamicResource FaultBrush}" />
             </StackPanel>
 
-            <Border Grid.Column="0" Grid.RowSpan="2" Background="{StaticResource AssetNavigationBackground}"
-                    BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1"
+            <Border Grid.Column="0" Grid.RowSpan="2" Background="{DynamicResource AssetNavigationBackground}"
+                    BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1"
                     CornerRadius="8" Padding="12"
-                    Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}">
+                    Visibility="{Binding ShowsScopeTree, Converter={StaticResource Shown}}">
             <Grid Grid.Column="0"
-                  Visibility="{Binding ShowsDirectoryTree, Converter={StaticResource Shown}}">
+                  Visibility="{Binding ShowsScopeTree, Converter={StaticResource Shown}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -109,7 +111,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Margin="0,0,0,8" Background="{StaticResource AttributeHeaderBackground}">
+                <StackPanel Grid.Row="0" Margin="0,0,0,8" Background="{DynamicResource AttributeHeaderBackground}">
                     <Button Content="Entire captured forest - Groups" Command="{Binding BrowseAllGroupsCommand}"
                             Margin="0,0,0,10" Visibility="{Binding ShowsGroups,Converter={StaticResource Shown}}" />
                     <TextBlock Text="{x:Static vm:ObjectNavigationText.SearchLabel}" Style="{StaticResource BlockLabel}" />
@@ -126,7 +128,7 @@
                 </StackPanel>
 
             <TreeView Grid.Row="1" ItemsSource="{Binding Roots}"
-                      Background="{StaticResource AssetNavigationBackground}">
+                      Background="{DynamicResource AssetNavigationBackground}">
                 <TreeView.ItemContainerStyle>
                     <Style TargetType="TreeViewItem"
                            BasedOn="{StaticResource {x:Type TreeViewItem}}">
@@ -149,9 +151,9 @@
                 <StackPanel Grid.Row="2" Margin="0,12,0,0" IsEnabled="{Binding CanChangeBrowsingScope}">
                     <TextBlock Text="Browsing Scope" Style="{StaticResource BlockLabel}"
                                FontSize="{StaticResource CaptionFontSize}"
-                               Foreground="{StaticResource AttributeLabelBrush}" />
-                    <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1"
-                            Background="{StaticResource SurfaceRaisedBackground}" CornerRadius="4"
+                               Foreground="{DynamicResource AttributeLabelBrush}" />
+                    <Border BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1"
+                            Background="{DynamicResource SurfaceRaisedBackground}" CornerRadius="4"
                             Padding="1" Margin="0,6,0,0">
                         <UniformGrid Rows="1" x:Name="ScopeSelector">
                             <RadioButton Style="{StaticResource BrowsingScopeSegment}" Content="Base" GroupName="Scope"
@@ -169,7 +171,7 @@
                            Text="{Binding NavigationLocation}"
                            Style="{StaticResource Identifier}"
                            FontSize="{StaticResource CaptionFontSize}" FontWeight="Normal"
-                           Foreground="{StaticResource AttributeSourceBrush}"
+                           Foreground="{DynamicResource AttributeSourceBrush}"
                            TextWrapping="Wrap"
                            Margin="0,8,0,0" />
             </Grid>
@@ -187,21 +189,21 @@
                            Text="Double-click a row to open an object"
                            VerticalAlignment="Center"
                            Margin="0,0,0,8"
-                           Foreground="{StaticResource SecondaryTextBrush}" />
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
 
                 <!-- A listing short by an unknown number of objects is not an empty container,
                      and the difference is stated where the objects would be. -->
                 <TextBox DockPanel.Dock="Top"
                          Text="{Binding Shortfall, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource FaultBrush}"
+                         Foreground="{DynamicResource FaultBrush}"
                          Margin="0,0,0,8"
                          Visibility="{Binding IsShort, Converter={StaticResource Shown}}" />
 
                 <!-- Said only when the container was read and genuinely held nothing. -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="Nothing was captured here."
-                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
                            Margin="0,0,0,8"
                            Visibility="{Binding IsEmpty, Converter={StaticResource Shown}}" />
 
@@ -262,20 +264,6 @@
             <views:DelegationsView Grid.ColumnSpan="3"
                                    Visibility="{Binding ShowsDelegationsListing, Converter={StaticResource Shown}}" />
 
-            <views:ObjectView Visibility="{Binding HasOpenObject, Converter={StaticResource Shown}}">
-                <views:ObjectView.Style>
-                    <Style TargetType="views:ObjectView">
-                        <Setter Property="Grid.Column" Value="2" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding ShowsTier0}" Value="True">
-                                <Setter Property="Grid.Column" Value="0" />
-                                <Setter Property="Grid.ColumnSpan" Value="3" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </views:ObjectView.Style>
-            </views:ObjectView>
-
             <Grid Grid.Column="2" Grid.Row="1" Margin="0,8,0,0" x:Name="AssetsFooter">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -287,7 +275,7 @@
                     <WrapPanel VerticalAlignment="Center"
                                Visibility="{Binding ShowsObjectListing, Converter={StaticResource Shown}}">
                         <TextBlock Text="{Binding PageDescription}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
                         <Button Content="Previous" Command="{Binding PreviousPageCommand}"
                                 IsEnabled="{Binding HasPreviousPage}" Margin="0,0,8,0" />
@@ -299,7 +287,7 @@
                                    VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
                         <TextBlock Text="{x:Static vm:ObjectNavigationText.CaptureIncomplete}" VerticalAlignment="Center"
                                    Margin="0,0,12,0" TextWrapping="Wrap"
-                                   Foreground="{StaticResource FaultBrush}"
+                                   Foreground="{DynamicResource FaultBrush}"
                                    Visibility="{Binding HasCaptureGaps, Converter={StaticResource Shown}}" />
                         <Button Content="{Binding CaptureCoverageAction}" Command="{Binding ToggleCaptureCoverageCommand}" />
                     </WrapPanel>

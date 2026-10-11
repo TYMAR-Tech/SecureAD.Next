@@ -8,7 +8,7 @@
                 <TextBlock Text="{Binding Kind}" Style="{StaticResource RowTitle}" />
                 <TextBox Text="{Binding Subject, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
                          FontFamily="{StaticResource IdentifierFontFamily}" />
-                <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
             </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
@@ -17,7 +17,7 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <TextBlock Text="{x:Static vm:ObjectNavigationText.CoverageBoundary}" TextWrapping="Wrap"
-                               Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,8" />
+                               Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,8" />
                     <TextBlock Text="{x:Static vm:ObjectNavigationText.RunGaps}" Style="{StaticResource RowTitle}"
                                Visibility="{Binding HasCaptureGaps, Converter={StaticResource Shown}}" />
                     <ItemsControl ItemsSource="{Binding CaptureGaps}" />

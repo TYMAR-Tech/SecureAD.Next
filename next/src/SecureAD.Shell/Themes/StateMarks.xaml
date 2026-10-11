@@ -45,7 +45,6 @@
 
     <!-- Merges what it uses, so resolution does not depend on merge order elsewhere. -->
     <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="Brushes.xaml" />
         <ResourceDictionary Source="Type.xaml" />
         <ResourceDictionary Source="Spacing.xaml" />
     </ResourceDictionary.MergedDictionaries>
@@ -58,7 +57,7 @@
     <DataTemplate x:Key="EstablishedGoodMark">
         <Ellipse Width="{StaticResource StateMarkSize}"
                  Height="{StaticResource StateMarkSize}"
-                 Fill="{StaticResource EstablishedGoodBrush}"
+                 Fill="{DynamicResource EstablishedGoodBrush}"
                  ToolTip="Established"
                  AutomationProperties.Name="Established" />
     </DataTemplate>
@@ -66,7 +65,7 @@
     <!-- Established and bad: a filled triangle. Pointed, and the only mark with a vertex at the
          top, so it reads differently at a glance and at a squint. -->
     <DataTemplate x:Key="EstablishedBadMark">
-        <Path Fill="{StaticResource EstablishedBadBrush}"
+        <Path Fill="{DynamicResource EstablishedBadBrush}"
               Stretch="Uniform"
               Width="{StaticResource StateMarkSize}"
               Height="{StaticResource StateMarkSize}"
@@ -86,7 +85,7 @@
         <Ellipse Width="{StaticResource StateMarkSize}"
                  Height="{StaticResource StateMarkSize}"
                  Fill="Transparent"
-                 Stroke="{StaticResource NotEstablishedBrush}"
+                 Stroke="{DynamicResource NotEstablishedBrush}"
                  StrokeThickness="1.25"
                  ToolTip="Not established - the run did not measure this"
                  AutomationProperties.Name="Not established. The run did not measure this." />
@@ -95,7 +94,7 @@
     <!-- A fault the run reported: a cross. Two crossed strokes, sharing no silhouette with the
          other three. -->
     <DataTemplate x:Key="FaultMark">
-        <Path Stroke="{StaticResource FaultBrush}"
+        <Path Stroke="{DynamicResource FaultBrush}"
               StrokeThickness="1.75"
               StrokeStartLineCap="Round"
               StrokeEndLineCap="Round"
@@ -149,20 +148,20 @@
         <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
         <Setter Property="FontWeight" Value="{StaticResource BodyFontWeight}" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="Foreground" Value="{StaticResource NotEstablishedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource NotEstablishedBrush}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                          Value="{x:Static vm:FactState.EstablishedGood}">
-                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             </DataTrigger>
             <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                          Value="{x:Static vm:FactState.EstablishedBad}">
-                <Setter Property="Foreground" Value="{StaticResource EstablishedBadBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
                 <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
             </DataTrigger>
             <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                          Value="{x:Static vm:FactState.Fault}">
-                <Setter Property="Foreground" Value="{StaticResource FaultBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FaultBrush}" />
                 <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
             </DataTrigger>
         </Style.Triggers>

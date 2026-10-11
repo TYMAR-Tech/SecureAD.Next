@@ -42,27 +42,27 @@ public sealed class DelegationsRedesignTests
             table.SelectedItem = Assert.Single(model.Delegations);
             Layout(view, width, height);
             var row = model.SelectedDelegation!;
+            var original = Assert.Single(Descendants<Expander>(view));
+            Assert.Equal("Membership and original evidence", original.Header);
+            Assert.False(original.IsExpanded);
+            original.IsExpanded = true;
+            Layout(view, width, height);
             var member = Bound(view, "SelectedDelegation.MembershipDetail");
             Assert.Equal(row.MembershipDetail, member.Text);
             Assert.Contains("Membership chain", member.Text);
             Assert.Contains("Supporting captured membership links", member.Text);
             Assert.DoesNotContain("Original entry position", member.Text);
-            var original = Assert.Single(Descendants<Expander>(view));
-            Assert.Equal(DelegationText.OriginalEvidence, original.Header);
-            Assert.False(original.IsExpanded);
-            original.IsExpanded = true;
-            Layout(view, width, height);
             var evidence = Bound(view, "SelectedDelegation.OriginalDetail");
             Assert.Equal(row.OriginalDetail, evidence.Text);
             Assert.Equal(row.MembershipDetail + "\n" + row.OriginalDetail, row.Detail);
             Assert.Contains("Original entry position", evidence.Text);
             evidence.SelectAll();
             Assert.Equal(evidence.Text, evidence.SelectedText);
-            Assert.Equal(row.RecordedOn, Bound(view, "SelectedDelegation.RecordedOn").Text);
-            Assert.Equal(row.AppliesTo, Bound(view, "SelectedDelegation.AppliesTo").Text);
+            Assert.Contains(Descendants<TextBlock>(view), text => text.Text.Contains(row.RecordedOn, StringComparison.Ordinal));
+            Assert.Contains(Descendants<TextBlock>(view), text => text.Text.Contains(row.AppliesTo, StringComparison.Ordinal));
             Assert.True(table.ActualHeight >= 50);
             var panels = Descendants<FieldGrid>(view).ToArray();
-            Assert.True(panels.Length >= 2);
+            Assert.NotEmpty(panels);
             var first = panels[0];
             var secondPosition = first.Children[1].TransformToAncestor(first).Transform(new Point());
             Assert.Equal(width < 1000, secondPosition.Y > 0);
@@ -106,6 +106,10 @@ public sealed class DelegationsRedesignTests
         var view = DelegationsViewTests.View(model);
         DashboardRedesignTests.InWindow(view, 1300, 800, () =>
         {
+            var edit = Assert.Single(Descendants<Button>(view), button =>
+                ReferenceEquals(button.Command, model.EditDelegationSearchCommand));
+            ((IInvokeProvider)new ButtonAutomationPeer(edit).GetPattern(PatternInterface.Invoke)!).Invoke();
+            Layout(view, 1300, 800);
             var inherited = Assert.Single(Descendants<CheckBox>(view), box => Equals(box.Content, DelegationText.IncludeInherited));
             ((IToggleProvider)new CheckBoxAutomationPeer(inherited).GetPattern(PatternInterface.Toggle)!).Toggle();
             Layout(view, 1300, 800);

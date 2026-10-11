@@ -23,10 +23,10 @@
         <DockPanel>
             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                 <ComboBox ItemsSource="{Binding Views}" SelectedItem="{Binding SelectedView}" Width="180" HorizontalAlignment="Left" />
-                <TextBlock Text="{Binding Qualification}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,8,0,0" />
-                <TextBlock Text="{Binding PrimaryGroup}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,5,0,0" />
+                <TextBlock Text="{Binding Qualification}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0" />
+                <TextBlock Text="{Binding PrimaryGroup}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,5,0,0" />
                 <TextBox Text="{Binding Error,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource FaultBrush}" Visibility="{Binding HasError,Converter={StaticResource Shown}}" />
+                         Foreground="{DynamicResource FaultBrush}" Visibility="{Binding HasError,Converter={StaticResource Shown}}" />
                 <TextBlock Text="Reading captured member references..." Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
             </StackPanel>
             <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
@@ -58,7 +58,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
                 <StackPanel.Resources>
-                    <Style TargetType="TextBlock">
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
                         <Setter Property="TextWrapping" Value="Wrap" />
                         <Setter Property="Margin" Value="0,0,0,8" />
                     </Style>
@@ -68,20 +68,25 @@
                     <TextBlock Text="View this object's findings" TextWrapping="Wrap" />
                 </Button>
                 <StackPanel Visibility="{Binding HasRoutes,Converter={StaticResource Shown}}">
-                    <TextBlock Text="{Binding Routes.Classification,StringFormat='Tier 0 classification: {0}. Reachability is a separate result.'}" />
+                    <Border Background="{DynamicResource FaultSubtleBrush}"
+                            BorderBrush="{DynamicResource FaultBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                        <TextBlock Text="{Binding Routes.Classification,StringFormat='Tier 0 classification: {0}. Reachability is a separate saved result.'}"
+                                   TextWrapping="Wrap" />
+                    </Border>
                     <WrapPanel>
-                        <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,12,12" MaxWidth="380">
+                        <Border Style="{StaticResource Card}" Margin="0,0,12,12" Width="380">
                             <StackPanel>
                                 <TextBlock Text="Shortest supported distance" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Routes.Distance}" FontSize="24" />
-                                <TextBlock Text="{Binding Routes.Minimum}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding Routes.Minimum}" Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
                         </Border>
-                        <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,12" MaxWidth="380">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Width="380">
                             <StackPanel>
                                 <TextBlock Text="Best-supported route" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Routes.Best}" FontSize="20" />
-                                <TextBlock Text="{Binding Routes.Explanation}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                <TextBlock Text="{Binding Routes.Explanation}" Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
                         </Border>
                     </WrapPanel>
@@ -91,16 +96,16 @@
                     <ItemsControl ItemsSource="{Binding SelectedSteps}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,8">
+                                <Border BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,8">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+                                        <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="{Binding SelectedConditions}" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding SelectedConditions}" Foreground="{DynamicResource SecondaryTextBrush}" />
                     <Expander Margin="0,8,0,12">
                         <Expander.Header><TextBlock Text="Saved grade and coverage" TextWrapping="Wrap" /></Expander.Header>
                         <StackPanel Margin="8">
@@ -110,7 +115,13 @@
                             <TextBlock Text="Proof grades do not attest live access, a current access token or complete forest coverage." />
                         </StackPanel>
                     </Expander>
-                    <TextBlock Text="Existing assessed results" FontWeight="SemiBold" Margin="0,12,0,8" />
+                    <Border Style="{StaticResource Card}" Margin="0,4,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Existing assessed results" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Saved permission, requester, membership and ownership results remain separate from a completed Tier 0 route."
+                                       Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 <TextBlock x:Name="SavedPathResult" Text="{Binding Result}" FontWeight="SemiBold" />
                 <TextBlock x:Name="SavedPathSeverity" Text="{Binding Severity}" />
@@ -129,7 +140,7 @@
                 </ItemsControl>
                 <Expander x:Name="SavedPathRecordDetails" IsExpanded="False" Margin="0,8,0,0">
                     <Expander.Style>
-                        <Style TargetType="Expander">
+                        <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasRecordDetails}" Value="False">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -230,171 +241,348 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type vm:ControlEdgesSectionViewModel}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <DataTemplate.Resources>
+            <Style x:Key="ControlStatusChip" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="7,3" />
+                <Setter Property="Margin" Value="0,0,6,6" />
+            </Style>
+        </DataTemplate.Resources>
+        <ScrollViewer x:Name="ControlEdgesScroll"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
             <ScrollViewer.Resources>
-                <CollectionViewSource x:Key="GroupedControlRows" Source="{Binding Rows}">
+                <views:BindingProxy x:Key="ControlSection" Data="{Binding}" />
+                <CollectionViewSource x:Key="GroupedControlRows" Source="{Binding VisibleRows}">
                     <CollectionViewSource.GroupDescriptions>
                         <PropertyGroupDescription PropertyName="Group" />
                     </CollectionViewSource.GroupDescriptions>
                 </CollectionViewSource>
             </ScrollViewer.Resources>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{Binding SupportedScope}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <TextBlock Grid.Row="1" Text="{Binding Coverage}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <TextBlock Grid.Row="2" Text="{Binding Counts}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
-                    <CheckBox Content="Rights held by this principal" IsChecked="{Binding ByHolder}"
-                              IsEnabled="{Binding HasPrincipal}" Margin="0,0,16,0" />
-                    <CheckBox Content="Show expected edges" IsChecked="{Binding IncludeExpected}" Margin="0,0,16,0" />
-                    <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
-                    <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
-                </StackPanel>
-                <DataGrid Grid.Row="4" x:Name="ControlPermissions" ItemsSource="{Binding Source={StaticResource GroupedControlRows}}" SelectedItem="{Binding SelectedEdge}"
-                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MinHeight="120" MaxHeight="240">
-                    <DataGrid.GroupStyle>
-                        <GroupStyle>
-                            <GroupStyle.HeaderTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
+            <StackPanel>
+                <Border Background="{DynamicResource AttributeHeaderBackground}"
+                        BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="1" Margin="0,0,0,8">
+                    <DockPanel>
+                        <UniformGrid Rows="1" HorizontalAlignment="Left">
+                            <RadioButton Content="{Binding OnObjectQuestion}" GroupName="ControlDirection"
+                                         Style="{StaticResource BrowsingScopeSegment}"
+                                         IsChecked="{Binding ShowsEdgesOnObject,Mode=TwoWay}" />
+                            <RadioButton Content="{Binding HeldByObjectQuestion}" GroupName="ControlDirection"
+                                         Style="{StaticResource BrowsingScopeSegment}"
+                                         IsChecked="{Binding ShowsEdgesHeldByObject,Mode=TwoWay}"
+                                         IsEnabled="{Binding HasPrincipal}" />
+                        </UniformGrid>
+                    </DockPanel>
+                </Border>
+
+                <WrapPanel Margin="0,0,0,4">
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding AnalysisSummary}" /></Border>
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding CaptureSummary}" /></Border>
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding UnexpectedSummary}" /></Border>
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding UnknownSummary}" /></Border>
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding ExpectedSummary}" /></Border>
+                </WrapPanel>
+                <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="9" Margin="0,0,0,8"
+                        Visibility="{Binding HasCoverageWarning,Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding Coverage}" TextWrapping="Wrap" />
+                </Border>
+
+                <controls:AdaptiveDetailPanel x:Name="ControlDetailLayout"
+                                              Breakpoint="1050" Gap="12" Margin="0,0,0,10">
+                    <Border Style="{StaticResource Card}" Padding="0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Background="{DynamicResource AttributeHeaderBackground}"
+                                    Padding="10,8" CornerRadius="6,6,0,0">
+                                <DockPanel>
+                                    <CheckBox DockPanel.Dock="Right" Content="Show expected"
+                                              IsChecked="{Binding IncludeExpected}" Margin="12,0,0,0" />
+                                    <TextBox Text="{Binding EdgeSearchText,UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Search the displayed page by holder, target or capability" />
+                                </DockPanel>
+                            </Border>
+                            <WrapPanel DockPanel.Dock="Bottom" Margin="10">
+                                <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
+                                <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
+                            </WrapPanel>
+                            <TextBlock DockPanel.Dock="Bottom"
+                                       Text="No control edges are displayed on this page. This does not establish that no supported control exists."
+                                       Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="10"
+                                       Visibility="{Binding HasNoVisibleRows,Converter={StaticResource Shown}}" />
+                            <DataGrid x:Name="ControlPermissions"
+                                      ItemsSource="{Binding Source={StaticResource GroupedControlRows}}"
+                                      SelectedItem="{Binding SelectedEdge}"
+                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                      MinHeight="150" MaxHeight="320" BorderThickness="0">
+                                <DataGrid.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap"
+                                                           FontWeight="SemiBold" Margin="6,5">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Name}" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </DataGrid.GroupStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Holder" Binding="{Binding Holder}" Width="2*" MinWidth="170"
+                                                        Visibility="{Binding Data.ShowsHolderColumn,Source={StaticResource ControlSection},Converter={StaticResource Shown}}" />
+                                    <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="2*" MinWidth="170"
+                                                        Visibility="{Binding Data.ShowsTargetColumn,Source={StaticResource ControlSection},Converter={StaticResource Shown}}" />
+                                    <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="2*" MinWidth="190" />
+                                    <DataGridTextColumn Header="Support" Binding="{Binding Evaluation}" Width="Auto" MinWidth="105" />
+                                    <DataGridTextColumn Header="Expectedness" Binding="{Binding Expectedness}" Width="Auto" MinWidth="115" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="0">
+                        <StackPanel>
+                            <Border Background="{DynamicResource AttributeHeaderBackground}"
+                                    Padding="10,8" CornerRadius="6,6,0,0">
+                                <TextBlock Text="Why this control relationship exists" Style="{StaticResource RowTitle}" />
+                            </Border>
+                            <UniformGrid Rows="1">
+                                <RadioButton Content="Evidence" GroupName="ControlDetails"
+                                             Style="{StaticResource BrowsingScopeSegment}"
+                                             IsChecked="{Binding ShowsEvidenceDetails,Mode=TwoWay}" />
+                                <RadioButton Content="Requester check" GroupName="ControlDetails"
+                                             Style="{StaticResource BrowsingScopeSegment}"
+                                             IsChecked="{Binding ShowsRequesterDetails,Mode=TwoWay}" />
+                                <RadioButton Content="Membership" GroupName="ControlDetails"
+                                             Style="{StaticResource BrowsingScopeSegment}"
+                                             IsChecked="{Binding ShowsMembershipDetails,Mode=TwoWay}" />
+                            </UniformGrid>
+                            <Grid Margin="10">
+                                <StackPanel Visibility="{Binding ShowsEvidenceDetails,Converter={StaticResource Shown}}">
+                                    <TextBlock Text="Saved permission support" Style="{StaticResource RowTitle}" Margin="0,0,0,5" />
+                                    <Grid Margin="0,0,0,7" Visibility="{Binding HasSelectedEdge,Converter={StaticResource Shown}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Text="Holder" Style="{StaticResource Caption}" Margin="0,0,10,3" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedEdge.Holder}" TextWrapping="Wrap" />
+                                        <TextBlock Grid.Row="1" Text="Capability" Style="{StaticResource Caption}" Margin="0,0,10,3" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedEdge.Capability}" TextWrapping="Wrap" />
+                                        <TextBlock Grid.Row="2" Text="Support" Style="{StaticResource Caption}" Margin="0,0,10,3" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEdge.Evaluation}" />
+                                        <TextBlock Grid.Row="3" Text="Expectedness" Style="{StaticResource Caption}" Margin="0,0,10,0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedEdge.Expectedness}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding SelectedEdge.CountStatus}" Style="{StaticResource Caption}"
+                                               TextWrapping="Wrap" Margin="0,0,0,6" />
+                                    <TextBlock Text="Select a saved edge to inspect its original permission proof and preconditions."
+                                               Style="{StaticResource Caption}" TextWrapping="Wrap"
+                                               Visibility="{Binding HasNoSelectedEdge,Converter={StaticResource Shown}}" />
+                                    <Expander x:Name="ControlEvidence" Header="Original permission proof"
+                                              Visibility="{Binding HasSelectedEdge,Converter={StaticResource Shown}}">
+                                        <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                                            <TextBox Text="{Binding SelectedEdge.Evidence,Mode=OneWay}"
+                                                     Style="{StaticResource SelectableMessage}" />
+                                        </ScrollViewer>
+                                    </Expander>
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding ShowsRequesterDetails,Converter={StaticResource Shown}}">
+                                    <TextBlock Text="{Binding RequesterCoverage}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                    <DataGrid x:Name="RequesterAssessmentsTable"
+                                              ItemsSource="{Binding RequesterAssessments}"
+                                              SelectedItem="{Binding SelectedRequesterAssessment,Mode=TwoWay}"
+                                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                              MaxHeight="210">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Requester" Binding="{Binding Requester}" Width="*" MinWidth="150" />
+                                            <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" MinWidth="150" />
+                                            <DataGridTextColumn Header="Operation" Binding="{Binding Operation}" Width="Auto" />
+                                            <DataGridTextColumn Header="Authorized?" Binding="{Binding Authorization}" Width="Auto" />
+                                            <DataGridTextColumn Header="Own account?" Binding="{Binding OwnAccount}" Width="Auto" />
+                                            <DataGridTextColumn Header="Ready?" Binding="{Binding Readiness}" Width="Auto" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Expander x:Name="RequesterEvidence"
+                                              Header="{Binding SelectedRequesterAssessment.EvidenceHeader}" Margin="0,8,0,0">
+                                        <Expander.Style>
+                                            <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Name}" Value="">
+                                                    <DataTrigger Binding="{Binding SelectedRequesterAssessment}" Value="{x:Null}">
                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </DataTemplate>
-                            </GroupStyle.HeaderTemplate>
-                        </GroupStyle>
-                    </DataGrid.GroupStyle>
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Holder" Binding="{Binding Holder}" Width="*" />
-                        <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" />
-                        <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="2*" />
-                        <DataGridTextColumn Header="Established?" Binding="{Binding Evaluation}" Width="Auto" />
-                        <DataGridTextColumn Header="Expected?" Binding="{Binding Expectedness}" Width="Auto" />
-                        <DataGridTemplateColumn Width="2*">
-                            <DataGridTemplateColumn.HeaderTemplate>
-                                <DataTemplate><TextBlock Text="{Binding DataContext.CountHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate>
-                            </DataGridTemplateColumn.HeaderTemplate>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate><TextBlock Text="{Binding CountStatus}" TextWrapping="Wrap" /></DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-                <Expander Grid.Row="5" x:Name="ControlEvidence" Header="View control evidence and preconditions" Margin="0,8,0,0">
-                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                        <TextBox Text="{Binding SelectedEdge.Evidence, Mode=OneWay}" IsReadOnly="True"
-                                 TextWrapping="Wrap" BorderThickness="0" />
-                    </ScrollViewer>
-                </Expander>
-                <TextBlock Grid.Row="6" Text="{Binding RequesterCoverage}" TextWrapping="Wrap" Margin="0,8,0,4" />
-                <DataGrid Grid.Row="7" x:Name="RequesterAssessmentsTable" ItemsSource="{Binding RequesterAssessments}"
-                          SelectedItem="{Binding SelectedRequesterAssessment, Mode=TwoWay}" AutoGenerateColumns="False"
-                          IsReadOnly="True" CanUserAddRows="False" MaxHeight="180">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Requester" Binding="{Binding Requester}" Width="*" />
-                        <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" />
-                        <DataGridTextColumn Header="Operation" Binding="{Binding Operation}" Width="Auto" />
-                        <DataGridTextColumn Header="Authorized?" Binding="{Binding Authorization}" Width="Auto" />
-                        <DataGridTextColumn Header="Own account?" Binding="{Binding OwnAccount}" Width="Auto" />
-                        <DataGridTextColumn Header="Ready?" Binding="{Binding Readiness}" Width="Auto" />
-                        <DataGridTextColumn Header="Limits" Binding="{Binding Limits}" Width="2*" />
-                    </DataGrid.Columns>
-                </DataGrid>
-                <Expander Grid.Row="8" x:Name="RequesterEvidence"
-                          Header="{Binding SelectedRequesterAssessment.EvidenceHeader}" Margin="0,8,0,0">
-                    <Expander.Style>
-                        <Style TargetType="Expander">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedRequesterAssessment}" Value="{x:Null}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Expander.Style>
-                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
-                        <TextBox Text="{Binding SelectedRequesterAssessment.Evidence, Mode=OneWay}"
-                                 IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" />
-                    </ScrollViewer>
-                </Expander>
-                <StackPanel Grid.Row="9" DataContext="{Binding MemberPanel}" Margin="0,12,0,0">
-                    <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding Counting}" TextWrapping="Wrap" Margin="0,4,0,4" />
-                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
-                    <Expander x:Name="MemberEvidence" Header="{Binding RoutesHeading}" Margin="0,6,0,0">
-                        <StackPanel>
-                            <TextBlock Text="{Binding RoutesCaveat}" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding Showing}" TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                                <Button Content="{Binding FirstPageLabel}" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
-                                <Button Content="{Binding NextPageLabel}" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
-                            </StackPanel>
-                            <DataGrid x:Name="MemberPrincipals" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
-                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MaxHeight="220">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Binding="{Binding Member}" Width="*">
-                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.MemberHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Binding="{Binding IdentityStatus}" Width="*">
-                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.IdentityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Binding="{Binding Routes}" Width="2*">
-                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.RouteHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Binding="{Binding Applicability}" Width="2*">
-                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.ApplicabilityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Binding="{Binding AccountStatus}" Width="*">
-                                        <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.AccountHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                    </DataGridTextColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <TextBox Text="{Binding SelectedRow.Routes, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
-                            <TextBox Text="{Binding Evidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                                        </Expander.Style>
+                                        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+                                            <TextBox Text="{Binding SelectedRequesterAssessment.Evidence,Mode=OneWay}"
+                                                     Style="{StaticResource SelectableMessage}" />
+                                        </ScrollViewer>
+                                    </Expander>
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding ShowsMembershipDetails,Converter={StaticResource Shown}}">
+                                    <StackPanel DataContext="{Binding MemberPanel}">
+                                        <TextBlock Text="{Binding Heading}" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="{Binding Counting}" TextWrapping="Wrap" Margin="0,4,0,4" />
+                                        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                                        <Expander x:Name="MemberEvidence" Header="{Binding RoutesHeading}" Margin="0,6,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding RoutesCaveat}" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Showing}" TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,4">
+                                                    <Button Content="{Binding FirstPageLabel}" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
+                                                    <Button Content="{Binding NextPageLabel}" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
+                                                </StackPanel>
+                                                <DataGrid x:Name="MemberPrincipals"
+                                                          ItemsSource="{Binding Rows}"
+                                                          SelectedItem="{Binding SelectedRow,Mode=TwoWay}"
+                                                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                                          MaxHeight="220">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Header="Member" Binding="{Binding Member}" Width="*" />
+                                                        <DataGridTextColumn Header="Identity" Binding="{Binding IdentityStatus}" Width="*" />
+                                                        <DataGridTextColumn Header="Routes" Binding="{Binding Routes}" Width="2*" />
+                                                        <DataGridTextColumn Header="Applicability" Binding="{Binding Applicability}" Width="2*" />
+                                                        <DataGridTextColumn Header="Account" Binding="{Binding AccountStatus}" Width="*" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                                <TextBox Text="{Binding SelectedRow.Routes,Mode=OneWay}"
+                                                         Style="{StaticResource SelectableMessage}" MaxHeight="160"
+                                                         VerticalScrollBarVisibility="Auto" />
+                                                <TextBox Text="{Binding Evidence,Mode=OneWay}"
+                                                         Style="{StaticResource SelectableMessage}" MaxHeight="160"
+                                                         VerticalScrollBarVisibility="Auto" />
+                                            </StackPanel>
+                                        </Expander>
+                                        <TextBlock Text="{Binding Caveat}" Style="{StaticResource Caption}"
+                                                   TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <Expander x:Name="ThroughMembershipEvidence"
+                                              Header="{Binding ThroughMembershipHeading}" Margin="0,10,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ThroughMembershipCoverage}" TextWrapping="Wrap" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4">
+                                                <Button Content="{Binding MemberPanel.FirstPageLabel}"
+                                                        Command="{Binding FirstMembershipPermissionPageCommand}" Margin="0,0,8,0" />
+                                                <Button Content="{Binding MemberPanel.NextPageLabel}"
+                                                        Command="{Binding NextMembershipPermissionPageCommand}"
+                                                        IsEnabled="{Binding HasMoreThroughMembership}" />
+                                            </StackPanel>
+                                            <DataGrid x:Name="GroupPermissionReferences"
+                                                      ItemsSource="{Binding ThroughMembership}"
+                                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                                      MaxHeight="220">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Holder" Binding="{Binding HolderSid}" Width="*" />
+                                                    <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="2*" />
+                                                    <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="*" />
+                                                    <DataGridTextColumn Header="Membership" Binding="{Binding Membership}" Width="*" />
+                                                    <DataGridTextColumn Header="Applicability" Binding="{Binding ResourceApplicability}" Width="*" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <TextBlock Text="{Binding MemberPanel.Caveat}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
-                    </Expander>
-                    <TextBlock Text="{Binding Caveat}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                </StackPanel>
-                <Expander Grid.Row="10" x:Name="ThroughMembershipEvidence" Header="{Binding ThroughMembershipHeading}" Margin="0,12,0,0">
+                    </Border>
+                </controls:AdaptiveDetailPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:ObjectHelpSectionViewModel}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Border Background="{DynamicResource AttributeHeaderBackground}"
+                        BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
                     <StackPanel>
-                        <TextBlock Text="{Binding ThroughMembershipCoverage}" TextWrapping="Wrap" />
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                            <Button Content="{Binding MemberPanel.FirstPageLabel}" Command="{Binding FirstMembershipPermissionPageCommand}" Margin="0,0,8,0" />
-                            <Button Content="{Binding MemberPanel.NextPageLabel}" Command="{Binding NextMembershipPermissionPageCommand}" IsEnabled="{Binding HasMoreThroughMembership}" />
+                        <TextBlock Text="Help for object details" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="Definitions and calculation boundaries live here so the data tabs can stay focused on saved results."
+                                   Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <controls:AdaptiveDetailPanel Breakpoint="1000" Gap="10">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="What Control edges answers" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Who can control this object, and what can this principal control? Each row is a saved permission-derived relationship, not a completed operation."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
                         </StackPanel>
-                        <DataGrid x:Name="GroupPermissionReferences" ItemsSource="{Binding ThroughMembership}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MaxHeight="220">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Holder" Binding="{Binding HolderSid}" Width="*" />
-                                <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="2*" />
-                                <DataGridTextColumn Header="Capability" Binding="{Binding Capability}" Width="*" />
-                                <DataGridTextColumn Header="Membership" Binding="{Binding Membership}" Width="*" />
-                                <DataGridTextColumn Binding="{Binding ResourceApplicability}" Width="*">
-                                    <DataGridTextColumn.HeaderTemplate><DataTemplate><TextBlock Text="{Binding DataContext.MemberPanel.ApplicabilityHeader, RelativeSource={RelativeSource AncestorType=DataGrid}}" /></DataTemplate></DataGridTextColumn.HeaderTemplate>
-                                </DataGridTextColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                        <TextBlock Text="{Binding MemberPanel.Caveat}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Support" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Established means captured evidence supports the capability. Not established means the supported case was disproved. Unknown means evidence or analysis remains unresolved."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+                </controls:AdaptiveDetailPanel>
+                <controls:AdaptiveDetailPanel Breakpoint="1000" Gap="10" Margin="0,10,0,0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Expectedness" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Expected means the relationship matches a recognized administrative pattern. It does not mean safe. Unknown expectedness is separate from unknown permission support."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Evidence, requester and membership" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Permission proof, a concrete account's authorization check and stored group membership answer different questions. Membership alone does not prove requester authorization."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+                </controls:AdaptiveDetailPanel>
+                <controls:AdaptiveDetailPanel Breakpoint="1000" Gap="10" Margin="0,10,0,0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Coverage" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="Incomplete capture, unsupported analysis and processing that was not scheduled are shown separately. None of them means no control exists."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Not a Tier 0 path" Style="{StaticResource RowTitle}" />
+                            <TextBlock Text="A control edge is one building block. The separate Tier 0 tab shows whether supported relationships were chained to a qualified Tier 0 target."
+                                       TextWrapping="Wrap" Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Border>
+                </controls:AdaptiveDetailPanel>
+                <Expander Header="How control relationships are counted" Margin="0,10,0,0">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="One group-held permission remains one permission relationship. Member attribution, requester checks and later routes are supporting answers and are not added to that permission count."
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="Full-control summaries may group supporting permissions without deleting their original evidence."
+                                   Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,5,0,0" />
+                        <TextBlock Text="{Binding SupportedControlScope}" Style="{StaticResource Caption}"
+                                   TextWrapping="Wrap" Margin="0,5,0,0" />
                     </StackPanel>
                 </Expander>
-            </Grid>
+            </StackPanel>
         </ScrollViewer>
     </DataTemplate>
 
@@ -416,14 +604,14 @@
     <DataTemplate DataType="{x:Type vm:AttributeValueViewModel}">
         <Border x:Name="AttributeCardSurface" Style="{StaticResource AttributeCard}">
         <StackPanel>
-            <Border x:Name="AttributeCardHeader" Background="{StaticResource AttributeHeaderBackground}"
+            <Border x:Name="AttributeCardHeader" Background="{DynamicResource AttributeHeaderBackground}"
                     Padding="14,9" CornerRadius="7,7,0,0"
-                    BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="0,0,0,1">
+                    BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="0,0,0,1">
                 <TextBlock x:Name="AttributeTitle" Style="{StaticResource AttributeCardLabel}">
                     <Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding AttributeCaption, Mode=OneWay}"
                          FontFamily="{StaticResource IdentifierFontFamily}"
                          FontSize="{StaticResource CaptionFontSize}" FontWeight="Normal"
-                         Foreground="{StaticResource AttributeSourceBrush}" />
+                         Foreground="{DynamicResource AttributeSourceBrush}" />
                 </TextBlock>
             </Border>
 
@@ -439,7 +627,7 @@
                      Margin="0,1,0,0"
                      FontFamily="{StaticResource IdentifierFontFamily}"
                      FontSize="{StaticResource CaptionFontSize}"
-                     Foreground="{StaticResource SecondaryTextBrush}"
+                     Foreground="{DynamicResource SecondaryTextBrush}"
                      Visibility="{Binding IsInterpreted, Converter={StaticResource Shown}}" />
 
             <!-- What a reader must know before drawing a conclusion. lastLogonTimestamp is
@@ -451,11 +639,11 @@
                  old panel inflated every other one. -->
             <Border Margin="0,5,0,0" Padding="8,0,0,0"
                     BorderThickness="2,0,0,0"
-                    BorderBrush="{StaticResource NotEstablishedSubtleBrush}"
+                    BorderBrush="{DynamicResource NotEstablishedSubtleBrush}"
                     Visibility="{Binding HasCaveat, Converter={StaticResource Shown}}">
                 <TextBlock x:Name="AttributeCaveat" Text="{Binding Caveat}" TextWrapping="Wrap"
                            FontSize="{StaticResource CaptionFontSize}"
-                           Foreground="{StaticResource NotEstablishedBrush}" />
+                           Foreground="{DynamicResource NotEstablishedBrush}" />
             </Border>
             </StackPanel>
         </StackPanel>
@@ -480,110 +668,50 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
 
-            <!-- WHAT THIS RUN ESTABLISHED ABOUT THE OBJECT ITSELF, above what the directory says
-                 about it. The owner is here rather than among the permission entries because an
-                 owner is not an entry and outranks every one of them: an owner can rewrite the
-                 whole list.
+            <Border Background="{DynamicResource AttributeHeaderBackground}"
+                    BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,10">
+                <WrapPanel>
+                    <TextBlock Text="{Binding ObjectType}" FontWeight="SemiBold" Margin="0,0,18,0" />
+                    <TextBlock Text="{Binding EntryCount,StringFormat={}{0} captured permission entries}"
+                               Foreground="{DynamicResource AttributeSourceBrush}" />
+                </WrapPanel>
+            </Border>
 
-                 There is no count of dangerous permissions or of findings beside the entry count,
-                 and there will not be one until something computes them. A zero printed where
-                 nothing has looked is the failure docs/decisions/0002 exists to prevent, and it is
-                 the most reassuring thing this screen could put in front of an administrator. -->
-            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
-                <StackPanel>
-                    <ItemsControl ItemsPanel="{StaticResource FieldColumns}">
-                        <StackPanel Margin="0,0,24,0">
-                            <TextBlock Text="Object type" Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
-                            <TextBlock Text="{Binding ObjectType}" Margin="0,2,0,0"
-                                       Foreground="{StaticResource PrimaryTextBrush}" />
-                        </StackPanel>
-                        <StackPanel Margin="0,0,24,0">
-                            <TextBlock Text="Owner" Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
-                            <TextBlock Text="{Binding Owner}" Margin="0,2,0,0" TextWrapping="Wrap"
-                                       Foreground="{StaticResource PrimaryTextBrush}" />
-                            <!-- OWNER RIGHTS states a fact and withholds the conclusion. Microsoft
-                                 documents that this entry suppresses the owner's implicit Read
-                                 Permissions and Modify Permissions, and is silent on Modify Owner,
-                                 so the product does not report the owner as powerless. Collapsed
-                                 when absent rather than showing an empty line, because a blank
-                                 space beside an owner reads as an assurance nobody made. -->
-                            <TextBlock Text="{Binding OwnerQualification}" Margin="0,2,0,0" TextWrapping="Wrap"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
-                                       Visibility="{Binding HasOwnerQualification, Converter={StaticResource Shown}}" />
-                        </StackPanel>
-                    </ItemsControl>
-
-                    <StackPanel Margin="0,14,0,0">
-                        <TextBlock Text="Permission entries" Style="{StaticResource FieldLabel}" Width="Auto" HorizontalAlignment="Left" />
-                        <TextBlock Text="{Binding EntryCount}" Margin="0,2,0,0"
-                                   Foreground="{StaticResource PrimaryTextBrush}" />
+            <views:FieldGrid Columns="2" MinimumColumnWidth="440">
+                <Border Style="{StaticResource Card}" Margin="0,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="Identity &amp; ownership" Style="{StaticResource RowTitle}" Margin="0,0,0,8" />
+                        <TextBlock Text="Owner (nTSecurityDescriptor)" Style="{StaticResource FieldLabel}"
+                                   Width="Auto" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding Owner}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding OwnerQualification}" Style="{StaticResource Caption}"
+                                   Margin="0,3,0,10" TextWrapping="Wrap"
+                                   Visibility="{Binding HasOwnerQualification,Converter={StaticResource Shown}}" />
+                        <ContentControl Content="{Binding IdentityCards}" ContentTemplate="{StaticResource AttributeCards}" />
                     </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- WHAT THE DIRECTORY HOLDS, kept apart from the card above it, because those are
-                 statements this product makes and these are values it read. -->
-            <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Account state &amp; activity" Style="{StaticResource RowTitle}" Margin="0,0,0,8" />
+                        <ContentControl Content="{Binding ActivityCards}" ContentTemplate="{StaticResource AttributeCards}" />
+                        <StackPanel DataContext="{Binding Account}" Visibility="{Binding HasAccount,Converter={StaticResource Shown}}">
+                            <ItemsControl ItemsSource="{Binding Flags}">
+                                <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,4" /></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding UnwordedBits}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasUnwordedBits,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding Emptiness.Detail}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasEmptiness,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="The adminCount marker alone does not establish current AdminSDHolder protection."
+                                   Style="{StaticResource Caption}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </views:FieldGrid>
         </StackPanel>
         </ScrollViewer>
     </DataTemplate>
-
-    <!-- THE NUMBER STAYS BESIDE THE SENTENCES. userAccountControl decides whether an account can
-         log on, whether its password ever expires, and whether a service running as it can
-         impersonate whoever calls. A misread bit renders as a confident "The account is disabled"
-         and nothing on this screen would betray it, so the value it was read from is always in
-         reach and a set bit with no wording is named rather than quietly dropped.
-
-         NOTHING HERE IS A VERDICT. Kerberos pre-authentication being off is stated, not scored. -->
-    <DataTemplate DataType="{x:Type vm:AccountSectionViewModel}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel>
-            <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
-
-            <Border Style="{StaticResource Card}"
-                    Visibility="{Binding HasFlags, Converter={StaticResource Shown}}">
-                <StackPanel>
-                    <TextBlock Text="What the account state says" Style="{StaticResource RowTitle}"
-                               Margin="0,0,0,6" />
-                    <ItemsControl ItemsSource="{Binding Flags}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,4"
-                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-
-            <!-- A set bit this build has no word for. Said out loud, because a list of flags that
-                 looks complete and is not is worse than no list at all. -->
-            <Border Style="{StaticResource Card}" Margin="0,12,0,0"
-                    Visibility="{Binding HasUnwordedBits, Converter={StaticResource Shown}}">
-                <StackPanel>
-                    <TextBlock Text="Bits this build has no wording for"
-                               Style="{StaticResource RowTitle}" />
-                    <TextBox Text="{Binding UnwordedBits, Mode=OneWay}"
-                             Style="{StaticResource SelectableMessage}"
-                             FontFamily="{StaticResource IdentifierFontFamily}"
-                             Foreground="{StaticResource NotEstablishedBrush}" />
-                </StackPanel>
-            </Border>
-
-            <!-- Four silences, and only one of them is a fact about the account. -->
-            <Border Style="{StaticResource Card}" Margin="0,12,0,0"
-                    Visibility="{Binding HasEmptiness, Converter={StaticResource Shown}}">
-                <StackPanel>
-                    <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
-                    <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}"
-                             Style="{StaticResource SelectableMessage}"
-                             Foreground="{StaticResource SecondaryTextBrush}" />
-                </StackPanel>
-            </Border>
-        </StackPanel>
-        </ScrollViewer>
-    </DataTemplate>
-
 
     <!-- THE SEVEN SECTIONS THAT ARE THEIR ATTRIBUTES. One template, because they are one shape:
          every value the catalogue says the section is answerable for, and a plain statement when
@@ -603,7 +731,7 @@
                     <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
                     <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}"
                              Style="{StaticResource SelectableMessage}"
-                             Foreground="{StaticResource SecondaryTextBrush}" />
+                             Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -644,23 +772,23 @@
                                         <TextBox Text="{Binding DistinguishedName, Mode=OneWay}"
                                                  Style="{StaticResource SelectableMessage}"
                                                  FontFamily="{StaticResource IdentifierFontFamily}"
-                                                 Foreground="{StaticResource PrimaryTextBrush}" />
+                                                 Foreground="{DynamicResource PrimaryTextBrush}" />
                                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                             <TextBlock Text="stored as link "
                                                        FontSize="{StaticResource CaptionFontSize}"
-                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
                                             <TextBlock Text="{Binding Order}"
                                                        FontSize="{StaticResource CaptionFontSize}"
-                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
                                             <TextBlock Text=", options "
                                                        FontSize="{StaticResource CaptionFontSize}"
-                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
                                             <TextBlock Text="{Binding Options}"
                                                        FontSize="{StaticResource CaptionFontSize}"
-                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
                                             <TextBlock Text=" (not worded by this build)"
                                                        FontSize="{StaticResource CaptionFontSize}"
-                                                       Foreground="{StaticResource NotEstablishedBrush}" />
+                                                       Foreground="{DynamicResource NotEstablishedBrush}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
@@ -680,7 +808,7 @@
                             <DataTemplate>
                                 <TextBox Text="{Binding Mode=OneWay}"
                                          Style="{StaticResource SelectableMessage}"
-                                         Foreground="{StaticResource FaultBrush}" />
+                                         Foreground="{DynamicResource FaultBrush}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -693,7 +821,7 @@
                     <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
                     <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}"
                              Style="{StaticResource SelectableMessage}"
-                             Foreground="{StaticResource SecondaryTextBrush}" />
+                             Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
             </Border>
 
@@ -726,22 +854,6 @@
                  make the object look fully assessed. -->
             <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,12">
                 <DockPanel>
-
-                    <!-- THE TOGGLE IS THE OPERATOR ASKING.
-
-                         Off by default, and 0074 is void if that ever changes: a colour an
-                         administrator reads as a security verdict, set by nothing, is the worst
-                         thing this screen can do. The label admits the classification is an
-                         opinion rather than a result, and the tooltip promises what it will not
-                         do - marking never hides an entry. -->
-                    <CheckBox DockPanel.Dock="Right"
-                              VerticalAlignment="Center"
-                              Margin="16,0,0,0"
-                              Content="Highlight risky permissions"
-                              Foreground="{StaticResource PrimaryTextBrush}"
-                              ToolTip="{Binding HighlightHelp}"
-                              IsChecked="{Binding HighlightRiskyPermissions, Mode=TwoWay}" />
-
                     <ItemsControl ItemsSource="{Binding Counters}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -755,13 +867,13 @@
                                                Style="{StaticResource SectionTitle}" />
                                     <TextBlock Text="{Binding Label}"
                                                FontSize="{StaticResource CaptionFontSize}"
-                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                               Foreground="{DynamicResource SecondaryTextBrush}" />
 
                                     <!-- The dash alone is a thing to guess at, so the absence is
                                          also stated in words. -->
                                     <TextBlock Text="{Binding Status}"
                                                FontSize="{StaticResource CaptionFontSize}"
-                                               Foreground="{StaticResource NotEstablishedBrush}"
+                                               Foreground="{DynamicResource NotEstablishedBrush}"
                                                Visibility="{Binding IsNotComputed, Converter={StaticResource Shown}}" />
                                 </StackPanel>
                             </DataTemplate>
@@ -781,7 +893,7 @@
                     <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
                     <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}"
                              Style="{StaticResource SelectableMessage}"
-                             Foreground="{StaticResource SecondaryTextBrush}" />
+                             Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
             </Border>
 
@@ -795,7 +907,7 @@
                             <StackPanel Margin="0,0,0,8">
                                 <TextBlock Text="{Binding Title}" Style="{StaticResource RowTitle}" />
                                 <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -812,11 +924,31 @@
                             <DataTemplate>
                                 <TextBox Text="{Binding Mode=OneWay}"
                                          Style="{StaticResource SelectableMessage}"
-                                         Foreground="{StaticResource FaultBrush}" />
+                                         Foreground="{DynamicResource FaultBrush}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Top" Background="{DynamicResource AttributeHeaderBackground}"
+                    BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1"
+                    CornerRadius="6" Padding="10" Margin="0,0,0,10">
+                <DockPanel>
+                    <CheckBox DockPanel.Dock="Right" Content="Highlight saved risky readings"
+                              IsChecked="{Binding HighlightRiskyPermissions,Mode=TwoWay}"
+                              ToolTip="{Binding HighlightHelp}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                    <StackPanel DockPanel.Dock="Right" Width="150" Margin="10,0,0,0">
+                        <TextBlock Text="Type" Style="{StaticResource Caption}" />
+                        <ComboBox ItemsSource="{Binding PermissionTypeChoices}"
+                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                  SelectedValue="{Binding PermissionTypeFilter}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Search principal or permission" Style="{StaticResource Caption}" />
+                        <TextBox Text="{Binding PermissionSearchText,UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </DockPanel>
             </Border>
 
             <!-- PRINCIPAL ON THE LEFT, THEIR ENTRIES ON THE RIGHT.
@@ -832,7 +964,9 @@
                  EACH PRINCIPAL CARRIES ROUGHLY WHAT THEY HOLD, so the column answers the question
                  at a glance and the pane on the right answers it exactly. A list of bare names
                  makes an operator click through twenty principals to find the one that matters. -->
-            <Grid>
+            <TabControl>
+                <TabItem Header="A - Principal reading pane">
+            <Grid Margin="0,8,0,0">
                 <!-- THE DIVIDER MOVES. The principal column was fixed at 340px, chosen for a
                      laptop, and an operator on a wide screen could not reclaim it for the
                      entry table where the long text actually is. MinWidth on both sides so
@@ -845,13 +979,13 @@
                 </Grid.ColumnDefinitions>
 
                 <ListBox Grid.Column="0"
-                         ItemsSource="{Binding Principals}"
+                         ItemsSource="{Binding VisiblePrincipals}"
                          SelectedItem="{Binding SelectedPrincipal, Mode=TwoWay}"
                          HorizontalContentAlignment="Stretch"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                         Visibility="{Binding HasPrincipals, Converter={StaticResource Shown}}">
+                         Visibility="{Binding HasVisiblePrincipals, Converter={StaticResource Shown}}">
                     <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                             <Setter Property="Padding" Value="8,6" />
                         </Style>
                     </ListBox.ItemContainerStyle>
@@ -869,17 +1003,17 @@
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="{Binding Domain}"
                                                FontSize="{StaticResource CaptionFontSize}"
-                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
                                                TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding RightsSummary}" TextWrapping="Wrap"
+                                    <TextBlock Text="{Binding VisibleRightsSummary}" TextWrapping="Wrap"
                                                Margin="0,2,0,0"
-                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                               Foreground="{DynamicResource SecondaryTextBrush}" />
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="1" Text="{Binding EntryCount}"
+                                <TextBlock Grid.Column="1" Text="{Binding VisibleEntryCount}"
                                            Margin="8,0,0,0" VerticalAlignment="Top"
                                            FontSize="{StaticResource CaptionFontSize}"
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
+                                           Foreground="{DynamicResource SecondaryTextBrush}" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -898,7 +1032,7 @@
                                    Style="{StaticResource SectionTitle}"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Domain}"
-                                   Foreground="{StaticResource SecondaryTextBrush}" />
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
                     </StackPanel>
 
                     <!-- Why a principal has no name. The predecessor showed a bare
@@ -906,7 +1040,7 @@
                          orphaned identifier. -->
                     <TextBlock DockPanel.Dock="Top" Text="{Binding Unresolved}" TextWrapping="Wrap"
                                Margin="0,0,0,8"
-                               Foreground="{StaticResource NotEstablishedBrush}"
+                               Foreground="{DynamicResource NotEstablishedBrush}"
                                Visibility="{Binding IsUnresolved, Converter={StaticResource Shown}}" />
 
                     <!-- COLUMNS RESIZE AND REORDER. What matters on this table differs by
@@ -917,7 +1051,7 @@
 
                          Rows size to their content because Right and Scope both wrap, and a
                          fixed row height clips a wrapped cell without any sign it did. -->
-                    <DataGrid ItemsSource="{Binding Entries}"
+                    <DataGrid ItemsSource="{Binding VisibleEntries}"
                               ColumnHeaderStyle="{StaticResource TableColumnHeader}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
@@ -1004,19 +1138,19 @@
                                                                    ToolTip="{Binding RiskReason}"
                                                                    Visibility="{Binding IsMarked, Converter={StaticResource Shown}}">
                                                             <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding Mark}"
                                                                                      Value="Dangerous">
                                                                             <Setter Property="Text" Value="Takeover" />
                                                                             <Setter Property="Foreground"
-                                                                                    Value="{StaticResource CriticalFindingBrush}" />
+                                                                                    Value="{DynamicResource CriticalFindingBrush}" />
                                                                         </DataTrigger>
                                                                         <DataTrigger Binding="{Binding Mark}"
                                                                                      Value="DangerousInCombination">
                                                                             <Setter Property="Text" Value="Component" />
                                                                             <Setter Property="Foreground"
-                                                                                    Value="{StaticResource EstablishedBadBrush}" />
+                                                                                    Value="{DynamicResource EstablishedBadBrush}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -1028,12 +1162,12 @@
                                                                     ToolTip="{Binding ClassificationReason}"
                                                                    TextWrapping="Wrap">
                                                             <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding State}"
                                                                                      Value="NotEstablished">
                                                                             <Setter Property="Foreground"
-                                                                                    Value="{StaticResource NotEstablishedBrush}" />
+                                                                                    Value="{DynamicResource NotEstablishedBrush}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -1058,6 +1192,111 @@
                     </DataGrid>
                 </DockPanel>
             </Grid>
+                </TabItem>
+                <TabItem Header="B - Expandable principal groups">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  Margin="0,8,0,0">
+                        <ItemsControl ItemsSource="{Binding VisiblePrincipals}"
+                                      Visibility="{Binding HasVisiblePrincipals,Converter={StaticResource Shown}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PrincipalGroupViewModel}">
+                                    <Expander Margin="0,0,0,8"
+                                              Background="{DynamicResource SurfaceRaisedBackground}"
+                                              BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                                              BorderThickness="1">
+                                        <Expander.Header>
+                                            <Grid Margin="8,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Principal}" Style="{StaticResource RowTitle}"
+                                                               TextWrapping="Wrap" />
+                                                    <WrapPanel>
+                                                        <TextBlock Text="{Binding Domain}" Style="{StaticResource Caption}"
+                                                                   Margin="0,0,12,0" />
+                                                        <TextBlock Text="{Binding VisibleRightsSummary}" Style="{StaticResource Caption}" />
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding VisibleEntryCount}" Style="{StaticResource Caption}"
+                                                           Margin="12,0,0,0" VerticalAlignment="Top" />
+                                            </Grid>
+                                        </Expander.Header>
+                                        <StackPanel Margin="10,4,10,10">
+                                            <TextBlock Text="{Binding Unresolved}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                                       Foreground="{DynamicResource NotEstablishedBrush}"
+                                                       Visibility="{Binding IsUnresolved,Converter={StaticResource Shown}}" />
+                                            <DataGrid ItemsSource="{Binding VisibleEntries}"
+                                                      ColumnHeaderStyle="{StaticResource TableColumnHeader}"
+                                                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                                                      GridLinesVisibility="Horizontal" CanUserResizeColumns="True"
+                                                      CanUserReorderColumns="True" CanUserSortColumns="True"
+                                                      RowHeight="NaN" HorizontalScrollBarVisibility="Auto" MaxHeight="360">
+                                                <DataGrid.Columns>
+                                                    <DataGridTemplateColumn Header="Right" Width="*" MinWidth="280">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <ItemsControl ItemsSource="{Binding Rights}" Margin="0,2">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Grid>
+                                                                                <Grid.ColumnDefinitions>
+                                                                                    <ColumnDefinition Width="Auto" />
+                                                                                    <ColumnDefinition Width="*" />
+                                                                                </Grid.ColumnDefinitions>
+                                                                                <TextBlock Grid.Column="0" FontWeight="SemiBold"
+                                                                                           Margin="0,0,10,0"
+                                                                                           ToolTip="{Binding RiskReason}"
+                                                                                           Visibility="{Binding IsMarked,Converter={StaticResource Shown}}">
+                                                                                    <TextBlock.Style>
+                                                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding Mark}" Value="Dangerous">
+                                                                                                    <Setter Property="Text" Value="Takeover" />
+                                                                                                    <Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" />
+                                                                                                </DataTrigger>
+                                                                                                <DataTrigger Binding="{Binding Mark}" Value="DangerousInCombination">
+                                                                                                    <Setter Property="Text" Value="Component" />
+                                                                                                    <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBlock.Style>
+                                                                                </TextBlock>
+                                                                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                                                           ToolTip="{Binding ClassificationReason}"
+                                                                                           TextWrapping="Wrap">
+                                                                                    <TextBlock.Style>
+                                                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding State}" Value="NotEstablished">
+                                                                                                    <Setter Property="Foreground" Value="{DynamicResource NotEstablishedBrush}" />
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBlock.Style>
+                                                                                </TextBlock>
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="Auto" />
+                                                    <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" Width="SizeToCells" MinWidth="140" />
+                                                    <DataGridTextColumn Header="Inheritance" Binding="{Binding Inheritance}" Width="Auto" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </StackPanel>
+                                    </Expander>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
         </DockPanel>
     </DataTemplate>
 
@@ -1068,7 +1307,7 @@
                            Style="{StaticResource RowTitle}" />
                 <TextBox Text="{Binding DescriptorState, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource SecondaryTextBrush}" />
+                         Foreground="{DynamicResource SecondaryTextBrush}" />
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -1088,7 +1327,7 @@
                     Visibility="{Binding HasVerdict, Converter={StaticResource Shown}}">
                 <TextBox Text="{Binding Verdict, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource SecondaryTextBrush}" />
+                         Foreground="{DynamicResource SecondaryTextBrush}" />
             </Border>
 
             <ItemsControl ItemsSource="{Binding Findings}"
@@ -1099,7 +1338,7 @@
                             <StackPanel>
                                 <TextBlock Style="{StaticResource RowTitle}">
                                     <Run Text="{Binding Rule, Mode=OneWay}" />
-                                    <Run Text=" — " Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <Run Text=" — " Foreground="{DynamicResource SecondaryTextBrush}" />
                                     <Run Text="{Binding Severity, Mode=OneWay}" />
                                 </TextBlock>
 
@@ -1111,7 +1350,7 @@
                                      weaker claim than one resting on a complete read, and it is
                                      said here rather than left for the operator to assume. -->
                                 <TextBlock Text="{Binding Coverage}"
-                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
                                            Margin="0,4,0,0" />
                                 <Expander Header="View membership evidence" Margin="0,8,0,0"
                                           Visibility="{Binding HasMembershipEvidence, Converter={StaticResource Shown}}">
@@ -1134,14 +1373,14 @@
     <DataTemplate DataType="{x:Type vm:OtherValuesSectionViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,0,0,12"
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,12"
                            Text="Populated attributes outside this object's standard sections. These are recorded values, not additional security conclusions." />
                 <ContentControl Content="{Binding Cards}" ContentTemplate="{StaticResource AttributeCards}" />
                 <Border Style="{StaticResource Card}" Visibility="{Binding HasEmptiness, Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="{Binding Emptiness.Title}" Style="{StaticResource RowTitle}" />
                         <TextBox Text="{Binding Emptiness.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                                 Foreground="{StaticResource SecondaryTextBrush}" />
+                                 Foreground="{DynamicResource SecondaryTextBrush}" />
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -1154,7 +1393,7 @@
     <DataTemplate DataType="{x:Type vm:NotBuiltSectionViewModel}">
         <Border Style="{StaticResource Card}">
             <TextBlock Text="{Binding Detail}" TextWrapping="Wrap"
-                       Foreground="{StaticResource NotEstablishedBrush}" />
+                       Foreground="{DynamicResource NotEstablishedBrush}" />
         </Border>
     </DataTemplate>
 

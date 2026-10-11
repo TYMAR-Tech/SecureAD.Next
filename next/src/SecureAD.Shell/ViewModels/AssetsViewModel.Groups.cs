@@ -152,7 +152,7 @@ internal sealed partial class AssetsViewModel
     {
         if (_resetting) return;
         ResetGroupPaging();
-        if (ShowsGroups && _active) { Opened = null; LoadVisible(); }
+        if (ShowsGroups && _active) LoadVisible();
         AnnounceGroups();
     }
 

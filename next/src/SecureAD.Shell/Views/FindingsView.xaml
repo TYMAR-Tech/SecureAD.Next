@@ -59,7 +59,7 @@
                            Margin="0,0,0,4" />
                 <TextBox Text="{Binding FindingsRefusal.Detail, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource SecondaryTextBrush}" />
+                         Foreground="{DynamicResource SecondaryTextBrush}" />
             </StackPanel>
         </Border>
 
@@ -70,7 +70,7 @@
              facts, and only the first is about the forest. -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding NothingFoundReason}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Margin="0,0,0,8"
                    Visibility="{Binding NothingWasFound, Converter={StaticResource Shown}}" />
 
@@ -78,7 +78,7 @@
              every match is a second query over the same rows, paid for on every page. -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
             <TextBlock Text="{Binding FindingsPageNumber, StringFormat=Page {0}}"
-                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
                        VerticalAlignment="Center" Margin="0,0,12,0" />
             <Button Content="Previous" Command="{Binding PreviousFindingsCommand}"
                     IsEnabled="{Binding HasEarlierFindings}" Margin="0,0,8,0" />
@@ -89,7 +89,7 @@
             <TextBlock Text="Double-click a finding to open the object it is about"
                        Margin="24,0,0,0"
                        VerticalAlignment="Center"
-                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
                        Visibility="{Binding HasFindings, Converter={StaticResource Shown}}" />
         </StackPanel>
 

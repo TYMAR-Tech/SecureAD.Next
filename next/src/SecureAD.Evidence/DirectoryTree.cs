@@ -136,6 +136,16 @@ public sealed record TreeGap(string DistinguishedName, TreeGapReason Reason, str
 public sealed record DirectoryTree(IReadOnlyList<TreeNode> Roots, IReadOnlyList<TreeGap> Gaps)
 {
     /// <summary>
+    /// The captured domain naming context that the sealed bundle names as the forest root.
+    /// </summary>
+    /// <remarks>
+    /// Bundle readers always supply this. It remains nullable because synthetic readers can
+    /// construct a tree without bundle metadata; callers must never infer a production forest
+    /// root from display order when this value is present.
+    /// </remarks>
+    public string? ForestRootDistinguishedName { get; init; }
+
+    /// <summary>
     /// Whether the tree shows every branch the run declared. False means part of the directory is
     /// missing from it, and <see cref="Gaps"/> says which part and why.
     /// </summary>

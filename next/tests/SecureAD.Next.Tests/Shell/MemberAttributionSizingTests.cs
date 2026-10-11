@@ -31,6 +31,7 @@ public sealed partial class ControlEdgeSizingTests
 
     private static void VerifyMemberLayout(ControlEdgesSectionViewModel vm, int width, int height, bool unbind)
     {
+        vm.ShowsMembershipDetails = true;
         var pane = Pane(vm);
         Layout(pane, width, height);
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "MemberEvidence"));

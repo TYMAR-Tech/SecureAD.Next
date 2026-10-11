@@ -51,6 +51,89 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Owner-requested screen-by-screen UI mockup review, 2026-10-10.**
+The owner paused remaining-rule work to review thirteen supplied screenshots, discussing each
+before producing a final consolidated visual mockup in chat and before any application changes.
+He is considering a separate object-details window opened by double-click; this is a design
+proposal, not approval of pop-out implementation or a change to saved-result behavior.
+For the final mockup, he approved double-click opening a movable, resizable, non-blocking
+object-details window while the main screen remains usable.
+For forest inventory, he approved retaining the summary-card, per-domain-table and separate
+coverage-panel arrangement, improving its compactness and charcoal contrast rather than
+rearranging the dashboard or adding a security-health score.
+For Rules, he approved showing the saved assessment status in every list row, alongside
+severity and finding count, rather than showing status only in the selected-rule panel.
+For the permissions comparison, he requested both alternatives as selectable tabs in the
+review mockup: a principal-list reading pane and expandable principal groups with entry details
+below, so he can obtain customer feedback before choosing.
+Use fictional data and a self-contained shareable preview; this does not approve permanent
+duplicate application layouts or WPF implementation.
+For Groups, he approved a collapsible scope tree while the selected scope remains visible
+above the results when the tree is hidden.
+For the Tier 0 overview, he approved initially showing classified Tier 0 objects and other
+supported routes, with unresolved counts still visible and an obvious All identities view.
+This is a preview default-filter choice, not permission to hide incomplete evidence, claim
+unresolved objects safe or change classification/reachability meanings.
+For LAPS, he approved the matching compact table-first layout with a collapsible scope tree
+and the domain visible in each computer row.
+For Delegations, he approved collapsing the search controls into a compact summary once
+results are shown, with an Edit search action to reopen them.
+For object details, he approved combining Overview and Account using screenshot 12's
+two-panel grouping, with compact spacing and all captured attributes still accessible elsewhere.
+Retain friendly labels with inline technical attribute names and recorded-time qualifications.
+For Control edges, he approved details beside the list on wide windows and below it on
+smaller windows, with permission proof, concrete requester checks and stored membership
+evidence remaining distinct.
+Retain the compact, high-contrast charcoal direction and the existing product/evidence boundaries,
+and keep physical monitor checks outstanding unless actually performed.
+This request authorizes review and offline visual mockup creation only, not WPF edits, rule
+changes, live access, performance measurements or a new commit/push.
+After reviewing the screens and interactive charcoal preview, the owner explicitly requested
+starting a UI branch and implementing this direction, with later fine tuning rather than more
+mockup review as a prerequisite.
+The approved application slice includes compact high-contrast charcoal styling, non-blocking
+movable/resizable object details with run/object context, the combined overview/account grouping,
+both shared-evidence permission presentations for customer comparison, compact Rules status,
+collapsible Groups/LAPS scope trees, supported-first Tier 0 browsing, collapsed Delegations search
+and width-adaptive control details.
+Preserve all saved evidence, classifications, counts, requester distinctions, generation checks,
+selected-only loading and explicit refusals; this is presentation approval, not new analysis,
+production access, performance measurements, evidence migration or commit/push.
+The implementation branch is `ui-charcoal-object-windows`, based on the integrated checkpoint;
+the earlier preview files and owner changes remain intact.
+After reviewing the first rebuilt lab screens, the owner clarified that each approved preview is
+the application layout target, not a feature checklist to apply while retaining the old screen
+shape. Correct the twelve reviewed layouts against the consolidated interactive preview before
+calling the UI implementation complete; this does not relax evidence, paging, completeness or
+generation-binding requirements.
+The owner approved Dark as the default named theme and a live Dark/Light choice under Settings,
+remembered per machine. Both themes share every layout, control template and semantic brush name;
+only complete semantic color palettes differ, and changing appearance does not change evidence,
+analysis or saved results.
+On the Objects view, the owner removed the repeated Objects heading, the full-width Scope strip and
+the scope-tree hide action: the selected Objects tab already names the view, and the selected
+directory is already stated beneath the tree. The directory tree remains visible on Objects while
+its rows remain a compact entry point to double-click details; Groups and LAPS retain their
+separate collapsible-tree behavior.
+When a run is selected, Assets automatically selects the captured forest-root domain and loads its
+first page so the initial grids are answers rather than blank questions. The default is bound to
+the forest identity stored in the sealed bundle, visibly selects that tree row, and must never be
+chosen from alphabetical order, the Configuration or Schema partitions, or an arbitrary child
+domain.
+The Rules view has no repeated run-summary header: the selected Rules tab already names the screen,
+and the rule-results surface is the information the operator came to read. Its severity filter
+visibly defaults to All whenever a run loads so rebuilding the available severity choices cannot
+turn an unfiltered result set into an apparently empty one.
+Object details use one compact identity: `Name (Type)` followed by the full distinguished name, with
+the separate domain and selected-run path/timestamp removed. The selected object section uses the
+accent treatment, no section repeats its own title in a full-width card, and every object has a
+Help section for definitions, calculation boundaries and counting explanations.
+For Control edges, the data section asks `Who can control Name?` or `What can Name control?`, shows
+compact saved-analysis, capture and count status, and explains the selected relationship without
+repeating the question as a list heading. Permission evidence, concrete requester checks and stored
+membership remain separate; detailed counting and general limitations live in Help, while actual
+incomplete or mismatched saved coverage remains visible on the data section.
+
 **Owner-authorized checkpoint integration and lab testing, 2026-10-10.**
 The owner requested committing all current work, merging `rules-delivery` into `main` and pushing
 both branches, including the completed Stage 6/7 preparation changes, corrected Enatel scope,

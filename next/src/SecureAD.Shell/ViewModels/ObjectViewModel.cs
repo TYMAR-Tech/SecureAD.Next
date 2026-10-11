@@ -91,12 +91,25 @@ internal sealed partial class ObjectViewModel : ObservableObject
 
     /// <summary>The object's name.</summary>
     public string Name => DnHelper.ExtractFirstRdn(DistinguishedName);
+    public string Heading => $"{Name} ({ObjectTypeLabel})";
 
     /// <summary>Its full name, for an operator who needs to be certain which object this is.</summary>
     public string DistinguishedName { get; }
 
     /// <summary>What kind of object it is.</summary>
     public string ObjectType { get; }
+    private string ObjectTypeLabel => ObjectType switch
+    {
+        "domainDNS" => "Domain",
+        "organizationalUnit" => "Organizational unit",
+        "groupPolicyContainer" => "Group policy",
+        "msDS-PasswordSettings" => "Password settings",
+        "msWMI-Som" => "WMI filter",
+        _ => string.IsNullOrEmpty(ObjectType)
+            ? "Object"
+            : char.ToUpperInvariant(ObjectType[0]) + ObjectType[1..],
+    };
+    public Guid? ObjectGuid { get; init; }
 
     /// <summary>The sections this object's class has, in reading order.</summary>
     public ObservableCollection<ObjectSectionViewModel> Sections { get; } = [];
@@ -128,17 +141,14 @@ internal sealed partial class ObjectViewModel : ObservableObject
     /// Builds the view model for one section, or a placeholder saying it is not built.
     /// </summary>
     /// <remarks>
-    /// Overview and Account are types of their own because each says something beyond its values:
-    /// the overview carries who owns the object, and the account section words a bitfield. The
-    /// seven built from attributes alone share one type, because they are one behaviour and seven
-    /// copies of it would drift.
+    /// Overview embeds the account wording beside identity because it says something beyond its
+    /// values. The sections built from attributes alone share one type, because they are one
+    /// behaviour and separate copies would drift.
     /// </remarks>
     internal static ObjectSectionViewModel BuildAttributes(
         ObjectSectionDefinition definition, ObjectAttributes attributes, string? objectClass) =>
         definition.Key switch
         {
-            ObjectSectionCatalog.Account =>
-                new AccountSectionViewModel(definition, attributes),
             ObjectSectionCatalog.PolicyLinks =>
                 new PolicyLinksSectionViewModel(definition, attributes),
             ObjectSectionCatalog.Membership

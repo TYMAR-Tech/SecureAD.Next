@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureAD - Control edges tab review</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 14px/1.4 "Segoe UI", Arial, sans-serif;
+      --canvas: #151b24;
+      --surface: #202936;
+      --field: #161e2a;
+      --subtle: #283444;
+      --heading: #303f54;
+      --ink: #f1f5fc;
+      --muted: #c1cede;
+      --line: #65778f;
+      --accent: #b7d5ff;
+      --accent-ink: #11243e;
+      --selected: #344e73;
+      --warning: #ffe1a3;
+      --warning-bg: #3e3320;
+      --good: #b0e6d4;
+      --good-bg: #223b36;
+      background: #10151d;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 760px; background: #10151d; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .review-bar {
+      min-height: 44px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #10151d;
+      border-bottom: 1px solid var(--line);
+    }
+    .review-bar strong { display: block; }
+    .review-bar span { color: var(--muted); font-size: 12px; }
+    .review-actions { margin-left: auto; display: flex; gap: 6px; }
+    .review-actions button,
+    .action,
+    .pager button {
+      min-height: 30px;
+      padding: 4px 10px;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .review-actions button[aria-pressed="true"] {
+      color: var(--accent-ink);
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 650;
+    }
+    .frame {
+      width: 100%;
+      height: calc(100dvh - 44px);
+      min-height: 620px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--canvas);
+    }
+    .frame.laptop { width: 1180px; height: 760px; margin: 10px auto; border: 1px solid var(--line); border-radius: 6px; }
+    .object-header {
+      flex: 0 0 auto;
+      padding: 10px 12px 0;
+      background: var(--subtle);
+      border-bottom: 1px solid var(--line);
+    }
+    .identity-row { display: flex; align-items: flex-start; gap: 12px; }
+    .identity { min-width: 0; }
+    .identity h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+    .identity h1 span { color: var(--muted); font-size: 16px; font-weight: 500; }
+    .dn {
+      margin: 5px 0 9px;
+      color: var(--ink);
+      font: 600 13px/1.35 Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+    .object-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+    .object-tabs {
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      gap: 2px;
+      margin: 0 -12px;
+      padding: 0 10px;
+      background: #1b2532;
+      border-top: 1px solid #4b5b70;
+    }
+    .object-tabs button {
+      min-height: 39px;
+      padding: 6px 11px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+    .object-tabs button:hover { color: var(--ink); background: #28384c; }
+    .object-tabs button.active {
+      color: var(--accent-ink);
+      background: var(--accent);
+      border-bottom-color: #ffffff;
+      font-weight: 700;
+      box-shadow: inset 0 0 0 1px #d8e9ff;
+    }
+    .object-tabs button.help-tab { margin-left: auto; color: var(--accent); }
+    .object-tabs button.help-tab.active { color: var(--accent-ink); }
+    main {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 10px;
+    }
+    .control-view { min-height: 100%; display: flex; flex-direction: column; gap: 9px; }
+    .question-bar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .question-tabs {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--field);
+    }
+    .question-tabs button {
+      min-height: 33px;
+      padding: 5px 13px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 3px;
+    }
+    .question-tabs button.active {
+      color: var(--accent-ink);
+      background: var(--accent);
+      font-weight: 700;
+    }
+    .status-strip {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--subtle);
+      white-space: nowrap;
+    }
+    .badge.good { color: var(--good); background: var(--good-bg); border-color: #75988b; }
+    .badge.warn { color: var(--warning); background: var(--warning-bg); border-color: #a88b54; }
+    .layout {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(520px, 1.18fr) minmax(420px, 0.82fr);
+      gap: 10px;
+    }
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    .panel-title {
+      min-height: 39px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--heading);
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-title h2 { margin: 0; font-size: 15px; }
+    .panel-title .muted { margin-left: auto; }
+    .toolbar {
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: var(--subtle);
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar input[type="search"] {
+      flex: 1;
+      min-width: 150px;
+      min-height: 32px;
+      padding: 5px 8px;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .toolbar label { white-space: nowrap; color: var(--muted); }
+    .table-wrap { flex: 1; min-height: 190px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 7px 9px;
+      color: var(--muted);
+      background: #152033;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    td { padding: 8px 9px; border-bottom: 1px solid #4b5b70; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #25303f; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #304258; }
+    tbody tr.selected { background: var(--selected); box-shadow: inset 4px 0 var(--accent); }
+    td strong { display: block; }
+    td small { display: block; margin-top: 2px; color: var(--muted); }
+    .pager {
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+    .pager span { margin-right: auto; }
+    .detail-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2px;
+      padding: 7px;
+      background: var(--subtle);
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-tabs button {
+      min-height: 34px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 3px;
+    }
+    .detail-tabs button.active {
+      color: var(--ink);
+      background: var(--selected);
+      border-color: var(--accent);
+      font-weight: 650;
+    }
+    .detail-content { flex: 1; overflow: auto; padding: 11px; }
+    .edge-summary {
+      display: grid;
+      grid-template-columns: 105px minmax(0, 1fr);
+      gap: 5px 10px;
+      margin: 0 0 12px;
+    }
+    .edge-summary dt { color: var(--muted); }
+    .edge-summary dd { margin: 0; }
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .evidence-item {
+      padding: 8px 9px;
+      background: var(--field);
+      border: 1px solid #4b5b70;
+      border-radius: 4px;
+    }
+    .evidence-item span { display: block; color: var(--muted); font-size: 12px; }
+    .boundary {
+      margin-top: 10px;
+      padding: 8px 9px;
+      color: var(--muted);
+      background: var(--subtle);
+      border-left: 3px solid var(--accent);
+    }
+    .mono { font: 13px/1.35 Consolas, "Courier New", monospace; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); }
+    .help-view { display: none; max-width: 1180px; margin: 0 auto; }
+    .help-view.visible { display: block; }
+    .help-intro { margin-bottom: 10px; padding: 10px 12px; background: var(--heading); border: 1px solid var(--line); border-radius: 6px; }
+    .help-intro h2 { margin: 0 0 4px; }
+    .help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .help-card { padding: 11px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+    .help-card h3 { margin: 0 0 5px; font-size: 15px; }
+    .help-card p, .help-card ul { margin: 0; color: var(--muted); }
+    .help-card ul { padding-left: 20px; }
+    .help-card li + li { margin-top: 4px; }
+    .count-help { margin-top: 10px; }
+    .count-help summary { cursor: pointer; padding: 9px 11px; color: var(--accent); background: var(--field); border: 1px solid var(--line); border-radius: 5px; }
+    .count-help p { margin: 0; padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); border-top: 0; }
+    .hidden { display: none !important; }
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .panel { min-height: 320px; }
+      .object-tabs button { padding-inline: 8px; }
+      .object-tabs button.help-tab { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="review-bar">
+    <div>
+      <strong>Control edges tab review</strong>
+      <span>Fictional preview data - mockup only - no application changes</span>
+    </div>
+    <div class="review-actions">
+      <button type="button" data-size="fit" aria-pressed="true">Fit</button>
+      <button type="button" data-size="laptop" aria-pressed="false">Laptop</button>
+    </div>
+  </header>
+
+  <section class="frame" id="frame">
+    <header class="object-header">
+      <div class="identity-row">
+        <div class="identity">
+          <h1>BA2016 <span>(Computer)</span></h1>
+          <div class="dn">CN=BA2016,OU=Servers,OU=BA Lab,DC=ba,DC=ad,DC=lab</div>
+        </div>
+        <div class="object-actions">
+          <button class="action" type="button">Back to the listing</button>
+          <button class="action" type="button">Locate in main window</button>
+          <button class="action" type="button">Copy DN</button>
+        </div>
+      </div>
+      <nav class="object-tabs" aria-label="Object details">
+        <button type="button">Overview</button>
+        <button type="button">Local administrator password</button>
+        <button type="button">Delegation</button>
+        <button type="button">Membership</button>
+        <button type="button">Permissions</button>
+        <button type="button" class="active" data-view="control">Control edges</button>
+        <button type="button">Tier 0 findings and routes</button>
+        <button type="button">Other captured values</button>
+        <button type="button">Findings</button>
+        <button type="button">Evidence</button>
+        <button type="button" class="help-tab" data-view="help">Help</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="control-view" id="controlView">
+        <div class="question-bar">
+          <div class="question-tabs" role="tablist" aria-label="Control direction">
+            <button type="button" class="active" data-direction="incoming">Who can control BA2016?</button>
+            <button type="button" data-direction="outgoing">What can BA2016 control?</button>
+          </div>
+          <div class="status-strip">
+            <span class="badge good">Saved analysis</span>
+            <span class="badge good">Capture complete</span>
+            <span class="badge warn">2 unexpected</span>
+            <span class="badge">1 unknown</span>
+          </div>
+        </div>
+
+        <div class="layout">
+          <section class="panel">
+            <div class="toolbar">
+              <input id="search" type="search" placeholder="Search holder or capability..." aria-label="Search displayed control relationships">
+              <label><input id="showExpected" type="checkbox"> Show expected</label>
+              <span class="muted" id="listCount">3 displayed</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="firstColumn">Holder</th>
+                    <th>Capability</th>
+                    <th>Support</th>
+                    <th>Expectedness</th>
+                  </tr>
+                </thead>
+                <tbody id="edgeRows"></tbody>
+              </table>
+            </div>
+            <footer class="pager">
+              <span>Page 1 - expected relationships hidden</span>
+              <button type="button">First page</button>
+              <button type="button">Next page</button>
+            </footer>
+          </section>
+
+          <aside class="panel">
+            <header class="panel-title">
+              <h2>Why this control relationship exists</h2>
+            </header>
+            <div class="detail-tabs" role="tablist" aria-label="Selected relationship details">
+              <button type="button" class="active" data-detail="evidence">Evidence</button>
+              <button type="button" data-detail="requester">Requester check</button>
+              <button type="button" data-detail="membership">Membership</button>
+            </div>
+            <div class="detail-content" id="detailContent"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="help-view" id="helpView">
+        <div class="help-intro">
+          <h2>Help: Control edges</h2>
+          <p class="muted">Use this page when you need definitions or calculation details. The data tab stays focused on saved results.</p>
+        </div>
+        <div class="help-grid">
+          <article class="help-card">
+            <h3>What this tab answers</h3>
+            <p><strong>Who can control this object?</strong> and <strong>What can this principal control?</strong> Each row is a saved permission-derived relationship, not a completed operation.</p>
+          </article>
+          <article class="help-card">
+            <h3>Support</h3>
+            <ul>
+              <li><strong>Established:</strong> captured evidence supports the capability.</li>
+              <li><strong>Not established:</strong> saved evidence disproves the supported case.</li>
+              <li><strong>Unknown:</strong> required evidence or analysis is unresolved.</li>
+            </ul>
+          </article>
+          <article class="help-card">
+            <h3>Expectedness</h3>
+            <p>Expected means the relationship matches a recognized administrative pattern. It does not mean safe. Unknown expectedness remains separate from unknown permission support.</p>
+          </article>
+          <article class="help-card">
+            <h3>Evidence, requester, membership</h3>
+            <p>Permission proof, a concrete account's authorization check, and stored group membership answer different questions. Membership alone does not prove requester authorization.</p>
+          </article>
+          <article class="help-card">
+            <h3>Coverage</h3>
+            <p>Incomplete capture, unsupported analysis, and processing that was not scheduled are shown separately. None of them means no control exists.</p>
+          </article>
+          <article class="help-card">
+            <h3>Not a Tier 0 path</h3>
+            <p>A control edge is one building block. The separate Tier 0 tab shows whether supported relationships were successfully chained to a qualified Tier 0 target.</p>
+          </article>
+        </div>
+        <details class="count-help">
+          <summary>How control relationships are counted</summary>
+          <p>One group-held permission remains one permission relationship. Member attribution, requester checks, and later routes are supporting answers and are not added to that permission count. Full-control summaries may group supporting permissions without deleting their original evidence.</p>
+        </details>
+      </section>
+    </main>
+  </section>
+
+  <script>
+    const incoming = [
+      {
+        first: "GG.BA.ServerAdmins",
+        capability: "Can change permissions (WRITE_DAC)",
+        support: "Established",
+        expected: "Unexpected",
+        source: "Inherited from OU=Servers",
+        permission: "WRITE_DAC",
+        applies: "Computer objects",
+        holder: "GG.BA.ServerAdmins",
+        membership: "No member attribution loaded for this selected relationship."
+      },
+      {
+        first: "GG.BA.Helpdesk",
+        capability: "Can reset the computer account password",
+        support: "Established",
+        expected: "Unexpected",
+        source: "Direct permission on BA2016",
+        permission: "Reset Password",
+        applies: "This object",
+        holder: "GG.BA.Helpdesk",
+        membership: "12 recorded members. Membership is not a concrete requester check."
+      },
+      {
+        first: "BUILTIN\\Administrators",
+        capability: "Existing owner can rewrite permissions",
+        support: "Unknown",
+        expected: "Unknown",
+        source: "Saved owner assessment",
+        permission: "Owner control",
+        applies: "This object",
+        holder: "S-1-5-32-544",
+        membership: "Resource-domain attribution is unresolved for this forest-wide SID."
+      }
+    ];
+    const outgoing = [
+      {
+        first: "CN=BA2016,OU=Servers,OU=BA Lab,DC=ba,DC=ad,DC=lab",
+        capability: "Existing owner can rewrite permissions",
+        support: "Unknown",
+        expected: "Unknown",
+        source: "Saved owner assessment",
+        permission: "Owner control",
+        applies: "BA2016",
+        holder: "BA2016",
+        membership: "This computer is the named holder; no group expansion is involved."
+      }
+    ];
+    let direction = "incoming";
+    let selected = 0;
+    let detail = "evidence";
+
+    const rowsForDirection = () => direction === "incoming" ? incoming : outgoing;
+    const escapeHtml = value => String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+    function renderRows() {
+      const rows = rowsForDirection();
+      document.getElementById("listCount").textContent = `${rows.length} displayed`;
+      document.getElementById("firstColumn").textContent = direction === "incoming" ? "Holder" : "Target";
+      document.getElementById("edgeRows").innerHTML = rows.map((row, index) => `
+        <tr class="${index === selected ? "selected" : ""}" data-row="${index}" tabindex="0">
+          <td><strong>${escapeHtml(row.first)}</strong><small>${direction === "incoming" ? "Named permission holder" : "Captured target"}</small></td>
+          <td>${escapeHtml(row.capability)}</td>
+          <td><span class="badge ${row.support === "Established" ? "good" : "warn"}">${escapeHtml(row.support)}</span></td>
+          <td><span class="badge ${row.expected === "Unexpected" ? "warn" : ""}">${escapeHtml(row.expected)}</span></td>
+        </tr>`).join("");
+      document.querySelectorAll("[data-row]").forEach(row => row.addEventListener("click", () => {
+        selected = Number(row.dataset.row);
+        renderRows();
+        renderDetail();
+      }));
+    }
+
+    function renderDetail() {
+      const row = rowsForDirection()[selected] || rowsForDirection()[0];
+      const summary = `
+        <dl class="edge-summary">
+          <dt>${direction === "incoming" ? "Holder" : "Target"}</dt><dd><strong>${escapeHtml(row.first)}</strong></dd>
+          <dt>Capability</dt><dd>${escapeHtml(row.capability)}</dd>
+          <dt>Support</dt><dd><span class="badge ${row.support === "Established" ? "good" : "warn"}">${escapeHtml(row.support)}</span></dd>
+          <dt>Expectedness</dt><dd><span class="badge ${row.expected === "Unexpected" ? "warn" : ""}">${escapeHtml(row.expected)}</span></dd>
+        </dl>`;
+      let content;
+      if (detail === "evidence") {
+        content = `${summary}
+          <div class="evidence-grid">
+            <div class="evidence-item"><span>Saved permission</span><strong>${escapeHtml(row.permission)}</strong></div>
+            <div class="evidence-item"><span>Source</span><strong>${escapeHtml(row.source)}</strong></div>
+            <div class="evidence-item"><span>Applies to</span><strong>${escapeHtml(row.applies)}</strong></div>
+            <div class="evidence-item"><span>Target</span><strong>BA2016</strong></div>
+          </div>
+          <div class="boundary">Permission evidence only. No directory operation was performed, and this row is not a completed Tier 0 path.</div>`;
+      } else if (detail === "requester") {
+        content = `${summary}
+          <div class="evidence-item"><span>Concrete requester assessment</span><strong>Not scheduled for this selection</strong></div>
+          <div class="boundary">Not scheduled is not an authorization refusal and does not mean the named holder lacks the permission.</div>`;
+      } else {
+        content = `${summary}
+          <div class="evidence-item"><span>Stored membership attribution</span><strong>${escapeHtml(row.membership)}</strong></div>
+          <div class="boundary">Membership evidence explains a connection. It does not construct a live token or add members to the group-held permission count.</div>`;
+      }
+      document.getElementById("detailContent").innerHTML = content;
+    }
+
+    function showView(view) {
+      const help = view === "help";
+      document.getElementById("controlView").classList.toggle("hidden", help);
+      document.getElementById("helpView").classList.toggle("visible", help);
+      document.querySelectorAll("[data-view]").forEach(button =>
+        button.classList.toggle("active", button.dataset.view === view));
+    }
+
+    document.querySelectorAll("[data-direction]").forEach(button => button.addEventListener("click", () => {
+      direction = button.dataset.direction;
+      selected = 0;
+      document.querySelectorAll("[data-direction]").forEach(item =>
+        item.classList.toggle("active", item.dataset.direction === direction));
+      renderRows();
+      renderDetail();
+    }));
+    document.querySelectorAll("[data-detail]").forEach(button => button.addEventListener("click", () => {
+      detail = button.dataset.detail;
+      document.querySelectorAll("[data-detail]").forEach(item =>
+        item.classList.toggle("active", item.dataset.detail === detail));
+      renderDetail();
+    }));
+    document.querySelectorAll("[data-view]").forEach(button =>
+      button.addEventListener("click", () => showView(button.dataset.view)));
+    document.querySelectorAll("[data-size]").forEach(button => button.addEventListener("click", () => {
+      const laptop = button.dataset.size === "laptop";
+      document.getElementById("frame").classList.toggle("laptop", laptop);
+      document.querySelectorAll("[data-size]").forEach(item =>
+        item.setAttribute("aria-pressed", String(item === button)));
+    }));
+
+    renderRows();
+    renderDetail();
+  </script>
+</body>
+</html>

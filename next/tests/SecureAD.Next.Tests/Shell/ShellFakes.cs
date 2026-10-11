@@ -252,10 +252,13 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public Result<Tier0FindingSummary?> Tier0Summary { get; set; } = Result<Tier0FindingSummary?>.Success(null);
     public Result<Tier0OverviewPage?> Tier0Overview { get; set; } = Result<Tier0OverviewPage?>.Success(null);
-    public List<Tier0OverviewMark?> Tier0OverviewQueries { get; } = [];
-    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after)
+    public List<(Tier0OverviewScope Scope, Tier0OverviewMark? After)> Tier0OverviewQueries { get; } = [];
+    public Result<Tier0OverviewPage?> ReadTier0Overview(
+        string bundleDirectory,
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after)
     {
-        Tier0OverviewQueries.Add(after);
+        Tier0OverviewQueries.Add((scope, after));
         return Tier0Overview;
     }
     public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory)

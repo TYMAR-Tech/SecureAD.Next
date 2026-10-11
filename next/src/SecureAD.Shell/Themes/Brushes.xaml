@@ -1,163 +1,49 @@
-﻿<!--
-    Brushes.xaml - every colour the product uses, named for what it MEANS.
-
-    0056 decision 6: a brush is NotEstablishedForeground, never Orange. Names survive a palette
-    change and literals do not, and a view that says DarkOrange has recorded an opinion about a
-    hue rather than about a fact.
-
-    This is the only file permitted to reference Palette.xaml. Views, templates and state marks
-    reference the names here.
-
-    Read the four state brushes together. They are the reason this file exists: three states plus
-    a fault, four distinct treatments, and colour is never the only thing that separates them -
-    see StateMarks.xaml for the non-colour carrier each one has.
--->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
-    <!--
-        This dictionary merges what it uses rather than relying on being merged after it.
-        A StaticResource in one merged dictionary resolving against a sibling merged dictionary is
-        load-order dependent and fails at runtime rather than at build, which is the worst way for
-        a theme to be wrong: the solution compiles and the window throws on the operator's machine.
-        Stating the dependency here makes resolution deterministic.
-    -->
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="Palette.xaml" />
-    </ResourceDictionary.MergedDictionaries>
-
-    <!-- ===================================================================================
-         Surfaces and text
-         =================================================================================== -->
-
-    <SolidColorBrush x:Key="WindowBackground" Color="{StaticResource Neutral0}" />
-    <SolidColorBrush x:Key="SurfaceBackground" Color="{StaticResource Neutral50}" />
-    <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="{StaticResource Neutral0}" />
-
-    <SolidColorBrush x:Key="AssetCanvasBackground" Color="{StaticResource Slate200}" />
-    <SolidColorBrush x:Key="AssetNavigationBackground" Color="{StaticResource Slate50}" />
-    <SolidColorBrush x:Key="AttributeHeaderBackground" Color="{StaticResource Slate100}" />
-    <SolidColorBrush x:Key="ObjectSectionHeadingBackground" Color="{StaticResource Slate300}" />
-    <SolidColorBrush x:Key="AttributeCardBorderBrush" Color="{StaticResource Slate400}" />
-    <SolidColorBrush x:Key="AttributeLabelBrush" Color="{StaticResource Slate700}" />
-    <SolidColorBrush x:Key="AttributeSourceBrush" Color="{StaticResource Slate600}" />
-    <SolidColorBrush x:Key="AttributeValueBrush" Color="{StaticResource Slate900}" />
-
-    <!-- Divider between rows and sections. Deliberately faint: a table of forty domains ruled in
-         a strong colour is a grid of lines with some text in it. -->
-    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource Neutral200}" />
-    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource Neutral300}" />
-
-    <!-- Body text. -->
-    <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource Neutral900}" />
-
-    <!-- The label beside a value - "Read from", "Site", "Failover". Quieter than the value it
-         labels, because the value is the thing being read. -->
-    <SolidColorBrush x:Key="LabelTextBrush" Color="{StaticResource Neutral500}" />
-
-    <!-- Text that is present but subordinate: explanations, provenance, counts. -->
-    <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource Neutral600}" />
-
-    <!-- A control that cannot currently be used. -->
-    <SolidColorBrush x:Key="DisabledTextBrush" Color="{StaticResource Neutral400}" />
-    <SolidColorBrush x:Key="DisabledBackground" Color="{StaticResource Neutral100}" />
-
-    <!-- Text sitting on the accent colour rather than on a surface. Named for where it sits, not
-         for being white, so a darker accent later does not leave this the one unreadable thing on
-         the screen. -->
-    <SolidColorBrush x:Key="OnAccentTextBrush" Color="{StaticResource Neutral0}" />
-
-    <!-- ===================================================================================
-         Action and focus
-
-         Blue is what an operator acts on, and it is never a verdict. Keeping the accent out of
-         the status vocabulary means nothing clickable can be mistaken for a finding.
-         =================================================================================== -->
-
-    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Blue500}" />
-    <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource Blue700}" />
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource Blue600}" />
-    <SolidColorBrush x:Key="AccentSubtleBrush" Color="{StaticResource Blue100}" />
-    <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource Blue600}" />
-    <SolidColorBrush x:Key="SelectionBrush" Color="{StaticResource Blue100}" />
-
-    <!-- ===================================================================================
-         THE FOUR STATES
-
-         0056 decision 1: established-and-good, established-and-bad, not-established, and a fault
-         the run reported. Four treatments, and a control offering two of them may not be bound to
-         a three-state fact.
-         =================================================================================== -->
-
-    <!-- The question was put, and the answer was good. -->
-    <SolidColorBrush x:Key="EstablishedGoodBrush" Color="{StaticResource Green600}" />
-    <SolidColorBrush x:Key="EstablishedGoodSubtleBrush" Color="{StaticResource Green100}" />
-
-    <!-- The question was put, and the answer was not good. Amber rather than red: this is a fact
-         about the customer's forest, not a critical finding, and 0056 decision 5 reserves red. -->
-    <SolidColorBrush x:Key="EstablishedBadBrush" Color="{StaticResource Amber600}" />
-    <SolidColorBrush x:Key="EstablishedBadSubtleBrush" Color="{StaticResource Amber100}" />
-
-    <!--
-        The question was never put, or could not be answered.
-
-        QUIET BY DEFAULT - 0056 decision 3. This is neutral, not a warning colour: it is not a
-        failure, and styling every gap as one trains an operator to dismiss the treatment inside a
-        week, at which point it hides real problems instead of surfacing them.
-
-        Quiet is a default and not a law. Where the owner judges that a gap carries risk, that
-        screen raises it - and records the judgement in docs/areas/how-the-app-looks.md rather
-        than deciding it again from first principles.
-    -->
-    <SolidColorBrush x:Key="NotEstablishedBrush" Color="{StaticResource Neutral500}" />
-    <SolidColorBrush x:Key="NotEstablishedSubtleBrush" Color="{StaticResource Neutral100}" />
-
-    <!--
-        The run itself reported a fault: something broke, and the remedy is technical rather than
-        a fact about the forest. Distinct from EstablishedBad, which is the forest being how it
-        is, and from NotEstablished, which is nobody's fault.
-    -->
-    <SolidColorBrush x:Key="FaultBrush" Color="{StaticResource Amber700}" />
-    <SolidColorBrush x:Key="FaultSubtleBrush" Color="{StaticResource Amber100}" />
-
-    <!-- ===================================================================================
-         RESERVED - critical findings. 0056 decision 5.
-
-         Defined so the vocabulary exists and so nothing invents a second red later. Used by
-         nothing, and no screen built before the findings work may bind these.
-
-         If a capture-side screen needs one of these, that is the signal that the screen is
-         claiming a severity it has no way to establish.
-         =================================================================================== -->
-
-    <SolidColorBrush x:Key="CriticalFindingBrush" Color="{StaticResource Red600}" />
-    <SolidColorBrush x:Key="CriticalFindingSubtleBrush" Color="{StaticResource Red100}" />
-
-
-    <!-- ============================ CHROME ============================
-         The frame around the product rather than anything it says. Chrome states nothing, so it
-         is the one place a colour may be chosen because it looks right. -->
-    <SolidColorBrush x:Key="RailBackground" Color="{StaticResource Navy800}" />
-    <SolidColorBrush x:Key="RailSelectedBackground" Color="{StaticResource Navy700}" />
-    <SolidColorBrush x:Key="RailTextBrush" Color="{StaticResource Neutral100}" />
-    <SolidColorBrush x:Key="RailSelectedTextBrush" Color="{StaticResource Neutral0}" />
-
-    <!-- Laid over a surface that a panel has taken the place of. This is how the product says
-         "not this one" now that a panel does what a window did - 0071. Chrome, never a fact. -->
-    <SolidColorBrush x:Key="ScrimBrush" Color="{StaticResource NavyScrim}" />
-
-    <!-- A table header is chrome too: it names columns, it does not report. Dark, so the grid
-         stops borrowing Windows own header colour - F-0056-2. -->
-    <SolidColorBrush x:Key="TableHeaderBackground" Color="{StaticResource Navy800}" />
-    <SolidColorBrush x:Key="TableHeaderTextBrush" Color="{StaticResource Neutral0}" />
-
-    <!-- ======================== THE WAY OUT ========================
-         0070: red also marks the control that stops something already running. NOT because
-         stopping is dangerous - nothing is written by a pass, and a stopped capture records why
-         it stopped - but because the exit of a three-hour read must be findable at a glance.
-         These are for CONTROLS ONLY. A fact never wears them. -->
-    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource Red600}" />
-    <SolidColorBrush x:Key="DangerHoverBrush" Color="{StaticResource Red500}" />
-    <SolidColorBrush x:Key="DangerPressedBrush" Color="{StaticResource Red700}" />
-
+    <!-- Stable brush objects. Their colors resolve dynamically from the active semantic palette. -->
+    <SolidColorBrush x:Key="WindowBackground" Color="{DynamicResource WindowBackgroundColor}" />
+    <SolidColorBrush x:Key="SurfaceBackground" Color="{DynamicResource SurfaceBackgroundColor}" />
+    <SolidColorBrush x:Key="SurfaceRaisedBackground" Color="{DynamicResource SurfaceRaisedBackgroundColor}" />
+    <SolidColorBrush x:Key="AssetCanvasBackground" Color="{DynamicResource AssetCanvasBackgroundColor}" />
+    <SolidColorBrush x:Key="AssetNavigationBackground" Color="{DynamicResource AssetNavigationBackgroundColor}" />
+    <SolidColorBrush x:Key="AttributeHeaderBackground" Color="{DynamicResource AttributeHeaderBackgroundColor}" />
+    <SolidColorBrush x:Key="ObjectSectionHeadingBackground" Color="{DynamicResource ObjectSectionHeadingBackgroundColor}" />
+    <SolidColorBrush x:Key="AttributeCardBorderBrush" Color="{DynamicResource AttributeCardBorderBrushColor}" />
+    <SolidColorBrush x:Key="AttributeLabelBrush" Color="{DynamicResource AttributeLabelBrushColor}" />
+    <SolidColorBrush x:Key="AttributeSourceBrush" Color="{DynamicResource AttributeSourceBrushColor}" />
+    <SolidColorBrush x:Key="AttributeValueBrush" Color="{DynamicResource AttributeValueBrushColor}" />
+    <SolidColorBrush x:Key="DividerBrush" Color="{DynamicResource DividerBrushColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderBrushColor}" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="{DynamicResource PrimaryTextBrushColor}" />
+    <SolidColorBrush x:Key="LabelTextBrush" Color="{DynamicResource LabelTextBrushColor}" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="{DynamicResource SecondaryTextBrushColor}" />
+    <SolidColorBrush x:Key="DisabledTextBrush" Color="{DynamicResource DisabledTextBrushColor}" />
+    <SolidColorBrush x:Key="DisabledBackground" Color="{DynamicResource DisabledBackgroundColor}" />
+    <SolidColorBrush x:Key="OnAccentTextBrush" Color="{DynamicResource OnAccentTextBrushColor}" />
+    <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentBrushColor}" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentPressedBrushColor}" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{DynamicResource AccentHoverBrushColor}" />
+    <SolidColorBrush x:Key="AccentSubtleBrush" Color="{DynamicResource AccentSubtleBrushColor}" />
+    <SolidColorBrush x:Key="FocusBrush" Color="{DynamicResource FocusBrushColor}" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource SelectionBrushColor}" />
+    <SolidColorBrush x:Key="EstablishedGoodBrush" Color="{DynamicResource EstablishedGoodBrushColor}" />
+    <SolidColorBrush x:Key="EstablishedGoodSubtleBrush" Color="{DynamicResource EstablishedGoodSubtleBrushColor}" />
+    <SolidColorBrush x:Key="EstablishedBadBrush" Color="{DynamicResource EstablishedBadBrushColor}" />
+    <SolidColorBrush x:Key="EstablishedBadSubtleBrush" Color="{DynamicResource EstablishedBadSubtleBrushColor}" />
+    <SolidColorBrush x:Key="NotEstablishedBrush" Color="{DynamicResource NotEstablishedBrushColor}" />
+    <SolidColorBrush x:Key="NotEstablishedSubtleBrush" Color="{DynamicResource NotEstablishedSubtleBrushColor}" />
+    <SolidColorBrush x:Key="FaultBrush" Color="{DynamicResource FaultBrushColor}" />
+    <SolidColorBrush x:Key="FaultSubtleBrush" Color="{DynamicResource FaultSubtleBrushColor}" />
+    <SolidColorBrush x:Key="CriticalFindingBrush" Color="{DynamicResource CriticalFindingBrushColor}" />
+    <SolidColorBrush x:Key="CriticalFindingSubtleBrush" Color="{DynamicResource CriticalFindingSubtleBrushColor}" />
+    <SolidColorBrush x:Key="RailBackground" Color="{DynamicResource RailBackgroundColor}" />
+    <SolidColorBrush x:Key="RailSelectedBackground" Color="{DynamicResource RailSelectedBackgroundColor}" />
+    <SolidColorBrush x:Key="RailTextBrush" Color="{DynamicResource RailTextBrushColor}" />
+    <SolidColorBrush x:Key="RailSelectedTextBrush" Color="{DynamicResource RailSelectedTextBrushColor}" />
+    <SolidColorBrush x:Key="ScrimBrush" Color="{DynamicResource ScrimBrushColor}" />
+    <SolidColorBrush x:Key="TableHeaderBackground" Color="{DynamicResource TableHeaderBackgroundColor}" />
+    <SolidColorBrush x:Key="TableHeaderTextBrush" Color="{DynamicResource TableHeaderTextBrushColor}" />
+    <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerBrushColor}" />
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="{DynamicResource DangerHoverBrushColor}" />
+    <SolidColorBrush x:Key="DangerPressedBrush" Color="{DynamicResource DangerPressedBrushColor}" />
 </ResourceDictionary>

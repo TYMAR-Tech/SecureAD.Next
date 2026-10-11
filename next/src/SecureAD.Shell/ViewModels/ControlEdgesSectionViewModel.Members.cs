@@ -40,6 +40,8 @@ internal sealed partial class ControlEdgesSectionViewModel
 
     partial void OnSelectedEdgeChanged(ControlEdgeRowViewModel? value)
     {
+        OnPropertyChanged(nameof(HasSelectedEdge));
+        OnPropertyChanged(nameof(HasNoSelectedEdge));
         var pending = _memberPending;
         _memberPending = null;
         pending?.Cancel();

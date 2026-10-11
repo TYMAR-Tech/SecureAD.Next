@@ -13,6 +13,72 @@ public sealed class ObjectNavigationTests
     private const string ObjectDn = "CN=Alice," + OtherDomain;
 
     [Fact]
+    public async Task OpeningARunSelectsTheCapturedForestRootAndLoadsItsObjects()
+    {
+        const string configuration = "CN=Configuration," + Domain;
+        const string child = "DC=child," + Domain;
+        var source = new FakeAssetSource
+        {
+            Tree = new(
+                [
+                    new(configuration, "Configuration", null, TreeNodeOrigin.Partition, [])
+                    {
+                        PartitionKind = NamingContextKind.Configuration,
+                    },
+                    new(child, "child", null, TreeNodeOrigin.Partition, [])
+                    {
+                        PartitionKind = NamingContextKind.Domain,
+                    },
+                    new(Domain, "contoso", null, TreeNodeOrigin.Partition, [])
+                    {
+                        PartitionKind = NamingContextKind.Domain,
+                    },
+                ],
+                [])
+            {
+                ForestRootDistinguishedName = Domain,
+            },
+            Page = new([new(Domain, "contoso", null, "domainDNS", null)], 1, true, null),
+        };
+        var screen = new AssetsViewModel(source);
+
+        screen.Show(Bundle, false);
+        await screen.ReadCompletion;
+
+        Assert.Equal(Domain, screen.Selected!.DistinguishedName);
+        Assert.True(screen.Selected.IsSelected);
+        Assert.False(screen.Roots[0].IsSelected);
+        Assert.False(screen.Roots[1].IsSelected);
+        Assert.Equal(Domain, source.ListedContainer);
+        Assert.Single(screen.Objects);
+        Assert.True(screen.HasListingResult);
+    }
+
+    [Fact]
+    public async Task ATreeMissingItsNamedForestRootIsRefusedInsteadOfSelectingAnotherRoot()
+    {
+        var source = new FakeAssetSource
+        {
+            Tree = new(
+                [new(OtherDomain, "other", null, TreeNodeOrigin.Partition, [])],
+                [])
+            {
+                ForestRootDistinguishedName = Domain,
+            },
+        };
+        var screen = new AssetsViewModel(source);
+
+        screen.Show(Bundle, false);
+        await screen.ReadCompletion;
+
+        Assert.True(screen.HasRefusal);
+        Assert.Contains(Domain, screen.Refusal!.Detail, StringComparison.Ordinal);
+        Assert.Null(screen.Selected);
+        Assert.Empty(screen.Objects);
+        Assert.Equal(0, source.ObjectListings);
+    }
+
+    [Fact]
     public async Task EditingSearchTextDoesNotRelabelOrRerunTheSubmittedQuestion()
     {
         var (screen, source) = Model();
@@ -213,6 +279,20 @@ public sealed class ObjectNavigationTests
         var screen = new AssetsViewModel(source);
         screen.Show(Bundle, false);
         return (screen, source);
+    }
+
+    [Fact]
+    public void ObjectScopeTreeIsAlwaysVisibleAndHasNoToggle()
+    {
+        var (screen, source) = Model();
+        var selected = screen.Selected;
+        var reads = source.ObjectListings;
+
+        Assert.True(screen.ShowsScopeTree);
+        Assert.False(screen.CanToggleScopeTree);
+        Assert.False(screen.ToggleScopeTreeCommand.CanExecute(null));
+        Assert.Same(selected, screen.Selected);
+        Assert.Equal(reads, source.ObjectListings);
     }
 
     private static ListedObject Match() => new(ObjectDn, "Alice", Guid.NewGuid(), "user", OtherDomain)

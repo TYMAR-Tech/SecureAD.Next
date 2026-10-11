@@ -15,7 +15,7 @@
             <StackPanel>
                 <TextBlock Text="{Binding Refusal.Title}" Style="{StaticResource SectionTitle}" />
                 <TextBlock Text="{Binding Refusal.Detail}" TextWrapping="Wrap"
-                           Foreground="{StaticResource FaultBrush}" Margin="0,4,0,0" />
+                           Foreground="{DynamicResource FaultBrush}" Margin="0,4,0,0" />
             </StackPanel>
         </Border>
 
@@ -24,15 +24,15 @@
             <StackPanel Margin="20" MaxWidth="1600">
                 <!-- A domain without a controller is not a deliberate exclusion. -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12"
-                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
+                        Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
                         Visibility="{Binding HasWarning, Converter={StaticResource Shown}}">
                     <StackPanel>
-                        <TextBlock Text="{Binding Warning.Title}" Style="{StaticResource SectionTitle}" Foreground="{StaticResource FaultBrush}" />
+                        <TextBlock Text="{Binding Warning.Title}" Style="{StaticResource SectionTitle}" Foreground="{DynamicResource FaultBrush}" />
                         <TextBlock Text="{Binding Warning.Detail}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource DashboardPanel}" Background="{StaticResource AttributeHeaderBackground}" Padding="18">
+                <Border Style="{StaticResource DashboardPanel}" Background="{DynamicResource AttributeHeaderBackground}" Padding="18">
                     <StackPanel>
                         <ItemsControl ItemsPanel="{StaticResource DashboardCoverageColumns}">
                             <StackPanel Margin="0,0,24,8">
@@ -59,7 +59,7 @@
                 </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,12,0,0"
-                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
+                        Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
                         Visibility="{Binding HasCoverageLimitations, Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="Some captured evidence needs qualification" Style="{StaticResource RowTitle}" />
@@ -105,8 +105,8 @@
                                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                                   CanUserDeleteRows="False" CanUserReorderColumns="False"
                                   HeadersVisibility="Column" GridLinesVisibility="Horizontal" MaxHeight="420"
-                                  HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}"
-                                  Background="{StaticResource AssetNavigationBackground}"
+                                  HorizontalGridLinesBrush="{DynamicResource AttributeCardBorderBrush}"
+                                  Background="{DynamicResource AssetNavigationBackground}"
                                   BorderThickness="0" ColumnHeaderStyle="{StaticResource DashboardColumnHeader}">
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
@@ -116,7 +116,7 @@
                             <DataGrid.RowDetailsTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="12,4,12,12"
-                                               Foreground="{StaticResource FaultBrush}" />
+                                               Foreground="{DynamicResource FaultBrush}" />
                                 </DataTemplate>
                             </DataGrid.RowDetailsTemplate>
                             <DataGrid.Columns>
@@ -152,8 +152,8 @@
                                 <TextBlock Text="{Binding PolicyCoverageSummary}" Style="{StaticResource ScreenTitle}" />
                                 <ProgressBar x:Name="PolicyCoverageBar" Minimum="0" Maximum="{Binding PoliciesDeclaredCount}"
                                              Value="{Binding PoliciesReadCount, Mode=OneWay}" Height="6" Margin="0,12"
-                                             Foreground="{StaticResource AttributeSourceBrush}"
-                                             Background="{StaticResource AttributeHeaderBackground}"
+                                             Foreground="{DynamicResource AttributeSourceBrush}"
+                                             Background="{DynamicResource AttributeHeaderBackground}"
                                              AutomationProperties.Name="Group Policy read coverage"
                                              Visibility="{Binding HasDeclaredPolicies, Converter={StaticResource Shown}}" />
                                 <TextBlock Text="{Binding Policies}" Style="{StaticResource BaseTextBlock}" Margin="0,6,0,0" />
@@ -177,7 +177,7 @@
                     </Border>
                 </ItemsControl>
                 <Border Style="{StaticResource Card}"
-                        Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
+                        Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
                         Visibility="{Binding HasConfidentialCaveat, Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="{Binding ConfidentialCaveat.Title}" Style="{StaticResource SectionTitle}" />

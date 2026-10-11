@@ -288,12 +288,15 @@ public sealed partial class JudgementReader : IDisposable
         return BestSupportedRouteStorage.Read(_connection, Description, distinguishedName, cancellationToken);
     }
 
-    public Tier0OverviewPage? ReadTier0Overview(Tier0OverviewMark? after, CancellationToken cancellationToken)
+    public Tier0OverviewPage? ReadTier0Overview(
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after,
+        CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        return Tier0Browsing.ReadPage(_connection, Description, after, cancellationToken);
+        return Tier0Browsing.ReadPage(_connection, Description, scope, after, cancellationToken);
     }
 
     public Tier0RouteDetails? ReadTier0RouteDetails(string distinguishedName, CancellationToken cancellationToken)

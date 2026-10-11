@@ -69,12 +69,16 @@ public sealed class ControlEdgePresentationTests
     }
 
     [Theory]
-    [InlineData("Counts")]
+    [InlineData("AnalysisSummary")]
+    [InlineData("CaptureSummary")]
+    [InlineData("UnexpectedSummary")]
+    [InlineData("UnknownSummary")]
+    [InlineData("ExpectedSummary")]
     [InlineData("Coverage")]
-    [InlineData("Rows")]
-    [InlineData("SelectedEdge.Evidence, Mode=OneWay")]
-    [InlineData("SelectedRequesterAssessment, Mode=TwoWay")]
-    [InlineData("SelectedRequesterAssessment.Evidence, Mode=OneWay")]
+    [InlineData("VisibleRows")]
+    [InlineData("SelectedEdge.Evidence,Mode=OneWay")]
+    [InlineData("SelectedRequesterAssessment,Mode=TwoWay")]
+    [InlineData("SelectedRequesterAssessment.Evidence,Mode=OneWay")]
     public void RealControlTemplateKeepsTheAnswerAndItsEvidence(string binding)
     {
         var path = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell", "Views", "Sections", "ObjectSectionTemplates.xaml");
@@ -96,6 +100,7 @@ public sealed class ControlEdgePresentationTests
             return Result<ControlEdgePage>.Success(new([], 2, 3, 7, 1, true, false, true, 100) { GenerationId = generation });
         }, _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, generation)));
         Assert.Contains("7 expected (hidden)", vm.Counts);
+        Assert.Equal("7 expected hidden", vm.ExpectedSummary);
         Assert.Contains("incomplete", vm.Coverage);
         vm.NextPageCommand.Execute(null);
         Assert.Equal(100, queries[^1].After);
@@ -105,6 +110,43 @@ public sealed class ControlEdgePresentationTests
         vm.IncludeExpected = true;
         Assert.Equal((true, true, 0L), queries[^1]);
         Assert.Contains("7 expected (shown)", vm.Counts);
+        Assert.Equal("7 expected shown", vm.ExpectedSummary);
+    }
+
+    [Fact]
+    public void DirectionLabelsAskTheAdministratorsQuestionsAboutTheSelectedObject()
+    {
+        var vm = new ControlEdgesSectionViewModel(
+            new(ObjectSectionCatalog.ControlEdges, "Control edges", []),
+            "BA2016");
+
+        Assert.Equal("Who can control BA2016?", vm.OnObjectQuestion);
+        Assert.Equal("What can BA2016 control?", vm.HeldByObjectQuestion);
+    }
+
+    [Fact]
+    public void ControlDirectionDetailTabsAndDisplayedPageFilterArePresentationOnly()
+    {
+        var edge = Judgement.GroupMembershipControlTests.Membership(Judgement.ControlEdgeDeriverTests.Permissions(
+            Judgement.GroupMembershipControlTests.Scoped(0, 0x28))).Edges.First();
+        var vm = new ControlEdgesSectionViewModel(new(ObjectSectionCatalog.ControlEdges, "Control edges", []));
+        vm.Configure(true, false,
+            (_, _, _) => Result<ControlEdgePage>.Success(new([edge], 1, 0, 0, 0, true, true, false, edge.Id)
+                { GenerationId = Guid.Empty }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, Guid.Empty)));
+
+        Assert.True(vm.ShowsEdgesOnObject);
+        Assert.True(vm.ShowsEvidenceDetails);
+        vm.ShowsMembershipDetails = true;
+        Assert.True(vm.ShowsMembershipDetails);
+        vm.EdgeSearchText = "no displayed match";
+        Assert.Empty(vm.VisibleRows);
+        Assert.Single(vm.Rows);
+        vm.EdgeSearchText = "";
+        Assert.Single(vm.VisibleRows);
+        vm.ShowsEdgesHeldByObject = true;
+        Assert.True(vm.ByHolder);
+        Assert.True(vm.ShowsTargetColumn);
     }
 
     [Fact]

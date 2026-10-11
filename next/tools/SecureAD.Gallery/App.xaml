@@ -12,7 +12,7 @@
                 -->
                 <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
 
-                <ResourceDictionary Source="Themes/Palette.xaml" />
+                <ResourceDictionary Source="Themes/Palette.Dark.xaml" />
                 <ResourceDictionary Source="Themes/Brushes.xaml" />
                 <ResourceDictionary Source="Themes/Type.xaml" />
                 <ResourceDictionary Source="Themes/Spacing.xaml" />

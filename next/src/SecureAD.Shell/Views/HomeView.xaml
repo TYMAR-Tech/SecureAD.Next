@@ -13,7 +13,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2">
-            <Border Style="{StaticResource HomePanel}" Padding="18" Background="{StaticResource AttributeHeaderBackground}">
+            <Border Style="{StaticResource HomePanel}" Padding="18" Background="{DynamicResource AttributeHeaderBackground}">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Margin="20,0,0,0" VerticalAlignment="Center">
                         <Button Content="New audit" Command="{Binding NewAuditCommand}" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" />
@@ -23,18 +23,18 @@
                         <TextBlock Text="Active Directory security auditing" Style="{StaticResource Caption}" />
                         <TextBlock Text="Capture once. Investigate offline." Style="{StaticResource ScreenTitle}" Margin="0,4,0,8" />
                         <TextBlock Text="SecureAD captures your Active Directory forest as sealed evidence. Explore objects, permissions, group membership and security findings from that saved capture, without reconnecting to the directory."
-                                   Style="{StaticResource BaseTextBlock}" Foreground="{StaticResource AttributeLabelBrush}" />
+                                   Style="{StaticResource BaseTextBlock}" Foreground="{DynamicResource AttributeLabelBrush}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <Border Style="{StaticResource HomePanel}" Margin="0,12,0,14" Padding="12" Background="{StaticResource AttributeHeaderBackground}">
+            <Border Style="{StaticResource HomePanel}" Margin="0,12,0,14" Padding="12" Background="{DynamicResource AttributeHeaderBackground}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="Choose run library..." Command="{Binding ChooseLibraryCommand}" Margin="16,0,0,0" VerticalAlignment="Center" />
                     <StackPanel>
                         <TextBlock Text="Run library" Style="{StaticResource HomeLabel}" />
                         <TextBox Text="{Binding LibraryDescription, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                                 FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}" />
-                        <TextBox Text="{Binding Location.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                                 FontSize="{StaticResource CaptionFontSize}" Foreground="{DynamicResource AttributeSourceBrush}" />
+                        <TextBox Text="{Binding Location.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{DynamicResource FaultBrush}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -51,9 +51,9 @@
                     <TextBox Text="{Binding Library.AnalysisStatus, Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
                 </DockPanel>
             </Border>
-            <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderBrush="{StaticResource FaultBrush}"
+            <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderBrush="{DynamicResource FaultBrush}"
                     Visibility="{Binding Library.HasProblem, Converter={StaticResource Shown}}">
-                <TextBox Text="{Binding Library.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                <TextBox Text="{Binding Library.Problem, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{DynamicResource FaultBrush}" />
             </Border>
         </StackPanel>
 
@@ -71,7 +71,7 @@
                 <Grid>
                     <DataGrid x:Name="SavedRunsTable" ItemsSource="{Binding Library.RunsView}" SelectedItem="{Binding Library.Selected, Mode=TwoWay}"
                               AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}"
+                              GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource AttributeCardBorderBrush}"
                               Background="Transparent" BorderThickness="0" ColumnHeaderStyle="{StaticResource HomeColumnHeader}">
                         <DataGrid.GroupStyle>
                             <GroupStyle>
@@ -81,12 +81,12 @@
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="GroupItem">
                                                     <StackPanel>
-                                                        <Border Background="{StaticResource SelectionBrush}" Padding="10,8">
+                                                        <Border Background="{DynamicResource SelectionBrush}" Padding="10,8">
                                                             <StackPanel>
                                                                 <TextBlock Text="{Binding Items[0].GroupHeading}" FontWeight="SemiBold" TextWrapping="Wrap"
-                                                                           Foreground="{StaticResource AttributeLabelBrush}" />
+                                                                           Foreground="{DynamicResource AttributeLabelBrush}" />
                                                                 <TextBlock Text="{Binding ItemCount, StringFormat={}{0} run(s)}"
-                                                                           FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}" />
+                                                                           FontSize="{StaticResource CaptionFontSize}" Foreground="{DynamicResource AttributeSourceBrush}" />
                                                             </StackPanel>
                                                         </Border>
                                                         <ItemsPresenter />
@@ -103,11 +103,11 @@
                             <DataGridTemplateColumn Header="Run" Width="Auto" MinWidth="190">
                                 <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                     <StackPanel Margin="8">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource AttributeLabelBrush}" />
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
                                         <TextBlock Text="{Binding Identifier}" FontFamily="{StaticResource IdentifierFontFamily}"
-                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}"
+                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{DynamicResource AttributeSourceBrush}"
                                                    Visibility="{Binding IsNamed, Converter={StaticResource Shown}}" />
-                                        <TextBlock Text="Baseline" Foreground="{StaticResource FocusBrush}" FontSize="{StaticResource CaptionFontSize}"
+                                        <TextBlock Text="Baseline" Foreground="{DynamicResource FocusBrush}" FontSize="{StaticResource CaptionFontSize}"
                                                    Visibility="{Binding IsBaseline, Converter={StaticResource Shown}}" />
                                     </StackPanel>
                                 </DataTemplate></DataGridTemplateColumn.CellTemplate>
@@ -118,7 +118,7 @@
                                         <TextBlock Text="{Binding WhenDate}" />
                                         <TextBlock Text="{Binding WhenTime}" />
                                         <TextBlock Text="folder date - the run recorded none" TextWrapping="Wrap" MaxWidth="180"
-                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{StaticResource AttributeSourceBrush}"
+                                                   FontSize="{StaticResource CaptionFontSize}" Foreground="{DynamicResource AttributeSourceBrush}"
                                                    Visibility="{Binding WhenWasNotRecorded, Converter={StaticResource Shown}}" />
                                     </StackPanel>
                                 </DataTemplate></DataGridTemplateColumn.CellTemplate>
@@ -136,7 +136,7 @@
                       Visibility="{Binding Library.HasSelection, Converter={StaticResource Shown}}">
             <Border Style="{StaticResource HomePanel}">
                 <StackPanel>
-                    <Border Background="{StaticResource AttributeHeaderBackground}" Padding="14" CornerRadius="7,7,0,0">
+                    <Border Background="{DynamicResource AttributeHeaderBackground}" Padding="14" CornerRadius="7,7,0,0">
                         <StackPanel>
                             <TextBlock Text="Selected run" Style="{StaticResource Caption}" />
                             <TextBlock Text="{Binding Library.Selected.Name}" Style="{StaticResource ScreenTitle}" Margin="0,4,0,6" />
@@ -159,9 +159,9 @@
                         <Button Content="Open run" Command="{Binding Library.OpenRunCommand}" Style="{StaticResource PrimaryButton}"
                                 IsEnabled="{Binding Library.Selected.FinishedCleanly}" />
                         <TextBox Text="{Binding Library.Selected.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                                 Foreground="{StaticResource FaultBrush}" Margin="0,10,0,0"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,10,0,0"
                                  Visibility="{Binding Library.Selected.HasDetail, Converter={StaticResource Shown}}" />
-                        <Border Height="1" Background="{StaticResource AttributeCardBorderBrush}" Margin="0,14" />
+                        <Border Height="1" Background="{DynamicResource AttributeCardBorderBrush}" Margin="0,14" />
                         <TextBlock Text="Run name" Style="{StaticResource HomeLabel}" />
                         <TextBox Text="{Binding Library.TypedName, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Text="Notes" Style="{StaticResource HomeLabel}" Margin="0,12,0,5" />
@@ -187,7 +187,7 @@
                                     <TextBlock Text="Discard judgement and judge again" TextWrapping="Wrap" />
                                 </Button>
                                 </Grid>
-                                <Border Height="1" Background="{StaticResource AttributeCardBorderBrush}" Margin="0,6,0,14" />
+                                <Border Height="1" Background="{DynamicResource AttributeCardBorderBrush}" Margin="0,6,0,14" />
                                 <Button Content="Delete run" Command="{Binding Library.DeleteRunCommand}" Style="{StaticResource DangerButton}" HorizontalAlignment="Left" />
                             </StackPanel>
                         </Expander>

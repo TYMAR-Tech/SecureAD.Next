@@ -13,31 +13,25 @@
          NOTHING HERE IS A VERDICT. Whether a permission is dangerous is a separate question, asked
          only when the operator asks it. -->
 
-    <Border Background="{StaticResource AssetCanvasBackground}" CornerRadius="8"
-            BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" Padding="12">
+    <Border Background="{DynamicResource AssetCanvasBackground}" CornerRadius="6"
+            BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1" Padding="8">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MaxHeight="220" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="2*" />
+            <RowDefinition Height="Auto" MaxHeight="135" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <views:ObjectSectionList />
         </ScrollViewer>
-        <Border Grid.Row="1" Style="{StaticResource ObjectSectionHeading}">
-        <TextBlock
-                   Text="{Binding Opened.Selected.Title}"
-                   Style="{StaticResource SectionTitle}" />
-        </Border>
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <TextBlock Text="{Binding Opened.LoadingText}"
-                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
                        Visibility="{Binding Opened.IsLoading, Converter={StaticResource Shown}}" />
             <StackPanel Visibility="{Binding Opened.HasRefusal, Converter={StaticResource Shown}}">
                 <TextBlock Text="{Binding Opened.Refusal.Title}" Style="{StaticResource RowTitle}" />
                 <TextBox Text="{Binding Opened.Refusal.Detail, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource FaultBrush}" />
+                         Foreground="{DynamicResource FaultBrush}" />
             </StackPanel>
             <ContentControl Content="{Binding Opened.Content}" />
         </Grid>

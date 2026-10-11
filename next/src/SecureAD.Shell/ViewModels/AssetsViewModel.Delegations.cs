@@ -17,6 +17,8 @@ internal sealed partial class AssetsViewModel
     [ObservableProperty] private string _delegationPrincipalStatus = DelegationText.Get("PrincipalPrompt");
     [ObservableProperty] private string _delegationStatus = DelegationText.Get("Prompt");
     [ObservableProperty] private string _delegationCoverage = "";
+    [ObservableProperty] private bool _isDelegationSearchEditing = true;
+    [ObservableProperty] private string _delegationResultSearch = "";
 
     private DelegationPrincipalMark? _principalNext;
     private DelegationPageMark? _delegationAfter;
@@ -30,11 +32,32 @@ internal sealed partial class AssetsViewModel
         Enum.GetValues<DelegationPermission>().Select(value => new DelegationPermissionChoice(value, DelegationText.Get(value.ToString()))).ToArray();
     public bool ShowsDelegations => Pane == AssetsPane.Delegations;
     public bool ShowsDelegationsListing => ShowsDelegations && ShowsListing;
-    public bool ShowsDirectoryTree => !ShowsTier0 && (!ShowsDelegations || HasOpenObject);
+    public bool ShowsDirectoryTree => !ShowsTier0 && !ShowsDelegations;
     public bool HasDelegationAnswer => _delegationHasAnswer && !IsLoading && !HasViewRefusal;
     public bool HasDelegationSelection => HasDelegationAnswer && SelectedDelegation is not null;
     public bool DelegationControlsAreEnabled => _active && HasTree && !IsLoading;
     public string DelegationBoundary => DelegationText.Get(IncludeGroupHeldPermissions ? "GroupBoundary" : "Boundary");
+    public bool ShowsDelegationSearchEditor => IsDelegationSearchEditing || !HasDelegationAnswer;
+    public bool ShowsDelegationSearchSummary => HasDelegationAnswer && !IsDelegationSearchEditing;
+    public string DelegationSearchSummary => SelectedDelegationPrincipal is not { } principal ? ""
+        : DelegationText.Format("SearchSummary", principal.Principal.Name,
+            principal.Principal.DomainFqdn ?? DelegationText.Get("Unresolved"),
+            DelegationPermissionFilter.Name,
+            DelegationText.Get(IncludeGroupHeldPermissions ? "GroupHeldIncluded" : "DirectOnly"),
+            DelegationText.Get(IncludeInheritedDelegations ? "InheritedIncluded" : "ExplicitOnly"));
+    public IReadOnlyList<DelegationRowViewModel> VisibleDelegations
+    {
+        get
+        {
+            var search = DelegationResultSearch.Trim();
+            return search.Length == 0 ? [.. Delegations] : Delegations.Where(row =>
+                row.RecordedOn.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.Domain.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.PermissionHeldBy.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.Permission.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.AppliesTo.Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+        }
+    }
 
     private bool CanSearchPrincipals() => CanUseDelegations() && !string.IsNullOrWhiteSpace(DelegationPrincipalSearch);
     private bool CanUseDelegations() => _active && HasTree && ShowsDelegationsListing && BundlePath is not null && !IsLoading;
@@ -120,7 +143,10 @@ internal sealed partial class AssetsViewModel
             _delegationNext = answer.Page.Next;
             var membership = answer.Page.Membership is { } graph ? new DelegationMembershipPresentation(graph) : null;
             foreach (var entry in answer.Page.Entries) Delegations.Add(new(entry, answer.Vocabulary, membership));
+            DelegationResultSearch = "";
+            OnPropertyChanged(nameof(VisibleDelegations));
             _delegationHasAnswer = true;
+            IsDelegationSearchEditing = false;
             DelegationStatus = answer.Page.Entries.Count == 0 ? DelegationText.Get(query.IncludeGroupHeldPermissions ? "NoGroupMatch" : "NoMatch")
                 : DelegationText.Format("Page", _delegationBack.Count + 1, answer.Page.Entries.Count,
                     answer.Page.Next is null ? "" : DelegationText.Get("More"));
@@ -147,6 +173,9 @@ internal sealed partial class AssetsViewModel
         DelegationPrincipalStatus = DelegationText.Get("Cancelled");
         Announce();
     }
+
+    [RelayCommand]
+    private void EditDelegationSearch() => IsDelegationSearchEditing = true;
 
     [RelayCommand(CanExecute = nameof(HasDelegationSelection))]
     private void OpenDelegationDetails()
@@ -182,6 +211,13 @@ internal sealed partial class AssetsViewModel
         DelegationQuestionChanged();
     }
     partial void OnSelectedDelegationChanged(DelegationRowViewModel? value) => AnnounceDelegations();
+    partial void OnIsDelegationSearchEditingChanged(bool value) => AnnounceDelegations();
+    partial void OnDelegationResultSearchChanged(string value)
+    {
+        OnPropertyChanged(nameof(VisibleDelegations));
+        if (SelectedDelegation is not null && !VisibleDelegations.Contains(SelectedDelegation))
+            SelectedDelegation = VisibleDelegations.FirstOrDefault();
+    }
 
     private void DelegationQuestionChanged()
     {
@@ -189,6 +225,7 @@ internal sealed partial class AssetsViewModel
         CancelRead();
         ViewRefusal = null;
         ClearDelegationAnswer();
+        IsDelegationSearchEditing = true;
         Announce();
     }
 
@@ -199,6 +236,7 @@ internal sealed partial class AssetsViewModel
         _delegationBack.Clear();
         SelectedDelegation = null;
         Delegations.Clear();
+        DelegationResultSearch = "";
         DelegationStatus = DelegationText.Get("Prompt");
         DelegationCoverage = "";
         _pages.Remove(AssetsPane.Delegations);
@@ -213,6 +251,7 @@ internal sealed partial class AssetsViewModel
         _principalNext = null;
         DelegationPrincipalStatus = DelegationText.Get("PrincipalPrompt");
         ClearDelegationAnswer();
+        IsDelegationSearchEditing = true;
         _resetting = resetting;
     }
 
@@ -224,6 +263,9 @@ internal sealed partial class AssetsViewModel
         OnPropertyChanged(nameof(HasDelegationAnswer));
         OnPropertyChanged(nameof(HasDelegationSelection));
         OnPropertyChanged(nameof(DelegationControlsAreEnabled));
+        OnPropertyChanged(nameof(ShowsDelegationSearchEditor));
+        OnPropertyChanged(nameof(ShowsDelegationSearchSummary));
+        OnPropertyChanged(nameof(DelegationSearchSummary));
         FindDelegationPrincipalCommand.NotifyCanExecuteChanged();
         NextDelegationPrincipalsCommand.NotifyCanExecuteChanged();
         FindDelegationsCommand.NotifyCanExecuteChanged();
@@ -231,5 +273,6 @@ internal sealed partial class AssetsViewModel
         PreviousDelegationsCommand.NotifyCanExecuteChanged();
         CancelDelegationSearchCommand.NotifyCanExecuteChanged();
         OpenDelegationDetailsCommand.NotifyCanExecuteChanged();
+        EditDelegationSearchCommand.NotifyCanExecuteChanged();
     }
 }

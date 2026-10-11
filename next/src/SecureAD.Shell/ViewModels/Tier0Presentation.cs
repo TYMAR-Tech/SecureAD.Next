@@ -33,6 +33,7 @@ internal static class Tier0Presentation
 internal sealed record Tier0RowViewModel(Tier0OverviewRow Value)
 {
     public string Name => Tier0Presentation.Identity(Value.Subject);
+    public string Domain => Value.Subject.DomainFqdn ?? "Not recorded";
     public string DistinguishedName => Value.Subject.DistinguishedName;
     public string Distance => Tier0Presentation.Distance(Value.Distance);
     public string Qualification => Tier0Presentation.Minimum(Value.Distance);

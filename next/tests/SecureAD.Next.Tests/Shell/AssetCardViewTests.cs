@@ -4,6 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Xml.Linq;
 using SecureAD.Evidence;
 using SecureAD.Kernel.Capture;
 using SecureAD.Shell.ViewModels;
@@ -15,6 +16,21 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class AssetCardViewTests
 {
+    [Fact]
+    public void HelpKeepsDefinitionsAndCountingAwayFromTheDataSections() => OnSta(() =>
+    {
+        var definition = ObjectSectionCatalog.For("computer")
+            .Single(section => section.Key == ObjectSectionCatalog.Help);
+        var (host, _, _) = Present(new ObjectHelpSectionViewModel(definition));
+
+        Layout(host, 1100, 720);
+
+        Assert.Contains(Descendants<TextBlock>(host), text => text.Text == "What Control edges answers");
+        Assert.Contains(Descendants<TextBlock>(host), text => text.Text == "Not a Tier 0 path");
+        Assert.Contains(Descendants<Expander>(host),
+            expander => Equals(expander.Header, "How control relationships are counted"));
+    });
+
     [Fact]
     public void CardTitleIsInlineAndValuesStaySelectable() => OnSta(() =>
     {
@@ -111,23 +127,25 @@ public sealed class AssetCardViewTests
     });
 
     [Theory]
-    [InlineData(350, 1)]
-    [InlineData(800, 2)]
-    [InlineData(1500, 3)]
-    public void RealAccountCardsReflowAndKeepAllEvidenceScrollable(int width, int columns) => OnSta(() =>
+    [InlineData(600, 1)]
+    [InlineData(1200, 2)]
+    public void CombinedOverviewKeepsIdentityAndAccountPanelsReadable(int width, int columns) => OnSta(() =>
     {
-        var definition = ObjectSectionCatalog.For("user").Single(item => item.Key == ObjectSectionCatalog.Account);
-        var section = new AccountSectionViewModel(definition, null);
+        var definition = ObjectSectionCatalog.For("user").Single(item => item.Key == ObjectSectionCatalog.Overview);
+        var section = new OverviewSectionViewModel(
+            definition, Judgement.ControlEdgeDeriverTests.Permissions(), null, "user");
         var (host, _, _) = Present(section);
-        Layout(host, width, 180);
-        var panel = Assert.Single(Descendants<FieldGrid>(host));
+        Layout(host, width, 360);
+        var panel = Assert.Single(Descendants<FieldGrid>(host), item => item.Children.Count == 2
+            && item.Children.Cast<UIElement>().All(child => child is Border));
         var positions = panel.Children.Cast<FrameworkElement>().Select(child => child.TransformToAncestor(panel).Transform(new Point())).ToArray();
         Assert.Equal(columns, positions.Count(point => point.Y == 0));
+        Assert.Equal(2, panel.Children.Count);
         var scroll = Assert.Single(Descendants<ScrollViewer>(host), item => item.Content is StackPanel);
-        Assert.True(scroll.ExtentHeight > scroll.ViewportHeight);
-        scroll.ScrollToEnd();
-        Layout(host, width, 180);
-        Assert.True(scroll.VerticalOffset > 0);
+        Assert.Equal(ScrollBarVisibility.Auto, scroll.VerticalScrollBarVisibility);
+        foreach (var toggle in Descendants<CheckBox>(host).Where(item => Equals(item.Content, "Show missing attributes")))
+            toggle.IsChecked = true;
+        Layout(host, width, 360);
         Assert.Equal(section.Values.Count, Descendants<Border>(host).Count(item => item.Name == "AttributeCardSurface"));
         Assert.All(Descendants<TextBox>(host).Where(item => item.Name == "AttributeValue"), item =>
         {
@@ -139,49 +157,25 @@ public sealed class AssetCardViewTests
     [Theory]
     [InlineData(1280, 800)]
     [InlineData(1920, 1080)]
-    public void ObjectDetailsKeepTheTreeResizableAndEverySectionReachable(int width, int height) => OnSta(() =>
+    public void DetachedObjectDetailsAreResizableAndEverySectionIsReachable(int width, int height) => OnSta(() =>
     {
         var (model, source) = Opened();
-        var view = View(model, includeObject: true);
-        var window = new Window { Content = view, Width = width, Height = height, WindowStyle = WindowStyle.None,
-            ShowInTaskbar = false, Left = -10000, Top = -10000 };
-        window.Show();
-        try
-        {
-            Layout(view, width, height);
-            var tree = Assert.Single(Descendants<TreeView>(view));
-            Assert.True(tree.IsVisible && tree.ActualHeight >= 100);
-            var splitter = Assert.Single(Descendants<GridSplitter>(view));
-            var grid = Assert.IsType<Grid>(splitter.Parent);
-            Assert.Equal(360, grid.ColumnDefinitions[0].ActualWidth, 3);
-            splitter.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(window), 0, Key.Right)
-            { RoutedEvent = Keyboard.KeyDownEvent });
-            Layout(view, width, height);
-            Assert.True(grid.ColumnDefinitions[0].ActualWidth > 360);
+        XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
+        var window = XDocument.Load(Path.Combine(shell, "Views", "ObjectDetailWindow.xaml")).Root!;
+        Assert.Equal("CanResizeWithGrip", (string?)window.Attribute("ResizeMode"));
+        Assert.Equal("780", (string?)window.Attribute("MinWidth"));
+        Assert.Equal("520", (string?)window.Attribute("MinHeight"));
+        Assert.Single(window.Descendants(), element => element.Name.LocalName == "ObjectView");
+        Assert.Empty(window.Descendants(wpf + "TreeView"));
 
-            var sections = Assert.Single(Descendants<ListBox>(view));
-            Assert.Equal(model.Opened!.Sections.Count, sections.Items.Count);
-            Assert.True(sections.TransformToAncestor(view).Transform(new Point()).X > tree.TransformToAncestor(view).Transform(new Point()).X);
-            Assert.Single(Descendants<WrapPanel>(sections));
-            var account = model.Opened.Section(ObjectSectionCatalog.Account);
-            Assert.NotNull(account);
-            sections.SelectedItem = account;
-            Layout(view, width, height);
-            Assert.Equal(ObjectSectionCatalog.Account, model.Opened.Selected?.Key);
-            Assert.IsType<AccountSectionViewModel>(model.Opened.Content);
-            var missing = Assert.Single(Descendants<CheckBox>(view), item => Equals(item.Content, "Show missing attributes"));
-            missing.IsChecked = true;
-            Layout(view, width, height);
-            Assert.NotEmpty(Descendants<Border>(view).Where(item => item.Name == "AttributeCardSurface"));
-            Assert.NotEqual(ColorOf(view.FindResource("SurfaceRaisedBackground")), ColorOf(view.Background));
-            var back = Assert.Single(Descendants<Button>(view), item => ReferenceEquals(item.Command, model.CloseObjectCommand));
-            back.Command.Execute(null);
-            Layout(view, width, height);
-            Assert.True(model.ShowsObjectListing);
-            Assert.True(tree.IsVisible);
-            Assert.Equal(1, source.ObjectListings);
-        }
-        finally { window.Close(); }
+        var (host, _, _) = Present(Assert.IsType<OverviewSectionViewModel>(model.Opened!.Content));
+        Layout(host, Math.Max(width - 40, 780), Math.Max(height - 180, 420));
+        Assert.NotEmpty(Descendants<FieldGrid>(host));
+        Assert.NotEmpty(model.Opened.Sections);
+        model.CloseObjectCommand.Execute(null);
+        Assert.True(model.ShowsObjectListing);
+        Assert.Equal(1, source.ObjectListings);
     });
 
     [Fact]
@@ -191,25 +185,28 @@ public sealed class AssetCardViewTests
         Assert.True(model.ShowsDirectoryTree);
         model.ObjectSearchText = "Alice";
         Assert.True(model.SearchObjectsCommand.CanExecute(null));
+        var opened = model.Opened;
         model.SearchObjectsCommand.Execute(null);
 
-        Assert.False(model.HasOpenObject);
+        Assert.True(model.HasOpenObject);
+        Assert.Same(opened, model.Opened);
         Assert.True(model.IsObjectSearch && model.ShowsObjectListing);
         Assert.Single(source.ObjectSearchQueries);
     }
 
     [Fact]
-    public void SelectingATreeContainerFromADelegationObjectReturnsToObjects()
+    public void LocatingADelegationObjectReturnsTheMainWindowToObjects()
     {
         var (model, source) = ObjectNavigationTests.Model();
         source.Attributes = FakeAssetSource.CapturedObject("DC=contoso,DC=com", "user");
         model.Pane = AssetsPane.Delegations;
         model.OpenObject(new ListedObjectViewModel(new("DC=contoso,DC=com", "contoso", null, "user", null)));
-        Assert.True(model.HasOpenObject && model.ShowsDirectoryTree);
-        model.Selected = model.Roots[0].Children[0];
+        Assert.True(model.HasOpenObject);
+        Assert.False(model.ShowsDirectoryTree);
+        model.LocateObjectCommand.Execute(null);
 
         Assert.Equal(AssetsPane.Objects, model.Pane);
-        Assert.False(model.HasOpenObject);
+        Assert.True(model.HasOpenObject);
         Assert.True(model.ShowsObjectListing && model.ShowsDirectoryTree);
     }
 
@@ -217,6 +214,7 @@ public sealed class AssetCardViewTests
     {
         var (model, source) = ObjectNavigationTests.Model();
         source.Attributes = FakeAssetSource.CapturedObject("DC=contoso,DC=com", "user");
+        source.Permissions = Judgement.ControlEdgeDeriverTests.Permissions("DC=contoso,DC=com");
         model.OpenObject(model.Objects[0]);
         Assert.True(model.ReadCompletion.IsCompletedSuccessfully);
         Assert.True(model.HasOpenObject);
@@ -231,7 +229,7 @@ public sealed class AssetCardViewTests
     {
         _ = XamlReader.Parse("<UserControl xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" />");
         var host = new Grid();
-        foreach (var path in new[] { "Themes/StateMarks.xaml", "Views/Sections/ObjectSectionTemplates.xaml" })
+        foreach (var path in new[] { "Themes/Palette.Dark.xaml", "Themes/Brushes.xaml", "Themes/StateMarks.xaml", "Views/Sections/ObjectSectionTemplates.xaml" })
             host.Resources.MergedDictionaries.Add((ResourceDictionary)Application.LoadComponent(new Uri("/SecureAD;component/" + path, UriKind.Relative)));
         var template = (DataTemplate)host.FindResource(new DataTemplateKey(content.GetType()));
         var presenter = new ContentPresenter { Content = content, ContentTemplate = template };

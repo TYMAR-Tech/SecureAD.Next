@@ -1,3 +1,4 @@
+using SecureAD.Derivation;
 using SecureAD.Judgement;
 using Xunit;
 using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
@@ -19,7 +20,7 @@ public sealed partial class Tier0PathTests
         var summary = reader.ReadTier0RunSummary()!;
         do
         {
-            var page = reader.ReadTier0Overview(after, CancellationToken.None)!;
+            var page = reader.ReadTier0Overview(Tier0OverviewScope.All, after, CancellationToken.None)!;
             Assert.Equal(summary, page.Summary);
             Assert.InRange(page.Objects.Count, 1, 50);
             rows.AddRange(page.Objects);
@@ -38,12 +39,40 @@ public sealed partial class Tier0PathTests
         Derive(directory);
         Judge(directory);
         using var reader = Open(directory);
-        var mark = reader.ReadTier0Overview(null, CancellationToken.None)!.Next!;
-        Assert.Throws<ArgumentException>(() => reader.ReadTier0Overview(mark with { GenerationId = Guid.NewGuid() }, CancellationToken.None));
-        Assert.Throws<ArgumentException>(() => reader.ReadTier0Overview(mark with { CalculationFingerprint = new('f', 64) }, CancellationToken.None));
+        var mark = reader.ReadTier0Overview(Tier0OverviewScope.All, null, CancellationToken.None)!.Next!;
+        Assert.Throws<ArgumentException>(() => reader.ReadTier0Overview(
+            Tier0OverviewScope.All, mark with { GenerationId = Guid.NewGuid() }, CancellationToken.None));
+        Assert.Throws<ArgumentException>(() => reader.ReadTier0Overview(
+            Tier0OverviewScope.All, mark with { CalculationFingerprint = new('f', 64) }, CancellationToken.None));
+        Assert.Throws<ArgumentException>(() => reader.ReadTier0Overview(
+            Tier0OverviewScope.Supported, mark, CancellationToken.None));
         using var stop = new CancellationTokenSource();
         stop.Cancel();
-        Assert.ThrowsAny<OperationCanceledException>(() => reader.ReadTier0Overview(null, stop.Token));
+        Assert.ThrowsAny<OperationCanceledException>(() => reader.ReadTier0Overview(
+            Tier0OverviewScope.All, null, stop.Token));
+    }
+
+    [Fact]
+    public void Tier0SupportedOverviewReadsOnlyClassifiedOrSupportedSavedRows()
+    {
+        var directory = Captured(depth: 55);
+        Derive(directory);
+        Judge(directory);
+        using var reader = Open(directory);
+        var rows = new List<Tier0OverviewRow>();
+        Tier0OverviewMark? after = null;
+        do
+        {
+            var page = reader.ReadTier0Overview(Tier0OverviewScope.Supported, after, CancellationToken.None)!;
+            rows.AddRange(page.Objects);
+            after = page.Next;
+        } while (after is not null);
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(
+            row.Distance.Classification == Tier0State.Established || row.Distance.SupportedDistance is not null));
+        Assert.DoesNotContain(rows, row => row.Distance.Classification != Tier0State.Established
+            && row.Distance.Verdict is Tier0DistanceVerdict.Unresolved or Tier0DistanceVerdict.NotAssessed);
     }
 
     [Theory]
@@ -87,7 +116,7 @@ public sealed partial class Tier0PathTests
         var directory = Captured();
         Judge(directory);
         using var reader = Open(directory);
-        var page = reader.ReadTier0Overview(null, CancellationToken.None)!;
+        var page = reader.ReadTier0Overview(Tier0OverviewScope.All, null, CancellationToken.None)!;
         Assert.All(page.Objects, row =>
         {
             Assert.Equal(Tier0DistanceVerdict.NotAssessed, row.Distance.Verdict);

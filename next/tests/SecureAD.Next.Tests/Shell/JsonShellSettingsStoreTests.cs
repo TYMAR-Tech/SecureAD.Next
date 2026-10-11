@@ -230,4 +230,38 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
         Assert.True(read.IsSuccess);
         Assert.Equal(1, read.Value.DomainsAtOnce);
     }
+
+    [Fact]
+    public void AFileWrittenBeforeAppearanceExistedUsesTheDarkDefault()
+    {
+        File.WriteAllText(_path, """{ "RunLibraryPath": "D:\\audits", "DomainsAtOnce": 4 }""");
+
+        var read = Store().Read();
+
+        Assert.True(read.IsSuccess);
+        Assert.Null(read.Value.Appearance);
+        Assert.Equal(ThemeVariant.Dark, ApplicationTheme.Parse(read.Value.Appearance));
+    }
+
+    [Fact]
+    public void DarkAndLightAppearancesRoundTrip()
+    {
+        foreach (var appearance in new[] { "Dark", "Light" })
+        {
+            Assert.True(Store().Write(new ShellSettings(@"D:\audits", 4, appearance)).IsSuccess);
+            Assert.Equal(appearance, Store().Read().Value.Appearance);
+        }
+    }
+
+    [Fact]
+    public void UnknownAppearanceIsRefusedRatherThanSilentlyChanged()
+    {
+        File.WriteAllText(_path,
+            """{ "RunLibraryPath": "D:\\audits", "DomainsAtOnce": 4, "Appearance": "Sepia" }""");
+
+        var read = Store().Read();
+
+        Assert.False(read.IsSuccess);
+        Assert.Contains("Dark or Light", read.Error.Description, StringComparison.Ordinal);
+    }
 }

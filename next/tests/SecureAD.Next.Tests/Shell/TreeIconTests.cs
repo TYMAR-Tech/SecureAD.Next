@@ -67,6 +67,14 @@ public sealed class TreeIconTests
         var row = new TreeNodeViewModel(new("CN=Example,DC=example", "Example", null, TreeNodeOrigin.Captured, [])
         { ObjectClass = objectClass });
         var control = new ContentControl { Content = row, ContentTemplate = (DataTemplate)resources["TreeNodeIcon"] };
+        control.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Palette.Dark.xaml"),
+        });
+        control.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Brushes.xaml"),
+        });
         control.Resources.MergedDictionaries.Add(resources);
         control.Measure(new Size(22, 20));
         control.Arrange(new Rect(0, 0, 22, 20));
@@ -77,7 +85,9 @@ public sealed class TreeIconTests
         Assert.Same(resources[geometry], paths[0].Data);
         Assert.False(paths[0].Data.Bounds.IsEmpty);
         Assert.Equal(hierarchy ? Visibility.Visible : Visibility.Collapsed, paths[1].Visibility);
-        Assert.Same(resources[objectClass is null ? "SecondaryTextBrush" : "FocusBrush"], paths[0].Fill);
+        var expected = Assert.IsType<SolidColorBrush>(control.FindResource(
+            objectClass is null ? "SecondaryTextBrush" : "FocusBrush"));
+        Assert.Equal(expected.Color, Assert.IsType<SolidColorBrush>(paths[0].Fill).Color);
         var viewbox = Assert.Single(Descendants<Viewbox>(control));
         Assert.Equal((16d, 16d, false), (viewbox.Width, viewbox.Height, viewbox.IsHitTestVisible));
     });

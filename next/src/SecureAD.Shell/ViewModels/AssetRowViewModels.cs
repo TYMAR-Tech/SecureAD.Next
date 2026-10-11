@@ -650,6 +650,14 @@ internal sealed class RuleRowViewModel
     /// this build does not ship would be this screen stating something it does not know.
     /// </remarks>
     public string Severity => _definition is null ? string.Empty : _definition.Severity.ToString();
+    public string Assessment => _execution?.Outcome switch
+    {
+        RuleExecutionOutcome.Succeeded => "Completed",
+        RuleExecutionOutcome.Indeterminate => "Incomplete",
+        RuleExecutionOutcome.Error => "Failed",
+        _ => "Not run",
+    };
+    public string FindingSummary => Findings == 1 ? "1 reported" : $"{Findings:N0} reported";
 
     /// <summary>What the rule looks for, and what it does not.</summary>
     /// <remarks>
@@ -665,6 +673,10 @@ internal sealed class RuleRowViewModel
 
     // Paragraph boundaries are authored in the guidance, never guessed from punctuation.
     public string LooksFor => AboutParagraphs[0];
+    public string WhyItMatters => Guidance?.WhyItMatters
+        ?? "This build has no recorded impact guidance for this rule.";
+    public string WhatToDo => Guidance?.WhatToDo
+        ?? "This build has no recorded remediation guidance for this rule.";
     public IReadOnlyList<string> ScopeNotes => AboutParagraphs.Skip(1).ToArray();
     public bool HasScopeNotes => ScopeNotes.Count != 0;
     private string[] AboutParagraphs => About.Replace("\r\n", "\n", StringComparison.Ordinal)

@@ -44,6 +44,9 @@ public sealed class DelegationsViewTests
             Assert.Equal(nameof(DelegationRowViewModel.PermissionHeldBy), Assert.IsType<Binding>(holder.Binding).Path.Path);
             grid.SetCurrentValue(Selector.SelectedItemProperty, Assert.Single(model.Delegations));
             Layout(view, width, height);
+            var evidence = Assert.Single(Descendants<Expander>(view));
+            evidence.IsExpanded = true;
+            Layout(view, width, height);
             Assert.Contains(Descendants<TextBox>(view), box => box.Text.Contains("Membership chain", StringComparison.Ordinal)
                 && box.Text.Contains("Operators", StringComparison.Ordinal));
             Assert.True(grid.ActualHeight >= 50, $"Selecting a nested entry leaves only {grid.ActualHeight} pixels for results.");

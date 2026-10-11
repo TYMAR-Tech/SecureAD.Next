@@ -647,7 +647,7 @@ public sealed class AssetsViewModelTests
     }
 
     /// <summary>
-    /// Opening an object takes the findings grid off the screen with the object listing.
+    /// Opening detached object details leaves the findings page usable in the main window.
     /// </summary>
     /// <remarks>
     /// <b>Both halves derive from whether a listing is showing at all</b>, so opening an object
@@ -656,7 +656,7 @@ public sealed class AssetsViewModelTests
     /// moved, which reads as a tab that does nothing.
     /// </remarks>
     [Fact]
-    public void OpeningAnObjectTakesTheFindingsGridOffTheScreen()
+    public void OpeningAnObjectLeavesTheFindingsGridOnScreen()
     {
         var assets = new FakeAssetSource
         {
@@ -677,8 +677,8 @@ public sealed class AssetsViewModelTests
         screen.OpenObject(screen.Objects[0]);
 
         Assert.True(screen.HasOpenObject);
-        Assert.False(screen.ShowsFindingsListing);
-        Assert.Contains(nameof(screen.ShowsFindingsListing), announced);
+        Assert.True(screen.ShowsFindingsListing);
+        Assert.DoesNotContain(nameof(screen.ShowsFindingsListing), announced);
     }
 
     private static ObjectPermissions SomePermissions() => new(

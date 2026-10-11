@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SecureAD.Shell.Settings;
 
 /// <summary>
@@ -24,6 +26,10 @@ namespace SecureAD.Shell.Settings;
 /// still governs anything proposed here: <b>nothing a customer can switch makes a run read more or
 /// less.</b>
 /// </para>
+/// <para>
+/// Appearance is the third setting, approved 2026-10-10. It changes application colors only and
+/// is kept per machine with the other installation choices.
+/// </para>
 /// </remarks>
 /// <param name="RunLibraryPath">
 /// The directory the operator chose to keep runs in, or null if they have not chosen yet.
@@ -46,9 +52,13 @@ namespace SecureAD.Shell.Settings;
 /// <see cref="JsonShellSettingsStore.Read"/>.
 /// </para>
 /// </param>
-internal sealed record ShellSettings(string? RunLibraryPath, int? DomainsAtOnce)
+/// <param name="Appearance">The chosen application theme, or null for the default Dark theme.</param>
+internal sealed record ShellSettings(
+    string? RunLibraryPath,
+    int? DomainsAtOnce,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Appearance = null)
 {
     /// <summary>The settings of an installation nobody has configured yet.</summary>
     public static ShellSettings Unconfigured { get; } =
-        new(RunLibraryPath: null, DomainsAtOnce: null);
+        new(RunLibraryPath: null, DomainsAtOnce: null, Appearance: null);
 }

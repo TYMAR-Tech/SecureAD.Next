@@ -6,6 +6,12 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Heading" xml:space="preserve"><value>Recorded permissions - not an effective access check</value></data>
   <data name="SearchTitle" xml:space="preserve"><value>Find recorded delegations</value></data>
+  <data name="EditSearch" xml:space="preserve"><value>Edit search</value></data>
+  <data name="SearchSummary" xml:space="preserve"><value>{0} | {1} | {2} | {3} | {4}</value></data>
+  <data name="GroupHeldIncluded" xml:space="preserve"><value>Group-held included</value></data>
+  <data name="DirectOnly" xml:space="preserve"><value>Direct entries only</value></data>
+  <data name="InheritedIncluded" xml:space="preserve"><value>Inherited included</value></data>
+  <data name="ExplicitOnly" xml:space="preserve"><value>Explicit entries only</value></data>
   <data name="PrincipalStep" xml:space="preserve"><value>1  Find the user or group</value></data>
   <data name="PermissionStep" xml:space="preserve"><value>2  Choose the permissions to find</value></data>
   <data name="EntriesTitle" xml:space="preserve"><value>Recorded entries</value></data>

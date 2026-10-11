@@ -12,7 +12,7 @@
         a string no test can read, and the first one to be reworded here would be the one that
         disagrees.
 
-        THE ONE THING THIS SCREEN MUST NOT IMPLY is that lowering the number is considerate. It
+        THE CONCURRENCY SETTING MUST NOT IMPLY that lowering the number is considerate. It
         governs this machine's disk and never a customer's domain controller; 0041 refused a lever
         over somebody else's server and still refuses one. A capture read more slowly is not a
         capture read more gently, and the wording says so outright rather than leaving an
@@ -32,10 +32,8 @@
                    Style="{StaticResource ScreenTitle}"
                    Margin="0,0,0,16" />
 
-        <Border Grid.Row="1" Style="{StaticResource Card}"
-                MaxWidth="640"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Top">
+        <StackPanel Grid.Row="1" MaxWidth="640" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Border Style="{StaticResource Card}">
             <StackPanel>
                 <TextBlock Text="{Binding ConcurrencyHeading, Mode=OneTime}"
                            Style="{StaticResource SectionTitle}"
@@ -52,7 +50,7 @@
 
                 <TextBlock Text="{Binding WhatLoweringItCosts, Mode=OneTime}"
                            TextWrapping="Wrap"
-                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
                            Margin="0,0,0,14" />
 
                 <StackPanel Orientation="Horizontal">
@@ -80,5 +78,21 @@
                            Visibility="{Binding HasProblem, Converter={StaticResource Shown}}" />
             </StackPanel>
         </Border>
+        <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="{Binding AppearanceHeading,Mode=OneTime}"
+                           Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                <TextBlock Text="{Binding AppearanceExplanation,Mode=OneTime}"
+                           TextWrapping="Wrap" Margin="0,0,0,12" />
+                <ComboBox Width="160" HorizontalAlignment="Left"
+                          ItemsSource="{Binding AppearanceChoices}"
+                          SelectedItem="{Binding SelectedAppearance,Mode=TwoWay}" />
+                <TextBlock Text="{Binding AppearanceProblem}" Tag="Fault"
+                           Style="{StaticResource StateText}" TextWrapping="Wrap"
+                           Margin="0,10,0,0"
+                           Visibility="{Binding HasAppearanceProblem,Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </Border>
+        </StackPanel>
     </Grid>
 </UserControl>

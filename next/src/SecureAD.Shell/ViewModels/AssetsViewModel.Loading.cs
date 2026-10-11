@@ -28,7 +28,7 @@ internal sealed partial class AssetsViewModel
 
     private async Task LoadVisibleAsync()
     {
-        if (!_active || _resetting || !HasLooked || _captureIsRunning || BundlePath is null || HasOpenObject)
+        if (!_active || _resetting || !HasLooked || _captureIsRunning || BundlePath is null)
             return;
 
         var question = Question();
@@ -76,6 +76,8 @@ internal sealed partial class AssetsViewModel
                         foreach (var row in page.Computers) LapsComputers.Add(new LapsComputerViewModel(row));
                         foreach (var state in Enum.GetValues<LapsManagement>())
                             LapsCounts.Add(new LapsCountViewModel(state, page.CountOf(state)));
+                        ApplyLapsFilters();
+                        SelectedLapsComputer = LapsComputers.FirstOrDefault();
                         LapsTotal = page.Total;
                         LapsShortfall = page.ComputersAreComplete ? null : page.Shortfall;
                         RememberPage(question, current);
@@ -185,7 +187,8 @@ internal sealed partial class AssetsViewModel
             navigation.Complete("cancelled", null);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException
-            or InvalidOperationException or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+            or InvalidDataException or InvalidOperationException or ArgumentException
+            or Microsoft.Data.Sqlite.SqliteException)
         {
             if (revision == _revision && !pending.IsCancellationRequested && _active)
             {
@@ -229,7 +232,6 @@ internal sealed partial class AssetsViewModel
     {
         _active = false;
         CancelRead();
-        Opened?.Suspend();
         ClearListings();
         ViewRefusal = null;
         Announce();
@@ -250,6 +252,8 @@ internal sealed partial class AssetsViewModel
             case AssetsPane.Tier0:
                 Tier0Objects.Clear();
                 Tier0OverviewStatus = Tier0OverviewCoverage = Tier0ObjectLimitation = "";
+                Tier0ClassifiedCount = Tier0OtherSupportedCount = Tier0UnresolvedCount = Tier0UnassessedCount = 0;
+                Tier0HasLimitations = false;
                 break;
             case AssetsPane.Groups:
                 Groups.Clear();
@@ -275,6 +279,8 @@ internal sealed partial class AssetsViewModel
             case AssetsPane.Laps:
                 LapsComputers.Clear();
                 LapsCounts.Clear();
+                ResetLapsFilters();
+                SelectedLapsComputer = null;
                 LapsRefusal = null;
                 LapsTotal = 0;
                 LapsShortfall = null;

@@ -42,7 +42,7 @@ public sealed class CoverageFooterViewTests
             var navigation = Assert.IsType<Border>(Assert.IsType<Grid>(tree.Parent).Parent);
             var padding = Assert.IsType<Thickness>(view.FindResource("ScreenPadding"));
             Assert.Equal(padding.Top, At(navigation, view).Y, 3);
-            Assert.True(At(objects, view).Y < 60);
+            Assert.True(At(objects, view).Y > At(navigation, view).Y);
             Assert.True(At(action, view).Y >= At(objects, view).Y + objects.ActualHeight);
             Assert.Equal(At(footer, view).X + footer.ActualWidth, At(summary, view).X + summary.ActualWidth, 3);
             Assert.True(At(action, view).X + action.ActualWidth <= At(footer, view).X + footer.ActualWidth + .1);
@@ -121,7 +121,7 @@ public sealed class CoverageFooterViewTests
             Layout(view, 1280, 800);
             Assert.True(model.HasOpenObject && action.IsVisible);
             Assert.All(Descendants<Button>(view).Where(button => ReferenceEquals(button.Command, model.NextPageCommand)
-                || ReferenceEquals(button.Command, model.PreviousPageCommand)), button => Assert.False(button.IsVisible));
+                || ReferenceEquals(button.Command, model.PreviousPageCommand)), button => Assert.True(button.IsVisible));
             Invoke(action);
             Layout(view, 1280, 800);
             Assert.True(model.ShowsCaptureCoverageDetails && scroll.IsVisible);

@@ -34,12 +34,12 @@ public sealed class ObjectViewModelTests
     }
 
     [Fact]
-    public void OpeningAnObjectReplacesTheListing()
+    public void OpeningAnObjectLeavesTheListingUsableBehindTheDetailWindow()
     {
         var screen = Opened(Permissions());
 
         Assert.True(screen.HasOpenObject);
-        Assert.False(screen.ShowsListing);
+        Assert.True(screen.ShowsListing);
     }
 
     /// <summary>
@@ -57,17 +57,18 @@ public sealed class ObjectViewModelTests
     }
 
     /// <summary>
-    /// A new listing answers a different question. Leaving the object up would show one container's
-    /// object over another container's list.
+    /// The detached details retain their own object while the main listing changes scope.
     /// </summary>
     [Fact]
-    public void ChangingTheLevelClosesTheObjectThatWasOpen()
+    public void ChangingTheLevelDoesNotReplaceTheDetachedObject()
     {
         var screen = Opened(Permissions());
+        var opened = screen.Opened;
 
         screen.ShowsOneLevel = true;
 
-        Assert.False(screen.HasOpenObject);
+        Assert.Same(opened, screen.Opened);
+        Assert.True(screen.HasOpenObject);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public sealed class ObjectViewModelTests
         screen.OpenObjectCommand.Execute(screen.Objects[0]);
 
         Assert.False(screen.HasOpenObject);
-        Assert.True(screen.HasViewRefusal);
+        Assert.True(screen.HasObjectRefusal);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -428,6 +429,18 @@ public sealed class ObjectViewModelTests
         Assert.Equal("user", opened.ObjectType);
     }
 
+    [Fact]
+    public void CompactIdentityCombinesTheNameAndFriendlyType()
+    {
+        var opened = new ObjectViewModel(
+            "CN=BA2016,OU=Servers,DC=ba,DC=ad,DC=lab",
+            "computer",
+            "computer",
+            (_, _) => throw new InvalidOperationException());
+
+        Assert.Equal("BA2016 (Computer)", opened.Heading);
+    }
+
     // ---------------------------------------------------------------------------------------
     // Findings on the object
     // ---------------------------------------------------------------------------------------
@@ -599,9 +612,9 @@ public sealed class ObjectViewModelTests
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
         Assert.False(screen.HasOpenObject);
-        Assert.True(screen.HasViewRefusal);
+        Assert.True(screen.HasObjectRefusal);
         Assert.Contains(
-            "not in this run's evidence", screen.ViewRefusal!.Detail, StringComparison.Ordinal);
+            "not in this run's evidence", screen.ObjectRefusal!.Detail, StringComparison.Ordinal);
     }
 
     private static ObjectAttributes AttributesOfAUser() =>

@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureAD - charcoal customer review</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 14px/1.4 "Segoe UI", Arial, sans-serif;
+      --canvas: #151b24;
+      --surface: #202936;
+      --field: #161e2a;
+      --subtle: #283444;
+      --heading: #303f54;
+      --ink: #f1f5fc;
+      --muted: #c1cede;
+      --line: #65778f;
+      --accent: #b7d5ff;
+      --accent-ink: #11243e;
+      --selected: #344e73;
+      --warning: #ffe1a3;
+      --warning-bg: #3e3320;
+      --danger: #ffb5bc;
+      --danger-bg: #432a35;
+      --good: #b0e6d4;
+      --good-bg: #223b36;
+      background: #10151d;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input, select, textarea { font: inherit; }
+    button, select, summary { cursor: pointer; }
+    button, .button {
+      min-height: 30px; padding: 4px 10px; color: var(--ink); background: var(--field);
+      border: 1px solid var(--line); border-radius: 4px; white-space: nowrap;
+    }
+    button:hover { background: #304258; }
+    button.primary, button[aria-pressed="true"], button[role="tab"][aria-selected="true"] {
+      background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600;
+    }
+    button:disabled { cursor: default; color: var(--muted); background: var(--subtle); }
+    button.link { color: var(--accent); background: transparent; border-color: transparent; padding: 2px 4px; min-height: 26px; }
+    a { color: var(--accent); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    input, select { min-height: 30px; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; background: var(--field); color: var(--ink); min-width: 0; }
+    input::placeholder { color: var(--muted); opacity: 1; }
+    input[type="checkbox"] { min-height: auto; accent-color: #b7d5ff; width: 16px; height: 16px; margin: 0 6px 0 0; vertical-align: -3px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 22px; line-height: 1.25; }
+    h2 { font-size: 17px; line-height: 1.3; }
+    h3 { font-size: 15px; }
+    small, .small { font-size: 13px; }
+    .muted { color: var(--muted); }
+    .mono { font-family: Consolas, "Courier New", monospace; font-size: 13px; overflow-wrap: anywhere; }
+    .review-bar { padding: 7px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: #161e2a; border-bottom: 1px solid var(--line); }
+    .review-brand { margin-right: auto; }
+    .review-brand strong { display: block; font-size: 14px; }
+    .review-brand span { color: var(--muted); font-size: 13px; }
+    .review-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .review-controls select { max-width: 215px; }
+    .stage { padding: 10px; overflow: auto; }
+    .desktop { position: relative; height: max(650px, calc(100dvh - 80px)); width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--canvas); margin: 0 auto; container-type: inline-size; container-name: desktop; }
+    .desktop[data-size="laptop"] { width: 1024px; height: 768px; }
+    .desktop[data-size="large"] { width: 1800px; height: 1000px; }
+    .application { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+    .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 0; background: #152033; border-bottom: 1px solid var(--line); }
+    .brand { padding: 8px 16px; font-size: 21px; font-weight: 650; color: var(--ink); }
+    .brand .icon { color: var(--accent); width: 20px; height: 20px; vertical-align: -3px; margin-right: 5px; }
+    .nav button { min-height: 42px; padding: 6px 16px; border: 0; border-radius: 0; background: transparent; }
+    .nav button.active { background: #304666; color: white; box-shadow: inset 0 -3px var(--accent); font-weight: 600; }
+    .nav .run-context { margin-left: auto; padding: 6px 14px; color: var(--muted); font-size: 13px; }
+    .asset-nav { display: flex; overflow: auto; flex: 0 0 auto; gap: 3px; background: var(--surface); padding: 2px 10px; border-bottom: 1px solid var(--line); }
+    .asset-nav button { border: 0; border-radius: 0; background: transparent; padding: 6px 12px; min-height: 34px; }
+    .asset-nav button.active { box-shadow: inset 0 -3px var(--accent); color: var(--accent); font-weight: 600; }
+    .workspace { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; padding: 12px; gap: 10px; }
+    .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 12px; background: var(--field); border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); flex: 0 0 auto; }
+    .heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px 16px; }
+    .heading p { color: var(--muted); margin-top: 3px; }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; min-width: 0; overflow: hidden; }
+    .panel-title { padding: 7px 10px; background: var(--heading); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .panel-content { padding: 10px; }
+    .panel-content p + p { margin-top: 7px; }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 14px; padding: 8px 10px; background: var(--subtle); border-bottom: 1px solid var(--line); }
+    .toolbar input[type="search"], .toolbar input[type="text"] { flex: 1; min-width: 165px; }
+    .toolbar label { display: flex; align-items: center; gap: 7px; }
+    .note { padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--subtle); color: var(--muted); }
+    .warning { background: var(--warning-bg); color: var(--warning); border-color: #a88b54; }
+    .warning strong { color: var(--warning); }
+    .notice { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+    .badge { display: inline-block; padding: 2px 7px; font-size: 13px; border: 1px solid var(--line); border-radius: 4px; background: var(--subtle); color: var(--ink); white-space: nowrap; }
+    .badge.good { background: var(--good-bg); color: var(--good); border-color: #75988b; }
+    .badge.warn { background: var(--warning-bg); color: var(--warning); border-color: #a88b54; }
+    .badge.danger { background: var(--danger-bg); color: var(--danger); border-color: #ae808c; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .stat { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 4px; padding: 9px 12px; min-width: 0; }
+    .stat strong { display: block; font-size: 26px; line-height: 1.15; margin-top: 3px; color: var(--ink); }
+    .stat small { display: block; color: var(--muted); margin-top: 3px; }
+    .stat.warning { border-top-color: var(--warning); background: var(--warning-bg); }
+    .stat.warning strong, .stat.warning small { color: var(--warning); }
+    .two-column { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    details { min-width: 0; }
+    details summary { padding: 7px 10px; background: var(--subtle); color: var(--ink); font-weight: 600; }
+    details > .detail-content { padding: 9px 10px; border-top: 1px solid var(--line); color: var(--muted); }
+    .table-scroll { overflow: auto; min-height: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+    th { background: var(--subtle); padding: 6px 9px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; font-weight: 600; }
+    td { padding: 5px 9px; height: 34px; line-height: 22px; border-bottom: 1px solid #4b5b70; vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:nth-child(even) { background: #25303f; }
+    tr.selectable { cursor: pointer; }
+    tr.selectable:hover { background: #304258; }
+    tr.selected { background: var(--selected) !important; color: white; }
+    tr.selected td:first-child { box-shadow: inset 3px 0 var(--accent); }
+    .numeric { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .nowrap { white-space: nowrap; }
+    .name { color: var(--accent); font-weight: 600; }
+    .page-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 9px; background: var(--subtle); color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+    .page-bar .buttons { display: flex; gap: 6px; }
+    .scope-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 10px; min-height: 0; flex: 1; }
+    .scope-layout.collapsed { grid-template-columns: minmax(0, 1fr); }
+    .scope-layout.collapsed .scope-tree { display: none; }
+    .scope-tree { overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+    .scope-tree .tree-body { padding: 7px 6px; }
+    .tree-node { display: block; width: 100%; text-align: left; background: transparent; border: 0; min-height: 31px; padding: 4px 8px; border-radius: 3px; }
+    .tree-node.indent { padding-left: 26px; }
+    .tree-node.indent2 { padding-left: 42px; }
+    .tree-node.selected { background: var(--selected); color: white; }
+    .tree-node .icon { height: 16px; width: 16px; vertical-align: -3px; margin-right: 7px; color: var(--accent); }
+    .view-stack { display: flex; flex-direction: column; min-width: 0; gap: 9px; }
+    .scope-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 7px 9px; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; }
+    .scope-strip .scope-label { flex: 1; min-width: 120px; }
+    .scope-strip select { max-width: 140px; }
+    .selected-summary { padding: 9px 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+    .selected-summary .selection-info { flex: 1; min-width: 220px; }
+    .selected-summary .selection-info p { color: var(--muted); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }
+    .rules-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(340px, 1fr); gap: 10px; min-height: 0; }
+    .rule-name { min-width: 210px; }
+    .rule-name .id { display: inline-block; margin-right: 7px; color: var(--accent); }
+    .section-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 7px 9px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+    .section-tabs button { min-height: 31px; }
+    .rule-copy { padding: 12px; display: flex; flex-direction: column; gap: 13px; }
+    .rule-copy p { color: var(--muted); margin-top: 4px; }
+    .rule-copy ul { color: var(--muted); margin: 4px 0 0; padding-left: 20px; }
+    .rule-result { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 15px; padding: 9px 12px; background: var(--subtle); }
+    .rule-result button { margin-left: auto; }
+    .search-grid { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(200px, 1fr) auto; gap: 10px; align-items: end; }
+    .search-grid label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); }
+    .search-grid .search-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    .search-grid .search-options label { display: block; }
+    .group-row td { background: var(--heading); padding: 4px 9px; height: 31px; }
+    .group-row button { border: 0; background: transparent; padding: 1px 0; text-align: left; min-height: 23px; color: var(--ink); }
+    .group-row small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 9px; }
+    .permission-name { padding-left: 25px; }
+    .risk td { background: #3c2a34; }
+    .risk.selected td { background: var(--selected); }
+    .icon { display: inline-block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .object-window {
+      position: absolute; z-index: 5; left: 320px; top: 88px; width: calc(100% - 342px); height: calc(100% - 105px);
+      min-width: 580px; min-height: 440px; max-width: calc(100% - 16px); max-height: calc(100% - 16px);
+      display: flex; flex-direction: column; background: var(--canvas); border: 1px solid #9cafc8;
+      border-radius: 6px; box-shadow: 0 15px 55px #000b; overflow: hidden;
+      container-type: inline-size; container-name: objectWindow;
+    }
+    .object-window[hidden] { display: none; }
+    .resize-grip { position: absolute; right: 1px; bottom: 1px; width: 17px; height: 17px; z-index: 3; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg,transparent 50%,var(--line) 51%,var(--line) 58%,transparent 59%,transparent 67%,var(--line) 68%,var(--line) 75%,transparent 76%); }
+    .standalone .resize-grip { display: none; }
+    .window-titlebar { background: #2c3b50; display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 12px; min-height: 35px; cursor: move; touch-action: none; flex: 0 0 auto; }
+    .window-titlebar strong { font-size: 13px; font-weight: 600; }
+    .window-titlebar .window-buttons { margin-left: auto; display: flex; align-items: center; gap: 5px; }
+    .window-titlebar button { min-height: 25px; padding: 2px 7px; font-size: 13px; }
+    .window-content { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+    .object-identity { padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .identity-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 11px; }
+    .identity-line h1 { font-size: 22px; }
+    .identity-line .identity-actions { margin-left: auto; display: flex; gap: 5px; }
+    .identity-line .object-symbol { color: var(--accent); width: 25px; height: 25px; }
+    .identity-path { display: flex; align-items: center; gap: 9px; margin-top: 5px; color: var(--muted); font-size: 13px; }
+    .identity-path span { overflow-wrap: anywhere; flex: 1; user-select: text; }
+    .object-run { font-size: 13px; color: var(--muted); margin-top: 5px; }
+    .object-tabs { display: flex; overflow-x: auto; background: var(--field); border-bottom: 1px solid var(--line); padding: 0 7px; flex: 0 0 auto; }
+    .object-tabs button { border: 0; border-radius: 0; background: transparent; min-height: 36px; padding: 6px 10px; font-size: 13px; }
+    .object-tabs button.active { color: var(--accent); background: var(--surface); box-shadow: inset 0 -3px var(--accent); font-weight: 600; }
+    .object-body { padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 9px; flex: 1; min-height: 0; }
+    .object-body > * { flex: 0 0 auto; }
+    .object-body .table-scroll { max-height: 330px; }
+    .summary-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 13px; padding: 7px 10px; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; }
+    .attributes { margin: 0; padding: 4px 10px 9px; }
+    .attribute { display: grid; grid-template-columns: minmax(155px, 0.95fr) minmax(0, 1.1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid #4b5b70; align-items: start; }
+    .attribute:last-child { border-bottom: 0; }
+    .attribute dt { color: var(--muted); font-size: 13px; }
+    .attribute dt .technical { color: var(--muted); white-space: normal; }
+    .attribute dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; min-width: 0; }
+    .attribute dd .copy-value { display: flex; gap: 6px; align-items: start; }
+    .attribute dd .copy-value span { flex: 1; min-width: 0; }
+    .attribute dd button { min-height: 24px; padding: 1px 6px; font-size: 13px; }
+    .attribute-note { color: var(--muted); font-size: 13px; padding: 2px 10px 10px; }
+    .subheading { padding: 7px 10px 0; color: var(--ink); border-top: 1px solid var(--line); }
+    .permission-layout-tabs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 7px 9px; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; }
+    .permission-layout-tabs span { margin-right: auto; color: var(--muted); font-size: 13px; }
+    .reading-pane { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 9px; min-width: 0; }
+    .principal-list { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+    .principal-list button { display: flex; justify-content: space-between; gap: 8px; width: 100%; border: 0; border-bottom: 1px solid #4b5b70; border-radius: 0; background: transparent; text-align: left; padding: 8px 9px; white-space: normal; }
+    .principal-list button.selected { background: var(--selected); }
+    .principal-list button span:first-child { min-width: 0; overflow-wrap: anywhere; }
+    .principal-list button small { display: block; color: var(--muted); font-size: 13px; }
+    .entry-detail { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; flex: 0 0 auto; }
+    .entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; padding: 8px 10px; }
+    .entry-grid div { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 8px; }
+    .entry-grid label { color: var(--muted); font-size: 13px; }
+    .entry-grid span { overflow-wrap: anywhere; }
+    .entry-detail details { border-top: 1px solid var(--line); }
+    .edges-layout { display: grid; grid-template-columns: minmax(0, 1fr) 335px; gap: 10px; align-items: start; }
+    .edge-side .section-tabs { gap: 3px; padding: 6px; }
+    .edge-side .section-tabs button { padding: 4px 7px; font-size: 13px; }
+    .edge-side { min-width: 0; }
+    .edge-side .panel-content { min-height: 190px; }
+    .edge-side p { color: var(--muted); }
+    .edge-side h3 { margin-bottom: 6px; }
+    .edge-side .mono { margin-top: 7px; }
+    .count-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .count-strip span { background: var(--subtle); border: 1px solid var(--line); padding: 4px 8px; border-radius: 4px; }
+    .empty-state { padding: 25px 14px; text-align: center; }
+    .empty-state p { margin: 7px auto; color: var(--muted); max-width: 560px; }
+    .route-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 10px; }
+    .route-node { background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; }
+    .route-node small { display: block; color: var(--muted); font-size: 13px; }
+    .toast { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 20; width: max-content; max-width: calc(100% - 30px); padding: 10px 15px; border: 1px solid var(--accent); border-radius: 5px; background: #283a51; color: var(--ink); box-shadow: 0 5px 25px #0008; }
+    .toast[hidden] { display: none; }
+    .coverage-panel { position: fixed; z-index: 15; right: 20px; bottom: 20px; width: min(500px, calc(100% - 40px)); max-height: calc(100dvh - 40px); overflow: auto; box-shadow: 0 8px 35px #000b; }
+    .coverage-panel[hidden] { display: none; }
+    .standalone .stage { padding: 0; }
+    .standalone .review-bar { padding: 5px 10px; }
+    .standalone .review-controls .sizes { display: none; }
+    .standalone .desktop { height: calc(100dvh - 59px); min-height: 460px; width: 100%; border: 0; border-radius: 0; }
+    .standalone .application { display: none; }
+    .standalone .object-window { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; min-width: 0; min-height: 0; resize: none; border: 0; border-radius: 0; box-shadow: none; }
+    .standalone .window-titlebar { cursor: default; }
+    .standalone .window-titlebar .detach-button, .standalone .window-titlebar .maximize-button { display: none; }
+    @container objectWindow (max-width: 1100px) {
+      .edges-layout { grid-template-columns: minmax(0, 1fr); }
+      .edge-side .panel-content { min-height: 0; }
+      .reading-pane { grid-template-columns: 200px minmax(0, 1fr); }
+      .attribute { grid-template-columns: minmax(140px, 0.95fr) minmax(0, 1fr); }
+      .entry-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @container objectWindow (max-width: 740px) {
+      .two-column { grid-template-columns: minmax(0, 1fr); }
+      .identity-line .identity-actions { margin-left: 0; }
+      .reading-pane { grid-template-columns: 175px minmax(0, 1fr); }
+      .object-tabs button { padding: 5px 8px; }
+    }
+    @container desktop (max-width: 1100px) {
+      .rules-layout { grid-template-columns: minmax(0, 1fr); }
+      .scope-layout { grid-template-columns: 225px minmax(0, 1fr); }
+      .nav .run-context { width: 100%; padding: 4px 14px; }
+      .search-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .stats { gap: 7px; }
+      .stat { padding: 8px 9px; }
+    }
+    @container desktop (max-width: 760px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-column { grid-template-columns: minmax(0, 1fr); }
+      .scope-layout { grid-template-columns: minmax(0, 1fr); }
+      .scope-tree { max-height: 210px; }
+      .review-controls select { max-width: 175px; }
+      .footer { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="review-bar">
+    <div class="review-brand"><strong>SecureAD · Customer review mockup</strong><span>Fictional data only · No directory access · No application changes</span></div>
+    <div class="review-controls">
+      <label for="scene">Review screen</label>
+      <select id="scene">
+        <option value="object-overview">Object overview</option>
+        <option value="permissions-a">Permissions A · Reading pane</option>
+        <option value="permissions-b">Permissions B · Expandable groups</option>
+        <option value="object-control">Object control edges</option>
+        <option value="object-tier0">Object Tier 0 details</option>
+        <option value="dashboard">Forest inventory</option>
+        <option value="rules">Rules and results</option>
+        <option value="objects">Object browser</option>
+        <option value="groups">Groups</option>
+        <option value="tier0">Tier 0 overview</option>
+        <option value="laps">LAPS</option>
+        <option value="delegations">Delegations</option>
+      </select>
+      <span class="sizes">
+        <button type="button" data-action="size" data-value="fit" aria-pressed="true">Fit</button>
+        <button type="button" data-action="size" data-value="laptop" aria-pressed="false">Laptop</button>
+        <button type="button" data-action="size" data-value="large" aria-pressed="false">Large</button>
+      </span>
+      <button type="button" data-action="detach">Separate object preview</button>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="desktop" id="desktop" data-size="fit">
+      <div class="application" id="application"></div>
+      <section class="object-window" id="objectWindow" role="dialog" aria-modal="false" aria-label="Movable object-details review window" hidden>
+        <div class="window-titlebar" id="windowTitlebar">
+          <span id="windowTitle">Object details</span><strong>Mockup window · main screen remains usable</strong>
+          <div class="window-buttons">
+            <button type="button" class="detach-button" data-action="detach">Separate preview</button>
+            <button type="button" class="maximize-button" data-action="maximize" aria-label="Maximize or restore object preview">□</button>
+            <button type="button" data-action="close-object" aria-label="Close object preview">✕</button>
+          </div>
+        </div>
+        <div class="window-content" id="windowContent"></div>
+        <div class="resize-grip" id="resizeGrip" role="separator" aria-label="Resize object preview" tabindex="0"></div>
+      </section>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <section id="coveragePanel" class="panel coverage-panel" aria-label="Fictional capture coverage" hidden>
+    <div class="panel-title"><h2>Fictional capture coverage</h2><button type="button" data-action="close-coverage">Close</button></div>
+    <div class="panel-content">
+      <h3>Captured evidence</h3><p class="muted">3 of 3 declared example domains read within the recorded class scope. DNS and approved Enatel storage/account classes are excluded. A domain being read does not prove every attribute was visible.</p>
+      <h3 style="margin-top:12px">Analysis</h3><p class="muted">Saved supported results coexist with unresolved identities and membership gaps. Unsupported analysis is not an incomplete capture and does not clear an object.</p>
+      <h3 style="margin-top:12px">Processing</h3><p class="muted">No processing shortfall is recorded in this fictional scenario. A stopped or unperformed assessment would remain a separate status.</p>
+      <p class="small muted">Mockup only · These are not statements about your lab or a customer forest.</p>
+    </div>
+  </section>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const standalone = params.get("view") === "object";
+    const run = { name: "Example run A", captured: "10 Oct 2026, 09:00 UTC", forest: "example.test" };
+    const state = {
+      page: "objects", selectedObject: "alex", objectId: "alex", tab: "overview", permissionLayout: "b", principal: "legacy",
+      selectedPermission: 0, type: "all", permissionSearch: "", groupBy: "principal", risk: false,
+      collapsedPrincipals: new Set(["helpdesk", "operators", "alex", "admins"]), entryCollapsed: false,
+      showMissing: false, scopeHidden: { objects: false, groups: true, laps: true }, scope: "forest", scopeContainer: "",
+      objectSearch: "", groupSearch: "", lapsSearch: "", groupType: "all", groupScope: "all", cyclesOnly: false,
+      lapsState: "all", selectedGroup: 0, selectedComputer: 1, rule: "SEC-062",
+      ruleTab: "summary", ruleSearch: "", ruleOutcome: "all", ruleSeverity: "all",
+      tierView: "supported", edgeDirection: "target", edgeTab: "evidence", edge: 0,
+      edgeEmpty: false, expected: true, edgeSearch: "", routeExample: "unresolved",
+      delegationEdit: false, delegationInherited: false, delegationGroups: true, delegationSearch: "",
+      delegationPrincipal: "alex", delegationPermission: "All recorded permissions", selectedDelegation: 0,
+      windowOpen: false, size: "fit", maximized: false
+    };
+    const objects = [
+      { id: "alex", name: "Alex Morgan", sam: "alex.morgan", type: "User", domain: "corp.example.test", dn: "CN=Alex Morgan,OU=People,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1104", guid: "31b247b2-0f0e-4a48-8527-59c0355240dc" },
+      { id: "da", name: "Domain Admins", sam: "Domain Admins", type: "Group", domain: "corp.example.test", dn: "CN=Domain Admins,CN=Users,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-512", guid: "f0b8ad47-2b74-4d4f-92e3-49278f098e16" },
+      { id: "helpdesk", name: "GG.Helpdesk.PasswordReset", sam: "GG.Helpdesk.PasswordReset", type: "Group", domain: "corp.example.test", dn: "CN=GG.Helpdesk.PasswordReset,OU=Groups,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1201", guid: "a87933bc-b3e8-47e0-8b20-f4987149e5d7" },
+      { id: "operators", name: "GG.Directory.Operators", sam: "GG.Directory.Operators", type: "Group", domain: "corp.example.test", dn: "CN=GG.Directory.Operators,OU=Groups,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1202", guid: "9b29c35f-9331-4cfa-81f1-b5e8effac20b" },
+      { id: "domain-users", name: "Domain Users", sam: "Domain Users", type: "Group", domain: "corp.example.test", dn: "CN=Domain Users,CN=Users,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-513", guid: "bb217db8-c60d-476f-8712-d653cc8c9264" },
+      { id: "workstation", name: "EXAMPLE-WKS01", sam: "EXAMPLE-WKS01$", type: "Computer", domain: "branch.example.test", dn: "CN=EXAMPLE-WKS01,OU=Workstations,DC=branch,DC=example,DC=test", sid: "S-1-5-21-400-500-600-1401", guid: "b38e32b9-8886-48c2-ab38-8114c5f1dafb" },
+      { id: "server", name: "EXAMPLE-APP01", sam: "EXAMPLE-APP01$", type: "Computer", domain: "corp.example.test", dn: "CN=EXAMPLE-APP01,OU=Servers,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1402", guid: "766ef2fc-6a8d-4bf0-8b0a-90321c11ed01" },
+      { id: "people", name: "People", sam: "", type: "Organisational unit", domain: "corp.example.test", dn: "OU=People,DC=corp,DC=example,DC=test", sid: null, guid: "706ba7b0-5713-4eb1-9467-03906811ff20" }
+    ];
+    objects.push(
+      { id: "root", name: "example.test domain root", sam: "", type: "Domain partition", domain: "example.test", dn: "DC=example,DC=test", sid: "S-1-5-21-700-800-900", guid: "9bb4d118-c32b-4cdb-ac7e-cf69d6a93586" },
+      { id: "server-support", name: "DL.Server.Support", sam: "DL.Server.Support", type: "Group", domain: "branch.example.test", dn: "CN=DL.Server.Support,OU=Groups,DC=branch,DC=example,DC=test", sid: "S-1-5-21-400-500-600-1210", guid: "5fe12e78-4d54-4cde-a5b4-6fe732785522" },
+      { id: "remote-support", name: "GG.Remote.Support", sam: "GG.Remote.Support", type: "Group", domain: "example.test", dn: "CN=GG.Remote.Support,OU=Groups,DC=example,DC=test", sid: "S-1-5-21-700-800-900-1211", guid: "1c7289b1-3d0e-4d0c-9818-68d8a88481dd" },
+      { id: "app-support", name: "GG.Application.Support", sam: "GG.Application.Support", type: "Group", domain: "corp.example.test", dn: "CN=GG.Application.Support,OU=Groups,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1212", guid: "63302944-b350-4f9d-9e23-fc7a6b0c798c" },
+      { id: "mail-team", name: "Mail.Directory.Team", sam: "Mail.Directory.Team", type: "Group", domain: "corp.example.test", dn: "CN=Mail.Directory.Team,OU=Groups,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1213", guid: "daa3e017-21c6-4d07-aa7f-97cfc5a92c3b" },
+      { id: "legacy-computer", name: "EXAMPLE-LEGACY01", sam: "EXAMPLE-LEGACY01$", type: "Computer", domain: "corp.example.test", dn: "CN=EXAMPLE-LEGACY01,OU=Servers,DC=corp,DC=example,DC=test", sid: "S-1-5-21-100-200-300-1410", guid: "01330aee-67d2-4dde-b5a1-ff3468229801" },
+      { id: "domain-controller", name: "EXAMPLE-DC01", sam: "EXAMPLE-DC01$", type: "Computer", domain: "example.test", dn: "CN=EXAMPLE-DC01,OU=Domain Controllers,DC=example,DC=test", sid: "S-1-5-21-700-800-900-1411", guid: "09ddb7ab-401e-4210-acd7-d1f798ef7944" },
+      { id: "unknown-computer", name: "EXAMPLE-UNKNOWN01", sam: "EXAMPLE-UNKNOWN01$", type: "Computer", domain: "branch.example.test", dn: "CN=EXAMPLE-UNKNOWN01,OU=Workstations,DC=branch,DC=example,DC=test", sid: "S-1-5-21-400-500-600-1412", guid: "9a6284d7-0c63-4501-a1eb-9dd2c094a243" }
+    );
+    const groups = [
+      { id: "helpdesk", name: "GG.Helpdesk.PasswordReset", type: "Security", scope: "Global", domain: "corp.example.test", direct: 3, total: 8, cycle: "None recorded", data: "Incomplete", missing: 1 },
+      { id: "operators", name: "GG.Directory.Operators", type: "Security", scope: "Global", domain: "corp.example.test", direct: 2, total: 5, cycle: "SEC-052", data: "Recorded", missing: 0 },
+      { id: "da", name: "Domain Admins", type: "Security", scope: "Global", domain: "corp.example.test", direct: 4, total: 12, cycle: "None recorded", data: "Recorded", missing: 0 },
+      { id: "domain-users", name: "Domain Users", type: "Security", scope: "Global", domain: "corp.example.test", direct: 0, total: 0, cycle: "None recorded", data: "Recorded", missing: 0 },
+      { id: "server-support", name: "DL.Server.Support", type: "Security", scope: "Domain local", domain: "branch.example.test", direct: 2, total: 6, cycle: "None recorded", data: "Recorded", missing: 0 },
+      { id: "remote-support", name: "GG.Remote.Support", type: "Security", scope: "Global", domain: "example.test", direct: 1, total: 3, cycle: "None recorded", data: "Recorded", missing: 0 },
+      { id: "app-support", name: "GG.Application.Support", type: "Security", scope: "Universal", domain: "corp.example.test", direct: 5, total: 5, cycle: "None recorded", data: "Recorded", missing: 0 },
+      { id: "mail-team", name: "Mail.Directory.Team", type: "Distribution", scope: "Universal", domain: "corp.example.test", direct: 4, total: 4, cycle: "None recorded", data: "Recorded", missing: 0 }
+    ];
+    const rules = [
+      { id: "SEC-062", name: "Broad membership of administrative directory groups", severity: "High", category: "Group membership", outcome: "Incomplete", judged: 9, findings: 3,
+        summary: "Broad membership reaches this administrative group through the recorded security-group relationships. This finding does not prove a successful logon or account takeover.",
+        guidance: "Review and remove unintended broad membership paths, replace them with role-specific security groups, and check the other recorded routes before concluding the exposure is removed.",
+        evidence: "Captured group identities, groupType, member/memberOf values and domain scope; saved, generation-bound membership inputs.",
+        limits: "Only qualified Domain Admins, forest-root Enterprise/Schema Admins and domain-scoped BUILTIN Administrators. Missing evidence remains explicit. Distribution-only nesting does not establish authorization." },
+      { id: "SEC-026", name: "Duplicate service principal names", severity: "High", category: "Kerberos", outcome: "Completed", judged: 2101, findings: 7,
+        summary: "The same complete service principal name is recorded on more than one captured object. This can prevent Kerberos from identifying the service account. It does not prove ticket issuance, credential exposure or takeover.",
+        guidance: "Identify the actual service and account that should own each registration before changing AD. Remove only a confirmed erroneous registration under change control.",
+        evidence: "Original servicePrincipalName values and the identities of distinct captured owners.",
+        limits: "SPN aliases, other forests, live service identity and successful authentication are not assessed. Known duplicates remain findings when incomplete evidence prevents a complete inventory." },
+      { id: "SEC-052", name: "Circular group membership", severity: "Medium", category: "Group membership", outcome: "Completed", judged: 2194, findings: 2,
+        summary: "These groups form a circular membership relationship. Review the recorded links and the membership or permissions that depend on them; this finding does not establish a route to Tier 0.",
+        guidance: "Remove unintended nesting links after reviewing their impact. A set containing overlapping loops may require more than one link to be removed.",
+        evidence: "Saved cycle sets and original member/memberOf witnesses.", limits: "Recorded cycles and inventory completeness remain separate; a cycle is not proof of a permission grant." },
+      { id: "SEC-071", name: "Unexpected supported route to Tier 0", severity: "High", category: "Tier 0", outcome: "Incomplete", judged: 8, findings: 2,
+        summary: "The saved evidence establishes a supported route to Tier 0 outside this account's expected administrative authority on the reached target.",
+        guidance: "Inspect the saved route and actual granting entry. Review its source and effects before changing permissions.",
+        evidence: "Saved route qualifications, permission evidence and requester-specific supporting checks.",
+        limits: "A saved route is not proof of account takeover or a successful live operation. Unresolved and unassessed results are not statements of safety." },
+      { id: "SEC-030", name: "Protected-account marker without current protection", severity: "Medium", category: "Privileged access", outcome: "Incomplete", judged: 4295, findings: 2,
+        summary: "A recorded administrative-protection marker is not by itself proof of current AdminSDHolder protection.",
+        guidance: "Review the saved protection and membership explanation before changing the marker.",
+        evidence: "adminCount, captured identities and the saved protected-principal derivation.", limits: "Incomplete or disputed protection evidence must not be presented as a clean account." },
+      { id: "SEC-010", name: "Unconstrained delegation on an account", severity: "High", category: "Delegation", outcome: "Completed", judged: 2101, findings: 1,
+        summary: "The captured account is trusted for unconstrained delegation.", guidance: "Identify what depends on the setting before replacing it with appropriately constrained delegation.",
+        evidence: "The captured userAccountControl delegation setting.", limits: "This saved setting does not show whether anyone actually authenticated through the service." },
+      { id: "SEC-011", name: "Unconstrained delegation on a non-domain controller", severity: "High", category: "Delegation", outcome: "Completed", judged: 11, findings: 0,
+        summary: "Checks the captured delegation setting and recorded domain-controller identity signals.", guidance: "Review dependencies before changing a host's delegation setting.",
+        evidence: "userAccountControl and captured controller-identification signals.", limits: "No finding in this completed example is not a whole-forest safety verdict." },
+      { id: "SEC-022", name: "Kerberos pre-authentication not required", severity: "High", category: "Kerberos", outcome: "Failed", judged: 0, findings: "—",
+        summary: "Example of a saved rule failure. No security conclusion is supplied by this failed assessment.", guidance: "Inspect the recorded execution failure before treating this rule as assessed.",
+        evidence: "No valid result body is provided by this fictional failed execution.", limits: "Failed is not zero findings from a completed rule. This example does not report a real application failure." },
+      { id: "SEC-027", name: "Privileged identifier carried in SID history", severity: "High", category: "Privileged access", outcome: "Not run", judged: 0, findings: "—",
+        summary: "Example of a rule not run. No assessment is supplied for this saved state.", guidance: "Confirm why analysis was not performed rather than treating it as a clear result.",
+        evidence: "No assessment performed in this fictional status example.", limits: "Not run is different from completed with no findings, incomplete evidence and an execution failure." }
+    ];
+    const principals = [
+      { id: "legacy", name: "BUILTIN\\Pre-Windows 2000 Compatible Access", domain: "corp.example.test", sid: "S-1-5-32-554" },
+      { id: "helpdesk", name: "GG.Helpdesk.PasswordReset", domain: "corp.example.test", sid: objects[2].sid },
+      { id: "operators", name: "GG.Directory.Operators", domain: "corp.example.test", sid: objects[3].sid },
+      { id: "alex", name: "Alex Morgan", domain: "corp.example.test", sid: objects[0].sid },
+      { id: "admins", name: "Domain Admins", domain: "corp.example.test", sid: objects[1].sid }
+    ];
+    const permissions = [
+      ...["Read User-Account-Restrictions", "Read User-Account-Restrictions", "Read User-Logon", "Read User-Logon",
+        "Read Membership", "Read Membership", "Read General-Information", "Read General-Information",
+        "Read All Properties", "Read All Properties", "Read Permissions", "Read Permissions"]
+        .map((right, ordinal) => ({ ordinal, principal: "legacy", right, type: "Allow", classification: "Not dangerous" })),
+      ...["Reset Password", "Write telephoneNumber", "Write pwdLastSet", "Read All Properties", "Write DACL", "Write description"]
+        .map((right, i) => ({ ordinal: i + 12, principal: "helpdesk", right, type: i === 5 ? "Deny" : "Allow",
+          classification: ["Reset Password", "Write DACL"].includes(right) ? "Dangerous" : "Not dangerous" })),
+      ...["Write DACL", "Write Owner", "Read Permissions", "Read All Properties"]
+        .map((right, i) => ({ ordinal: i + 18, principal: "operators", right, type: "Allow", classification: i < 2 ? "Dangerous" : "Not dangerous" })),
+      { ordinal: 22, principal: "alex", right: "Read All Properties", type: "Allow", classification: "Not dangerous" },
+      { ordinal: 23, principal: "admins", right: "Full Control", type: "Allow", classification: "Dangerous" }
+    ];
+    const edges = [
+      { holder: "GG.Helpdesk.PasswordReset", target: "Alex Morgan", capability: "CanResetPassword", expected: "Unexpected", ace: 12 },
+      { holder: "GG.Directory.Operators", target: "Alex Morgan", capability: "CanWriteDacl", expected: "Unknown", ace: 18 },
+      { holder: "Domain Admins · corp.example.test", target: "Alex Morgan", capability: "Full control", expected: "Expected", ace: 23 },
+      { holder: "Alex Morgan", target: "GG.Directory.Operators", capability: "CanWriteDacl", expected: "Unexpected", ace: 18 },
+      { holder: "Alex Morgan", target: "OU=Application Services", capability: "CanWriteOwner", expected: "Unknown", ace: 19 }
+    ];
+    const lapRecords = [
+      { id: "server", name: "EXAMPLE-APP01", domain: "corp.example.test", state: "Windows LAPS", windows: "2026-11-01", legacy: "—", capability: "Windows LAPS capable", exclusion: "—" },
+      { id: "workstation", name: "EXAMPLE-WKS01", domain: "branch.example.test", state: "Migrated", windows: "2026-11-02", legacy: "2025-04-17", capability: "Windows LAPS capable", exclusion: "—" },
+      { id: "legacy-computer", name: "EXAMPLE-LEGACY01", domain: "corp.example.test", state: "Legacy LAPS", windows: "—", legacy: "2026-11-04", capability: "Legacy LAPS only", exclusion: "—" },
+      { id: "domain-controller", name: "EXAMPLE-DC01", domain: "example.test", state: "Not managed", windows: "—", legacy: "—", capability: "Windows LAPS capable", exclusion: "Domain controller" },
+      { id: "unknown-computer", name: "EXAMPLE-UNKNOWN01", domain: "branch.example.test", state: "Unexpected", windows: "—", legacy: "—", capability: "Unavailable in this example", exclusion: "—" }
+    ];
+    const delegations = [
+      { target: "da", right: "Write DACL", holder: "GG.Directory.Operators", connection: "Via captured group link", type: "Allow", applies: "This object only", source: "Explicit" },
+      { target: "helpdesk", right: "Write Membership", holder: "Alex Morgan", connection: "Direct entry", type: "Allow", applies: "This object only", source: "Explicit" },
+      { target: "people", right: "Reset Password", holder: "GG.Helpdesk.PasswordReset", connection: "Via captured group link", type: "Allow", applies: "Descendant users", source: "Explicit" },
+      { target: "server", right: "Read All Properties", holder: "GG.Directory.Operators", connection: "Via captured group link", type: "Allow", applies: "This object only", source: "Inherited" }
+    ];
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const fmt = value => Number(value).toLocaleString("en-US");
+    const obj = id => {
+      const found = objects.find(o => o.id === id);
+      if (!found) throw new Error(`Unknown fictional object identity: ${id}`);
+      return found;
+    };
+    const b = (text, action, value = "", cls = "") => `<button type="button" class="${cls}" data-action="${action}" data-value="${esc(value)}">${text}</button>`;
+    const badge = (text, kind = "") => `<span class="badge ${kind}">${esc(text)}</span>`;
+    const icon = kind => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${kind === "User" ? '<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>' : kind === "Computer" ? '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>' : kind === "Group" ? '<circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M2 21v-3a7 7 0 0 1 14 0v3m2-7a5 5 0 0 1 4 5v2"/>' : '<path d="M2 6h8l2 3h10v12H2z"/>'}</svg>`;
+    const table = (heads, rows, cls = "") => `<div class="table-scroll"><table class="${cls}"><thead><tr>${heads.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows || `<tr><td colspan="${heads.length}"><div class="empty-state">No matching fictional records. ${b("Clear filters", "clear-filters", state.page, "link")}</div></td></tr>`}</tbody></table></div>`;
+    const panel = (title, body, extra = "") => `<section class="panel"><div class="panel-title"><h2>${title}</h2>${extra}</div>${body}</section>`;
+    const stat = (label, value, note = "", warn = false) => `<div class="stat ${warn ? "warning" : ""}"><span>${label}</span><strong>${value}</strong>${note ? `<small>${note}</small>` : ""}</div>`;
+    const pagebar = text => `<div class="page-bar"><span>${text}</span><div class="buttons">${b("Previous", "preview-only", "These are fictional review rows; no saved page is read.")}${b("Next", "preview-only", "This mockup contains example rows, not a paged capture.")}</div></div>`;
+    function scopeLabel() { return state.scope === "forest" ? "Entire captured forest" : `${state.scope}${state.scopeContainer ? ` → ${state.scopeContainer}` : ""} · Subtree`; }
+    function inScope(o) {
+      return state.scope === "forest" || o.domain === state.scope && (!state.scopeContainer || o.dn.includes(`OU=${state.scopeContainer},`));
+    }
+    function tree(page) {
+      return `<aside class="scope-tree" aria-label="Capture scope navigation">${panel("Browse scope", `<div class="panel-content">${b("Entire captured forest", "scope", "forest")}</div>`)}
+        <div class="tree-body">${["example.test", "corp.example.test", "branch.example.test"].map(domain =>
+          `<button type="button" class="tree-node ${state.scope === domain ? "selected" : ""}" data-action="scope" data-value="${domain}">${icon("Organisational unit")}${domain}</button>
+          ${["People", "Groups", "Servers", "Workstations"].map(name => `<button type="button" class="tree-node indent ${state.scope === domain && state.scopeContainer === name ? "selected" : ""}" data-action="scope" data-value="${domain}|${name}">${icon("Organisational unit")}${name}</button>`).join("")}`).join("")}</div>
+        <div class="panel-content small muted">Only fictional captured domains are shown. Collapsing this tree does not clear the selected scope.</div></aside>`;
+    }
+    function scoped(page, body) {
+      return `<div class="scope-layout ${state.scopeHidden[page] ? "collapsed" : ""}">${tree(page)}<div class="view-stack">
+        <div class="scope-strip">${b(state.scopeHidden[page] ? "Show scope tree" : "Hide scope tree", "toggle-tree", page)}
+        <span class="scope-label"><strong>Scope:</strong> ${esc(scopeLabel())}</span>
+        <label class="small">Browse <select id="browseScope" ${state.scope === "forest" ? "disabled" : ""}><option>Subtree</option><option>One level</option><option>Base</option></select></label>
+        ${b("Reset filters", "clear-filters", page)}</div>${body}</div></div>`;
+    }
+    function renderMain() {
+      const top = ["home", "dashboard", "rules"].includes(state.page) ? state.page : "assets";
+      const assets = [["objects", "Objects"], ["findings", "Findings"], ["groups", "Groups"], ["tier0", "Tier 0"], ["laps", "LAPS"], ["delegations", "Delegations"]];
+      const main = {
+        home: renderHome, dashboard: renderDashboard, rules: renderRules, objects: renderObjects,
+        findings: renderFindings, groups: renderGroups, tier0: renderTier0, laps: renderLaps, delegations: renderDelegations
+      }[state.page];
+      $("application").innerHTML = `<header class="nav"><span class="brand">${icon("Group")}SecureAD</span>
+        ${[["home", "Home"], ["dashboard", "Dashboard"], ["rules", "Rules"], ["assets", "Assets"]].map(([id, name]) =>
+          `<button type="button" class="${top === id ? "active" : ""}" data-action="page" data-value="${id === "assets" ? "objects" : id}">${name}</button>`).join("")}
+        ${b("Settings", "preview-only", "Settings are outside this screen review; the application settings are unchanged.")}
+        <span class="run-context">${esc(run.name)} · ${esc(run.captured)}</span></header>
+        ${top === "assets" ? `<nav class="asset-nav" aria-label="Asset views">${assets.map(([id, name]) =>
+          `<button type="button" class="${state.page === id ? "active" : ""}" data-action="page" data-value="${id}">${name}</button>`).join("")}</nav>` : ""}
+        <main class="workspace">${main()}</main><footer class="footer"><span>Saved-evidence presentation · Fictional run A · Read-only review</span>
+        ${b("Capture coverage", "coverage", "", "link")}</footer>`;
+    }
+    function renderHome() {
+      return `<div class="heading"><div><h1>Run library</h1><p>Compact charcoal direction retained from the earlier Home preview.</p></div>${b("New audit", "preview-only", "Preview only: no connection, capture or audit starts.", "primary")}</div>
+        ${panel("Fictional saved runs", table(["Run", "Captured UTC", "Evidence", "Analysis"], [
+          ["Example run A", "2026-10-10 09:00", "Sealed", "Completed with limitations"],
+          ["Example run B", "2026-10-08 21:00", "Sealed", "Not requested"],
+          ["Example run C", "2026-10-07 18:30", "Sealed", "Stopped"]
+        ].map((r, i) => `<tr class="selectable ${i === 0 ? "selected" : ""}"><td class="name">${r[0]}</td><td class="nowrap">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join("")))}
+        <div class="note">This review uses Example run A on every screen and object window. It does not open or modify a real run.</div>`;
+    }
+    function renderDashboard() {
+      const rows = [["example.test", 6, 3, 50, 4], ["corp.example.test", 2047, 4, 2093, 169], ["branch.example.test", 34, 4, 51, 6]];
+      return `<div class="heading"><div><h1>Captured forest · ${run.forest}</h1><p>Coverage and inventory for ${run.name}</p></div><div>${badge("3 of 3 declared domains read", "good")}<p class="small muted">Within the recorded object-class scope</p></div></div>
+        <details class="panel"><summary>Capture scope and exclusions</summary><div class="detail-content">Three declared example domains; DNS and the approved Enatel storage/account classes excluded. Captured scope is not a statement that every attribute was readable.</div></details>
+        <div class="stats">${stat("Users", "2,087")}${stat("Computers", "11")}${stat("Groups", "2,194")}${stat("Organisational units", "179")}</div>
+        ${panel("Inventory by domain", table(["Domain", "Capture status", "Users", "Computers", "Groups", "OUs"], rows.map(r =>
+          `<tr><td>${r[0]}</td><td>${badge("Read", "good")}</td>${r.slice(1).map(n => `<td class="numeric">${fmt(n)}</td>`).join("")}</tr>`).join(""))
+          + `<div class="page-bar">Captured inventory, not live directory counts. Uncounted domains are unavailable, not empty.</div>`)}
+        <div class="two-column">${panel("Group Policy coverage", `<div class="panel-content"><h2>17 of 17 policies read in full</h2><p class="muted">Directory declarations and SYSVOL evidence; not a policy-security verdict.</p></div>`)}
+          ${panel("Group membership coverage", `<div class="panel-content"><h2>1 group with unresolved member references</h2><p class="muted">An unresolved reference limits membership completeness. It does not change the captured group count or establish a permission.</p></div>`)}</div>`;
+    }
+    function renderObjects() {
+      const rows = objects.filter(o => inScope(o) &&
+        `${o.name} ${o.sam} ${o.domain} ${o.dn}`.toLowerCase().includes(state.objectSearch.toLowerCase())).map(o =>
+        `<tr class="selectable ${state.selectedObject === o.id ? "selected" : ""}" tabindex="0" data-object="${o.id}"><td class="name">${icon(o.type)} ${esc(o.name)}</td>
+        <td>${o.type}</td><td>${o.domain}</td><td class="small muted">${esc(o.dn.split(",DC=")[0])}</td></tr>`).join("");
+      return `<div class="heading"><div><h1>Objects</h1><p>Double-click or press Enter to open a non-blocking object window.</p></div>${b("Open selected object", "open-object", state.selectedObject, "primary")}</div>` +
+        scoped("objects", panel("Captured objects", `<form class="toolbar" data-form="object-search"><input id="objectSearch" type="search" value="${esc(state.objectSearch)}" placeholder="Search captured objects..." aria-label="Search captured objects">${b("Search", "object-search")}${b("Clear search", "clear-filters", "objects")}</form>` +
+          table(["Object", "Type", "Domain", "Captured location"], rows) + pagebar(`${objects.length} fictional objects supplied for interaction; no real capture queried.`)) +
+          `<div class="note">The detached object keeps its own identity and run context while this list remains usable. Switching the selected row does not silently replace an open object's details.</div>`);
+    }
+    function renderRules() {
+      const selected = rules.find(r => r.id === state.rule);
+      const visible = rules.filter(r => `${r.id} ${r.name}`.toLowerCase().includes(state.ruleSearch.toLowerCase()) &&
+        (state.ruleOutcome === "all" || r.outcome === state.ruleOutcome) && (state.ruleSeverity === "all" || r.severity === state.ruleSeverity));
+      let copy = `<h3>What this rule detects</h3><p>${selected.summary}</p><h3>What to do</h3><p>${selected.guidance}</p>`;
+      if (state.ruleTab === "evidence") copy = `<h3>Evidence used</h3><p>${selected.evidence}</p><p>Saved execution and guidance are separate. Opening this explanation does not run the rule again.</p>`;
+      if (state.ruleTab === "limits") copy = `<h3>Scope and limitations</h3><p>${selected.limits}</p><p>Severity describes the finding type. It is not an assessment-completeness status.</p>`;
+      if (state.ruleTab === "reference") copy = `<h3>Outside authority</h3><p>Microsoft's security-group and identifier documentation supplies the identity and nesting constraints. The reviewed rule's saved evidence remains bound to its original run.</p><p>External references are shown in the application; this self-contained preview makes no network requests.</p>`;
+      return `<div class="heading"><div><h1>Rules and their results</h1><p>Whole captured forest · 21 shipping rules · ${rules.length} fictional examples shown</p></div>${b("Run details", "coverage")}</div>
+        <div class="rules-layout">${panel("Rule results", `<div class="toolbar"><input id="ruleSearch" type="search" value="${esc(state.ruleSearch)}" placeholder="Search rules..." aria-label="Search example rules">
+          <label>Assessment <select id="ruleOutcome"><option value="all">All</option>${["Completed", "Incomplete", "Failed", "Not run"].map(x => `<option ${state.ruleOutcome === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <label>Severity <select id="ruleSeverity"><option value="all">All</option>${["High", "Medium"].map(x => `<option ${state.ruleSeverity === x ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>` +
+          table(["Rule", "Severity", "Assessment", "Reported"], visible.map(r =>
+            `<tr class="selectable ${r.id === state.rule ? "selected" : ""}" tabindex="0" data-rule="${r.id}"><td class="rule-name"><span class="id">${r.id}</span>${r.name}</td>
+            <td>${r.severity}</td><td>${badge(r.outcome, r.outcome === "Completed" ? "good" : "warn")}</td><td class="numeric">${r.findings}</td></tr>`).join("")) +
+          `<div class="page-bar">0 reported does not mean the assessment completed; read the separate status.</div>`)}
+        ${panel("Selected rule", `<div class="rule-copy"><div class="small muted">${selected.id} · ${selected.category}</div><h1>${selected.name}</h1><div>${badge(selected.severity, selected.severity === "High" ? "danger" : "warn")}</div></div>
+          <div class="rule-result">${badge(selected.outcome, selected.outcome === "Completed" ? "good" : "warn")}<strong>${selected.findings} reported</strong><span class="muted">${fmt(selected.judged)} objects judged</span>${b("View findings", "page", "findings", "primary")}</div>
+          <div class="section-tabs" role="tablist" aria-label="Rule explanation">${[["summary", "Summary"], ["evidence", "Evidence used"], ["limits", "Scope & limitations"], ["reference", "Reference"]].map(([id, title]) =>
+            `<button type="button" role="tab" aria-selected="${state.ruleTab === id}" data-action="rule-tab" data-value="${id}">${title}</button>`).join("")}</div><div class="rule-copy">${copy}</div>`)}</div>`;
+    }
+    function renderGroups() {
+      const visible = groups.filter(g => inScope(obj(g.id)) && g.name.toLowerCase().includes(state.groupSearch.toLowerCase()) &&
+        (state.groupType === "all" || g.type === state.groupType) && (state.groupScope === "all" || g.scope === state.groupScope) && (!state.cyclesOnly || g.cycle === "SEC-052"));
+      const selected = groups[state.selectedGroup];
+      return `<div class="heading"><div><h1>Groups</h1><p>Direct membership, saved known totals and cycle information remain separate.</p></div></div>` +
+        scoped("groups", panel("Captured groups", `<div class="toolbar"><input id="groupSearch" type="search" value="${esc(state.groupSearch)}" placeholder="Group name..." aria-label="Search example groups">
+          <label>Scope <select id="groupScope"><option value="all">All scopes</option>${["Global", "Domain local", "Universal"].map(x => `<option ${state.groupScope === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <label>Type <select id="groupType"><option value="all">All types</option>${["Security", "Distribution"].map(x => `<option ${state.groupType === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <label><input id="cyclesOnly" type="checkbox" ${state.cyclesOnly ? "checked" : ""}>Cycles only</label></div>` +
+          table(["Group", "Type", "Scope", "Domain", "Direct", "Known total", "Cycle", "Evidence"], visible.map((g, i) =>
+            `<tr class="selectable ${groups.indexOf(g) === state.selectedGroup ? "selected" : ""}" tabindex="0" data-group="${groups.indexOf(g)}"><td class="name">${g.name}</td><td>${g.type}</td><td>${g.scope}</td><td>${g.domain}</td>
+            <td class="numeric">${g.direct}</td><td class="numeric">${g.total}</td><td>${g.cycle === "SEC-052" ? badge(g.cycle, "warn") : g.cycle}</td><td>${g.data === "Incomplete" ? badge("Incomplete", "warn") : "Recorded"}</td></tr>`).join("")) +
+          pagebar(`${visible.length} fictional rows displayed · Known total is structural membership, not effective access.`)) +
+          panel("Selected group", `<div id="groupSelection">${groupSelection(selected)}</div>`) +
+          `<details class="panel"><summary>How these membership counts are read</summary><div class="detail-content">Known total counts distinct captured member objects, including nested groups and excluding the starting group. It does not establish authorization. Primary-group membership is separate; unresolved references limit completeness.</div></details>`);
+    }
+    function groupSelection(selected) {
+      return `<div class="selected-summary"><div class="selection-info"><h3>${selected.name}</h3><p>${selected.domain} · ${selected.scope} · ${selected.direct} direct references · ${selected.total} known objects · ${selected.missing} unresolved reference</p></div>${b("Open object window", "open-object", selected.id, "primary")}</div>`;
+    }
+    function renderTier0() {
+      const supported = [
+        ["Domain Admins", "corp.example.test", "Classified Tier 0", "Supported", "0", "Zero-distance target", "da"],
+        ["example.test domain root", "example.test", "Classified Tier 0", "Supported", "0", "Zero-distance target", "root"],
+        ["Alex Morgan", "corp.example.test", "Not established", "Supported", "2", "Saved supported candidate", "alex"]
+      ];
+      const unknown = [
+        ["Unresolved captured identity", "branch.example.test", "Not established", "Unresolved", "—", "Not available", ""],
+        ["EXAMPLE-APP01", "corp.example.test", "Not established", "Unresolved", "—", "Not available", "server"]
+      ];
+      const rows = state.tierView === "unresolved" ? unknown : state.tierView === "all" ? [...supported, ...unknown] : supported;
+      return `<div class="heading"><div><h1>Tier 0 overview</h1><p>Whole-run saved analysis · 8,441 fictional analysis identities, not inventory totals</p></div>${b("Go to findings", "page", "findings")}</div>
+        <div class="stats">${stat("Classified Tier 0", "55", "Classification, not a discovered attack")}${stat("Other objects with supported routes", "2", "Excludes classified Tier 0")}${stat("Unresolved", "8,384", "Not a safe result", true)}${stat("Not assessed", "0", "Separate from unresolved analysis")}</div>
+        <div class="note warning notice"><span><strong>Unsupported or unresolved analysis remains.</strong> A supported-results filter does not clear the hidden identities.</span>${b("Coverage details", "coverage")}</div>
+        <div class="count-strip small"><span>Captured scope: 3 declared domains read</span><span>Analysis: unresolved cases retained</span><span>Processing: no recorded shortfall</span></div>
+        ${panel("Recorded analysis identities", `<div class="toolbar" role="tablist" aria-label="Tier 0 result scope">${[["supported", "Tier 0 & supported routes"], ["all", "All identities"], ["unresolved", "Unresolved"]].map(([id, name]) =>
+          `<button type="button" role="tab" aria-selected="${state.tierView === id}" data-action="tier-view" data-value="${id}">${name}</button>`).join("")}</div>` +
+          table(["Object / identifier", "Domain", "Classification", "Route status", "Shortest distance", "Best-supported route"], rows.map(r =>
+            `<tr class="selectable" tabindex="0" ${r[6] ? `data-tier-object="${r[6]}"` : 'data-unresolved="true"'}><td class="name">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${badge(r[3], r[3] === "Unresolved" ? "warn" : "good")}</td><td class="numeric">${r[4]}</td><td>${r[5]}</td></tr>`).join("")) + pagebar("Names are shown only when captured identity is available; unresolved identities are retained."))}
+        <div class="note">Double-click a captured object to open its Tier 0 details. An uncaptured identity opens its limitation, not a fabricated object window. Permission, ownership and completed route evidence remain separate claims.</div>`;
+    }
+    function renderLaps() {
+      const visible = lapRecords.filter(r => inScope(obj(r.id)) && `${r.name} ${r.domain}`.toLowerCase().includes(state.lapsSearch.toLowerCase()) &&
+        (state.lapsState === "all" || r.state === state.lapsState));
+      const selected = lapRecords[state.selectedComputer];
+      const states = ["Not managed", "Windows LAPS", "Legacy LAPS", "Migrated", "Unexpected"];
+      return `<div class="heading"><div><h1>LAPS coverage</h1><p>Saved computer states and expiry values; no password read or rotation performed.</p></div></div>` +
+        scoped("laps", `<div class="stats" style="grid-template-columns:repeat(5,minmax(0,1fr))">${states.map(x => stat(x, visible.filter(r => r.state === x).length, "", x === "Not managed" || x === "Unexpected")).join("")}</div>
+        <div class="small muted">State counts above refer to these ${visible.length} displayed fictional records, not the whole forest.</div>
+        ${panel("Captured computer records", `<div class="toolbar"><input id="lapsSearch" type="search" value="${esc(state.lapsSearch)}" placeholder="Computer or domain..." aria-label="Search example LAPS computers">
+          <label>State <select id="lapsState"><option value="all">All states</option>${states.map(x => `<option ${state.lapsState === x ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>` +
+          table(["Computer", "Domain", "Management state", "Windows expiry", "Legacy expiry", "Rule exclusion"], visible.map(r =>
+            `<tr class="selectable ${r.name === selected.name ? "selected" : ""}" tabindex="0" data-laps="${lapRecords.indexOf(r)}"><td class="name">${r.name}</td><td>${r.domain}</td><td>${badge(r.state, ["Not managed", "Unexpected"].includes(r.state) ? "warn" : "")}</td><td class="nowrap">${r.windows}</td><td class="nowrap">${r.legacy}</td><td>${r.exclusion}</td></tr>`).join("")))}
+        ${panel("Selected computer", `<div id="lapsSelection">${lapsSelection(selected)}</div>`)}
+        <div class="note">Management state and rule exclusions are separate. Skipped does not mean managed. Dates are recorded expiry values, not confirmation of successful password rotation.</div>`);
+    }
+    function lapsSelection(selected) {
+      return `<div class="selected-summary"><div class="selection-info"><h3>${selected.name} · ${selected.domain}</h3><p>${selected.capability} · Windows expiry ${selected.windows} · Legacy expiry ${selected.legacy}</p></div>${b("Open object window", "open-object", selected.id, "primary")}</div>`;
+    }
+    function renderDelegations() {
+      const principal = obj(state.delegationPrincipal);
+      const visible = (state.delegationPrincipal === "alex" ? delegations : []).filter(d => (state.delegationGroups || d.connection === "Direct entry") &&
+        (state.delegationInherited || d.source !== "Inherited") &&
+        `${obj(d.target).name} ${d.right} ${d.holder}`.toLowerCase().includes(state.delegationSearch.toLowerCase()) &&
+        (state.delegationPermission === "All recorded permissions" || d.right === state.delegationPermission));
+      const selected = delegations[state.selectedDelegation];
+      const search = state.delegationEdit ? panel("Search", `<form class="panel-content search-grid" data-form="delegation-search">
+          <label>Principal <select id="delegationPrincipal">${objects.filter(o => ["User", "Group"].includes(o.type)).map(o => `<option value="${o.id}" ${state.delegationPrincipal === o.id ? "selected" : ""}>${o.name} · ${o.domain}</option>`).join("")}</select></label>
+          <label>Permission <select id="delegationPermission">${["All recorded permissions", "Write DACL", "Write Membership", "Reset Password"].map(x => `<option ${state.delegationPermission === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+          <div class="search-options"><label><input id="delegationGroups" type="checkbox" ${state.delegationGroups ? "checked" : ""}>Group-held</label><label><input id="delegationInherited" type="checkbox" ${state.delegationInherited ? "checked" : ""}>Inherited</label></div>
+          ${b("Find delegations", "delegation-search", "", "primary")}</form>`) :
+        `<div class="scope-strip"><span class="scope-label"><strong>${principal.name} · ${principal.domain}</strong> · ${state.delegationPermission} · ${state.delegationGroups ? "Group-held included" : "Direct only"} · ${state.delegationInherited ? "Inherited included" : "Explicit entries"}</span>${b("Edit search", "edit-delegation")}</div>`;
+      return `<div class="heading"><div><h1>Find recorded delegations</h1><p>Where a principal is linked to captured permissions on AD objects.</p></div></div>${search}
+        <div class="note small">Scope: entire captured forest · AD objects only · Group membership attribution is not concrete requester authorization.</div>
+        ${panel("Recorded permissions by target object", `<div class="toolbar"><input id="delegationSearch" type="search" value="${esc(state.delegationSearch)}" placeholder="Search target, holder or permission..." aria-label="Filter fictional delegation results">${b("Search limitations", "coverage", "", "link")}</div>` +
+          (state.delegationPrincipal !== "alex" ? `<div class="panel-content note">The populated scenario is supplied for Alex Morgan only. The mockup has no delegation assessment for ${esc(principal.name)}; this is not a completed empty result.</div>` :
+          table(["Target / domain", "Permission", "Entry held by", "Connection", "Type", "Applies to", "Source"], visible.map(d =>
+            `<tr class="selectable ${delegations.indexOf(d) === state.selectedDelegation ? "selected" : ""}" tabindex="0" data-delegation="${delegations.indexOf(d)}"><td class="name">${obj(d.target).name}<div class="small muted">${obj(d.target).domain}</div></td><td>${d.right}</td><td>${d.holder}</td><td>${d.connection}</td><td>${d.type}</td><td>${d.applies}</td><td>${d.source}</td></tr>`).join("")) +
+          pagebar("Fictional recorded-entry examples; no live permission lookup or analysis replay.")))}
+        ${state.delegationPrincipal === "alex" ? panel("Selected entry", `<div id="delegationSelection">${delegationSelection(selected)}</div>`) : ""}
+        <div class="note">Captured ACL evidence, not effective access. This lookup does not add SID-history or implicit owner rights. No directory operation is performed.</div>`;
+    }
+    function delegationSelection(selected) {
+      return `<div class="selected-summary"><div class="selection-info"><h3>${obj(selected.target).name} · ${selected.right}</h3><p>Entry held by ${selected.holder} · ${selected.connection} · ${selected.source}</p></div>${b("Membership evidence", "delegation-membership")}${b("Open target object", "open-object", selected.target, "primary")}</div>`;
+    }
+    function renderFindings() {
+      return `<div class="heading"><div><h1>Saved findings</h1><p>Example run A · severity is separate from evidence and execution completeness.</p></div>${b("Rules", "page", "rules")}</div>` +
+        panel("Fictional finding examples", table(["Severity", "Rule", "Object", "Domain", "Saved result"], [
+          ["High", "SEC-062", "da", "Broad security-group membership"],
+          ["High", "SEC-071", "alex", "Unexpected supported route"],
+          ["Medium", "SEC-052", "operators", "Circular group membership"]
+        ].map(r => `<tr class="selectable" tabindex="0" data-finding-object="${r[2]}"><td>${badge(r[0], r[0] === "High" ? "danger" : "warn")}</td><td>${r[1]}</td><td class="name">${obj(r[2]).name}</td><td>${obj(r[2]).domain}</td><td>${r[3]}</td></tr>`).join(""))) +
+        `<div class="note">Open the object window to inspect the saved finding. These are invented review examples, not a report from a customer forest.</div>`;
+    }
+    function attribute(label, technical, value, copy = false) {
+      return `<div class="attribute"><dt>${label}${technical ? ` <span class="technical">(${technical})</span>` : ""}</dt><dd>${copy ? `<div class="copy-value"><span class="mono">${esc(value)}</span>${b("Copy", "copy", value)}</div>` : value}</dd></div>`;
+    }
+    function renderOverview(o) {
+      const account = ["User", "Computer"].includes(o.type);
+      if (o.id !== "alex") {
+        const group = groups.find(g => g.id === o.id);
+        const computer = lapRecords.find(r => r.id === o.id);
+        return `<div class="summary-strip">${badge(o.type)}<span>This object has its own fictional identity; no other object's answers are substituted.</span></div><div class="two-column">
+          ${panel("Identity & identifiers", `<dl class="attributes">${attribute("Account name", "sAMAccountName", esc(o.sam || "Not supplied in this preview"))}${attribute("Object GUID", "objectGUID", o.guid, true)}${o.sid ? attribute("SID", "objectSid", o.sid, true) : attribute("SID", "objectSid", "Not applicable to this object class")}</dl>`)}
+          ${panel(group ? "Captured group summary" : computer ? "Saved computer summary" : "Captured object context", `<div class="panel-content">${group ? `<h3>${group.type} · ${group.scope}</h3><p>${group.direct} direct recorded references · ${group.total} known objects</p><p class="muted">${group.missing} unresolved reference · ${group.cycle}</p>` : computer ? `<h3>${computer.state}</h3><p>${computer.capability}</p><p class="muted">Windows expiry: ${computer.windows} · Legacy expiry: ${computer.legacy}</p><p class="muted">Rule exclusion: ${computer.exclusion}</p>` : `<h3>${esc(o.domain)}</h3><p class="muted">Only identity context is supplied for this fictional object.</p>`}<p class="muted">Additional attributes and analysis are not supplied by this small review fixture; their absence is not a safe assessment.</p></div>`)}</div>`;
+      }
+      return `<div class="summary-strip">${badge(o.type)}${o.id === "alex" ? badge("Password never expires", "warn") : o.type === "Group" ? badge(groups.find(g => g.id === o.id)?.type || "Security group") : ""}<span>${b(o.id === "alex" ? "24 captured permission entries" : "Permissions", "object-tab", "permissions", "link")}</span></div>
+        <div class="two-column">
+          ${panel("Identity & ownership", `<dl class="attributes">
+            ${attribute("Account name", "sAMAccountName", esc(o.sam || "No value recorded"))}
+            ${account ? attribute("User principal name", "userPrincipalName", esc(o.type === "User" ? `${o.sam}@${o.domain}` : "No value supplied in this preview")) : o.type === "Group" ? attribute("Group type", "groupType", `${groups.find(g => g.id === o.id)?.type || "Security"} · ${groups.find(g => g.id === o.id)?.scope || "Global"}`) : ""}
+            ${attribute("Owner", "nTSecurityDescriptor", o.id === "alex" ? b("Domain Admins · corp.example.test", "open-object", "da", "link") : "Owner example not supplied")}
+            ${account ? attribute("Primary group ID", "primaryGroupID", "513") : ""}</dl>
+            <h3 class="subheading">Identifiers</h3><dl class="attributes">${attribute("Object GUID", "objectGUID", o.guid, true)}${o.sid ? attribute("SID", "objectSid", o.sid, true) : attribute("SID", "objectSid", "Not applicable to this object class")}</dl>`)}
+          ${panel(account ? "Account state & activity" : "Group state & captured activity", `<dl class="attributes">
+            ${account ? attribute("Account status", "userAccountControl", "Enabled") + attribute("Password expiry", "userAccountControl", "Never expires") + attribute("Account expiry", "accountExpires", "Never expires") : attribute("Membership type", "groupType", "Recorded security-group identity")}
+            ${attribute("Admin protection marker", "adminCount", "1")}</dl>
+            <div class="attribute-note">The marker alone does not confirm current AdminSDHolder protection.</div>
+            <h3 class="subheading">Recorded dates · UTC</h3><dl class="attributes">
+            ${attribute("Created", "whenCreated", '<span class="nowrap">2025-03-18 00:54</span>')}
+            ${account ? attribute("Password last set", "pwdLastSet", '<span class="nowrap">2026-08-01 08:15</span>') + attribute("Last logon, approximate", "lastLogonTimestamp", '<span class="nowrap">2026-10-02 22:09</span>') : attribute("Last changed", "whenChanged", '<span class="nowrap">2026-10-02 22:09</span>')}</dl>
+            <div class="attribute-note">Saved timestamps refer to this capture. Replicated logon time may not reflect newer sign-ins.</div>`)}
+        </div>
+        <details class="panel"><summary>Raw attributes & decoded flags</summary><div class="detail-content"><span class="mono">userAccountControl: 66048 · adminCount: 1 · primaryGroupID: 513</span><p>Readable recorded values and the original forms remain available; this preview does not infer current protection or a live authentication token.</p></div></details>
+        <label class="small"><input id="showMissing" type="checkbox" ${state.showMissing ? "checked" : ""}>Show missing attributes</label>
+        ${state.showMissing ? '<div class="note"><strong>telephoneNumber:</strong> no value recorded. The directory may omit an unset or unreadable value; this is not silently treated as a known empty value.</div>' : ""}`;
+    }
+    function filteredPermissions() {
+      return permissions.filter(p => (state.type === "all" || p.type === state.type) &&
+        `${p.right} ${principals.find(x => x.id === p.principal).name}`.toLowerCase().includes(state.permissionSearch.toLowerCase()));
+    }
+    function permissionRows(rows) {
+      return rows.map(p => `<tr class="selectable ${p.ordinal === state.selectedPermission ? "selected" : ""} ${state.risk && p.classification === "Dangerous" ? "risk" : ""}"
+        tabindex="0" data-permission="${p.ordinal}"><td class="permission-name">${p.right}</td><td>${p.type}</td><td class="nowrap">This object only</td><td>Explicit</td><td class="numeric" title="Original captured ACE ordinal">${p.ordinal}</td></tr>`).join("");
+    }
+    function entryDetails() {
+      const entry = permissions.find(p => p.ordinal === state.selectedPermission);
+      if (!entry) return `<section class="entry-detail"><div class="panel-title"><h3>Selected permission entry</h3></div><div class="panel-content muted">No matching entry selected. Changing a filter does not leave another entry presented as its result.</div></section>`;
+      const principal = principals.find(p => p.id === entry.principal);
+      return `<section class="entry-detail"><div class="panel-title"><h3>Selected permission entry · ACE ${entry.ordinal}</h3>${b(state.entryCollapsed ? "Expand details" : "Collapse details", "toggle-entry")}</div>
+        ${state.entryCollapsed ? "" : `<div class="entry-grid"><div><label>Principal</label><span>${principal.name}</span></div><div><label>Type</label><span>${entry.type}</span></div>
+          <div><label>Permission</label><span>${entry.right}</span></div><div><label>Applies to</label><span>This object only</span></div><div><label>Saved reading</label><span>${entry.classification} · not effective access</span></div><div><label>Source</label><span>Set on this object</span></div></div>
+          <details><summary>Original access control entry / identifiers</summary><div class="detail-content"><div class="mono">Ordinal: ${entry.ordinal}<br>Trustee SID: ${principal.sid}<br>Entry type: ${entry.type} · No inherited flag</div><p>The ordinal and original occurrence are retained even when another row has the same wording. A recorded Allow entry does not prove authorization for a particular requester.</p></div></details>`}</section>`;
+    }
+    function syncPermissionSelection() {
+      const visible = filteredPermissions();
+      if (!visible.some(p => p.ordinal === state.selectedPermission)) state.selectedPermission = visible[0]?.ordinal ?? null;
+      if (state.permissionLayout === "a" && !visible.some(p => p.principal === state.principal)) state.principal = visible[0]?.principal ?? state.principal;
+      const entry = visible.find(p => p.ordinal === state.selectedPermission);
+      if (state.permissionLayout === "a" && entry && entry.principal !== state.principal) state.selectedPermission = visible.find(p => p.principal === state.principal)?.ordinal ?? null;
+    }
+    function renderPermissions(o) {
+      if (o.id !== "alex") return `<div class="note">The populated A/B permissions comparison is supplied for fictional account Alex Morgan. No permission result for this object is implied by the preview.</div>${b("Open Alex Morgan permissions", "open-permissions-example", "", "primary")}`;
+      const rows = filteredPermissions();
+      const selected = principals.find(p => p.id === state.principal);
+      const heads = ["Permission", "Type", "Applies to", "Source", "ACE"];
+      const controls = `<div class="toolbar"><input id="permissionSearch" type="search" value="${esc(state.permissionSearch)}" placeholder="Search principal or permission..." aria-label="Filter fictional permissions">
+        <label>Type <select id="permissionType"><option value="all">All</option>${["Allow", "Deny"].map(x => `<option ${state.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label><input id="risk" type="checkbox" ${state.risk ? "checked" : ""}>Highlight saved risky readings</label></div>`;
+      let layout;
+      if (state.permissionLayout === "a") {
+        layout = `<div class="reading-pane"><aside class="principal-list" aria-label="Recorded permission principals"><div class="panel-title"><h3>Principals</h3></div>${principals.map(p =>
+          `<button type="button" class="${p.id === state.principal ? "selected" : ""}" data-action="principal" data-value="${p.id}"><span>${p.name}<small>${p.domain}</small></span><span>${rows.filter(r => r.principal === p.id).length}</span></button>`).join("")}</aside>
+          <div class="view-stack">${panel(`${selected.name}`, table(heads, permissionRows(rows.filter(p => p.principal === selected.id))), `<span class="small">${rows.filter(p => p.principal === selected.id).length} matching entries</span>`)}${entryDetails()}</div></div>`;
+      } else {
+        const grouped = principals.filter(p => rows.some(r => r.principal === p.id)).map(p =>
+          `<tr class="group-row"><td colspan="5">${b(`${state.collapsedPrincipals.has(p.id) ? "▸" : "▾"} ${esc(p.name)} <small>${rows.filter(r => r.principal === p.id).length} entries · ${p.domain}</small>`, "permission-group", p.id)}</td></tr>` +
+          (state.collapsedPrincipals.has(p.id) ? "" : permissionRows(rows.filter(r => r.principal === p.id)))).join("");
+        layout = `<div class="view-stack">${panel("Captured entries grouped by principal", table(heads, grouped))}${entryDetails()}</div>`;
+      }
+      return `<div class="heading"><div><h2>Permissions on this object</h2><p class="small muted">24 original captured entries · ${rows.length} match this review filter</p></div>${b("Control edges", "object-tab", "control", "link")}</div>
+        <div class="note warning"><strong>Inheritance blocked</strong> · Recorded permissions are not automatically inherited from the parent.</div>
+        <div class="permission-layout-tabs" role="tablist" aria-label="Customer permissions layout comparison"><span>Customer comparison · two presentation alternatives</span>
+          <button type="button" role="tab" aria-selected="${state.permissionLayout === "a"}" data-action="permission-layout" data-value="a">A · Principal reading pane</button>
+          <button type="button" role="tab" aria-selected="${state.permissionLayout === "b"}" data-action="permission-layout" data-value="b">B · Expandable principal groups</button></div>
+        ${controls}${layout}<div class="small muted">Captured ACL evidence, not effective access. Highlighting is a saved per-right reading; ownership, control evidence and routes are separate results.</div>`;
+    }
+    function renderControlEdges(o) {
+      if (o.id !== "alex") return `<div class="note">The populated control-edge presentation example is supplied for Alex Morgan. This preview does not claim an assessment for other objects.</div>${b("Open Alex Morgan control edges", "open-control-example", "", "primary")}`;
+      const rows = edges.filter(e => (state.edgeDirection === "target" ? e.target === "Alex Morgan" : e.holder === "Alex Morgan") &&
+        (state.expected || e.expected !== "Expected") && `${e.holder} ${e.target} ${e.capability}`.toLowerCase().includes(state.edgeSearch.toLowerCase()));
+      const selected = edges[state.edge];
+      const content = state.edgeTab === "evidence" ? `<h3>Saved permission support</h3><p>${selected.capability} is supported by an original captured entry and its saved applicability/permission evidence.</p><div class="mono">Original ACE reference: ${selected.ace}<br>Holder: ${selected.holder}<br>Resource: ${selected.target}</div><p>Permission evidence is not a completed operation or account takeover.</p>` :
+        state.edgeTab === "requester" ? `<h3>No concrete requester check scheduled</h3><p>This selection has no example requester-specific answer. That is not a refusal, a successful operation or proof of authorization.</p><p>The entry's named holder and a concrete requester's effective access are different questions.</p>` :
+        `<h3>Stored membership attribution</h3><p>GG.Directory.Operators contains Alex Morgan in the fictional capture.</p><div class="route-strip"><span class="route-node">Alex Morgan</span><span>→ member of →</span><span class="route-node">GG.Directory.Operators</span></div><p>This stored link does not construct a live token or multiply the group-held permission count by its members.</p>`;
+      return `<div class="heading"><div><h2>Control edges</h2><p class="small muted">Stage 6 · saved capability evidence, not completed Tier 0 routes</p></div>
+        ${b(state.edgeEmpty ? "Show populated example" : "Show empty example", "edge-empty")}</div>
+        <div class="section-tabs" role="tablist" aria-label="Control-edge direction"><button type="button" role="tab" aria-selected="${state.edgeDirection === "holder"}" data-action="edge-direction" data-value="holder">Held by this principal</button>
+        <button type="button" role="tab" aria-selected="${state.edgeDirection === "target"}" data-action="edge-direction" data-value="target">On this object</button><span class="small muted">Named-trustee view · no member expansion</span></div>
+        <div class="note warning notice"><span><strong>Analysis remains incomplete.</strong> Unsupported or unresolved cases are not safe results.</span>${b("Coverage & limitations", "coverage")}</div>
+        <div class="count-strip small"><span>Shown scope · ${state.edgeEmpty ? 0 : rows.length} saved edges</span><span>Group-held counts are independent of member/route counts</span></div>
+        <div class="edges-layout"><div class="view-stack">${panel("Saved control evidence", `<div class="toolbar"><input id="edgeSearch" type="search" value="${esc(state.edgeSearch)}" placeholder="Search holder, target or capability..." aria-label="Filter example control edges">
+          <label><input id="showExpected" type="checkbox" ${state.expected ? "checked" : ""}>Show expected</label></div>` +
+          (state.edgeEmpty ? `<div class="empty-state"><h3>No control edges displayed</h3><p>No recorded rows in this example view. This does not establish that the account has no control capabilities.</p>${b("Switch direction", "edge-direction", state.edgeDirection === "target" ? "holder" : "target", "link")}</div>` :
+          table([state.edgeDirection === "target" ? "Holder" : "Target", "Capability", "Support", "Expectedness"], rows.map(e =>
+            `<tr class="selectable ${edges.indexOf(e) === state.edge ? "selected" : ""}" tabindex="0" data-edge="${edges.indexOf(e)}"><td class="name">${state.edgeDirection === "target" ? e.holder : e.target}</td><td>${e.capability}</td><td>${badge("Established", "good")}</td><td>${badge(e.expected, e.expected === "Unexpected" ? "warn" : "")}</td></tr>`).join(""))))}</div>
+          <aside class="edge-side">${panel("Selected edge details", `<div class="section-tabs" role="tablist" aria-label="Selected edge evidence">${[["evidence", "Evidence"], ["requester", "Requester checks"], ["membership", "Membership"]].map(([id, title]) =>
+            `<button type="button" role="tab" aria-selected="${state.edgeTab === id}" data-action="edge-tab" data-value="${id}">${title}</button>`).join("")}</div><div class="panel-content">${state.edgeEmpty ? "<h3>No edge selected</h3><p>Select a saved edge to inspect its permission evidence, requester checks and stored membership.</p>" : content}</div>`)}</aside></div>
+        <details class="panel"><summary>How control edges are counted</summary><div class="detail-content">Full-control summaries may replace supporting rights in summary counts. Original permission evidence remains accessible. Member counts, routes and requester checks are not added to the named group's permission count.</div></details>`;
+    }
+    function renderObjectTier0(o) {
+      if (["da", "root"].includes(o.id)) return `<div class="heading"><h2>Tier 0 findings and routes</h2></div><div class="note">${badge("Classified Tier 0", "good")} · Independently qualified target identity in this fictional example.</div><div class="two-column">${stat("Shortest supported distance", "0", "The object is itself a qualified Tier 0 target")}${stat("Route", "Zero-distance target", "No invented relationship or takeover step")}</div><div class="note">Current ownership, permission-derived control and later chained routes remain distinct. Distance zero does not report a successful live action.</div>`;
+      if (o.id !== "alex") return `<div class="note">No Tier 0 assessment example is supplied for this object. This is not a safe result.</div>${b("Open Alex Morgan Tier 0 example", "open-tier-example", "", "primary")}`;
+      const established = state.routeExample === "supported";
+      return `<div class="heading"><div><h2>Tier 0 findings and routes</h2><p class="small muted">Object classification, permission evidence and supported routes are separate.</p></div>${b("This object's findings", "object-tab", "findings")}</div>
+        <div class="section-tabs" role="tablist" aria-label="Tier 0 example scenario"><button type="button" role="tab" aria-selected="${!established}" data-action="route-example" data-value="unresolved">Unresolved example</button>
+        <button type="button" role="tab" aria-selected="${established}" data-action="route-example" data-value="supported">Supported example</button></div>
+        <div class="note warning"><strong>Tier 0 classification: not established.</strong> Reachability is a separate saved result.</div>
+        <div class="two-column">${stat("Shortest supported distance", established ? "2" : "Unresolved", established ? "Saved relationship steps" : "No complete supported route saved · not a safe result")}
+        ${stat("Best-supported route", established ? "Saved candidate" : "Not available", established ? "Best among evaluated supported candidates" : "No graded complete supported route is available")}</div>
+        ${established ? panel("Fictional saved route", `<div class="route-strip"><span class="route-node">Alex Morgan<small>Captured account</small></span><span>→ membership →</span><span class="route-node">GG.Directory.Operators<small>Recorded security-group link</small></span><span>→ permission →</span><span class="route-node">Domain Admins<small>Qualified Tier 0 target</small></span></div><div class="panel-content small muted">Supporting requester and permission evidence is part of the fictional saved route. No live action is performed.</div>`) : ""}
+        <details class="panel"><summary>Saved grade and coverage</summary><div class="detail-content">${established ? "A complete supported candidate is saved in this example. Other unassessed or unresolved candidates are not cleared by its ranking." : "No grade available. Missing supported route evidence is not a negative authorization result."}</div></details>
+        ${panel("Existing assessed results", `<div class="panel-content"><h3>Permission and requester assessments</h3><p class="muted">Existing saved permission, ownership and requester results remain available here independently of a completed route.</p>${b("Inspect control evidence", "object-tab", "control", "link")}</div>`)}
+        <details class="panel"><summary>Coverage and limitations</summary><div class="detail-content">Captured-input gaps, unsupported analysis and unperformed processing are separate. Saved evidence does not prove account takeover or a successful live operation.</div></details>`;
+    }
+    function renderOther(o) {
+      if (state.tab === "membership") return o.id === "alex" ? panel("Captured membership", `<div class="panel-content"><h3>Recorded membership relationships</h3><p class="muted">This fictional account is linked to GG.Directory.Operators and GG.Helpdesk.PasswordReset. Group-held permissions and concrete requester authorization remain separate.</p>${b("Open directory operators", "open-object", "operators")}${b("Open helpdesk group", "open-object", "helpdesk")}</div>`) :
+        `<div class="note">No detailed membership fixture is supplied for this object. Its recorded inventory counts are separate from permission or requester authorization.</div>`;
+      if (state.tab === "delegation") return o.id === "alex" ? panel("Captured account delegation settings", `<dl class="attributes">${attribute("Unconstrained delegation", "userAccountControl", "Not set in this fictional example")}${attribute("Allowed delegation targets", "msDS-AllowedToDelegateTo", "No value recorded")}</dl><div class="panel-content muted">These are saved account settings, not the forest-wide recorded-delegations search.</div>`) :
+        `<div class="note">No account-delegation fixture is supplied for this object. This is not a negative assessment.</div>`;
+      if (state.tab === "findings") {
+        const finding = { da: ["SEC-062", "High", "Broad membership of this administrative group"], alex: ["SEC-071", "High", "Unexpected supported route"], operators: ["SEC-052", "Medium", "Circular group membership"] }[o.id];
+        return finding ? panel("Saved findings for this object", table(["Rule", "Severity", "Saved result"], `<tr><td>${finding[0]}</td><td>${badge(finding[1], finding[1] === "High" ? "danger" : "warn")}</td><td>${finding[2]} · Fictional example</td></tr>`)) + `<div class="note">A finding's absence and an incomplete assessment must remain separate. Use Rules to inspect the saved execution status.</div>` : `<div class="note">No finding example is supplied for this object. The mockup is not reporting an empty or completed assessment.</div>`;
+      }
+      if (state.tab === "values") return panel("Other captured values", `<dl class="attributes">${attribute("Object class", "objectClass", esc(o.type))}${attribute("Account name", "sAMAccountName", esc(o.sam || "No value recorded"))}${attribute("Captured name", "distinguishedName", o.dn, true)}</dl><div class="panel-content muted">All actual captured attributes remain accessible in the application. This preview contains only a small synthetic set.</div>`);
+      return panel("Evidence and saved-result binding", `<div class="panel-content"><h3>${run.name}</h3><p>${run.captured} · ${run.forest}</p><p class="muted">Capture, derivation and judgement are the same fictional generation context throughout this review. No real file is opened, sealed, rejudged or modified.</p><p class="muted">The application must continue checking the exact saved input/result binding when object details are detached. A pop-out is a presentation change, not permission to replay analysis or show stale results.</p></div>`);
+    }
+    function renderWindow() {
+      const o = obj(state.objectId);
+      const tabs = [["overview", "Overview"], ["delegation", "Delegation"], ["membership", "Membership"], ["permissions", "Permissions"],
+        ["control", "Control edges"], ["tier0", "Tier 0"], ["values", "Captured values"], ["findings", "Findings"], ["evidence", "Evidence"]];
+      const body = state.tab === "overview" ? renderOverview(o) : state.tab === "permissions" ? renderPermissions(o) :
+        state.tab === "control" ? renderControlEdges(o) : state.tab === "tier0" ? renderObjectTier0(o) : renderOther(o);
+      $("windowTitle").textContent = `${o.name} — Object details`;
+      $("windowContent").innerHTML = `<header class="object-identity"><div class="identity-line"><span class="object-symbol">${icon(o.type)}</span><h1>${esc(o.name)}</h1>${badge(o.type)}<span class="muted">${o.domain}</span>
+        <div class="identity-actions">${b("Locate in main window", "locate-object")}${b("Copy DN", "copy", o.dn)}</div></div>
+        <div class="identity-path"><strong>DN</strong><span>${esc(o.dn)}</span></div><div class="object-run">Saved context: ${run.name} · ${run.captured} · Fictional review evidence</div></header>
+        <nav class="object-tabs" aria-label="Object details">${tabs.map(([id, title]) => `<button type="button" class="${state.tab === id ? "active" : ""}" data-action="object-tab" data-value="${id}">${title}</button>`).join("")}</nav>
+        <div class="object-body">${body}</div><footer class="footer"><span>Fictional saved evidence · Not a live operation or takeover</span>${b("Capture coverage", "coverage", "", "link")}</footer>`;
+    }
+    function openObject(id, tab = "overview") {
+      state.objectId = id; state.tab = tab;
+      if (!state.windowOpen && !standalone) positionWindow();
+      state.windowOpen = true; $("objectWindow").hidden = false; renderWindow();
+      $("scene").value = tab === "permissions" ? `permissions-${state.permissionLayout}` : tab === "control" ? "object-control" : tab === "tier0" ? "object-tier0" : "object-overview";
+    }
+    function positionWindow() {
+      const width = $("desktop").clientWidth, height = $("desktop").clientHeight;
+      const left = width > 1250 ? 315 : 16, top = width > 1250 ? 88 : 76;
+      Object.assign($("objectWindow").style, { left: `${left}px`, top: `${top}px`, width: `${width - left - 18}px`, height: `${height - top - 16}px` });
+    }
+    function closeObject() {
+      if (standalone) { toast("Separate review window: use the browser's close control to close it."); return; }
+      state.windowOpen = false; $("objectWindow").hidden = true; $("scene").value = state.page;
+    }
+    function scene(value) {
+      if (value.startsWith("object-") || value.startsWith("permissions-")) {
+        if (value.startsWith("permissions-")) state.permissionLayout = value.endsWith("a") ? "a" : "b";
+        if (!standalone) { state.page = "objects"; renderMain(); }
+        openObject("alex", value.startsWith("permissions-") ? "permissions" : value.replace("object-", ""));
+      } else {
+        if (standalone) { toast("This is the separate object preview. Main-screen layouts are in the original review window."); return; }
+        state.page = value; closeObject(); renderMain(); $("scene").value = value;
+      }
+    }
+    function toast(text) {
+      $("toast").textContent = text; $("toast").hidden = false;
+      clearTimeout(toast.timer); toast.timer = setTimeout(() => $("toast").hidden = true, 5500);
+    }
+    async function copy(value) {
+      try { await navigator.clipboard.writeText(value); toast("Copied fictional value. No directory data was read."); }
+      catch { toast("Browser clipboard unavailable. The full fictional value is selectable in the preview."); }
+    }
+    function detach() {
+      const url = new URL(location.href);
+      url.searchParams.set("view", "object"); url.searchParams.set("scene", state.tab === "permissions" ? `permissions-${state.permissionLayout}` : `object-${state.tab}`);
+      url.searchParams.set("object", state.objectId);
+      const opened = window.open(url.href, "SecureADObjectReview", "popup,width=1180,height=850,resizable=yes,scrollbars=yes");
+      if (!opened) toast("The browser blocked the preview window. Allow pop-ups for this local file; the in-page object window remains available.");
+      else toast("Opened a separate fictional object preview. Move it to another monitor; the main mockup remains usable.");
+    }
+    document.addEventListener("click", event => {
+      const button = event.target.closest("[data-action]");
+      if (!button) {
+        const rule = event.target.closest("[data-rule]"); if (rule) { state.rule = rule.dataset.rule; renderMain(); }
+        const group = event.target.closest("[data-group]"); if (group) { state.selectedGroup = Number(group.dataset.group); group.closest("tbody").querySelectorAll("tr").forEach(row => row.classList.toggle("selected", row === group)); $("groupSelection").innerHTML = groupSelection(groups[state.selectedGroup]); }
+        const lap = event.target.closest("[data-laps]"); if (lap) { state.selectedComputer = Number(lap.dataset.laps); lap.closest("tbody").querySelectorAll("tr").forEach(row => row.classList.toggle("selected", row === lap)); $("lapsSelection").innerHTML = lapsSelection(lapRecords[state.selectedComputer]); }
+        const permission = event.target.closest("[data-permission]"); if (permission) { state.selectedPermission = Number(permission.dataset.permission); renderWindow(); }
+        const edge = event.target.closest("[data-edge]"); if (edge) { state.edge = Number(edge.dataset.edge); renderWindow(); }
+        const delegation = event.target.closest("[data-delegation]"); if (delegation) { state.selectedDelegation = Number(delegation.dataset.delegation); delegation.closest("tbody").querySelectorAll("tr").forEach(row => row.classList.toggle("selected", row === delegation)); $("delegationSelection").innerHTML = delegationSelection(delegations[state.selectedDelegation]); }
+        const object = event.target.closest("[data-object]"); if (object) { state.selectedObject = object.dataset.object; document.querySelectorAll("[data-object]").forEach(row => row.classList.toggle("selected", row === object)); document.querySelector('[data-action="open-object"].primary').dataset.value = state.selectedObject; }
+        return;
+      }
+      const action = button.dataset.action, value = button.dataset.value;
+      if (action === "page") { state.page = value; renderMain(); $("scene").value = value; }
+      else if (action === "open-object") openObject(value);
+      else if (action === "open-permissions-example") openObject("alex", "permissions");
+      else if (action === "open-control-example") openObject("alex", "control");
+      else if (action === "open-tier-example") openObject("alex", "tier0");
+      else if (action === "object-tab") { state.tab = value; renderWindow(); }
+      else if (action === "permission-layout") { state.permissionLayout = value; syncPermissionSelection(); renderWindow(); $("scene").value = `permissions-${value}`; }
+      else if (action === "principal") { state.principal = value; state.selectedPermission = filteredPermissions().find(p => p.principal === value)?.ordinal ?? null; renderWindow(); }
+      else if (action === "permission-group") { state.collapsedPrincipals.has(value) ? state.collapsedPrincipals.delete(value) : state.collapsedPrincipals.add(value); renderWindow(); }
+      else if (action === "toggle-entry") { state.entryCollapsed = !state.entryCollapsed; renderWindow(); }
+      else if (action === "close-object") closeObject();
+      else if (action === "locate-object") {
+        if (standalone) toast("Fictional locate action: the real application would bring the same captured object into its main browser. This separate HTML preview does not control other browser windows.");
+        else { state.page = "objects"; state.selectedObject = state.objectId; state.scope = "forest"; state.scopeContainer = ""; state.objectSearch = ""; renderMain(); toast("Located the fictional object in the main browser; the details window stays open."); }
+      }
+      else if (action === "copy") copy(value);
+      else if (action === "detach") detach();
+      else if (action === "size") {
+        state.size = value; $("desktop").dataset.size = value;
+        document.querySelectorAll('[data-action="size"]').forEach(b => b.setAttribute("aria-pressed", b.dataset.value === value));
+        if (state.windowOpen) positionWindow();
+      }
+      else if (action === "maximize") {
+        state.maximized = !state.maximized;
+        if (state.maximized) Object.assign($("objectWindow").style, { left: "8px", top: "8px", width: "calc(100% - 16px)", height: "calc(100% - 16px)" });
+        else positionWindow();
+      }
+      else if (action === "toggle-tree") { state.scopeHidden[value] = !state.scopeHidden[value]; renderMain(); }
+      else if (action === "scope") { const scope = value.split("|"); state.scope = scope[0]; state.scopeContainer = scope[1] || ""; renderMain(); }
+      else if (action === "object-search") { state.objectSearch = $("objectSearch").value; renderMain(); }
+      else if (action === "rule-tab") { state.ruleTab = value; renderMain(); }
+      else if (action === "tier-view") { state.tierView = value; renderMain(); }
+      else if (action === "edit-delegation") { state.delegationEdit = true; renderMain(); }
+      else if (action === "delegation-search") {
+        state.delegationPrincipal = $("delegationPrincipal").value; state.delegationPermission = $("delegationPermission").value;
+        state.delegationGroups = $("delegationGroups").checked; state.delegationInherited = $("delegationInherited").checked;
+        state.delegationEdit = false; renderMain(); toast("Updated fictional search results only. No AD lookup was made.");
+      }
+      else if (action === "delegation-membership") { openObject(state.delegationPrincipal, "membership"); }
+      else if (action === "edge-direction") { state.edgeDirection = value; const first = edges.findIndex(e => value === "target" ? e.target === "Alex Morgan" : e.holder === "Alex Morgan"); state.edge = first; renderWindow(); }
+      else if (action === "edge-tab") { state.edgeTab = value; renderWindow(); }
+      else if (action === "edge-empty") { state.edgeEmpty = !state.edgeEmpty; renderWindow(); }
+      else if (action === "route-example") { state.routeExample = value; renderWindow(); }
+      else if (action === "coverage") { $("coveragePanel").hidden = false; $("coveragePanel").querySelector("button").focus(); }
+      else if (action === "close-coverage") $("coveragePanel").hidden = true;
+      else if (action === "preview-only") toast(value);
+      else if (action === "clear-filters") {
+        if (value === "objects") state.objectSearch = "";
+        if (value === "groups") { state.groupSearch = ""; state.groupType = "all"; state.groupScope = "all"; state.cyclesOnly = false; }
+        if (value === "laps") { state.lapsSearch = ""; state.lapsState = "all"; }
+        renderMain();
+      }
+    });
+    document.addEventListener("dblclick", event => {
+      const row = event.target.closest("tr");
+      if (!row) return;
+      if (row.dataset.object) openObject(row.dataset.object);
+      if (row.dataset.group) openObject(groups[Number(row.dataset.group)].id);
+      if (row.dataset.laps) openObject(lapRecords[Number(row.dataset.laps)].id);
+      if (row.dataset.delegation) openObject(delegations[Number(row.dataset.delegation)].target);
+      if (row.dataset.tierObject) { state.routeExample = "supported"; openObject(row.dataset.tierObject, "tier0"); }
+      if (row.dataset.findingObject) openObject(row.dataset.findingObject, "findings");
+      if (row.dataset.unresolved) toast("This fictional identity has no captured object to open. Its unresolved limitation remains explicit.");
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") { if (!$("coveragePanel").hidden) $("coveragePanel").hidden = true; else if (state.windowOpen && !standalone) closeObject(); }
+      if (event.key === "Enter" && event.target.matches('tr[tabindex="0"]')) {
+        event.preventDefault();
+        const row = event.target;
+        row.dispatchEvent(new MouseEvent(row.dataset.rule || row.dataset.permission || row.dataset.edge ? "click" : "dblclick", { bubbles: true }));
+      }
+    });
+    document.addEventListener("submit", event => {
+      event.preventDefault();
+      const action = event.target.dataset.form;
+      if (action === "object-search") { state.objectSearch = $("objectSearch").value; renderMain(); }
+      if (action === "delegation-search") document.querySelector('[data-action="delegation-search"]').click();
+    });
+    document.addEventListener("change", event => {
+      const id = event.target.id;
+      if (id === "scene") { scene(event.target.value); return; }
+      const mainFilters = { groupSearch: "groupSearch", groupScope: "groupScope", groupType: "groupType", lapsSearch: "lapsSearch", lapsState: "lapsState",
+        ruleSearch: "ruleSearch", ruleOutcome: "ruleOutcome", ruleSeverity: "ruleSeverity", delegationSearch: "delegationSearch" };
+      if (mainFilters[id]) { state[mainFilters[id]] = event.target.value; renderMain(); }
+      if (id === "cyclesOnly") { state.cyclesOnly = event.target.checked; renderMain(); }
+      if (id === "showMissing") { state.showMissing = event.target.checked; renderWindow(); }
+      if (id === "risk") { state.risk = event.target.checked; renderWindow(); }
+      if (id === "permissionType") { state.type = event.target.value; syncPermissionSelection(); renderWindow(); }
+      if (id === "permissionSearch") { state.permissionSearch = event.target.value; syncPermissionSelection(); renderWindow(); }
+      if (id === "showExpected") { state.expected = event.target.checked; renderWindow(); }
+      if (id === "edgeSearch") { state.edgeSearch = event.target.value; renderWindow(); }
+      if (id === "browseScope") toast("Preview scope control only; no additional capture or membership analysis is performed.");
+    });
+    $("windowTitlebar").addEventListener("pointerdown", event => {
+      if (standalone || event.target.closest("button")) return;
+      const windowElement = $("objectWindow"), start = { x: event.clientX, y: event.clientY, left: windowElement.offsetLeft, top: windowElement.offsetTop };
+      $("windowTitlebar").setPointerCapture(event.pointerId);
+      const move = e => {
+        windowElement.style.left = `${Math.max(0, Math.min($("desktop").clientWidth - 150, start.left + e.clientX - start.x))}px`;
+        windowElement.style.top = `${Math.max(0, Math.min($("desktop").clientHeight - 50, start.top + e.clientY - start.y))}px`;
+      };
+      const end = () => { $("windowTitlebar").removeEventListener("pointermove", move); $("windowTitlebar").removeEventListener("pointerup", end); };
+      $("windowTitlebar").addEventListener("pointermove", move); $("windowTitlebar").addEventListener("pointerup", end);
+    });
+    function resizeWindow(width, height) {
+      const element = $("objectWindow");
+      const maxWidth = Math.max(580, $("desktop").clientWidth - element.offsetLeft - 8);
+      const maxHeight = Math.max(440, $("desktop").clientHeight - element.offsetTop - 8);
+      element.style.width = `${Math.min(maxWidth, Math.max(580, width))}px`;
+      element.style.height = `${Math.min(maxHeight, Math.max(440, height))}px`;
+    }
+    $("resizeGrip").addEventListener("pointerdown", event => {
+      if (standalone) return;
+      const element = $("objectWindow"), start = { x: event.clientX, y: event.clientY, width: element.offsetWidth, height: element.offsetHeight };
+      $("resizeGrip").setPointerCapture(event.pointerId);
+      const move = e => resizeWindow(start.width + e.clientX - start.x, start.height + e.clientY - start.y);
+      const end = () => { $("resizeGrip").removeEventListener("pointermove", move); $("resizeGrip").removeEventListener("pointerup", end); };
+      $("resizeGrip").addEventListener("pointermove", move); $("resizeGrip").addEventListener("pointerup", end);
+    });
+    $("resizeGrip").addEventListener("keydown", event => {
+      const step = event.shiftKey ? 50 : 20, element = $("objectWindow");
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      resizeWindow(element.offsetWidth + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0),
+        element.offsetHeight + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0));
+    });
+    if (standalone) document.body.classList.add("standalone");
+    renderMain();
+    scene(params.get("scene") || "object-overview");
+    if (standalone && objects.some(o => o.id === params.get("object"))) openObject(params.get("object"), state.tab);
+  </script>
+</body>
+</html>

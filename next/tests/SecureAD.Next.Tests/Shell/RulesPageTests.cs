@@ -50,7 +50,6 @@ public sealed class RulesPageTests
         Assert.Empty(shell.Views);
         Assert.False(shell.HasViews);
         Assert.Equal(fixture.Home.Library.Selected!.Path, rules.BundlePath);
-        Assert.Equal(fixture.Home.Library.Selected.Name, rules.RunName);
         Assert.Equal(1, source.RuleExecutionReads);
         Assert.Null(source.AskedFor);
         Assert.Equal(0, source.ObjectListings);
@@ -59,7 +58,6 @@ public sealed class RulesPageTests
         Assert.Empty(rules.RuleRows);
         shell.ClearOpenedRun();
         Assert.True(rules.HasNoRun);
-        Assert.Empty(rules.RunName);
     }
 
     [Fact]
@@ -85,52 +83,106 @@ public sealed class RulesPageTests
     {
         var source = Source();
         var model = new RulesViewModel(source);
-        model.Show(Bundle, "Fictional run");
+        model.Show(Bundle);
         var view = View(model);
         DashboardRedesignTests.InWindow(view, width, height, () =>
         {
             Assert.Empty(Descendants<TreeView>(view));
-            Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "Fictional run" && text.IsVisible);
-            var list = Assert.Single(Descendants<ListBox>(view));
-            Assert.Same(model.RuleRows[0], list.SelectedItem);
-            Assert.Same(list.SelectedItem, model.SelectedRule);
-            Assert.Equal(model.RuleRows.Count, list.Items.Count);
+            Assert.DoesNotContain(Descendants<TextBlock>(view), text => text.Text == "Rules and their results");
+            var table = Assert.Single(Descendants<DataGrid>(view), grid => grid.Name == "RulesTable");
+            Assert.Same(model.RuleRows[0], table.SelectedItem);
+            Assert.Same(table.SelectedItem, model.SelectedRule);
+            Assert.Equal(model.RuleRows.Count, table.Items.Count);
             var row = Assert.Single(model.RuleRows, item => item.Rule == "SEC-010");
-            list.SelectedItem = row;
+            table.SelectedItem = row;
             Layout(view, width, height);
+            var tableRow = Assert.IsType<DataGridRow>(table.ItemContainerGenerator.ContainerFromItem(row));
+            Assert.Contains(Descendants<TextBlock>(tableRow), text => text.Text == row.Assessment && text.IsVisible);
+            Assert.Contains(Descendants<TextBlock>(tableRow), text => text.Text == row.Severity && text.IsVisible);
+            Assert.Contains(Descendants<TextBlock>(tableRow), text => text.Text == row.Findings.ToString() && text.IsVisible);
             var presenter = Assert.IsType<ContentControl>(view.FindName("RuleDetail"));
             Assert.Same(row, presenter.Content);
             Assert.NotEmpty(row.ScopeNotes);
             Assert.Empty(Descendants<Expander>(view));
-            Assert.Contains(Descendants<TextBlock>(presenter), text => text.Text == row.Outcome && text.IsVisible);
+            var tabs = Assert.Single(Descendants<TabControl>(presenter));
+            Assert.Equal(new[] { "Summary", "Evidence used", "Scope & limitations", "Reference" },
+                tabs.Items.Cast<TabItem>().Select(tab => tab.Header));
             var summary = Assert.Single(Descendants<TextBox>(presenter), box => box.Text == row.LooksFor);
             summary.SelectAll();
             Assert.Equal(row.LooksFor, summary.SelectedText);
-            Assert.All(row.ScopeNotes, note => Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == note && box.ActualHeight > 0));
+            Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == row.WhatToDo);
+            tabs.SelectedIndex = 1;
+            Layout(view, width, height);
             Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == row.DeclaredEvidence);
+            tabs.SelectedIndex = 2;
+            Layout(view, width, height);
+            Assert.All(row.ScopeNotes, note => Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == note));
+            tabs.SelectedIndex = 3;
+            Layout(view, width, height);
             Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == row.MicrosoftReference);
             Assert.All(Descendants<TextBox>(presenter), box => Assert.Equal(TextWrapping.Wrap, box.TextWrapping));
             var detailScroll = Assert.Single(Descendants<ScrollViewer>(presenter), scroll => scroll.Name == "RuleExplanationScroll");
-            var listScroll = Assert.Single(Descendants<ScrollViewer>(list));
+            var listScroll = Descendants<ScrollViewer>(table).First();
             var listOffset = listScroll.VerticalOffset;
             detailScroll.ScrollToEnd();
             Layout(view, width, height);
             Assert.Equal(listOffset, listScroll.VerticalOffset);
             var next = Assert.Single(model.RuleRows, item => item.Rule == "SEC-011");
-            list.SelectedItem = next;
+            table.SelectedItem = next;
+            tabs.SelectedIndex = 0;
             Layout(view, width, height);
             Assert.Same(next, presenter.Content);
             Assert.Contains(Descendants<TextBox>(presenter), box => box.Text == next.LooksFor);
             Assert.DoesNotContain(Descendants<TextBox>(presenter), box => box.Text == row.LooksFor);
+            model.RuleSearchText = "SEC-011";
+            Assert.Single(model.VisibleRuleRows);
             Assert.Equal(1, source.RuleExecutionReads);
             var splitter = Assert.Single(Descendants<GridSplitter>(view));
-            var columns = Assert.IsType<Grid>(splitter.Parent).ColumnDefinitions;
-            Assert.Equal(360, columns[0].ActualWidth, 3);
+            var results = Assert.IsType<Grid>(splitter.Parent);
+            var columns = results.ColumnDefinitions;
+            var padding = Assert.IsType<Thickness>(view.FindResource("ScreenPadding"));
+            Assert.Equal(
+                padding.Top,
+                results.TransformToAncestor(view).Transform(new Point()).Y,
+                3);
+            Assert.Equal(560, columns[0].ActualWidth, 3);
             splitter.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(view), 0, Key.Right)
                 { RoutedEvent = Keyboard.KeyDownEvent });
             Layout(view, width, height);
-            Assert.True(columns[0].ActualWidth > 360);
+            Assert.True(columns[0].ActualWidth > 560);
             Assert.True(presenter.ActualWidth >= 300);
+        });
+    });
+
+    [Fact]
+    public void RenderedSeverityFilterDefaultsToAllWhenARunLoads() => OnSta(() =>
+    {
+        var source = Source();
+        var model = new RulesViewModel(source);
+        var view = View(model);
+
+        DashboardRedesignTests.InWindow(view, 1100, 700, () =>
+        {
+            model.Show(Bundle);
+            model.ReadCompletion.GetAwaiter().GetResult();
+            Layout(view, 1100, 700);
+
+            var severity = Assert.Single(Descendants<ComboBox>(view), item =>
+                ReferenceEquals(item.ItemsSource, model.RuleSeverityChoices));
+            Assert.Equal("All", severity.SelectedItem);
+            Assert.Equal("All", model.RuleSeverityFilter);
+            Assert.Equal(model.RuleRows.Count, model.VisibleRuleRows.Count);
+            Assert.NotEmpty(model.VisibleRuleRows);
+
+            model.RuleSeverityFilter = model.RuleSeverityChoices.First(choice => choice != "All");
+            Assert.True(model.VisibleRuleRows.Count < model.RuleRows.Count);
+            model.Show(@"C:\synthetic\rules-second");
+            model.ReadCompletion.GetAwaiter().GetResult();
+            Layout(view, 1100, 700);
+
+            Assert.Equal("All", severity.SelectedItem);
+            Assert.Equal("All", model.RuleSeverityFilter);
+            Assert.Equal(model.RuleRows.Count, model.VisibleRuleRows.Count);
         });
     });
 
@@ -139,12 +191,12 @@ public sealed class RulesPageTests
     {
         var source = Source();
         var model = new RulesViewModel(source);
-        model.Show(Bundle, "First");
+        model.Show(Bundle);
         model.SelectedRule = model.RuleRows[^1];
         var old = model.SelectedRule;
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         source.CompleteRead = async (value, _) => { await completion.Task; return value; };
-        model.Show(@"C:\synthetic\second", "Second");
+        model.Show(@"C:\synthetic\second");
         Assert.Null(model.SelectedRule);
         Assert.False(model.HasResults);
         completion.SetResult();
@@ -154,7 +206,7 @@ public sealed class RulesPageTests
         source.CompleteRead = null;
         source.RuleExecutionsFail = SecureAD.Kernel.AuditError.Create(SecureAD.Kernel.ErrorCategory.Shell,
             "SyntheticRefusal", SecureAD.Kernel.ErrorSeverity.Failed, "Saved rules could not be verified.", Bundle);
-        model.Show(Bundle, "Refused");
+        model.Show(Bundle);
         Assert.True(model.HasRulesRefusal);
         Assert.Null(model.SelectedRule);
         Assert.Empty(model.RuleRows);
@@ -178,7 +230,7 @@ public sealed class RulesPageTests
             return value;
         };
         var model = new RulesViewModel(source);
-        model.Show(Bundle, "First");
+        model.Show(Bundle);
         Assert.True(model.IsLoading);
         Assert.False(model.HasResults);
         Assert.Empty(model.RuleRows);
@@ -198,7 +250,7 @@ public sealed class RulesPageTests
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         source.CompleteRead = async (value, _) => { await completion.Task; return value; };
         var model = new RulesViewModel(source);
-        model.Show(Bundle, "First");
+        model.Show(Bundle);
         source.IsCurrent = false;
         completion.SetResult();
         await model.ReadCompletion;
@@ -207,10 +259,9 @@ public sealed class RulesPageTests
         Assert.Empty(model.RuleRows);
         source.CompleteRead = null;
         source.IsCurrent = true;
-        model.Show(@"C:\synthetic\second", "Second");
+        model.Show(@"C:\synthetic\second");
         Assert.True(model.HasResults);
         Assert.False(model.HasRulesRefusal);
-        Assert.Equal("Second", model.RunName);
         Assert.Equal(2, source.RuleExecutionReads);
         model.Clear();
         Assert.Empty(model.RuleRows);

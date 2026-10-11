@@ -4,27 +4,27 @@
         <ResourceDictionary Source="Controls.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <Style x:Key="RuleCard" TargetType="Border" BasedOn="{StaticResource Card}">
-        <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
     <Style x:Key="RuleLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
     <Style x:Key="RuleText" TargetType="TextBox" BasedOn="{StaticResource SelectableMessage}">
-        <Setter Property="Foreground" Value="{StaticResource AttributeValueBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeValueBrush}" />
         <Setter Property="Margin" Value="0,0,0,14" />
     </Style>
     <Style x:Key="RuleListItem" TargetType="ListBoxItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Padding" Value="12" />
         <Setter Property="Margin" Value="0,0,0,6" />
-        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Template">
             <Setter.Value>

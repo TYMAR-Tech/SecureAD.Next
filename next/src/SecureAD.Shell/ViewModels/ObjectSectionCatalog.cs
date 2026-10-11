@@ -83,7 +83,7 @@ internal static class ObjectSectionCatalog
     /// <summary>The section every object opens on: who it is, and how this run found it.</summary>
     public const string Overview = "Overview";
 
-    /// <summary>What kind of account it is and what state it is in.</summary>
+    /// <summary>Account fields merged into Overview before the section list is returned.</summary>
     public const string Account = "Account";
 
     /// <summary>The ways this object can act as, or be acted for by, something else.</summary>
@@ -133,6 +133,9 @@ internal static class ObjectSectionCatalog
 
     /// <summary>How this run came by this object, and what it could not read.</summary>
     public const string Evidence = "Evidence";
+
+    /// <summary>Definitions and boundaries kept out of the object data sections.</summary>
+    public const string Help = "Help";
 
     private static readonly ObjectSectionDefinition OverviewSection = new(
         Overview,
@@ -316,7 +319,10 @@ internal static class ObjectSectionCatalog
     private static readonly ObjectSectionDefinition EvidenceSection = new(
         Evidence, "Evidence", []);
 
-    /// <summary>The sections an account of any kind gets, in the order they are read in.</summary>
+    private static readonly ObjectSectionDefinition HelpSection = new(
+        Help, "Help", []);
+
+    /// <summary>The source groups for an account; <see cref="Account"/> is merged into Overview.</summary>
     private static readonly ObjectSectionDefinition[] AccountSections =
     [
         OverviewSection,
@@ -407,7 +413,7 @@ internal static class ObjectSectionCatalog
             ["lastLogonTimestamp"] = "Last Logon (approximate)",
             ["sIDHistory"] = "Former Identifiers",
             ["userAccountControl"] = "Account State",
-            ["adminCount"] = "Protected by AdminSDHolder",
+            ["adminCount"] = "Admin protection marker",
             ["pwdLastSet"] = "Password Last Set",
             ["primaryGroupID"] = "Primary Group",
             ["operatingSystem"] = "Operating System",
@@ -488,8 +494,12 @@ internal static class ObjectSectionCatalog
         var sections = objectClass is not null && ByClass.TryGetValue(objectClass, out var known)
             ? known
             : [OverviewSection, PermissionsSection];
+        if (sections.FirstOrDefault(section => section.Key == Account) is { } account)
+            sections = sections.Where(section => section.Key != Account).Select(section => section.Key == Overview
+                ? section with { Attributes = [.. section.Attributes, .. account.Attributes] }
+                : section).ToArray();
 
-        // Findings and Evidence are last for every class, and neither is a class's own business.
+        // Findings, Evidence and Help are last for every class, and none is a class's own business.
         //
         // FINDINGS IS NOT HIDDEN WHEN THERE ARE NONE, and that is the whole reason it is appended
         // here rather than listed per class. Hiding the LAPS section on a user says something this
@@ -500,7 +510,7 @@ internal static class ObjectSectionCatalog
         // says which of the three it is.
         return [.. sections, new ObjectSectionDefinition(ControlEdges, "Control edges", []),
             new ObjectSectionDefinition(SavedTier0Path, SavedPathText.Get("Title"), []),
-            OtherValuesSection, FindingsSection, EvidenceSection];
+            OtherValuesSection, FindingsSection, EvidenceSection, HelpSection];
     }
 
     /// <summary>

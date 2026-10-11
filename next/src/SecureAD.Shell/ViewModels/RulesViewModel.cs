@@ -12,23 +12,27 @@ internal sealed partial class RulesViewModel(IAssetSource assets) : ObservableOb
     private CancellationTokenSource? _pending;
     private long _revision;
     [ObservableProperty] private string? _bundlePath;
-    [ObservableProperty] private string _runName = "";
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private Notice? _rulesRefusal;
     [ObservableProperty] private bool _hasResults;
     [ObservableProperty] private RuleRowViewModel? _selectedRule;
+    [ObservableProperty] private string _ruleSearchText = "";
+    [ObservableProperty] private string _ruleAssessmentFilter = "All";
+    [ObservableProperty] private string _ruleSeverityFilter = "All";
     public ObservableCollection<RuleRowViewModel> RuleRows { get; } = [];
+    public ObservableCollection<RuleRowViewModel> VisibleRuleRows { get; } = [];
+    public ObservableCollection<string> RuleSeverityChoices { get; } = ["All"];
+    public IReadOnlyList<string> RuleAssessmentChoices { get; } =
+        ["All", "Completed", "Incomplete", "Failed", "Not run"];
     public Task ReadCompletion { get; private set; } = Task.CompletedTask;
     public bool HasNoRun => BundlePath is null;
     public bool HasRulesRefusal => RulesRefusal is not null;
 
-    public void Show(string path, string name)
+    public void Show(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Suspend();
         BundlePath = path;
-        RunName = name;
         RulesRefusal = null;
         assets.SelectRun(path);
         IsLoading = true;
@@ -69,8 +73,9 @@ internal sealed partial class RulesViewModel(IAssetSource assets) : ObservableOb
             var shipped = RuleCatalogue.All.Select(rule => rule.Definition.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var execution in executions.Values.Where(row => !shipped.Contains(row.RuleId)))
                 RuleRows.Add(new(execution.RuleId, null, execution));
+            RefreshSeverityChoices();
+            ApplyRuleFilters();
             HasResults = true;
-            SelectedRule = RuleRows.FirstOrDefault();
             navigation.Complete("success", null);
         }
         catch (OperationCanceledException) when (pending.IsCancellationRequested)
@@ -83,6 +88,7 @@ internal sealed partial class RulesViewModel(IAssetSource assets) : ObservableOb
             if (revision == _revision && !pending.IsCancellationRequested)
             {
                 RuleRows.Clear();
+                VisibleRuleRows.Clear();
                 SelectedRule = null;
                 RulesRefusal = new(NavigationText.Get("Refused"), error.Message);
                 navigation.Complete("refused", error.GetType().Name);
@@ -110,13 +116,18 @@ internal sealed partial class RulesViewModel(IAssetSource assets) : ObservableOb
         HasResults = false;
         SelectedRule = null;
         RuleRows.Clear();
+        VisibleRuleRows.Clear();
+        RuleSeverityChoices.Clear();
+        RuleSeverityChoices.Add("All");
+        RuleSearchText = "";
+        RuleAssessmentFilter = "All";
+        RuleSeverityFilter = "All";
     }
 
     public void Clear()
     {
         Suspend();
         BundlePath = null;
-        RunName = "";
         RulesRefusal = null;
         Announce();
     }
@@ -125,5 +136,42 @@ internal sealed partial class RulesViewModel(IAssetSource assets) : ObservableOb
     {
         OnPropertyChanged(nameof(HasNoRun));
         OnPropertyChanged(nameof(HasRulesRefusal));
+    }
+
+    partial void OnRuleSearchTextChanged(string value) => ApplyRuleFilters();
+    partial void OnRuleAssessmentFilterChanged(string value) => ApplyRuleFilters();
+    partial void OnRuleSeverityFilterChanged(string value) => ApplyRuleFilters();
+
+    private void ApplyRuleFilters()
+    {
+        var selected = SelectedRule;
+        VisibleRuleRows.Clear();
+        foreach (var row in RuleRows.Where(MatchesRuleFilters))
+            VisibleRuleRows.Add(row);
+        SelectedRule = selected is not null && VisibleRuleRows.Contains(selected)
+            ? selected : VisibleRuleRows.FirstOrDefault();
+    }
+
+    private bool MatchesRuleFilters(RuleRowViewModel row)
+    {
+        var search = RuleSearchText.Trim();
+        return (search.Length == 0 || row.Rule.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || row.Category.Contains(search, StringComparison.OrdinalIgnoreCase))
+            && (RuleAssessmentFilter == "All" || row.Assessment == RuleAssessmentFilter)
+            && (RuleSeverityFilter == "All" || row.Severity == RuleSeverityFilter);
+    }
+
+    private void RefreshSeverityChoices()
+    {
+        while (RuleSeverityChoices.Count > 1)
+            RuleSeverityChoices.RemoveAt(RuleSeverityChoices.Count - 1);
+        if (RuleSeverityChoices.Count == 0)
+            RuleSeverityChoices.Add("All");
+        foreach (var severity in RuleRows.Select(row => row.Severity).Where(value => value.Length != 0)
+                     .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+            RuleSeverityChoices.Add(severity);
+        RuleSeverityFilter = "All";
+        OnPropertyChanged(nameof(RuleSeverityFilter));
     }
 }

@@ -20,12 +20,10 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class GroupsViewTests
 {
-    public static object SummaryConverter => new GroupSummaryVisibility();
-
     [Theory]
-    [InlineData(780, 520, false)]
-    [InlineData(1200, 700, true)]
-    public void GroupsRealViewKeepsReadableColumnsAndReachableActions(int width, int height, bool summary)
+    [InlineData(780, 520)]
+    [InlineData(1200, 700)]
+    public void GroupsRealViewKeepsReadableColumnsAndReachableActions(int width, int height)
         => OnSta(() =>
     {
         var (model, _) = Model();
@@ -40,21 +38,15 @@ public sealed class GroupsViewTests
             Assert.Equal(width, view.ActualWidth);
             Assert.Equal(height, view.ActualHeight);
             var grid = Assert.Single(Descendants<GroupInventoryGrid>(view));
-            Assert.Equal(7, grid.Columns.Count);
+            Assert.Equal(8, grid.Columns.Count);
             Assert.Equal(model.Groups.Count, grid.Items.Count);
             Assert.True(grid.ActualHeight > 80);
-            Assert.True(Descendants<Button>(view).Any(button => button.IsVisible && Equals(button.Content, "Open group")));
-            var selected = Assert.Single(Descendants<TextBlock>(view).Where(text => text.Text == "Selected group"));
-            Assert.Equal(summary, selected.IsVisible);
+            Assert.True(Descendants<Button>(view).Any(button => button.IsVisible && Equals(button.Content, "Open object window")));
+            Assert.Contains(Descendants<TextBlock>(view), text => text.IsVisible && text.Text == "Identity Operators");
             Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "17");
             Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "Incomplete membership evidence");
-            if (summary)
-            {
-                Assert.Contains(Descendants<TextBlock>(view), text => text.IsVisible && text.Text
-                    == "Incomplete membership evidence. Unresolved references: 2; unreadable references: 1.");
-                Assert.Contains(Descendants<TextBlock>(view), text => text.IsVisible && text.Text == "17"
-                    && BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == "SelectedGroup.KnownTotal");
-            }
+            Assert.Contains(Descendants<TextBlock>(view), text => text.IsVisible && text.Text
+                == "Incomplete membership evidence. Unresolved references: 2; unreadable references: 1.");
             Assert.DoesNotContain(Descendants<TextBlock>(view), text => text.Text.StartsWith("System.Windows.Controls.Button", StringComparison.Ordinal));
             if (Environment.GetEnvironmentVariable("SECUREAD_GROUPS_RENDER") is { } directory)
             {
@@ -184,9 +176,6 @@ public sealed class GroupsViewTests
         }
         root.SetAttributeValue(XNamespace.Xmlns + "test", "clr-namespace:SecureAD.Next.Tests.Shell;assembly=" + typeof(GroupsViewTests).Assembly.GetName().Name);
         var resources = root.Element(wpf + "UserControl.Resources")!;
-        var converter = resources.Elements().Single(element => element.Name.LocalName == "GroupSummaryVisibility");
-        converter.ReplaceWith(new XElement(xaml + "Static", new XAttribute(xaml + "Key", "GroupSummaryVisibility"),
-            new XAttribute("Member", "test:GroupsViewTests.SummaryConverter")));
         var gridMarkup = root.Descendants().Single(element => element.Name.LocalName == "GroupInventoryGrid");
         Assert.Equal("{Binding OpenGroupCommand}", gridMarkup.Attribute("OpenItemCommand")!.Value);
         gridMarkup.Attribute("OpenItemCommand")!.Remove();
@@ -203,7 +192,7 @@ public sealed class GroupsViewTests
         var view = (UserControl)XamlReader.Parse(root.ToString());
         // Runtime XAML cannot construct internal Shell types. Retain the parsed production
         // columns/bindings and install the actual internal input-routing control, not a substitute.
-        var panel = Assert.Single(((DockPanel)view.Content).Children.OfType<Grid>());
+        var panel = Assert.IsAssignableFrom<Panel>(view.Content);
         var parsed = Assert.Single(panel.Children.OfType<DataGrid>());
         var grid = new GroupInventoryGrid
         {
