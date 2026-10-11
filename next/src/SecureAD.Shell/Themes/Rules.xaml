@@ -16,8 +16,94 @@
         <Setter Property="Margin" Value="0,0,0,6" />
     </Style>
     <Style x:Key="RuleText" TargetType="TextBox" BasedOn="{StaticResource SelectableMessage}">
-        <Setter Property="Foreground" Value="{DynamicResource AttributeValueBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontWeight" Value="{StaticResource BodyFontWeight}" />
+        <Setter Property="MaxWidth" Value="800" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style x:Key="RuleInformationSection" TargetType="Border" BasedOn="{StaticResource RuleCard}">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+        <Setter Property="CornerRadius" Value="9" />
         <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+    <Style x:Key="RuleInformationHeading" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="CornerRadius" Value="8,8,0,0" />
+        <Setter Property="Padding" Value="16,10" />
+    </Style>
+    <Style x:Key="RuleInformationTitle" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource RowTitleFontSize}" />
+        <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="RuleInformationBody" TargetType="Border">
+        <Setter Property="Padding" Value="16,13,16,16" />
+    </Style>
+    <Style x:Key="RuleInformationTabs" TargetType="TabControl" BasedOn="{StaticResource BaseTabControl}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border x:Name="RuleInformationTabStrip"
+                                Background="{DynamicResource RailBackground}"
+                                BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                                BorderThickness="1" CornerRadius="23"
+                                Padding="3" Margin="0,0,0,14" HorizontalAlignment="Left">
+                            <TabPanel IsItemsHost="True" />
+                        </Border>
+                        <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1"
+                                          Content="{TemplateBinding SelectedContent}"
+                                          ContentTemplate="{TemplateBinding SelectedContentTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding SelectedContentTemplateSelector}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="RuleInformationTab" TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource RailTextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource RailSelectedBackground}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Margin" Value="0,0,3,0" />
+        <Setter Property="FontWeight" Value="{StaticResource BodyFontWeight}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="RuleInformationTabChrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="20" Padding="{TemplateBinding Padding}"
+                            MinHeight="40">
+                        <TextBlock Text="{TemplateBinding Header}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SelectedObjectTabBackground}" />
+                <Setter Property="Foreground" Value="{DynamicResource SelectedObjectTabTextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource SelectedObjectTabTextBrush}" />
+                <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
     <Style x:Key="RuleListItem" TargetType="ListBoxItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />

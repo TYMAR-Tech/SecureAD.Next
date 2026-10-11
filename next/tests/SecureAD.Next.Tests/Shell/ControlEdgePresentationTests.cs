@@ -72,7 +72,7 @@ public sealed class ControlEdgePresentationTests
     [InlineData("AnalysisSummary")]
     [InlineData("CaptureSummary")]
     [InlineData("UnexpectedSummary")]
-    [InlineData("UnknownSummary")]
+    [InlineData("ExpectednessUnknownSummary")]
     [InlineData("ExpectedSummary")]
     [InlineData("Coverage")]
     [InlineData("VisibleRows")]
@@ -111,6 +111,69 @@ public sealed class ControlEdgePresentationTests
         Assert.Equal((true, true, 0L), queries[^1]);
         Assert.Contains("7 expected (shown)", vm.Counts);
         Assert.Equal("7 expected shown", vm.ExpectedSummary);
+    }
+
+    [Fact]
+    public void EmptyHolderViewStatesDirectScopeMembershipAndUnansweredObjects()
+    {
+        var generation = Guid.NewGuid();
+        var vm = new ControlEdgesSectionViewModel(
+            new(ObjectSectionCatalog.ControlEdges, "Control edges", []),
+            "ba.admin");
+        vm.ConfigureMemberAttributionAsync(
+            (_, _) => Task.FromResult(Result<MemberAttributionDetail>.Success(
+                new(false, null, []) { GenerationId = generation })),
+            (_, _, _) => Task.FromResult(Result<MemberPermissionPage>.Success(
+                new(false, false, generation, [], false, 0))),
+            () => true);
+        vm.Configure(true, true,
+            (_, _, _) => Result<ControlEdgePage>.Success(
+                new([], 0, 0, 0, 42, true, true, false, 0)
+                {
+                    GenerationId = generation,
+                    IsScopedToDiscovery = true,
+                }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, generation)));
+        vm.ReadCompletion.GetAwaiter().GetResult();
+        vm.MembershipReadCompletion.GetAwaiter().GetResult();
+
+        Assert.True(vm.ShowsDirectHolderEmptyState);
+        Assert.False(vm.ShowsGenericEmptyState);
+        Assert.Equal(
+            "No direct named permissions for ba.admin were saved in the assessed scope.",
+            vm.DirectHolderEmptyHeading);
+        Assert.Contains(
+            "This view does not include permissions held by groups ba.admin belongs to",
+            vm.DirectHolderEmptyDetail);
+        Assert.Contains("42 objects still have unanswered supported rights", vm.DirectHolderEmptyDetail);
+        Assert.Contains("Tier 0 discovery scope rather than the whole capture", vm.DirectHolderEmptyDetail);
+        Assert.Contains("Member expansion did not run", vm.ThroughMembershipCoverage);
+        Assert.Equal("Expectedness unknown: 0", vm.ExpectednessUnknownSummary);
+    }
+
+    [Fact]
+    public void DirectEmptyStateTemplateShowsTheSavedMembershipStatus()
+    {
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var path = Path.Combine(
+            Architecture.RebuildTree.Root(),
+            "src",
+            "SecureAD.Shell",
+            "Views",
+            "Sections",
+            "ObjectSectionTemplates.xaml");
+        var template = XDocument.Load(path).Descendants().Single(element =>
+            element.Name.LocalName == "DataTemplate"
+            && element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "DataType"
+                && attribute.Value == "{x:Type vm:ControlEdgesSectionViewModel}"));
+        var empty = Assert.Single(template.Descendants(), element =>
+            (string?)element.Attribute(xaml + "Name") == "DirectHolderEmptyState");
+        var membership = Assert.Single(template.Descendants(), element =>
+            (string?)element.Attribute(xaml + "Name") == "DirectHolderMembershipStatus");
+
+        Assert.Contains("ShowsDirectHolderEmptyState", (string?)empty.Attribute("Visibility"));
+        Assert.Equal("{Binding ThroughMembershipCoverage}", (string?)membership.Attribute("Text"));
     }
 
     [Fact]

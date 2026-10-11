@@ -633,6 +633,10 @@ internal sealed class RuleRowViewModel
         Rule = ruleId;
         _definition = definition;
         _execution = execution;
+        CapturedInputs = definition?.RequiredAttributes
+            .Select(attribute => new RuleInputViewModel(
+                ObjectSectionCatalog.LabelFor(attribute) + ":", attribute))
+            .ToArray() ?? [];
     }
 
     /// <summary>The rule, such as <c>SEC-011</c>.</summary>
@@ -677,17 +681,26 @@ internal sealed class RuleRowViewModel
         ?? "This build has no recorded impact guidance for this rule.";
     public string WhatToDo => Guidance?.WhatToDo
         ?? "This build has no recorded remediation guidance for this rule.";
-    public IReadOnlyList<string> ScopeNotes => AboutParagraphs.Skip(1).ToArray();
+    public IReadOnlyList<RuleScopeNoteViewModel> ScopeNotes => AboutParagraphs.Skip(1)
+        .Select((text, index) => new RuleScopeNoteViewModel(
+            Rule.Equals("SEC-010", StringComparison.OrdinalIgnoreCase) && index < 2
+                ? index == 0 ? "Assessment boundary:" : "Usage is not recorded:"
+                : $"Scope note {index + 1}:",
+            text))
+        .ToArray();
     public bool HasScopeNotes => ScopeNotes.Count != 0;
+    public bool HasNoScopeNotes => !HasScopeNotes;
     private string[] AboutParagraphs => About.Replace("\r\n", "\n", StringComparison.Ordinal)
         .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    public string DeclaredEvidence => _definition is null
-        ? "This build has no input declaration for this recorded rule."
-        : "Captured attributes: " + string.Join(", ", _definition.RequiredAttributes)
-          + (_definition.RequiredDerivedFacts.Count == 0 ? ""
-              : "\nRequired derived facts: " + string.Join(", ", _definition.RequiredDerivedFacts));
+    public IReadOnlyList<RuleInputViewModel> CapturedInputs { get; }
+    public bool HasCapturedInputs => CapturedInputs.Count != 0;
+    public IReadOnlyList<string> RequiredDerivedFacts => _definition?.RequiredDerivedFacts ?? [];
+    public bool HasRequiredDerivedFacts => RequiredDerivedFacts.Count != 0;
+    public bool HasNoInputDeclaration => _definition is null;
+    public string InputDeclarationNotice { get; } = "This build has no input declaration for this recorded rule.";
     public string? MicrosoftReference => Guidance?.MicrosoftReference;
     public bool HasMicrosoftReference => MicrosoftReference is not null;
+    public bool HasNoMicrosoftReference => !HasMicrosoftReference;
 
     /// <summary>How many findings it wrote on this run.</summary>
     public int Findings => _execution?.FindingsProduced ?? 0;
@@ -750,3 +763,7 @@ internal sealed class RuleRowViewModel
         ? string.Join(", ", _execution.MissingInputs.Select(m => m.Attribute).Distinct())
         : "an input it declared";
 }
+
+internal sealed record RuleInputViewModel(string Label, string Attribute);
+
+internal sealed record RuleScopeNoteViewModel(string Heading, string Text);

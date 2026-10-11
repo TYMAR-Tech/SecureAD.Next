@@ -283,7 +283,7 @@
                     <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding AnalysisSummary}" /></Border>
                     <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding CaptureSummary}" /></Border>
                     <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding UnexpectedSummary}" /></Border>
-                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding UnknownSummary}" /></Border>
+                    <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding ExpectednessUnknownSummary}" /></Border>
                     <Border Style="{StaticResource ControlStatusChip}"><TextBlock Text="{Binding ExpectedSummary}" /></Border>
                 </WrapPanel>
                 <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
@@ -309,10 +309,22 @@
                                 <Button Content="First page" Command="{Binding FirstPageCommand}" Margin="0,0,8,0" />
                                 <Button Content="Next page" Command="{Binding NextPageCommand}" IsEnabled="{Binding HasMore}" />
                             </WrapPanel>
+                            <StackPanel x:Name="DirectHolderEmptyState"
+                                        DockPanel.Dock="Bottom" Margin="10"
+                                        Visibility="{Binding ShowsDirectHolderEmptyState,Converter={StaticResource Shown}}">
+                                <TextBlock Text="{Binding DirectHolderEmptyHeading}"
+                                           FontWeight="{StaticResource EmphasisFontWeight}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding DirectHolderEmptyDetail}"
+                                           Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock x:Name="DirectHolderMembershipStatus"
+                                           Text="{Binding ThroughMembershipCoverage}"
+                                           Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
                             <TextBlock DockPanel.Dock="Bottom"
                                        Text="No control edges are displayed on this page. This does not establish that no supported control exists."
                                        Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="10"
-                                       Visibility="{Binding HasNoVisibleRows,Converter={StaticResource Shown}}" />
+                                       Visibility="{Binding ShowsGenericEmptyState,Converter={StaticResource Shown}}" />
                             <DataGrid x:Name="ControlPermissions"
                                       ItemsSource="{Binding Source={StaticResource GroupedControlRows}}"
                                       SelectedItem="{Binding SelectedEdge}"

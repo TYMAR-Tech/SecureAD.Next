@@ -8,6 +8,8 @@
     <Color x:Key="AssetNavigationBackgroundColor">#FF202936</Color>
     <Color x:Key="AttributeHeaderBackgroundColor">#FF283444</Color>
     <Color x:Key="ObjectSectionHeadingBackgroundColor">#FF303F54</Color>
+    <Color x:Key="SelectedObjectTabBackgroundColor">#FFFFFFFF</Color>
+    <Color x:Key="SelectedObjectTabTextBrushColor">#FF12161A</Color>
     <Color x:Key="AttributeCardBorderBrushColor">#FF65778F</Color>
     <Color x:Key="AttributeLabelBrushColor">#FFC1CEDE</Color>
     <Color x:Key="AttributeSourceBrushColor">#FFC1CEDE</Color>

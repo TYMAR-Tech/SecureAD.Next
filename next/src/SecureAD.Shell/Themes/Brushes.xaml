@@ -8,6 +8,8 @@
     <SolidColorBrush x:Key="AssetNavigationBackground" Color="{DynamicResource AssetNavigationBackgroundColor}" />
     <SolidColorBrush x:Key="AttributeHeaderBackground" Color="{DynamicResource AttributeHeaderBackgroundColor}" />
     <SolidColorBrush x:Key="ObjectSectionHeadingBackground" Color="{DynamicResource ObjectSectionHeadingBackgroundColor}" />
+    <SolidColorBrush x:Key="SelectedObjectTabBackground" Color="{DynamicResource SelectedObjectTabBackgroundColor}" />
+    <SolidColorBrush x:Key="SelectedObjectTabTextBrush" Color="{DynamicResource SelectedObjectTabTextBrushColor}" />
     <SolidColorBrush x:Key="AttributeCardBorderBrush" Color="{DynamicResource AttributeCardBorderBrushColor}" />
     <SolidColorBrush x:Key="AttributeLabelBrush" Color="{DynamicResource AttributeLabelBrushColor}" />
     <SolidColorBrush x:Key="AttributeSourceBrush" Color="{DynamicResource AttributeSourceBrushColor}" />

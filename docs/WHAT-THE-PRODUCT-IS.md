@@ -51,6 +51,14 @@ unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
 
+**Initial-demo UI checkpoint and return to rule delivery, owner-approved 2026-10-11.**
+The owner considers the current UI good enough for initial demos, explicitly requested committing
+and pushing all pending work, and wants to finish the remaining rules before further UI polish.
+This is demo readiness, not final physical-display or full product acceptance; outstanding UI and
+validation findings remain recorded. Group rule implementations only where captured evidence and
+accepted finding behavior genuinely overlap, retaining bounded validated sessions and the existing
+decision to leave SEC-083 until the end.
+
 **Owner-requested screen-by-screen UI mockup review, 2026-10-10.**
 The owner paused remaining-rule work to review thirteen supplied screenshots, discussing each
 before producing a final consolidated visual mockup in chat and before any application changes.
@@ -124,6 +132,13 @@ The Rules view has no repeated run-summary header: the selected Rules tab alread
 and the rule-results surface is the information the operator came to read. Its severity filter
 visibly defaults to All whenever a run loads so rebuilding the available severity choices cannot
 turn an unfiltered result set into an apparently empty one.
+The owner requested a standalone mockup of the Rules information tabs with clear separation between
+colon-terminated headings and regular-weight body text, readable evidence rows and separately
+grouped limitations, then approved implementing that preview. Summary uses three separate cards,
+Evidence used has aligned labelled attribute rows and a separate saved-outcome card, limitations
+have individually labelled cards, and Reference retains the published source with a colon-terminated
+heading. The information tabs use the rounded white-selected treatment; this changes presentation,
+not authored guidance, saved results, analysis or live access.
 Object details use one compact identity: `Name (Type)` followed by the full distinguished name, with
 the separate domain and selected-run path/timestamp removed. The selected object section uses the
 accent treatment, no section repeats its own title in a full-width card, and every object has a
@@ -133,6 +148,19 @@ compact saved-analysis, capture and count status, and explains the selected rela
 repeating the question as a list heading. Permission evidence, concrete requester checks and stored
 membership remain separate; detailed counting and general limitations live in Help, while actual
 incomplete or mismatched saved coverage remains visible on the data section.
+The owner replaced the filled-accent object-tab treatment after physical review with a segmented
+pill strip: every section is a rounded dark capsule inside a rounded dark rail, and the selected
+section is a white pill with dark lettering and a dark outline. The nested tab label takes its color
+directly from the selected tab rather than the application's normal text style. Selection is tied
+to the section's stable selected state rather than keyboard focus or the temporary section object,
+so loading content or moving focus into the page must not make the active tab appear unselected.
+An empty `What can Name control?` view states that no direct named-holder permissions were saved in
+the assessed scope, that group-held permissions are not included without member expansion, and the
+saved unanswered-object/scoped-analysis limits. It must not imply the principal controls nothing.
+The control-edge `Unknown` summary is explicitly labelled `Expectedness unknown` because it counts
+unknown expectedness among count-eligible relationships, not rows whose permission support is
+Unknown; owner-change candidates remain visible, Unknown and uncounted behind the AD DS laboratory
+gate.
 
 **Owner-authorized checkpoint integration and lab testing, 2026-10-10.**
 The owner requested committing all current work, merging `rules-delivery` into `main` and pushing

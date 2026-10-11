@@ -13,6 +13,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**Initial-demo UI checkpoint - owner-approved publication and return to rules, 2026-10-11.**
+The owner considers the current UI sufficient for initial demos and requested committing and pushing all pending UI work while retaining remaining polish and physical acceptance as outstanding.
+The current checkpoint has 1,574 passing Shell checks, 14 detected and rebuilt Rules-information regressions, a zero-error Release rebuild and one separately recorded pre-existing constructor-format architecture failure.
+Publish the current UI branch to the new primary repository, then resume bounded remaining-rule delivery with genuinely shared-input batches and SEC-083 kept at the end.
+
 **Twelve-screen mockup parity and live Dark/Light themes - mixed-theme and Light-activation defects corrected and executable-verified; repeat lab acceptance outstanding, 2026-10-10.**
 The duplicated component brush dictionaries are removed, and a theme change now replaces the application palette then recreates its one shared brush dictionary so existing canvases, cards, tables, text and controls all receive the chosen colors.
 The real Release Settings screen persists Light and visibly changes the open window, the three reported production views switch as complete units, all seven isolated regressions are detected and restored, all 1,546 Shell and 78 Tier 0 checks pass, and the Release solution builds with zero errors and existing analyzer warnings only.
@@ -37,6 +42,26 @@ The compact Rules view still requires owner review on the physical displays; it 
 Object details now use compact `Name (Type)` plus DN identity, omit domain/run metadata and repeated section-title cards, give the active section the accent treatment, and end with Help as the shared home for definitions and counting explanations.
 Control edges asks the two administrator questions once, keeps saved-analysis and actual coverage status compact, and preserves permission proof, requester checks and stored membership as separate answers; all 11 isolated regressions are detected and restored, all 1,562 Shell and 78 Tier 0 checks pass, and Release builds with zero errors and existing analyzer warnings only.
 The approved layout still requires owner review on the physical displays; it is included in pushed commit `5d081a9`, with no live access or result-semantic change performed.
+
+**Segmented pill object tabs - implemented and offline verified; physical review outstanding, 2026-10-11.**
+The object sections now use a rounded dark rail, rounded dark unselected capsules and a white selected pill with dark outline and lettering explicitly bound to the selected container.
+Both themes pass selected/unselected color, label, rail, pill-geometry, asynchronous replacement and focus checks; all four isolated pill regressions are detected and restored, all 1,566 Shell and 78 Tier 0 checks pass after one unrelated file-lock retry, and Release builds with zero errors and one existing benchmark warning.
+The owner accepted the current appearance for initial demos and authorized checkpoint publication; further physical review remains outstanding, with no live access or result-semantic change performed.
+
+**Control-edge empty direction and Unknown label - implemented and offline verified; physical review outstanding, 2026-10-11.**
+The empty holder-first view now says it has no direct named-holder rows in the assessed scope, excludes group-held permissions without member expansion, and retains unanswered-object and Tier 0 discovery-scope limits.
+The chip now reads Expectedness unknown so it cannot contradict Support Unknown owner-change candidates; all five isolated wording/binding regressions are detected and restored, with the shared 1,566 Shell, 78 Tier 0 and zero-error Release validation preserving saved control-edge and ownership semantics.
+The owner accepted the current UI for initial demos and authorized checkpoint publication, while further wording polish remains outstanding.
+
+**Rules detail information presentation - implemented and offline verified; physical review outstanding, 2026-10-11.**
+The approved [mockup](../mockups/rules-information-tabs-review.html) is implemented with separated Summary cards, aligned declared-input rows, individually labelled limitations, colon-terminated headings, regular-weight selectable text and rounded information tabs, preserving authored guidance and saved answers.
+Both themes pass narrow/wide rendering and missing-guidance/derived-input cases, all 14 isolated defects are detected after explicit rebuilds and byte-matched restorations, all 1,574 Shell checks pass, and the final Release solution rebuild has zero errors; one pre-existing object-window architecture failure is recorded separately.
+The owner accepted build AN's current UI for initial demos and authorized checkpoint publication; further physical-display review remains outstanding and preceding UI corrections and evidence remain intact.
+
+**Object-window code-behind guard - LOW; open pre-existing validation failure, 2026-10-11.**
+The architecture check rejects the expression-bodied `ObjectDetailWindow` constructor in committed checkpoint `364f7b6`, although its only operation is `InitializeComponent`.
+The Rules presentation validation passes all 1,574 Shell checks and 32 other selected architecture checks, with this single failure confirmed in the unchanged object-window source rather than introduced by the Rules work.
+Align that constructor with the repository's permitted constructor shape in a separate correction without weakening the guard; the recorded Rules result does not claim a clean architecture suite.
 
 **Integrated-checkpoint full-suite CI - HIGH; three failed checks, pre-UI baseline retained, 2026-10-10.**
 Exact-head CI for `4f6b7e2` completed with 7,707 passes and three failures in the offline audit journey and portable-summary tests, after the earlier affected-area suite passed.

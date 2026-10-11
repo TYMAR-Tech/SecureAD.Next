@@ -174,6 +174,7 @@ public sealed class ApplicationThemeTests
         AssertContrast(colors, "OnAccentTextBrushColor", "AccentBrushColor");
         AssertContrast(colors, "OnAccentTextBrushColor", "AccentHoverBrushColor");
         AssertContrast(colors, "OnAccentTextBrushColor", "AccentPressedBrushColor");
+        AssertContrast(colors, "SelectedObjectTabTextBrushColor", "SelectedObjectTabBackgroundColor");
         AssertContrast(colors, "OnAccentTextBrushColor", "DangerBrushColor");
         AssertContrast(colors, "OnAccentTextBrushColor", "DangerHoverBrushColor");
         AssertContrast(colors, "OnAccentTextBrushColor", "DangerPressedBrushColor");

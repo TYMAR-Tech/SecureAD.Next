@@ -45,8 +45,11 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
     [ObservableProperty] private string _analysisSummary = "Not read";
     [ObservableProperty] private string _captureSummary = "Capture unknown";
     [ObservableProperty] private string _unexpectedSummary = "Unexpected unknown";
-    [ObservableProperty] private string _unknownSummary = "Unknown unresolved";
+    [ObservableProperty] private string _expectednessUnknownSummary = "Expectedness unknown: unknown";
     [ObservableProperty] private string _expectedSummary = "Expected unknown";
+    [ObservableProperty] private bool _showsDirectHolderEmptyState;
+    [ObservableProperty] private string _directHolderEmptyHeading = "";
+    [ObservableProperty] private string _directHolderEmptyDetail = "";
     private string _requesterCoverage = "Requester assessments have not been read.";
     private IReadOnlyList<SelfMembershipAssessmentRowViewModel> _requesterAssessments = [];
     private SelfMembershipAssessmentRowViewModel? _selectedRequesterAssessment;
@@ -100,6 +103,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             || Contains(row.Evaluation) || Contains(row.Expectedness)).ToArray();
     public bool HasVisibleRows => VisibleRows.Count != 0;
     public bool HasNoVisibleRows => !HasVisibleRows;
+    public bool ShowsGenericEmptyState => HasNoVisibleRows && !ShowsDirectHolderEmptyState;
     public bool HasSelectedEdge => SelectedEdge is not null;
     public bool HasNoSelectedEdge => SelectedEdge is null;
     public ControlEdgesSectionViewModel(ObjectSectionDefinition definition, string objectName = "this object") : base(definition)
@@ -194,8 +198,10 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         AnalysisSummary = "Not read";
         CaptureSummary = "Capture unknown";
         UnexpectedSummary = "Unexpected unknown";
-        UnknownSummary = "Unknown unresolved";
+        ExpectednessUnknownSummary = "Expectedness unknown: unknown";
         ExpectedSummary = "Expected unknown";
+        ShowsDirectHolderEmptyState = false;
+        DirectHolderEmptyHeading = DirectHolderEmptyDetail = "";
         ThroughMembershipCoverage = MemberAttributionPanelViewModel.Text("SelectPermission");
     }
 
@@ -250,7 +256,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
             AnalysisSummary = "Unreadable";
             CaptureSummary = "Capture unknown";
             UnexpectedSummary = "Unexpected unknown";
-            UnknownSummary = "Unknown unresolved";
+            ExpectednessUnknownSummary = "Expectedness unknown: unknown";
             ExpectedSummary = "Expected unknown";
             return;
         }
@@ -283,12 +289,27 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         AnalysisSummary = page.ProductWasDerived ? "Saved analysis" : "Not derived";
         CaptureSummary = page.CaptureIsComplete ? "Capture complete" : "Capture incomplete";
         UnexpectedSummary = $"{page.UnexpectedCount} unexpected";
-        UnknownSummary = $"{page.UnknownCount} unknown";
+        ExpectednessUnknownSummary = $"Expectedness unknown: {page.UnknownCount}";
         ExpectedSummary = $"{page.ExpectedCount} expected " + (IncludeExpected ? "shown" : "hidden");
         Rows = page.Edges.Select(edge => new ControlEdgeRowViewModel(edge, page.FullControlSupports.ContainsKey(edge.Id)))
             .Concat(page.FullControlAssessments.Select(value => new ControlEdgeRowViewModel(value)))
             .OrderBy(row => row.DisplayOrder).ToArray();
         SelectedEdge = Rows.FirstOrDefault();
+        ShowsDirectHolderEmptyState = ByHolder && Rows.Count == 0
+            && (IncludeExpected || page.ExpectedCount == 0);
+        DirectHolderEmptyHeading = ShowsDirectHolderEmptyState
+            ? $"No direct named permissions for {ObjectName} were saved in the assessed scope."
+            : "";
+        DirectHolderEmptyDetail = ShowsDirectHolderEmptyState
+            ? "This view does not include permissions held by groups "
+                + $"{ObjectName} belongs to. "
+                + (page.UnansweredObjects == 0
+                    ? "No unanswered supported-right objects were recorded in the assessed scope."
+                    : $"{page.UnansweredObjects} objects still have unanswered supported rights.")
+                + (page.IsScopedToDiscovery
+                    ? " Automatic assessment covered Tier 0 discovery scope rather than the whole capture."
+                    : "")
+            : "";
         HasMore = page.HasMore;
         _after = page.LastId;
         FirstMembershipPermissionPage();
@@ -356,7 +377,7 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         AnalysisSummary = "Results withheld";
         CaptureSummary = "Generation mismatch";
         UnexpectedSummary = "Unexpected withheld";
-        UnknownSummary = "Unknown withheld";
+        ExpectednessUnknownSummary = "Expectedness unknown: withheld";
         ExpectedSummary = "Expected withheld";
     }
 
@@ -384,7 +405,11 @@ internal sealed partial class ControlEdgesSectionViewModel : ObjectSectionViewMo
         OnPropertyChanged(nameof(VisibleRows));
         OnPropertyChanged(nameof(HasVisibleRows));
         OnPropertyChanged(nameof(HasNoVisibleRows));
+        OnPropertyChanged(nameof(ShowsGenericEmptyState));
     }
+
+    partial void OnShowsDirectHolderEmptyStateChanged(bool value) =>
+        OnPropertyChanged(nameof(ShowsGenericEmptyState));
 }
 
 internal sealed class SelfMembershipAssessmentRowViewModel(SelfMembershipAssessment value)

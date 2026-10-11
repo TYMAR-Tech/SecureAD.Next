@@ -1,7 +1,9 @@
 using System.Runtime.ExceptionServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -9,6 +11,7 @@ using System.Xml.Linq;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Shell.Controls;
+using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
 using Xunit;
 using Xunit.Sdk;
@@ -28,6 +31,121 @@ public sealed partial class ControlEdgeSizingTests
     [InlineData(1600, 900, false)]
     public void PopulatedTablesRemainReachableAndScrollToTheirLastRows(int width, int height, bool evidenceExpanded)
         => OnSta(() => VerifyPopulated(width, height, evidenceExpanded));
+
+    [Theory]
+    [InlineData(900, 520)]
+    [InlineData(1300, 720)]
+    public void LoadedObjectSectionKeepsWhiteSelectionWhenFocusMovesIntoContent(int width, int height) => OnSta(() =>
+    {
+        var section = Model(2, 0);
+        var completion = new TaskCompletionSource<ObjectSectionViewModel>();
+        var opened = new ObjectViewModel(
+            "CN=Target,DC=example,DC=invalid",
+            "group",
+            "group",
+            (_, _) => completion.Task);
+        opened.Show(ObjectSectionCatalog.ControlEdges);
+        var pane = Pane(section, opened: opened);
+        var window = new Window
+        {
+            Content = pane,
+            Width = width,
+            Height = height,
+            WindowStyle = WindowStyle.None,
+            ShowInTaskbar = false,
+            Left = -10000,
+            Top = -10000,
+        };
+        window.Show();
+        try
+        {
+            Layout(pane, width, height);
+            var tabs = Assert.Single(Descendants<ListBox>(pane),
+                list => AutomationProperties.GetName(list) == "Object sections");
+            var strip = Assert.Single(Descendants<Border>(pane),
+                border => border.Name == "ObjectSectionTabStrip");
+            Assert.Equal(new CornerRadius(20), strip.CornerRadius);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailBackground")).Color,
+                Assert.IsType<SolidColorBrush>(strip.Background).Color);
+            Assert.Equal(ObjectSectionCatalog.ControlEdges,
+                Assert.IsAssignableFrom<ObjectSectionViewModel>(tabs.SelectedItem).Key);
+
+            completion.SetResult(section);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            opened.ReadCompletion.GetAwaiter().GetResult();
+            Layout(pane, width, height);
+
+            var selected = Assert.IsAssignableFrom<ObjectSectionViewModel>(tabs.SelectedItem);
+            Assert.Equal(ObjectSectionCatalog.ControlEdges, selected.Key);
+            var item = Assert.IsType<ListBoxItem>(tabs.ItemContainerGenerator.ContainerFromItem(selected));
+            item.ApplyTemplate();
+            var chrome = Assert.IsType<Border>(item.Template.FindName("ObjectSectionTabChrome", item));
+            var selectedBackground = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabBackground")).Color;
+            var selectedText = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabTextBrush")).Color;
+
+            Assert.True(item.IsSelected);
+            Assert.Equal(Colors.White, selectedBackground);
+            Assert.Equal(Color.FromRgb(18, 22, 26), selectedText);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(item.Foreground).Color);
+            Assert.Equal(new Thickness(1), chrome.BorderThickness);
+            Assert.Equal(new CornerRadius(18), chrome.CornerRadius);
+            var label = Assert.Single(Descendants<TextBlock>(item),
+                text => text.Text == "Control edges");
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            var overview = Assert.IsAssignableFrom<ObjectSectionViewModel>(
+                tabs.Items.Cast<ObjectSectionViewModel>().Single(section => section.Key == ObjectSectionCatalog.Overview));
+            var unselectedItem = Assert.IsType<ListBoxItem>(
+                tabs.ItemContainerGenerator.ContainerFromItem(overview));
+            unselectedItem.ApplyTemplate();
+            var unselectedChrome = Assert.IsType<Border>(
+                unselectedItem.Template.FindName("ObjectSectionTabChrome", unselectedItem));
+            Assert.Equal(new CornerRadius(18), unselectedChrome.CornerRadius);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailSelectedBackground")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedChrome.Background).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailTextBrush")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedItem.Foreground).Color);
+
+            var search = Assert.Single(Descendants<TextBox>(pane), text =>
+                BindingOperations.GetBinding(text, TextBox.TextProperty)?.Path.Path == "EdgeSearchText");
+            Assert.True(search.Focus());
+            Keyboard.Focus(search);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+
+            Assert.True(item.IsSelected);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+
+            new WpfThemeApplier(pane.Resources).Apply(ThemeVariant.Light);
+            Layout(pane, width, height);
+            selectedBackground = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabBackground")).Color;
+            selectedText = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabTextBrush")).Color;
+            Assert.Equal(Colors.White, selectedBackground);
+            Assert.Equal(Color.FromRgb(18, 22, 26), selectedText);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(item.Foreground).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailSelectedBackground")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedChrome.Background).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailTextBrush")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedItem.Foreground).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailBackground")).Color,
+                Assert.IsType<SolidColorBrush>(strip.Background).Color);
+        }
+        finally { window.Close(); }
+    });
 
     [Theory]
     [InlineData(900, false)]
@@ -328,7 +446,8 @@ public sealed partial class ControlEdgeSizingTests
         Assert.Equal(vm.AnalysisSummary, Notice(pane, nameof(vm.AnalysisSummary)).Text);
         Assert.Equal(vm.CaptureSummary, Notice(pane, nameof(vm.CaptureSummary)).Text);
         Assert.Equal(vm.UnexpectedSummary, Notice(pane, nameof(vm.UnexpectedSummary)).Text);
-        Assert.Equal(vm.UnknownSummary, Notice(pane, nameof(vm.UnknownSummary)).Text);
+        Assert.Equal(vm.ExpectednessUnknownSummary,
+            Notice(pane, nameof(vm.ExpectednessUnknownSummary)).Text);
         Assert.Equal(vm.ExpectedSummary, Notice(pane, nameof(vm.ExpectedSummary)).Text);
     }
 
@@ -353,7 +472,10 @@ public sealed partial class ControlEdgeSizingTests
         return vm;
     }
 
-    private static FrameworkElement Pane(ControlEdgesSectionViewModel vm, string? mutation = null)
+    private static FrameworkElement Pane(
+        ControlEdgesSectionViewModel vm,
+        string? mutation = null,
+        ObjectViewModel? opened = null)
     {
         var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
         var template = new XElement(XDocument.Load(Path.Combine(shell, "Views", "Sections", "ObjectSectionTemplates.xaml"))
@@ -420,10 +542,10 @@ public sealed partial class ControlEdgeSizingTests
         adaptiveMarkup.Attribute("Breakpoint")?.Remove();
         adaptiveMarkup.Attribute("Gap")?.Remove();
         var pane = (FrameworkElement)XamlReader.Parse(root.ToString());
-        var opened = new ObjectViewModel("CN=Target,DC=example,DC=invalid", "group", "group",
+        var objectModel = opened ?? new ObjectViewModel("CN=Target,DC=example,DC=invalid", "group", "group",
             (_, _) => Task.FromResult<ObjectSectionViewModel>(vm));
-        opened.Show(ObjectSectionCatalog.ControlEdges);
-        pane.DataContext = new { Opened = opened };
+        if (opened is null) objectModel.Show(ObjectSectionCatalog.ControlEdges);
+        pane.DataContext = new { Opened = objectModel };
         pane.Measure(new(1600, 900));
         pane.Arrange(new(new(), new Size(1600, 900)));
         pane.UpdateLayout();

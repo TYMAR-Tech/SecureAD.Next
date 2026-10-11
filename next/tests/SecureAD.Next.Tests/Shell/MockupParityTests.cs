@@ -67,7 +67,27 @@ public sealed class MockupParityTests
                 || attribute.Value.Contains("Opened.RunContext", StringComparison.Ordinal));
         Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Setter"
             && (string?)element.Attribute("Property") == "Background"
-            && (string?)element.Attribute("Value") == "{DynamicResource AccentBrush}");
+            && (string?)element.Attribute("Value") == "{DynamicResource SelectedObjectTabBackground}");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Setter"
+            && (string?)element.Attribute("Property") == "Foreground"
+            && (string?)element.Attribute("Value") == "{DynamicResource SelectedObjectTabTextBrush}");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Setter"
+            && (string?)element.Attribute("Property") == "IsSelected"
+            && (string?)element.Attribute("Value") == "{Binding IsSelected,Mode=TwoWay}");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Setter"
+            && (string?)element.Attribute("Property") == "BorderThickness"
+            && (string?)element.Attribute("Value") == "1");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Border"
+            && (string?)element.Attribute("CornerRadius") == "18"
+            && (string?)element.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))
+                == "ObjectSectionTabChrome");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "Border"
+            && (string?)element.Attribute("CornerRadius") == "20"
+            && (string?)element.Attribute(XName.Get("Name", "http://schemas.microsoft.com/winfx/2006/xaml"))
+                == "ObjectSectionTabStrip");
+        Assert.Contains(header.Descendants(), element => element.Name.LocalName == "TextBlock"
+            && (string?)element.Attribute("Foreground")
+                == "{Binding Foreground,RelativeSource={RelativeSource AncestorType=ListBoxItem}}");
 
         var host = View("ObjectView.xaml");
         Assert.DoesNotContain(host.Descendants().Attributes(),

@@ -18,6 +18,8 @@
       --line: #65778f;
       --accent: #b7d5ff;
       --accent-ink: #11243e;
+      --selected-tab: #ffffff;
+      --selected-tab-ink: #12161a;
       --selected: #344e73;
       --warning: #ffe1a3;
       --warning-bg: #3e3320;
@@ -99,26 +101,28 @@
       padding: 0 10px;
       background: #1b2532;
       border-top: 1px solid #4b5b70;
+      border-radius: 20px;
+      padding: 2px;
     }
     .object-tabs button {
       min-height: 39px;
       padding: 6px 11px;
       color: var(--muted);
-      background: transparent;
-      border: 0;
-      border-bottom: 3px solid transparent;
+      background: var(--selected);
+      border: 1px solid var(--line);
+      border-radius: 18px;
       white-space: nowrap;
     }
     .object-tabs button:hover { color: var(--ink); background: #28384c; }
     .object-tabs button.active {
-      color: var(--accent-ink);
-      background: var(--accent);
-      border-bottom-color: #ffffff;
+      color: var(--selected-tab-ink);
+      background: var(--selected-tab);
+      border-radius: 18px;
       font-weight: 700;
-      box-shadow: inset 0 0 0 1px #d8e9ff;
+      box-shadow: inset 0 0 0 1px var(--selected-tab-ink);
     }
     .object-tabs button.help-tab { margin-left: auto; color: var(--accent); }
-    .object-tabs button.help-tab.active { color: var(--accent-ink); }
+    .object-tabs button.help-tab.active { color: var(--selected-tab-ink); }
     main {
       flex: 1;
       min-height: 0;
@@ -372,7 +376,7 @@
             <span class="badge good">Saved analysis</span>
             <span class="badge good">Capture complete</span>
             <span class="badge warn">2 unexpected</span>
-            <span class="badge">1 unknown</span>
+            <span class="badge">Expectedness unknown: 1</span>
           </div>
         </div>
 
