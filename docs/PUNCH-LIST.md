@@ -16,27 +16,27 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 **Twelve-screen mockup parity and live Dark/Light themes - mixed-theme and Light-activation defects corrected and executable-verified; repeat lab acceptance outstanding, 2026-10-10.**
 The duplicated component brush dictionaries are removed, and a theme change now replaces the application palette then recreates its one shared brush dictionary so existing canvases, cards, tables, text and controls all receive the chosen colors.
 The real Release Settings screen persists Light and visibly changes the open window, the three reported production views switch as complete units, all seven isolated regressions are detected and restored, all 1,546 Shell and 78 Tier 0 checks pass, and the Release solution builds with zero errors and existing analyzer warnings only.
-Both themes still require another owner review on the physical laptop, external display and lab screens; no live access, performance measurement, evidence migration, commit or push was performed.
+Both themes still require another owner review on the physical laptop, external display and lab screens; the implementation checkpoint is commit `5d081a9` on the pushed `ui-charcoal-object-windows` branch, with no live access, performance measurement or evidence migration performed.
 
 **Objects redundant top chrome - implemented and offline verified; physical review outstanding, 2026-10-10.**
 The repeated Objects heading, full-width Scope strip and object-page tree toggle are removed, the tree stays visible on Objects, and the selected directory remains beneath it while Groups and LAPS retain their independent collapsible-tree behavior.
 The production tree now begins at the screen padding at laptop and wide-display sizes, all five isolated regressions are detected and restored, all 1,546 Shell and 78 Tier 0 checks pass, and the Release solution builds with zero errors and one existing benchmark warning.
-The compact view still requires owner review on the physical laptop and external display; no evidence behavior, live access, measurement campaign, commit or push was performed.
+The compact view still requires owner review on the physical laptop and external display; it is included in pushed commit `5d081a9`, with no evidence behavior, live access or measurement campaign performed.
 
 **Forest-root default Assets selection - implemented and offline verified; physical review outstanding, 2026-10-10.**
 Opening a run now binds the sealed bundle's forest identity to its captured root-domain naming context, visibly selects that tree row and loads its first page instead of leaving Assets grids without a chosen scope.
 Multi-domain and refusal checks prove that Configuration, Schema, alphabetical order and child domains cannot become the default, all six isolated regressions are detected and restored, all 1,548 Shell and 78 Tier 0 checks pass, and the Release solution builds with zero errors and four existing benchmark warnings.
-The default selection still requires owner review against the physical lab run; no live access, recapture, evidence rewrite, commit or push was performed.
+The default selection still requires owner review against the physical lab run; it is included in pushed commit `5d081a9`, with no live access, recapture or evidence rewrite performed.
 
 **Rules top chrome and empty-looking severity default - implemented and offline verified; physical review outstanding, 2026-10-11.**
 The repeated Rules-and-run summary card is removed so the results and guidance panes begin at the screen padding, while explicit no-run, loading and refusal messages remain.
 The bound severity control stays visibly on All across initial and subsequent run loads, all four isolated regressions are detected and restored, all 1,549 Shell and 78 Tier 0 checks pass, and the Release solution builds with zero errors and one existing benchmark warning.
-The compact Rules view still requires owner review on the physical displays; no result semantics, live access, commit or push was performed.
+The compact Rules view still requires owner review on the physical displays; it is included in pushed commit `5d081a9`, with no result-semantic change or live access performed.
 
 **Object tabs and Control edges approved mockup direction - implemented and offline verified; physical review outstanding, 2026-10-11.**
 Object details now use compact `Name (Type)` plus DN identity, omit domain/run metadata and repeated section-title cards, give the active section the accent treatment, and end with Help as the shared home for definitions and counting explanations.
 Control edges asks the two administrator questions once, keeps saved-analysis and actual coverage status compact, and preserves permission proof, requester checks and stored membership as separate answers; all 11 isolated regressions are detected and restored, all 1,562 Shell and 78 Tier 0 checks pass, and Release builds with zero errors and existing analyzer warnings only.
-The approved layout still requires owner review on the physical displays; no live access, result-semantic change, commit or push was performed.
+The approved layout still requires owner review on the physical displays; it is included in pushed commit `5d081a9`, with no live access or result-semantic change performed.
 
 **Integrated-checkpoint full-suite CI - HIGH; three failed checks, pre-UI baseline retained, 2026-10-10.**
 Exact-head CI for `4f6b7e2` completed with 7,707 passes and three failures in the offline audit journey and portable-summary tests, after the earlier affected-area suite passed.
