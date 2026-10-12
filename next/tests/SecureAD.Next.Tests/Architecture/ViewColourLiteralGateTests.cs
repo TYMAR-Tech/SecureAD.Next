@@ -62,7 +62,7 @@ public sealed class ViewColourLiteralGateTests
     /// of one, it survives every palette change, and forbidding it would push views into defining
     /// a brush to mean "nothing here".
     /// </remarks>
-    private static readonly string[] ThemeFiles = ["Palette.xaml", "Brushes.xaml"];
+    private static readonly string[] ThemeFiles = ["Palette.Dark.xaml", "Palette.Light.xaml", "Brushes.xaml"];
 
     [Fact]
     public void NoViewNamesAColour()
@@ -134,10 +134,12 @@ public sealed class ViewColourLiteralGateTests
     [Fact]
     public void ThePaletteIsWhereColoursActuallyLive()
     {
-        var palette = Path.Combine(ThemesRoot(), "Palette.xaml");
-
-        Assert.True(File.Exists(palette), palette + " does not exist.");
-        Assert.Matches(HexColour, File.ReadAllText(palette));
+        foreach (var name in new[] { "Palette.Dark.xaml", "Palette.Light.xaml" })
+        {
+            var palette = Path.Combine(ThemesRoot(), name);
+            Assert.True(File.Exists(palette), palette + " does not exist.");
+            Assert.Matches(HexColour, File.ReadAllText(palette));
+        }
     }
 
     /// <summary>

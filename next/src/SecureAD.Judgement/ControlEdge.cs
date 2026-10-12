@@ -22,6 +22,10 @@ public enum ControlCapability
     CanResetPassword,
     /// <summary>WRITE_PROPERTY reaches msDS-KeyCredentialLink; mutation and authentication success are not evaluated.</summary>
     CanWriteKeyCredentialLink,
+    /// <summary>WRITE_PROPERTY reaches servicePrincipalName; restricted validated writes remain separate.</summary>
+    CanWriteServicePrincipalName,
+    /// <summary>WRITE_PROPERTY reaches the RBCD attribute; delegation operations are not evaluated.</summary>
+    CanWriteResourceBasedConstrainedDelegation,
     /// <summary>Get-Changes and Get-Changes-All on the recorded naming-context root.</summary>
     CanReplicateSecretDomainData,
     /// <summary>Get-Changes and either Get-Changes-All or Get-Changes-In-Filtered-Set on the recorded root.</summary>
@@ -138,6 +142,10 @@ public enum ControlUncertainty
     OwnerServerBehaviorNotRecorded = 262144,
     /// <summary>The implicit-right branch needs the forest heuristic, which was not read.</summary>
     OwnerHeuristicNotRead = 524288,
+    /// <summary>The SPN property's attribute, property-set or class scope could not be established.</summary>
+    ServicePrincipalNameScopeNotEvaluated = 1048576,
+    /// <summary>The RBCD property's attribute, property-set or class scope could not be established.</summary>
+    ResourceBasedDelegationScopeNotEvaluated = 2097152,
 }
 
 /// <summary>A named condition, with its own evaluation; uncertainty never flows back into its primitive.</summary>
@@ -175,7 +183,9 @@ public sealed record ControlEdge(
     public ControlEdgeClass EdgeClass => Capability switch
     {
         ControlCapability.CanModifyGroupMembership or ControlCapability.CanAddSelfToGroup => ControlEdgeClass.MembershipEscalation,
-        ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink => ControlEdgeClass.CredentialExposure,
+        ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink
+            or ControlCapability.CanWriteServicePrincipalName => ControlEdgeClass.CredentialExposure,
+        ControlCapability.CanWriteResourceBasedConstrainedDelegation => ControlEdgeClass.ConditionalEscalation,
         ControlCapability.CanReplicateSecretDomainData or ControlCapability.CanReplicateFilteredAttributes => ControlEdgeClass.ReplicationControl,
         _ => ControlEdgeClass.DirectoryControl,
     };

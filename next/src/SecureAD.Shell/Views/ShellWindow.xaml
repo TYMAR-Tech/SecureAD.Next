@@ -40,7 +40,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Grid Background="{StaticResource WindowBackground}">
+    <Grid Background="{DynamicResource WindowBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -48,7 +48,7 @@
         </Grid.RowDefinitions>
 
         <!-- Tier one: where you are in the product. -->
-        <Border Grid.Row="0" Background="{StaticResource RailBackground}"
+        <Border Grid.Row="0" Background="{DynamicResource RailBackground}"
                 IsEnabled="{Binding RailIsLive}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
@@ -57,7 +57,7 @@
                                FontFamily="{StaticResource UiFontFamily}"
                                FontSize="{StaticResource ScreenTitleFontSize}"
                                FontWeight="{StaticResource EmphasisFontWeight}"
-                               Foreground="{StaticResource RailSelectedTextBrush}" />
+                               Foreground="{DynamicResource RailSelectedTextBrush}" />
 
                     <!-- TEMPORARY BUILD MARKER. Delete when the styling work is done.
 
@@ -65,10 +65,10 @@
                          would otherwise be silent about WHICH build it shows. A round was lost to
                          that: a rail fix was judged not to work when the copy under test may have
                          predated it. Bumped by hand with every change. -->
-                    <TextBlock Text="build AC"
+                    <TextBlock Text="build AN"
                                FontFamily="{StaticResource UiFontFamily}"
                                FontSize="{StaticResource CaptionFontSize}"
-                               Foreground="{StaticResource RailTextBrush}"
+                               Foreground="{DynamicResource RailTextBrush}"
                                VerticalAlignment="Bottom"
                                Margin="10,0,0,3" />
                 </StackPanel>
@@ -117,8 +117,8 @@
         <!-- Tier two: which view of this section. Absent entirely for a section with one view,
              rather than a single tab that switches to where the operator already is. -->
         <Border Grid.Row="1"
-                Background="{StaticResource SurfaceRaisedBackground}"
-                BorderBrush="{StaticResource DividerBrush}"
+                Background="{DynamicResource SurfaceRaisedBackground}"
+                BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,0,1"
                 IsEnabled="{Binding RailIsLive}"
                 Visibility="{Binding HasViews, Converter={StaticResource Shown}}">
@@ -153,10 +153,10 @@
              being replaced, so leaving the audit puts the operator back where he was.
              ========================================================================= -->
         <Border Grid.Row="0" Grid.RowSpan="3"
-                Background="{StaticResource ScrimBrush}"
+                Background="{DynamicResource ScrimBrush}"
                 Visibility="{Binding ShowingAudit, Converter={StaticResource Shown}}">
-            <Border Background="{StaticResource WindowBackground}"
-                    BorderBrush="{StaticResource DividerBrush}"
+            <Border Background="{DynamicResource WindowBackground}"
+                    BorderBrush="{DynamicResource DividerBrush}"
                     BorderThickness="1"
                     MaxWidth="1040"
                     MaxHeight="660"

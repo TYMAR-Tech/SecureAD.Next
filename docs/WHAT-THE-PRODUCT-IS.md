@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 21 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 26 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,249 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**Initial-demo UI checkpoint and return to rule delivery, owner-approved 2026-10-11.**
+The owner considers the current UI good enough for initial demos, explicitly requested committing
+and pushing all pending work, and wants to finish the remaining rules before further UI polish.
+This is demo readiness, not final physical-display or full product acceptance; outstanding UI and
+validation findings remain recorded. Group rule implementations only where captured evidence and
+accepted finding behavior genuinely overlap, retaining bounded validated sessions and the existing
+decision to leave SEC-083 until the end.
+
+**Delivery and lab diagnostic continuation, owner-requested 2026-10-11.**
+The owner explicitly requested committing, merging and pushing all pending work, including the
+SEC-100/101 pair, SEC-014/024/025 trio, indexed-support correction, governing updates and existing
+demo UI checkpoint into `main`.
+This authorizes delivery of that work; earlier no-commit/no-push boundaries are superseded for
+this delivery, not for unrelated implementation, live access, recapture or production acceptance.
+The owner will continue in VS Code on the lab system to investigate the intermittent file-opening
+pause, with original evidence and compact verification records preserved privately.
+The shared opening timer surrounds `File.OpenRead` and stops before SecureAD reads or hashes the
+file; it measures elapsed time, so a Windows wait and an application-thread pause remain distinct
+possibilities, and no antivirus detection or antivirus cause has been established.
+The proposed next diagnostic is one bounded Windows file-system trace on the lab machine using
+copied captured evidence and existing offline judging, matching the executable and capturing all
+processes touching the working bundle folder before deciding whether thread-level tracing is needed.
+This is not approval to change security settings, sealing or permission proof, add measurement
+harness code, optimize further, export production traces or start another rule batch; SEC-083 stays last.
+
+**Bounded property-rule slowdown correction, owner-approved 2026-10-11.**
+After supplying a newly completed lab bundle, the owner approved correcting the property trio's
+repeated schema/evidence preparation and verifying before/after behavior and timing offline with
+existing tools on an original-seal-verified copy.
+Preserve all findings, original permission proof, explicit incomplete results and generation
+binding, the pending SEC-100/101 and SEC-014/024/025 work and their retained verification artifacts.
+The separate file-open stall remains unproven and outside this correction.
+No live access, recapture, discovery/budget change, published-package replacement, commit or push
+is authorized; this is a bounded regression correction, not production-scale acceptance or approval
+of a new measurement harness, and SEC-083 remains last.
+
+The measured correction uses the authoritative catalogue's existing GUID/name indexes rather than
+scanning the whole schema for each emitted finding, retaining every meaning of an overlapping GUID
+and the same target-class definition and canonical support order.
+Two existing-CLI comparisons on this development host and the same sealed lab input record the trio
+at 5.954/9.186 s before and 0.427/0.860 s after; full-process times are 20.013/39.279 s before
+and 15.417/32.242 s after, with substantial other-stage variability rather than a guaranteed elapsed
+time.
+Both pairs preserve all findings, property proofs, original source occurrences, rule outcomes and
+explicit gaps, with new judgement generations separately bound to the same Evidence and Derivation.
+All 402 focused checks pass and the full Release solution rebuild has zero errors; no result is
+capped, hidden or made less rigorously verified.
+
+The owner's subsequent lab logs and summary confirm the timing correction: SEC-014/024/025 total
+0.850 s rather than 33.579 s, and completed judging takes 42.1 s rather than about 88 s, with the same
+8,441 judged objects and 12,646 findings by severity.
+The logged executable hash and engine module identity differ from the earlier run; the follow-up
+uses a fresh capture and supplies only logs, so unchanged aggregate counts are not an exact
+comparison of its saved proof bodies.
+The earlier same-input offline comparisons remain the answer-preservation verification.
+The separate file-open delay is not resolved: opening Judgement takes 2.18 ms in the follow-up,
+but opening Evidence takes 9,421 ms against 55 ms reading and hashing, and capture rises from
+15.7 s to 24.2 s.
+Final publication validation remains 6.404 s versus 6.599 s, a bucket containing property and other
+checks rather than a separate profile of one function.
+This is lab timing confirmation, not production-scale acceptance, a diagnosed file-open cause or
+approval for further optimization, measurement tooling, implementation, deployment, commit or push.
+
+**SEC-014, SEC-024 and SEC-025 property-permission trio, owner-selected 2026-10-11.**
+After completing SEC-100/101, the owner approved taking these three rules together as the next
+bounded implementation batch: unexpected permission to configure resource-based constrained
+delegation, write service principal names, or add alternate authentication keys.
+The batch shares captured directory-permission and schema inputs with Stage 6's permission proof
+and existing scoped expectedness; permission is not a successful directory operation,
+authentication, takeover or a completed Tier 0 path.
+The owner then approved fixed High severity for all three; do not ask for those labels again.
+The predecessor's Critical/High mix remains historical evidence, not this product's severity policy.
+He also approved the existing-screen labels **Unexpected RBCD-configuration write permission**,
+**Unexpected service-principal-name write permission** and **Unexpected key-credential-link write
+permission**, with one finding per named permission-holder and target and original permission
+entries and assessment gaps in the details; no layout change is approved or needed.
+Restricted validated writes do not become unrestricted property-write findings, and neither
+WRITE_DAC nor ownership is silently promoted into an already-held attribute-write permission.
+Preserve the completed service-account changes, their verification handoff and the published UI;
+SEC-002 and the Group Policy rules remain separate, SEC-083 remains last, and no live access,
+capture/discovery/budget change, performance campaign, commit or push is authorized.
+
+The trio is implemented and offline verified in Judgement 66/control engine 10, with 26
+scheduled rules and 14 remaining proposed candidates.
+Shared saved permission occurrences preserve the original entry positions, attribute scope and
+inheritance; missing captured schema, unreadable permission or unresolved expectedness remains
+explicit, and a group-held permission is not multiplied by its members.
+All 96 new rule cases and nine related controls detect rebuilt defects across 40 useful variants
+and 41 passing rebuilt restorations, and the broader affected run passes 1,093 checks with the
+two unchanged published-UI architecture failures separately recorded.
+All 399 final focused checks pass after rebuilding the complete restored sources.
+The final shared-entry transaction and account-identity corrections pass 384 targeted checks,
+including actual inetOrgPerson ancestry; a rolled-back finding cannot leave a permission reference
+for another rule to reuse.
+The complete Release solution rebuild has zero errors.
+Current-format lab, physical-display and production acceptance remains outstanding; the prior
+SEC-100/101 handoff, original evidence and published visual layout remain untouched.
+No live access, recapture, discovery/budget change, performance campaign, package replacement,
+commit or push was performed, and SEC-083 remains last.
+
+**SEC-100 and SEC-101 service-account pair, owner-approved 2026-10-11.**
+The owner approved implementing these two rules together, then explicitly postponed the actual
+implementation to a new session because the current session had run long; do not ask for this
+approval again.
+SEC-100 has fixed High severity and reports a structurally identified managed service account
+(sMSA/gMSA), or an ordinary user with a captured SPN, that has an established security-membership
+route to a verified administrative group. The destination scope is each domain's Domain Admins,
+forest-root Enterprise Admins and Schema Admins, and resource-domain BUILTIN Administrators,
+using the existing authoritative identity and membership products rather than adminCount,
+protection status or a new privileged-group list.
+SEC-101 has fixed Medium severity and reports an ordinary SPN-bearing user with Password never
+expires set; managed service accounts and computers are excluded from this rule.
+Disabled accounts remain visible as dormant exposure, established positive membership survives
+uncertainty about other routes, and missing evidence must remain explicit. Neither rule claims
+actual service usage, password nonrotation, account takeover or a completed Tier 0 path.
+Share service-account identification and use existing captured evidence only, with no live access,
+new capture, discovery/budget change or performance campaign. Begin from the published demo-ready
+UI checkpoint `253b66b` in the existing checkout, preserving all pending governing-document updates
+and historical evidence; this approval does not authorize another commit or push.
+
+The pair is implemented and offline verified in Judgement 65, with 23 scheduled rules.
+SEC-100 saves one finding per account and verified administrative destination, with compact original
+security-membership witnesses, including primary-group membership; SEC-101 saves the SPN and account
+setting without making the membership or password-nonrotation claims it does not assess.
+The published layout, themes and existing labels remain unchanged; their existing coverage indicator
+uses the saved answer's actual completeness rather than reporting an incomplete finding as Complete.
+All 98 new parameterized rule cases and six related controls detect rebuilt defects, 333 focused
+checks pass, and the broader affected run has 728 passing checks plus two independently confirmed
+pre-existing architecture failures; the Release solution rebuild has zero errors.
+
+**Recorded analysis limit, not a clean answer:** existing saved membership routes do not resolve a
+foreign-security-principal reference through captured SID history to the current account/group.
+The rule explicitly records that unsupported historical relationship and retains established current
+membership elsewhere; it does not invent a new edge or substitute protection status.
+Current-format lab, physical-display and production acceptance remain outstanding.
+The retained 2026-10-08 and 2026-10-07 lab captures are Evidence 14 and 13, not current Evidence 16,
+and were left untouched rather than migrated or treated as current-build acceptance.
+No live access, recapture, budget change, performance campaign, package replacement, commit or push
+was performed; SEC-083 remains deferred until the end.
+
+**Owner-requested screen-by-screen UI mockup review, 2026-10-10.**
+The owner paused remaining-rule work to review thirteen supplied screenshots, discussing each
+before producing a final consolidated visual mockup in chat and before any application changes.
+He is considering a separate object-details window opened by double-click; this is a design
+proposal, not approval of pop-out implementation or a change to saved-result behavior.
+For the final mockup, he approved double-click opening a movable, resizable, non-blocking
+object-details window while the main screen remains usable.
+For forest inventory, he approved retaining the summary-card, per-domain-table and separate
+coverage-panel arrangement, improving its compactness and charcoal contrast rather than
+rearranging the dashboard or adding a security-health score.
+For Rules, he approved showing the saved assessment status in every list row, alongside
+severity and finding count, rather than showing status only in the selected-rule panel.
+For the permissions comparison, he requested both alternatives as selectable tabs in the
+review mockup: a principal-list reading pane and expandable principal groups with entry details
+below, so he can obtain customer feedback before choosing.
+Use fictional data and a self-contained shareable preview; this does not approve permanent
+duplicate application layouts or WPF implementation.
+For Groups, he approved a collapsible scope tree while the selected scope remains visible
+above the results when the tree is hidden.
+For the Tier 0 overview, he approved initially showing classified Tier 0 objects and other
+supported routes, with unresolved counts still visible and an obvious All identities view.
+This is a preview default-filter choice, not permission to hide incomplete evidence, claim
+unresolved objects safe or change classification/reachability meanings.
+For LAPS, he approved the matching compact table-first layout with a collapsible scope tree
+and the domain visible in each computer row.
+For Delegations, he approved collapsing the search controls into a compact summary once
+results are shown, with an Edit search action to reopen them.
+For object details, he approved combining Overview and Account using screenshot 12's
+two-panel grouping, with compact spacing and all captured attributes still accessible elsewhere.
+Retain friendly labels with inline technical attribute names and recorded-time qualifications.
+For Control edges, he approved details beside the list on wide windows and below it on
+smaller windows, with permission proof, concrete requester checks and stored membership
+evidence remaining distinct.
+Retain the compact, high-contrast charcoal direction and the existing product/evidence boundaries,
+and keep physical monitor checks outstanding unless actually performed.
+This request authorizes review and offline visual mockup creation only, not WPF edits, rule
+changes, live access, performance measurements or a new commit/push.
+After reviewing the screens and interactive charcoal preview, the owner explicitly requested
+starting a UI branch and implementing this direction, with later fine tuning rather than more
+mockup review as a prerequisite.
+The approved application slice includes compact high-contrast charcoal styling, non-blocking
+movable/resizable object details with run/object context, the combined overview/account grouping,
+both shared-evidence permission presentations for customer comparison, compact Rules status,
+collapsible Groups/LAPS scope trees, supported-first Tier 0 browsing, collapsed Delegations search
+and width-adaptive control details.
+Preserve all saved evidence, classifications, counts, requester distinctions, generation checks,
+selected-only loading and explicit refusals; this is presentation approval, not new analysis,
+production access, performance measurements, evidence migration or commit/push.
+The implementation branch is `ui-charcoal-object-windows`, based on the integrated checkpoint;
+the earlier preview files and owner changes remain intact.
+After reviewing the first rebuilt lab screens, the owner clarified that each approved preview is
+the application layout target, not a feature checklist to apply while retaining the old screen
+shape. Correct the twelve reviewed layouts against the consolidated interactive preview before
+calling the UI implementation complete; this does not relax evidence, paging, completeness or
+generation-binding requirements.
+The owner approved Dark as the default named theme and a live Dark/Light choice under Settings,
+remembered per machine. Both themes share every layout, control template and semantic brush name;
+only complete semantic color palettes differ, and changing appearance does not change evidence,
+analysis or saved results.
+On the Objects view, the owner removed the repeated Objects heading, the full-width Scope strip and
+the scope-tree hide action: the selected Objects tab already names the view, and the selected
+directory is already stated beneath the tree. The directory tree remains visible on Objects while
+its rows remain a compact entry point to double-click details; Groups and LAPS retain their
+separate collapsible-tree behavior.
+When a run is selected, Assets automatically selects the captured forest-root domain and loads its
+first page so the initial grids are answers rather than blank questions. The default is bound to
+the forest identity stored in the sealed bundle, visibly selects that tree row, and must never be
+chosen from alphabetical order, the Configuration or Schema partitions, or an arbitrary child
+domain.
+The Rules view has no repeated run-summary header: the selected Rules tab already names the screen,
+and the rule-results surface is the information the operator came to read. Its severity filter
+visibly defaults to All whenever a run loads so rebuilding the available severity choices cannot
+turn an unfiltered result set into an apparently empty one.
+The owner requested a standalone mockup of the Rules information tabs with clear separation between
+colon-terminated headings and regular-weight body text, readable evidence rows and separately
+grouped limitations, then approved implementing that preview. Summary uses three separate cards,
+Evidence used has aligned labelled attribute rows and a separate saved-outcome card, limitations
+have individually labelled cards, and Reference retains the published source with a colon-terminated
+heading. The information tabs use the rounded white-selected treatment; this changes presentation,
+not authored guidance, saved results, analysis or live access.
+Object details use one compact identity: `Name (Type)` followed by the full distinguished name, with
+the separate domain and selected-run path/timestamp removed. The selected object section uses the
+accent treatment, no section repeats its own title in a full-width card, and every object has a
+Help section for definitions, calculation boundaries and counting explanations.
+For Control edges, the data section asks `Who can control Name?` or `What can Name control?`, shows
+compact saved-analysis, capture and count status, and explains the selected relationship without
+repeating the question as a list heading. Permission evidence, concrete requester checks and stored
+membership remain separate; detailed counting and general limitations live in Help, while actual
+incomplete or mismatched saved coverage remains visible on the data section.
+The owner replaced the filled-accent object-tab treatment after physical review with a segmented
+pill strip: every section is a rounded dark capsule inside a rounded dark rail, and the selected
+section is a white pill with dark lettering and a dark outline. The nested tab label takes its color
+directly from the selected tab rather than the application's normal text style. Selection is tied
+to the section's stable selected state rather than keyboard focus or the temporary section object,
+so loading content or moving focus into the page must not make the active tab appear unselected.
+An empty `What can Name control?` view states that no direct named-holder permissions were saved in
+the assessed scope, that group-held permissions are not included without member expansion, and the
+saved unanswered-object/scoped-analysis limits. It must not imply the principal controls nothing.
+The control-edge `Unknown` summary is explicitly labelled `Expectedness unknown` because it counts
+unknown expectedness among count-eligible relationships, not rows whose permission support is
+Unknown; owner-change candidates remain visible, Unknown and uncounted behind the AD DS laboratory
+gate.
 
 **Owner-authorized checkpoint integration and lab testing, 2026-10-10.**
 The owner requested committing all current work, merging `rules-delivery` into `main` and pushing

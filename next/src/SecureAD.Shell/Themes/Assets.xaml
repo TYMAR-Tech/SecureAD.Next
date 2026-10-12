@@ -45,8 +45,8 @@
         <Setter Property="FontFamily" Value="{StaticResource UiFontFamily}" />
         <Setter Property="FontSize" Value="{StaticResource CaptionFontSize}" />
         <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
-        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
         <Setter Property="Padding" Value="6,6" />
         <Setter Property="Template">
             <Setter.Value>
@@ -85,31 +85,23 @@
     </Style>
 
     <Style x:Key="AttributeCard" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Margin" Value="0,0,14,14" />
+        <Setter Property="Margin" Value="0,0,10,10" />
     </Style>
 
     <Style x:Key="AttributeCardLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
         <Setter Property="FontSize" Value="{StaticResource LabelFontSize}" />
         <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
     </Style>
 
     <Style x:Key="AttributeCardValue" TargetType="TextBox" BasedOn="{StaticResource SelectableMessage}">
         <Setter Property="FontSize" Value="{StaticResource RowTitleFontSize}" />
         <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeValueBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeValueBrush}" />
     </Style>
 
-    <Style x:Key="ObjectSectionHeading" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource ObjectSectionHeadingBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeSourceBrush}" />
-        <Setter Property="BorderThickness" Value="3,0,0,0" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Padding" Value="12,8" />
-        <Setter Property="Margin" Value="0,0,0,12" />
-    </Style>
 </ResourceDictionary>

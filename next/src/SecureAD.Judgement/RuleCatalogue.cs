@@ -48,5 +48,10 @@ public static class RuleCatalogue
         new CircularGroupMembership(),
         new DuplicateServicePrincipalNames(),
         new BroadAdministrativeGroupMembership(),
+        new ServiceAccountWithAdministrativeMembership(),
+        new ServiceAccountWithNonExpiringPassword(),
+        new UnexpectedResourceBasedDelegationWrite(),
+        new UnexpectedServicePrincipalNameWrite(),
+        new UnexpectedKeyCredentialLinkWrite(),
     ];
 }

@@ -1,8 +1,6 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -51,13 +49,4 @@ internal sealed class GroupInventoryGrid : DataGrid
         }
         return false;
     }
-}
-
-internal sealed class GroupSummaryVisibility : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
-        value is double width && width >= 1120 ? Visibility.Visible : Visibility.Collapsed;
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
-        throw new NotSupportedException("Group summary layout is a one-way view measurement.");
 }

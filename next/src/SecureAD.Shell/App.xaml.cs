@@ -38,15 +38,15 @@ internal partial class App : Application
 
         base.OnStartup(e);
 
-        // ONE STORE, TWO SETTINGS. The run library path and the concurrency ceiling live in the
-        // same file and each owns its own field; both read it back at the moment they write, so
-        // neither can erase the other. Two stores over one path would work today and would be the
-        // seam a third setting quietly breaks.
+        // ONE STORE, THREE SETTINGS. Run location, appearance and concurrency each own one field
+        // and read the current record before writing, so changing one cannot erase the others.
         var settingsStore = new JsonShellSettingsStore(JsonShellSettingsStore.DefaultPath);
 
+        var appearance = new ApplicationTheme(settingsStore, new WpfThemeApplier(Resources));
         var location = new RunLibraryLocation(settingsStore);
         var concurrency = new DomainConcurrency(settingsStore);
 
+        appearance.Load();
         location.Load();
         concurrency.Load();
 
@@ -131,13 +131,15 @@ internal partial class App : Application
             new HomeViewModel(location, new FolderPicker(), newAudit, library),
             new AssetsViewModel(assets),
             new DashboardViewModel(assets),
-            new SettingsViewModel(concurrency),
+            new SettingsViewModel(concurrency, appearance),
             new RulesViewModel(assets));
 
         // Home is the section already showing, so nothing navigates to it and nothing would
         // otherwise ask the library to read itself before the first screen is painted.
         library.Refresh();
 
-        new ShellWindow { DataContext = shell }.Show();
+        var window = new ShellWindow { DataContext = shell };
+        _ = new ObjectDetailPresenter(shell.Assets, window);
+        window.Show();
     }
 }

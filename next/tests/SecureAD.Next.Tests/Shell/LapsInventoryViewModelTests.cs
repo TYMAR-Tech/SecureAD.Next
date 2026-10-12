@@ -3,6 +3,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Shell.ViewModels;
+using System.Xml.Linq;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Shell;
@@ -254,6 +255,55 @@ public sealed class LapsInventoryViewModelTests
 
         Assert.Equal(2, assets.LapsListings);
         Assert.Equal("OU=Servers," + DomainDn, assets.LapsListedContainer);
+    }
+
+    [Fact]
+    public void LapsScopeTreeStartsCompactAndTogglesWithoutRereadingOrClearingScope()
+    {
+        var assets = SourceOf(APage());
+        var screen = Showing(assets);
+        screen.Pane = AssetsPane.Laps;
+        var selected = screen.Selected;
+        var reads = assets.LapsListings;
+
+        Assert.False(screen.ShowsScopeTree);
+        Assert.Equal("Show scope tree", screen.ScopeTreeAction);
+        Assert.Equal(DomainDn, screen.LapsLocation);
+
+        screen.ToggleScopeTreeCommand.Execute(null);
+
+        Assert.True(screen.ShowsScopeTree);
+        Assert.Equal("Hide scope tree", screen.ScopeTreeAction);
+        Assert.Same(selected, screen.Selected);
+        Assert.Equal(reads, assets.LapsListings);
+    }
+
+    [Fact]
+    public void LapsTableShowsTheRecordedDomainForEveryComputerRow()
+    {
+        var path = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell", "Views", "LapsInventoryView.xaml");
+        var view = XDocument.Load(path);
+        var domain = Assert.Single(view.Descendants(), element =>
+            element.Name.LocalName == "DataGridTextColumn" && (string?)element.Attribute("Header") == "Domain");
+        Assert.Equal("{Binding Domain}", (string?)domain.Attribute("Binding"));
+    }
+
+    [Fact]
+    public void LapsDisplayedPageFiltersDoNotChangeWholeScopeCounts()
+    {
+        var assets = SourceOf(APage(total: 4_000));
+        var screen = Showing(assets);
+        screen.Pane = AssetsPane.Laps;
+
+        screen.LapsSearchText = "WS01";
+        Assert.Equal("WS01", Assert.Single(screen.VisibleLapsComputers).Name);
+        Assert.Equal(4_000, screen.LapsTotal);
+        Assert.Equal(Enum.GetValues<LapsManagement>().Length, screen.LapsCounts.Count);
+
+        screen.LapsStateFilter = "Not managed";
+        Assert.Empty(screen.VisibleLapsComputers);
+        screen.LapsSearchText = "";
+        Assert.Equal(2, screen.VisibleLapsComputers.Count);
     }
 
     [Fact]

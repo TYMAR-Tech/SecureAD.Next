@@ -1,51 +1,99 @@
 <UserControl x:Class="SecureAD.Shell.Views.ObjectSectionList" x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:SecureAD.Shell.Controls">
     <StackPanel>
-        <Border Background="{StaticResource AttributeHeaderBackground}" Padding="16,12" CornerRadius="8,8,0,0">
+        <Border Background="{DynamicResource AttributeHeaderBackground}" Padding="10,8" CornerRadius="6,6,0,0">
             <StackPanel>
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Back to the listing"
-                            Command="{Binding CloseObjectCommand}" Margin="12,0,0,0"
-                            VerticalAlignment="Top" />
+                    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Top">
+                        <Button Content="Back to the listing" Command="{Binding CloseObjectCommand}" Margin="8,0,0,0" />
+                        <Button Content="Locate in main window" Command="{Binding LocateObjectCommand}" Margin="8,0,0,0" />
+                        <controls:CopyValueButton Content="Copy DN" Text="{Binding Opened.DistinguishedName}"
+                                                  Style="{StaticResource BaseButton}" Margin="6,0,0,0" />
+                    </WrapPanel>
                     <StackPanel>
-                        <TextBlock Text="{Binding Opened.Name}" Style="{StaticResource ScreenTitle}" />
-                        <TextBlock Text="{Binding Opened.ObjectType}" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <TextBlock Text="{Binding Opened.Heading}" Style="{StaticResource ScreenTitle}" />
+                        <TextBox Text="{Binding Opened.DistinguishedName, Mode=OneWay}"
+                                 Style="{StaticResource SelectableMessage}"
+                                 FontFamily="{StaticResource IdentifierFontFamily}"
+                                 FontSize="{StaticResource CaptionFontSize}" Margin="0,4,0,0" />
                     </StackPanel>
                 </DockPanel>
-                <TextBox Text="{Binding Opened.DistinguishedName, Mode=OneWay}"
-                         Style="{StaticResource SelectableMessage}"
-                         FontFamily="{StaticResource IdentifierFontFamily}"
-                         FontSize="{StaticResource CaptionFontSize}" Margin="0,8,0,0" />
             </StackPanel>
         </Border>
+        <Border x:Name="ObjectSectionTabStrip"
+                Background="{DynamicResource RailBackground}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="1"
+                CornerRadius="20"
+                Padding="2"
+                Margin="0,0,0,8">
         <ListBox ItemsSource="{Binding Opened.Sections}"
                  SelectedValuePath="Key" SelectedValue="{Binding Opened.SelectedKey, Mode=TwoWay}"
-                 BorderThickness="0" Background="{StaticResource AttributeHeaderBackground}"
+                 BorderThickness="0" Background="Transparent"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ScrollViewer.VerticalScrollBarVisibility="Auto" MaxHeight="140"
-                 HorizontalContentAlignment="Stretch" Margin="0,0,0,12"
+                 HorizontalContentAlignment="Stretch"
                  AutomationProperties.Name="Object sections">
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
             </ListBox.ItemsPanel>
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
-                    <Setter Property="Padding" Value="10,7" />
-                    <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="Padding" Value="10,5" />
+                    <Setter Property="Foreground" Value="{DynamicResource RailTextBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource RailSelectedBackground}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="ObjectSectionTabChrome"
+                                        MinHeight="39"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="18"
+                                        Margin="1"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter ContentSource="Content"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}" />
+                                        <Setter Property="Opacity" Value="0.65" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                     <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource RailSelectedTextBrush}" />
+                        </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="FontWeight" Value="SemiBold" />
-                            <Setter Property="Background" Value="{StaticResource SelectionBrush}" />
+                            <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
+                            <Setter Property="Background" Value="{DynamicResource SelectedObjectTabBackground}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource SelectedObjectTabTextBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource SelectedObjectTabTextBrush}" />
                         </Trigger>
                     </Style.Triggers>
                 </Style>
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Title}"
+                               Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                               TextWrapping="Wrap" />
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        </Border>
     </StackPanel>
 </UserControl>

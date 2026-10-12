@@ -6,25 +6,24 @@
              Background="{DynamicResource AssetCanvasBackground}">
     <UserControl.Resources>
         <views:BindingProxy x:Key="Model" Data="{Binding}" />
-        <controls:GroupSummaryVisibility x:Key="GroupSummaryVisibility" />
         <Style x:Key="GroupColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TableColumnHeader}">
-            <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
+            <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
             <Setter Property="ContentTemplate"><Setter.Value><DataTemplate>
-                <ContentControl Content="{Binding}" Foreground="{StaticResource AttributeLabelBrush}" />
+                <ContentControl Content="{Binding}" Foreground="{DynamicResource AttributeLabelBrush}" />
             </DataTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="GroupSortButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="4,2" /><Setter Property="MinHeight" Value="24" />
-            <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
         </Style>
         <Style x:Key="GroupCell" TargetType="TextBlock">
             <Setter Property="Margin" Value="8" /><Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
         <Style x:Key="GroupLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="0,0,0,5" />
         </Style>
@@ -36,8 +35,22 @@
     </UserControl.Resources>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top">
-            <TextBlock Text="{Binding GroupLocation}" Style="{StaticResource RowTitle}" Margin="0,0,0,8" />
-            <Border Background="{StaticResource AttributeHeaderBackground}" BorderBrush="{StaticResource AttributeCardBorderBrush}"
+            <StackPanel Margin="0,0,0,8">
+                <TextBlock Text="Groups" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="Direct membership, saved known totals and cycle information remain separate."
+                           Style="{StaticResource Caption}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Background="{DynamicResource AttributeHeaderBackground}" BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,8">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="{Binding ScopeTreeAction}" Command="{Binding ToggleScopeTreeCommand}"
+                            Margin="12,0,0,0" />
+                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                        <Run Text="Scope: " FontWeight="SemiBold" /><Run Text="{Binding GroupLocation,Mode=OneWay}" />
+                    </TextBlock>
+                </DockPanel>
+            </Border>
+            <Border Background="{DynamicResource AttributeHeaderBackground}" BorderBrush="{DynamicResource AttributeCardBorderBrush}"
                     BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,12">
                 <StackPanel>
                     <WrapPanel>
@@ -62,20 +75,20 @@
                         <Button Content="Clear" Command="{Binding ClearGroupFiltersCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8" />
                     </WrapPanel>
                     <TextBlock Text="Double-click a group or press Enter to open its captured object. Back preserves this list."
-                               Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                               Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     <Expander Header="What do these counts mean?" Margin="0,8,0,0">
                         <TextBox Text="{Binding GroupCountExplanation,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
                     </Expander>
                 </StackPanel>
             </Border>
             <TextBox Text="{Binding GroupQualification,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                     Foreground="{StaticResource FaultBrush}" Margin="0,0,0,10"
+                     Foreground="{DynamicResource FaultBrush}" Margin="0,0,0,10"
                      Visibility="{Binding HasGroupQualification,Converter={StaticResource Shown}}" />
             <TextBlock Text="{Binding LoadingText}" Margin="0,0,0,10" TextWrapping="Wrap"
                        Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
             <StackPanel Margin="0,0,0,10" Visibility="{Binding HasViewRefusal,Converter={StaticResource Shown}}">
                 <TextBlock Text="{Binding ViewRefusal.Title}" Style="{StaticResource RowTitle}" />
-                <TextBox Text="{Binding ViewRefusal.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                <TextBox Text="{Binding ViewRefusal.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{DynamicResource FaultBrush}" />
             </StackPanel>
         </StackPanel>
         <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0" Visibility="{Binding HasListingResult,Converter={StaticResource Shown}}">
@@ -85,65 +98,59 @@
                 <Button Content="Open group" Command="{Binding OpenGroupCommand}" CommandParameter="{Binding SelectedGroup}"
                         Style="{StaticResource PrimaryButton}" />
             </WrapPanel>
-            <TextBlock Text="{Binding GroupPageDescription}" Foreground="{StaticResource SecondaryTextBrush}"
+            <TextBlock Text="{Binding GroupPageDescription}" Foreground="{DynamicResource SecondaryTextBrush}"
                        VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0" />
         </DockPanel>
-        <Grid Visibility="{Binding HasListingResult,Converter={StaticResource Shown}}">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <controls:GroupInventoryGrid ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}"
-                OpenItemCommand="{Binding OpenGroupCommand}" AutoGenerateColumns="False" IsReadOnly="True"
-                SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
-                CanUserSortColumns="False" ColumnHeaderStyle="{StaticResource GroupColumnHeader}"
-                Style="{StaticResource {x:Type DataGrid}}" EnableRowVirtualization="True"
-                GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}"
-                RowBackground="{StaticResource SurfaceRaisedBackground}" AlternatingRowBackground="{StaticResource AssetNavigationBackground}"
-                ScrollViewer.HorizontalScrollBarVisibility="Auto">
-                <DataGrid.Columns>
-                    <DataGridTemplateColumn Width="2*" MinWidth="190">
-                        <DataGridTemplateColumn.Header><Button Content="Group" Style="{StaticResource GroupSortButton}" Command="{Binding Data.SortGroupNameCommand,Source={StaticResource Model}}" /></DataGridTemplateColumn.Header>
-                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
-                            <StackPanel Margin="6,7"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" /></StackPanel>
-                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="95" />
-                    <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" ElementStyle="{StaticResource GroupCell}" Width="*" MinWidth="130" />
-                    <DataGridTextColumn Binding="{Binding DirectMembers}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="70">
-                        <DataGridTextColumn.Header><Button Content="Direct" Style="{StaticResource GroupSortButton}" Command="{Binding Data.SortGroupDirectCommand,Source={StaticResource Model}}" /></DataGridTextColumn.Header>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="Known total" Binding="{Binding KnownTotal}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="110" />
-                    <DataGridTemplateColumn Header="Cycle" Width="Auto" MinWidth="100">
-                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
-                            <Button Content="{Binding Cycle}" IsEnabled="{Binding HasCycle}"
-                                    Command="{Binding Data.OpenGroupFindingsCommand,Source={StaticResource Model}}"
-                                    CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="4,2" Margin="3" />
-                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Membership data" Binding="{Binding MembershipData}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="125" />
-                </DataGrid.Columns>
-            </controls:GroupInventoryGrid>
-            <Border Grid.Column="1" Width="280" Margin="14,0,0,0" Background="{StaticResource AssetNavigationBackground}"
-                    BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="1" CornerRadius="7"
-                    Visibility="{Binding ActualWidth,RelativeSource={RelativeSource AncestorType=UserControl},Converter={StaticResource GroupSummaryVisibility}}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14">
-                    <StackPanel Visibility="{Binding HasSelectedGroup,Converter={StaticResource Shown}}">
-                        <TextBlock Text="Selected group" Style="{StaticResource GroupLabel}" />
-                        <TextBlock Text="{Binding SelectedGroup.Name}" Style="{StaticResource RowTitle}" Margin="0,0,0,12" TextWrapping="Wrap" />
-                        <Button Content="Open group" Command="{Binding OpenGroupCommand}" CommandParameter="{Binding SelectedGroup}"
-                                Style="{StaticResource PrimaryButton}" Margin="0,0,0,14" />
-                        <TextBlock Text="Domain" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.Domain}" Style="{StaticResource GroupValue}" />
-                        <TextBlock Text="Scope" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.Scope}" Style="{StaticResource GroupValue}" />
-                        <TextBlock Text="Direct recorded members" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.DirectMembers}" Style="{StaticResource GroupValue}" />
-                        <TextBlock Text="Known total" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.KnownTotal}" Style="{StaticResource GroupValue}" />
-                        <TextBlock Text="{Binding SelectedGroup.MembershipDetail}" Style="{StaticResource GroupLabel}" />
-                        <Button Content="View SEC-052 finding" Command="{Binding OpenGroupFindingsCommand}" CommandParameter="{Binding SelectedGroup}" Margin="0,0,0,12"
-                                Visibility="{Binding SelectedGroup.HasCycle,Converter={StaticResource Shown}}" />
-                        <TextBlock Text="Account name (sAMAccountName)" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.AccountName}" Style="{StaticResource GroupValue}" />
-                        <TextBlock Text="Distinguished name" Style="{StaticResource GroupLabel}" />
-                        <TextBox Text="{Binding SelectedGroup.DistinguishedName,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,0,0,12" />
-                        <TextBlock Text="Description" Style="{StaticResource GroupLabel}" /><TextBlock Text="{Binding SelectedGroup.Description}" Style="{StaticResource GroupValue}" />
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-        </Grid>
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Margin="0,8,0,0"
+                Visibility="{Binding HasSelectedGroup,Converter={StaticResource Shown}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Open object window"
+                        Command="{Binding OpenGroupCommand}" CommandParameter="{Binding SelectedGroup}"
+                        Style="{StaticResource PrimaryButton}" Margin="12,0,0,0" />
+                <StackPanel>
+                    <TextBlock Text="{Binding SelectedGroup.Name}" Style="{StaticResource RowTitle}" />
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource Caption}">
+                        <Run Text="{Binding SelectedGroup.Domain,Mode=OneWay}" /><Run Text=" · " />
+                        <Run Text="{Binding SelectedGroup.Scope,Mode=OneWay}" /><Run Text=" · " />
+                        <Run Text="{Binding SelectedGroup.DirectMembers,Mode=OneWay}" /><Run Text=" direct references · " />
+                        <Run Text="{Binding SelectedGroup.KnownTotal,Mode=OneWay}" /><Run Text=" known objects" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding SelectedGroup.MembershipDetail}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <controls:GroupInventoryGrid ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup}"
+            OpenItemCommand="{Binding OpenGroupCommand}" AutoGenerateColumns="False" IsReadOnly="True"
+            SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
+            CanUserSortColumns="False" ColumnHeaderStyle="{StaticResource GroupColumnHeader}"
+            Style="{StaticResource {x:Type DataGrid}}" EnableRowVirtualization="True"
+            GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource AttributeCardBorderBrush}"
+            RowBackground="{DynamicResource SurfaceRaisedBackground}" AlternatingRowBackground="{DynamicResource AssetNavigationBackground}"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            Visibility="{Binding HasListingResult,Converter={StaticResource Shown}}">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="2*" MinWidth="190">
+                    <DataGridTemplateColumn.Header><Button Content="Group" Style="{StaticResource GroupSortButton}" Command="{Binding Data.SortGroupNameCommand,Source={StaticResource Model}}" /></DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                        <StackPanel Margin="6,7"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" /></StackPanel>
+                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Type" Binding="{Binding Kind}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="90" />
+                <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="95" />
+                <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" ElementStyle="{StaticResource GroupCell}" Width="*" MinWidth="130" />
+                <DataGridTextColumn Binding="{Binding DirectMembers}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="70">
+                    <DataGridTextColumn.Header><Button Content="Direct" Style="{StaticResource GroupSortButton}" Command="{Binding Data.SortGroupDirectCommand,Source={StaticResource Model}}" /></DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Known total" Binding="{Binding KnownTotal}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="110" />
+                <DataGridTemplateColumn Header="Cycle" Width="Auto" MinWidth="100">
+                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                        <Button Content="{Binding Cycle}" IsEnabled="{Binding HasCycle}"
+                                Command="{Binding Data.OpenGroupFindingsCommand,Source={StaticResource Model}}"
+                                CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="4,2" Margin="3" />
+                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Evidence" Binding="{Binding MembershipData}" ElementStyle="{StaticResource GroupCell}" Width="Auto" MinWidth="125" />
+            </DataGrid.Columns>
+        </controls:GroupInventoryGrid>
     </DockPanel>
 </UserControl>

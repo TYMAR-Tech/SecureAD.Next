@@ -25,21 +25,21 @@
     <DockPanel>
 
         <Border DockPanel.Dock="Top"
-                Background="{StaticResource SurfaceBackground}"
-                BorderBrush="{StaticResource DividerBrush}"
+                Background="{DynamicResource SurfaceBackground}"
+                BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="20,16">
             <StackPanel>
                 <TextBlock Text="Domain details" Style="{StaticResource ScreenTitle}" />
                 <TextBlock Text="What each domain answered when it was asked."
-                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
                            Margin="0,2,0,0" />
             </StackPanel>
         </Border>
 
         <Border DockPanel.Dock="Bottom"
-                Background="{StaticResource SurfaceBackground}"
-                BorderBrush="{StaticResource DividerBrush}"
+                Background="{DynamicResource SurfaceBackground}"
+                BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="20,12">
             <Button Content="Close"
@@ -52,7 +52,7 @@
             <ItemsControl ItemsSource="{Binding Domains}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border BorderBrush="{StaticResource DividerBrush}"
+                        <Border BorderBrush="{DynamicResource DividerBrush}"
                                 BorderThickness="0,0,0,1"
                                 Padding="0,0,0,14"
                                 Margin="0,0,0,14">
@@ -64,7 +64,7 @@
                                                FontWeight="{StaticResource EmphasisFontWeight}" />
                                     <TextBlock Text="{Binding Controller}"
                                                Style="{StaticResource Identifier}"
-                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
                                                VerticalAlignment="Center"
                                                Margin="10,0,0,0" />
                                 </StackPanel>

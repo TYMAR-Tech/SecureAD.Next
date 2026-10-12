@@ -42,7 +42,7 @@ public sealed class RulesViewModelTests
         var assets = ASource();
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         Assert.Equal(1, assets.RuleExecutionReads);
         Assert.True(screen.HasResults);
@@ -65,7 +65,7 @@ public sealed class RulesViewModelTests
         var assets = ASource();
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         Assert.Equal(
             RuleCatalogue.All.Select(rule => rule.Definition.Id).OrderBy(id => id),
@@ -81,7 +81,7 @@ public sealed class RulesViewModelTests
         var assets = ASource(Judged(FirstRule, judged: 2082, findings: 0));
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, FirstRule);
 
@@ -96,7 +96,7 @@ public sealed class RulesViewModelTests
         var assets = ASource(Judged(FirstRule, judged: 2082, findings: 3));
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, FirstRule);
 
@@ -131,7 +131,7 @@ public sealed class RulesViewModelTests
             Error: null));
 
         var screen = Showing(assets);
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, FirstRule);
 
@@ -150,7 +150,7 @@ public sealed class RulesViewModelTests
         var assets = ASource();
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, FirstRule);
 
@@ -177,7 +177,7 @@ public sealed class RulesViewModelTests
             Error: "The store closed mid-read."));
 
         var screen = Showing(assets);
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, FirstRule);
 
@@ -200,7 +200,7 @@ public sealed class RulesViewModelTests
         var assets = ASource(Judged("SEC-999", judged: 7, findings: 0));
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         var row = RowFor(screen, "SEC-999");
 
@@ -224,7 +224,7 @@ public sealed class RulesViewModelTests
         var assets = ASource();
         var screen = Showing(assets);
 
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         Assert.All(screen.RuleRows, row =>
         {
@@ -255,7 +255,7 @@ public sealed class RulesViewModelTests
             BundlePath);
 
         var screen = Showing(assets);
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
 
         Assert.True(screen.HasRulesRefusal);
         Assert.Contains("seal did not verify", screen.RulesRefusal!.Detail);
@@ -277,7 +277,7 @@ public sealed class RulesViewModelTests
 
         var objects = new AssetsViewModel(assets);
         objects.Show(BundlePath, false);
-        screen.Show(BundlePath, "Example");
+        screen.Show(BundlePath);
         objects.Roots[0].Children[0].IsSelected = true;
 
         Assert.Equal(1, assets.RuleExecutionReads);

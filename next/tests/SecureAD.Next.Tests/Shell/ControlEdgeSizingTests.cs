@@ -1,13 +1,17 @@
 using System.Runtime.ExceptionServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Shell.Controls;
+using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
 using Xunit;
 using Xunit.Sdk;
@@ -29,12 +33,156 @@ public sealed partial class ControlEdgeSizingTests
         => OnSta(() => VerifyPopulated(width, height, evidenceExpanded));
 
     [Theory]
+    [InlineData(900, 520)]
+    [InlineData(1300, 720)]
+    public void LoadedObjectSectionKeepsWhiteSelectionWhenFocusMovesIntoContent(int width, int height) => OnSta(() =>
+    {
+        var section = Model(2, 0);
+        var completion = new TaskCompletionSource<ObjectSectionViewModel>();
+        var opened = new ObjectViewModel(
+            "CN=Target,DC=example,DC=invalid",
+            "group",
+            "group",
+            (_, _) => completion.Task);
+        opened.Show(ObjectSectionCatalog.ControlEdges);
+        var pane = Pane(section, opened: opened);
+        var window = new Window
+        {
+            Content = pane,
+            Width = width,
+            Height = height,
+            WindowStyle = WindowStyle.None,
+            ShowInTaskbar = false,
+            Left = -10000,
+            Top = -10000,
+        };
+        window.Show();
+        try
+        {
+            Layout(pane, width, height);
+            var tabs = Assert.Single(Descendants<ListBox>(pane),
+                list => AutomationProperties.GetName(list) == "Object sections");
+            var strip = Assert.Single(Descendants<Border>(pane),
+                border => border.Name == "ObjectSectionTabStrip");
+            Assert.Equal(new CornerRadius(20), strip.CornerRadius);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailBackground")).Color,
+                Assert.IsType<SolidColorBrush>(strip.Background).Color);
+            Assert.Equal(ObjectSectionCatalog.ControlEdges,
+                Assert.IsAssignableFrom<ObjectSectionViewModel>(tabs.SelectedItem).Key);
+
+            completion.SetResult(section);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            opened.ReadCompletion.GetAwaiter().GetResult();
+            Layout(pane, width, height);
+
+            var selected = Assert.IsAssignableFrom<ObjectSectionViewModel>(tabs.SelectedItem);
+            Assert.Equal(ObjectSectionCatalog.ControlEdges, selected.Key);
+            var item = Assert.IsType<ListBoxItem>(tabs.ItemContainerGenerator.ContainerFromItem(selected));
+            item.ApplyTemplate();
+            var chrome = Assert.IsType<Border>(item.Template.FindName("ObjectSectionTabChrome", item));
+            var selectedBackground = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabBackground")).Color;
+            var selectedText = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabTextBrush")).Color;
+
+            Assert.True(item.IsSelected);
+            Assert.Equal(Colors.White, selectedBackground);
+            Assert.Equal(Color.FromRgb(18, 22, 26), selectedText);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(item.Foreground).Color);
+            Assert.Equal(new Thickness(1), chrome.BorderThickness);
+            Assert.Equal(new CornerRadius(18), chrome.CornerRadius);
+            var label = Assert.Single(Descendants<TextBlock>(item),
+                text => text.Text == "Control edges");
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            var overview = Assert.IsAssignableFrom<ObjectSectionViewModel>(
+                tabs.Items.Cast<ObjectSectionViewModel>().Single(section => section.Key == ObjectSectionCatalog.Overview));
+            var unselectedItem = Assert.IsType<ListBoxItem>(
+                tabs.ItemContainerGenerator.ContainerFromItem(overview));
+            unselectedItem.ApplyTemplate();
+            var unselectedChrome = Assert.IsType<Border>(
+                unselectedItem.Template.FindName("ObjectSectionTabChrome", unselectedItem));
+            Assert.Equal(new CornerRadius(18), unselectedChrome.CornerRadius);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailSelectedBackground")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedChrome.Background).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailTextBrush")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedItem.Foreground).Color);
+
+            var search = Assert.Single(Descendants<TextBox>(pane), text =>
+                BindingOperations.GetBinding(text, TextBox.TextProperty)?.Path.Path == "EdgeSearchText");
+            Assert.True(search.Focus());
+            Keyboard.Focus(search);
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+
+            Assert.True(item.IsSelected);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+
+            new WpfThemeApplier(pane.Resources).Apply(ThemeVariant.Light);
+            Layout(pane, width, height);
+            selectedBackground = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabBackground")).Color;
+            selectedText = Assert.IsType<SolidColorBrush>(
+                pane.FindResource("SelectedObjectTabTextBrush")).Color;
+            Assert.Equal(Colors.White, selectedBackground);
+            Assert.Equal(Color.FromRgb(18, 22, 26), selectedText);
+            Assert.Equal(selectedBackground, Assert.IsType<SolidColorBrush>(chrome.Background).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(chrome.BorderBrush).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(item.Foreground).Color);
+            Assert.Equal(selectedText, Assert.IsType<SolidColorBrush>(label.Foreground).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailSelectedBackground")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedChrome.Background).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailTextBrush")).Color,
+                Assert.IsType<SolidColorBrush>(unselectedItem.Foreground).Color);
+            Assert.Equal(
+                Assert.IsType<SolidColorBrush>(pane.FindResource("RailBackground")).Color,
+                Assert.IsType<SolidColorBrush>(strip.Background).Color);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(900, false)]
+    [InlineData(1300, true)]
+    public void SelectedEdgeDetailsMoveBesideTheListOnlyWhenWidthAllows(int width, bool beside) => OnSta(() =>
+    {
+        var pane = Pane(Model(2, 0));
+        Layout(pane, width, 650);
+        var control = Tables(pane).Control;
+        var detail = Assert.Single(Descendants<Expander>(pane), item => item.Name == "ControlEvidence");
+        detail.IsExpanded = true;
+        Layout(pane, width, 650);
+
+        var controlLeft = control.TranslatePoint(new(), pane).X;
+        var detailLeft = detail.TranslatePoint(new(), pane).X;
+        var controlTop = control.TranslatePoint(new(), pane).Y;
+        var detailTop = detail.TranslatePoint(new(), pane).Y;
+        if (beside)
+        {
+            Assert.True(detailLeft > controlLeft + control.ActualWidth);
+            Assert.True(detailTop < controlTop + control.ActualHeight);
+        }
+        else
+        {
+            Assert.InRange(Math.Abs(detailLeft - controlLeft), 0, 12);
+            Assert.True(detailTop >= controlTop + control.ActualHeight);
+        }
+    });
+
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
     public void ShortRequesterListsFollowTheirNoticeWithoutWastedHeight(int count) => OnSta(() =>
     {
         var vm = Model(2, count);
+        vm.ShowsRequesterDetails = true;
         var pane = Pane(vm);
         Layout(pane, 1300, 900);
         var requester = Tables(pane).Requester;
@@ -56,6 +204,7 @@ public sealed partial class ControlEdgeSizingTests
     public void RequesterFailureNoticeRemainsReachableBelowAFullControlPage() => OnSta(() =>
     {
         var vm = Model(60, 0, failRequester: true);
+        vm.ShowsRequesterDetails = true;
         var pane = Pane(vm);
         Layout(pane, 900, 430);
         var (control, requester) = Tables(pane);
@@ -165,7 +314,7 @@ public sealed partial class ControlEdgeSizingTests
         Assert.Collection(grid.Items.Groups!.Cast<CollectionViewGroup>(),
             group => Assert.Equal(2, group.ItemCount), group => Assert.Equal(1, group.ItemCount));
         Assert.Contains(Descendants<TextBlock>(grid), text => text.Text.StartsWith("Replication permissions —", StringComparison.Ordinal));
-        Assert.Contains("groups cover this page only", Notice(pane, nameof(vm.SupportedScope)).Text);
+        Assert.Contains("groups cover this page only", vm.SupportedScope);
     });
 
     [Theory]
@@ -213,13 +362,14 @@ public sealed partial class ControlEdgeSizingTests
         outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(expander, outer));
         Layout(pane, width, height);
         Assert.True(expander.ActualHeight > 0 && Top(expander, pane) < pane.ActualHeight);
-        Assert.Contains(scope, Notice(pane, nameof(vm.SupportedScope)).Text);
+        Assert.Contains(scope, vm.SupportedScope);
     }
 
     private static (FrameworkElement Pane, ControlEdgesSectionViewModel Model, Expander Expander, TextBox Evidence)
         VerifyRequesterEvidence(int width, int height, string? mutation = null)
     {
         var vm = Model(60, 40);
+        vm.ShowsRequesterDetails = true;
         var pane = Pane(vm, mutation);
         Layout(pane, width, height);
         var requester = Tables(pane).Requester;
@@ -230,7 +380,7 @@ public sealed partial class ControlEdgeSizingTests
         Layout(pane, width, height);
         Assert.Same(selected, vm.SelectedRequesterAssessment);
         var row = Assert.IsType<DataGridRow>(requester.ItemContainerGenerator.ContainerFromIndex(requester.Items.Count - 1));
-        Assert.Equal(new[] { selected.Requester, selected.Target, "Add to group", "Authorized", "Own account only", "Unknown", "Live operation not checked." },
+        Assert.Equal(new[] { selected.Requester, selected.Target, "Add to group", "Authorized", "Own account only", "Unknown" },
             requester.Columns.Select(column => Assert.IsType<TextBlock>(column.GetCellContent(row)).Text));
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "RequesterEvidence"));
         Assert.Equal("View selected requester evidence and limitations", expander.Header);
@@ -249,14 +399,15 @@ public sealed partial class ControlEdgeSizingTests
         Layout(pane, width, height);
         AssertInside(expander, outer);
         AssertInside(expander, pane);
-        Assert.InRange(Tables(pane).Control.ActualHeight, 120, 240.1);
-        Assert.InRange(requester.ActualHeight, 60, 180.1);
+        Assert.InRange(Tables(pane).Control.ActualHeight, 120, 320.1);
+        Assert.InRange(requester.ActualHeight, 60, 210.1);
         return (pane, vm, expander, evidence);
     }
 
     private static void VerifyPopulated(int width, int height, bool expanded, string? mutation = null)
     {
         var vm = Model(60, 40);
+        if (mutation == "collapsed-requester") vm.ShowsRequesterDetails = true;
         var pane = Pane(vm, mutation);
         Layout(pane, width, height);
         var expander = Assert.Single(Descendants<Expander>(pane).Where(item => item.Name == "ControlEvidence"));
@@ -265,11 +416,11 @@ public sealed partial class ControlEdgeSizingTests
         var (control, requester) = Tables(pane);
         Assert.Equal(60, control.Items.Count);
         Assert.Equal(40, requester.Items.Count);
-        Assert.InRange(control.ActualHeight, 120, 240.1);
-        Assert.InRange(requester.ActualHeight, 60, 180.1);
+        Assert.InRange(control.ActualHeight, 120, 320.1);
+        if (mutation == "collapsed-requester") Assert.InRange(requester.ActualHeight, 60, 210.1);
         var outer = SectionScroll(pane, requester);
         Assert.True(outer.ViewportHeight > 180, "The object pane leaves no usable table viewport.");
-        foreach (var table in new[] { control, requester })
+        foreach (var table in new[] { control })
         {
             var scroll = Descendants<ScrollViewer>(table).First();
             Assert.True(scroll.ScrollableHeight > 0, "A full table must scroll instead of growing beyond its pane.");
@@ -279,13 +430,8 @@ public sealed partial class ControlEdgeSizingTests
             Assert.InRange(row.ActualHeight, 16, table.ActualHeight);
             AssertInside(row, table);
             var cell = Assert.IsType<TextBlock>(table.Columns[0].GetCellContent(row));
-            Assert.Equal(table == requester ? vm.RequesterAssessments[^1].Requester : vm.Rows[^1].Holder, cell.Text);
+            Assert.Equal(vm.Rows[^1].Holder, cell.Text);
         }
-        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(requester, outer));
-        Layout(pane, width, height);
-        AssertInside(requester, outer);
-        AssertInside(requester, pane);
-        Assert.Equal(vm.RequesterCoverage, Notice(pane, nameof(vm.RequesterCoverage)).Text);
         if (expanded)
         {
             var evidence = Assert.Single(Descendants<TextBox>(expander));
@@ -295,22 +441,14 @@ public sealed partial class ControlEdgeSizingTests
             Assert.True(evidence.ActualHeight > 0);
             Assert.True(Top(expander, pane) < pane.ActualHeight && Top(expander, pane) + expander.ActualHeight > 0);
         }
-        var scopeNotice = Notice(pane, nameof(vm.SupportedScope));
-        Assert.Equal(vm.SupportedScope, scopeNotice.Text);
-        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(scopeNotice, outer));
-        Layout(pane, width, height);
-        Assert.True(Top(scopeNotice, outer) >= -1);
-        Assert.True(Top(scopeNotice, outer) < outer.ViewportHeight);
-        // A long qualification can span several viewports; both ends must remain reachable.
-        outer.ScrollToVerticalOffset(outer.VerticalOffset + Top(scopeNotice, outer)
-            + scopeNotice.ActualHeight - outer.ViewportHeight);
-        Layout(pane, width, height);
-        var scopeBottom = Top(scopeNotice, outer) + scopeNotice.ActualHeight;
-        Assert.InRange(scopeBottom, 1, outer.ViewportHeight + 1);
         Assert.Contains(Descendants<Button>(pane), button => ReferenceEquals(button.Command, vm.FirstPageCommand));
         Assert.Contains(Descendants<Button>(pane), button => ReferenceEquals(button.Command, vm.NextPageCommand));
-        Assert.Equal(vm.Coverage, Notice(pane, nameof(vm.Coverage)).Text);
-        Assert.Equal(vm.Counts, Notice(pane, nameof(vm.Counts)).Text);
+        Assert.Equal(vm.AnalysisSummary, Notice(pane, nameof(vm.AnalysisSummary)).Text);
+        Assert.Equal(vm.CaptureSummary, Notice(pane, nameof(vm.CaptureSummary)).Text);
+        Assert.Equal(vm.UnexpectedSummary, Notice(pane, nameof(vm.UnexpectedSummary)).Text);
+        Assert.Equal(vm.ExpectednessUnknownSummary,
+            Notice(pane, nameof(vm.ExpectednessUnknownSummary)).Text);
+        Assert.Equal(vm.ExpectedSummary, Notice(pane, nameof(vm.ExpectedSummary)).Text);
     }
 
     private static ControlEdgesSectionViewModel Model(int controls, int requesters, bool failRequester = false)
@@ -334,26 +472,39 @@ public sealed partial class ControlEdgeSizingTests
         return vm;
     }
 
-    private static FrameworkElement Pane(ControlEdgesSectionViewModel vm, string? mutation = null)
+    private static FrameworkElement Pane(
+        ControlEdgesSectionViewModel vm,
+        string? mutation = null,
+        ObjectViewModel? opened = null)
     {
         var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
         var template = new XElement(XDocument.Load(Path.Combine(shell, "Views", "Sections", "ObjectSectionTemplates.xaml"))
             .Root!.Elements(Wpf + "DataTemplate").Single(element => (string?)element.Attribute("DataType") == "{x:Type vm:ControlEdgesSectionViewModel}"));
         template.Attribute("DataType")!.Remove();
-        var grid = template.Descendants(Wpf + "Grid").Single();
+        var proxy = template.Descendants().Single(element => element.Name.LocalName == "BindingProxy");
+        proxy.ReplaceWith(new XElement(Xaml + "Static", new XAttribute(Xaml + "Key", "ControlSection"),
+            new XAttribute("Member", "test:ObjectNavigationViewTests.ScreenProxy")));
+        var control = template.Descendants(Wpf + "DataGrid")
+            .Single(element => (string?)element.Attribute(Xaml + "Name") == "ControlPermissions");
+        var requester = template.Descendants(Wpf + "DataGrid")
+            .Single(element => (string?)element.Attribute(Xaml + "Name") == "RequesterAssessmentsTable");
         if (mutation == "unbound-full-control-count") template.Descendants(Wpf + "TextBlock")
-            .Single(element => (string?)element.Attribute("Text") == "{Binding CountStatus}").Attribute("Text")!.Remove();
-        if (mutation == "unbounded-control") grid.Elements(Wpf + "DataGrid").First().Attribute("MaxHeight")?.Remove();
-        if (mutation == "collapsed-requester") grid.Elements(Wpf + "DataGrid").Last().SetAttributeValue("Height", "0");
-        if (mutation == "unbound-requester-selection") grid.Elements(Wpf + "DataGrid").Last().Attribute("SelectedItem")!.Remove();
-        var requesterEvidence = grid.Elements(Wpf + "Expander").Single(element => (string?)element.Attribute(Xaml + "Name") == "RequesterEvidence");
+            .Single(element => (string?)element.Attribute("Text") == "{Binding SelectedEdge.CountStatus}").Attribute("Text")!.Remove();
+        if (mutation == "unbounded-control") control.Attribute("MaxHeight")?.Remove();
+        if (mutation == "collapsed-requester") requester.SetAttributeValue("Height", "0");
+        if (mutation == "unbound-requester-selection") requester.Attribute("SelectedItem")!.Remove();
+        var requesterEvidence = template.Descendants(Wpf + "Expander")
+            .Single(element => (string?)element.Attribute(Xaml + "Name") == "RequesterEvidence");
         if (mutation == "unbound-requester-evidence") requesterEvidence.Descendants(Wpf + "TextBox").Single().Attribute("Text")!.Remove();
         if (mutation == "collapsed-requester-evidence") requesterEvidence.SetAttributeValue("Height", "0");
-        if (mutation == "no-section-scroll" && grid.Parent!.Name == Wpf + "ScrollViewer")
+        if (mutation == "no-section-scroll")
         {
-            var replacement = new XElement(grid);
-            replacement.AddFirst(new XElement(Wpf + "Grid.Resources", grid.Parent.Element(Wpf + "ScrollViewer.Resources")!.Elements()));
-            grid.Parent.ReplaceWith(replacement);
+            var scroll = template.Descendants(Wpf + "ScrollViewer")
+                .Single(element => (string?)element.Attribute(Xaml + "Name") == "ControlEdgesScroll");
+            var replacement = new XElement(scroll.Elements().Single(element => element.Name != Wpf + "ScrollViewer.Resources"));
+            replacement.AddFirst(new XElement(Wpf + "StackPanel.Resources",
+                scroll.Element(Wpf + "ScrollViewer.Resources")!.Elements()));
+            scroll.ReplaceWith(replacement);
         }
         var objectView = XDocument.Load(Path.Combine(shell, "Views", "ObjectView.xaml")).Root!;
         objectView.Attribute(Xaml + "Class")!.Remove();
@@ -361,29 +512,60 @@ public sealed partial class ControlEdgeSizingTests
         var sectionList = XDocument.Load(Path.Combine(shell, "Views", "ObjectSectionList.xaml")).Root!;
         sectionList.Attribute(Xaml + "Class")!.Remove();
         sectionList.Attribute(Xaml + "ClassModifier")!.Remove();
+        foreach (var copy in sectionList.Descendants().Where(element => element.Name.LocalName == "CopyValueButton").ToArray())
+        {
+            copy.Name = Wpf + "Button";
+            copy.Attribute("Text")?.Remove();
+        }
         var sectionHost = Assert.Single(objectView.Descendants().Where(element => element.Name.LocalName == "ObjectSectionList"));
         foreach (var attribute in sectionHost.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration))
             sectionList.SetAttributeValue(attribute.Name, attribute.Value);
         sectionHost.ReplaceWith(sectionList);
         objectView.Descendants(Wpf + "ContentControl").Single().Add(new XElement(Wpf + "ContentControl.ContentTemplate", template));
-        objectView.SetAttributeValue("Grid.Column", "2");
+        objectView.Attribute("Grid.Column")?.Remove();
         var assetsDock = XDocument.Load(Path.Combine(shell, "Views", "AssetsView.xaml")).Root!.Element(Wpf + "DockPanel")!;
-        var columns = assetsDock.Elements(Wpf + "Grid").Single().Element(Wpf + "Grid.ColumnDefinitions")!;
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(Wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
         var assemblyName = typeof(ControlEdgesSectionViewModel).Assembly.GetName().Name;
         var dictionaries = sources.Select(source => new XElement(Wpf + "ResourceDictionary", new XAttribute("Source",
             source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assemblyName};component/" + source)));
         var root = new XElement(Wpf + "UserControl", new XAttribute(XNamespace.Xmlns + "x", Xaml.NamespaceName),
+            new XAttribute(XNamespace.Xmlns + "test",
+                "clr-namespace:SecureAD.Next.Tests.Shell;assembly=" + typeof(ControlEdgeSizingTests).Assembly.GetName().Name),
             new XElement(Wpf + "UserControl.Resources", new XElement(Wpf + "ResourceDictionary",
                 new XElement(Wpf + "ResourceDictionary.MergedDictionaries", dictionaries))),
             new XElement(Wpf + "DockPanel", new XAttribute("Margin", assetsDock.Attribute("Margin")!.Value),
-                new XElement(Wpf + "Grid", new XElement(columns), objectView)));
+                new XElement(Wpf + "Grid", objectView)));
+        var adaptiveMarkup = root.Descendants().Single(element => element.Name.LocalName == "AdaptiveDetailPanel");
+        adaptiveMarkup.Name = Wpf + "StackPanel";
+        adaptiveMarkup.SetAttributeValue("Orientation", "Vertical");
+        adaptiveMarkup.Attribute("Breakpoint")?.Remove();
+        adaptiveMarkup.Attribute("Gap")?.Remove();
         var pane = (FrameworkElement)XamlReader.Parse(root.ToString());
-        var opened = new ObjectViewModel("CN=Target,DC=example,DC=invalid", "group", "group",
+        var objectModel = opened ?? new ObjectViewModel("CN=Target,DC=example,DC=invalid", "group", "group",
             (_, _) => Task.FromResult<ObjectSectionViewModel>(vm));
-        opened.Show(ObjectSectionCatalog.ControlEdges);
-        pane.DataContext = new { Opened = opened };
+        if (opened is null) objectModel.Show(ObjectSectionCatalog.ControlEdges);
+        pane.DataContext = new { Opened = objectModel };
+        pane.Measure(new(1600, 900));
+        pane.Arrange(new(new(), new Size(1600, 900)));
+        pane.UpdateLayout();
+        var placeholder = Assert.Single(Descendants<StackPanel>(pane), element => element.Name == "ControlDetailLayout");
+        var parent = Assert.IsAssignableFrom<Panel>(VisualTreeHelper.GetParent(placeholder));
+        var adaptive = new AdaptiveDetailPanel { Name = placeholder.Name, Breakpoint = 1050, Gap = 12 };
+        if (parent is Grid)
+        {
+            Grid.SetRow(adaptive, Grid.GetRow(placeholder));
+            Grid.SetRowSpan(adaptive, Grid.GetRowSpan(placeholder));
+        }
+        while (placeholder.Children.Count != 0)
+        {
+            var child = placeholder.Children[0];
+            placeholder.Children.RemoveAt(0);
+            adaptive.Children.Add(child);
+        }
+        var position = parent.Children.IndexOf(placeholder);
+        parent.Children.RemoveAt(position);
+        parent.Children.Insert(position, adaptive);
         return pane;
     }
 
@@ -397,8 +579,8 @@ public sealed partial class ControlEdgeSizingTests
     private static TextBlock Notice(DependencyObject pane, string property) => Assert.Single(Descendants<TextBlock>(pane)
         .Where(text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == property));
 
-    private static ScrollViewer SectionScroll(DependencyObject pane, DataGrid requester) => Assert.Single(Descendants<ScrollViewer>(pane)
-        .Where(scroll => scroll.Content is Grid grid && grid.Children.Contains(requester)));
+    private static ScrollViewer SectionScroll(DependencyObject pane, DataGrid requester) =>
+        Assert.Single(Descendants<ScrollViewer>(pane).Where(scroll => scroll.Name == "ControlEdgesScroll"));
 
     private static double Top(FrameworkElement element, Visual ancestor) => element.TransformToAncestor(ancestor).Transform(new Point()).Y;
 

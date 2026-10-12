@@ -69,12 +69,16 @@ public sealed class ControlEdgePresentationTests
     }
 
     [Theory]
-    [InlineData("Counts")]
+    [InlineData("AnalysisSummary")]
+    [InlineData("CaptureSummary")]
+    [InlineData("UnexpectedSummary")]
+    [InlineData("ExpectednessUnknownSummary")]
+    [InlineData("ExpectedSummary")]
     [InlineData("Coverage")]
-    [InlineData("Rows")]
-    [InlineData("SelectedEdge.Evidence, Mode=OneWay")]
-    [InlineData("SelectedRequesterAssessment, Mode=TwoWay")]
-    [InlineData("SelectedRequesterAssessment.Evidence, Mode=OneWay")]
+    [InlineData("VisibleRows")]
+    [InlineData("SelectedEdge.Evidence,Mode=OneWay")]
+    [InlineData("SelectedRequesterAssessment,Mode=TwoWay")]
+    [InlineData("SelectedRequesterAssessment.Evidence,Mode=OneWay")]
     public void RealControlTemplateKeepsTheAnswerAndItsEvidence(string binding)
     {
         var path = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell", "Views", "Sections", "ObjectSectionTemplates.xaml");
@@ -96,6 +100,7 @@ public sealed class ControlEdgePresentationTests
             return Result<ControlEdgePage>.Success(new([], 2, 3, 7, 1, true, false, true, 100) { GenerationId = generation });
         }, _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, generation)));
         Assert.Contains("7 expected (hidden)", vm.Counts);
+        Assert.Equal("7 expected hidden", vm.ExpectedSummary);
         Assert.Contains("incomplete", vm.Coverage);
         vm.NextPageCommand.Execute(null);
         Assert.Equal(100, queries[^1].After);
@@ -105,6 +110,106 @@ public sealed class ControlEdgePresentationTests
         vm.IncludeExpected = true;
         Assert.Equal((true, true, 0L), queries[^1]);
         Assert.Contains("7 expected (shown)", vm.Counts);
+        Assert.Equal("7 expected shown", vm.ExpectedSummary);
+    }
+
+    [Fact]
+    public void EmptyHolderViewStatesDirectScopeMembershipAndUnansweredObjects()
+    {
+        var generation = Guid.NewGuid();
+        var vm = new ControlEdgesSectionViewModel(
+            new(ObjectSectionCatalog.ControlEdges, "Control edges", []),
+            "ba.admin");
+        vm.ConfigureMemberAttributionAsync(
+            (_, _) => Task.FromResult(Result<MemberAttributionDetail>.Success(
+                new(false, null, []) { GenerationId = generation })),
+            (_, _, _) => Task.FromResult(Result<MemberPermissionPage>.Success(
+                new(false, false, generation, [], false, 0))),
+            () => true);
+        vm.Configure(true, true,
+            (_, _, _) => Result<ControlEdgePage>.Success(
+                new([], 0, 0, 0, 42, true, true, false, 0)
+                {
+                    GenerationId = generation,
+                    IsScopedToDiscovery = true,
+                }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, generation)));
+        vm.ReadCompletion.GetAwaiter().GetResult();
+        vm.MembershipReadCompletion.GetAwaiter().GetResult();
+
+        Assert.True(vm.ShowsDirectHolderEmptyState);
+        Assert.False(vm.ShowsGenericEmptyState);
+        Assert.Equal(
+            "No direct named permissions for ba.admin were saved in the assessed scope.",
+            vm.DirectHolderEmptyHeading);
+        Assert.Contains(
+            "This view does not include permissions held by groups ba.admin belongs to",
+            vm.DirectHolderEmptyDetail);
+        Assert.Contains("42 objects still have unanswered supported rights", vm.DirectHolderEmptyDetail);
+        Assert.Contains("Tier 0 discovery scope rather than the whole capture", vm.DirectHolderEmptyDetail);
+        Assert.Contains("Member expansion did not run", vm.ThroughMembershipCoverage);
+        Assert.Equal("Expectedness unknown: 0", vm.ExpectednessUnknownSummary);
+    }
+
+    [Fact]
+    public void DirectEmptyStateTemplateShowsTheSavedMembershipStatus()
+    {
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var path = Path.Combine(
+            Architecture.RebuildTree.Root(),
+            "src",
+            "SecureAD.Shell",
+            "Views",
+            "Sections",
+            "ObjectSectionTemplates.xaml");
+        var template = XDocument.Load(path).Descendants().Single(element =>
+            element.Name.LocalName == "DataTemplate"
+            && element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "DataType"
+                && attribute.Value == "{x:Type vm:ControlEdgesSectionViewModel}"));
+        var empty = Assert.Single(template.Descendants(), element =>
+            (string?)element.Attribute(xaml + "Name") == "DirectHolderEmptyState");
+        var membership = Assert.Single(template.Descendants(), element =>
+            (string?)element.Attribute(xaml + "Name") == "DirectHolderMembershipStatus");
+
+        Assert.Contains("ShowsDirectHolderEmptyState", (string?)empty.Attribute("Visibility"));
+        Assert.Equal("{Binding ThroughMembershipCoverage}", (string?)membership.Attribute("Text"));
+    }
+
+    [Fact]
+    public void DirectionLabelsAskTheAdministratorsQuestionsAboutTheSelectedObject()
+    {
+        var vm = new ControlEdgesSectionViewModel(
+            new(ObjectSectionCatalog.ControlEdges, "Control edges", []),
+            "BA2016");
+
+        Assert.Equal("Who can control BA2016?", vm.OnObjectQuestion);
+        Assert.Equal("What can BA2016 control?", vm.HeldByObjectQuestion);
+    }
+
+    [Fact]
+    public void ControlDirectionDetailTabsAndDisplayedPageFilterArePresentationOnly()
+    {
+        var edge = Judgement.GroupMembershipControlTests.Membership(Judgement.ControlEdgeDeriverTests.Permissions(
+            Judgement.GroupMembershipControlTests.Scoped(0, 0x28))).Edges.First();
+        var vm = new ControlEdgesSectionViewModel(new(ObjectSectionCatalog.ControlEdges, "Control edges", []));
+        vm.Configure(true, false,
+            (_, _, _) => Result<ControlEdgePage>.Success(new([edge], 1, 0, 0, 0, true, true, false, edge.Id)
+                { GenerationId = Guid.Empty }),
+            _ => Result<SelfMembershipAssessmentSet>.Success(new([], true, Guid.Empty)));
+
+        Assert.True(vm.ShowsEdgesOnObject);
+        Assert.True(vm.ShowsEvidenceDetails);
+        vm.ShowsMembershipDetails = true;
+        Assert.True(vm.ShowsMembershipDetails);
+        vm.EdgeSearchText = "no displayed match";
+        Assert.Empty(vm.VisibleRows);
+        Assert.Single(vm.Rows);
+        vm.EdgeSearchText = "";
+        Assert.Single(vm.VisibleRows);
+        vm.ShowsEdgesHeldByObject = true;
+        Assert.True(vm.ByHolder);
+        Assert.True(vm.ShowsTargetColumn);
     }
 
     [Fact]

@@ -6,50 +6,50 @@
     </ResourceDictionary.MergedDictionaries>
 
     <Style x:Key="DashboardPanel" TargetType="Border" BasedOn="{StaticResource Card}">
-        <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Padding" Value="0" />
     </Style>
     <Style x:Key="DashboardPanelHeading" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource ObjectSectionHeadingBackground}" />
+        <Setter Property="Background" Value="{DynamicResource ObjectSectionHeadingBackground}" />
         <Setter Property="Padding" Value="14,10" />
         <Setter Property="CornerRadius" Value="7,7,0,0" />
     </Style>
     <Style x:Key="DashboardMetric" TargetType="Border" BasedOn="{StaticResource DashboardPanel}">
-        <Setter Property="Background" Value="{StaticResource SurfaceRaisedBackground}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBackground}" />
         <Setter Property="Margin" Value="0,0,12,12" />
     </Style>
     <Style x:Key="DashboardMetricLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
         <Setter Property="FontSize" Value="{StaticResource LabelFontSize}" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
-        <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
         <Setter Property="Padding" Value="14,9" />
     </Style>
     <Style x:Key="DashboardMetricValue" TargetType="TextBlock" BasedOn="{StaticResource ScreenTitle}">
         <Setter Property="FontSize" Value="{StaticResource DashboardMetricFontSize}" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeValueBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeValueBrush}" />
         <Setter Property="Margin" Value="14,12" />
     </Style>
     <Style x:Key="DashboardCoverageBadge" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Padding" Value="12,8" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding EveryDomainCounted}" Value="False">
-                <Setter Property="Background" Value="{StaticResource FaultSubtleBrush}" />
-                <Setter Property="BorderBrush" Value="{StaticResource FaultBrush}" />
+                <Setter Property="Background" Value="{DynamicResource FaultSubtleBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource FaultBrush}" />
             </DataTrigger>
         </Style.Triggers>
     </Style>
     <Style x:Key="DashboardStatusLabel" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
         <Setter Property="FontWeight" Value="{StaticResource EmphasisFontWeight}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding ExplanationIsShown}" Value="True">
-                <Setter Property="Foreground" Value="{StaticResource FaultBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource FaultBrush}" />
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -57,7 +57,7 @@
         <Setter Property="Margin" Value="8,8" />
     </Style>
     <Style x:Key="DashboardColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TableColumnHeader}">
-        <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
+        <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
         <Setter Property="ContentTemplate">
             <Setter.Value>
                 <DataTemplate>

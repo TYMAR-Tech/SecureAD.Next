@@ -37,6 +37,87 @@ public sealed class DirectoryTreeTests : IDisposable
     }
 
     [Fact]
+    public void TheTreeCarriesTheForestRootNamedByTheBundleRatherThanItsFirstDomain()
+    {
+        const string childDn = "DC=child," + DomainDn;
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            writer.WriteCoverage(SomeCoverage());
+            writer.WriteCoverage(new(
+                childDn,
+                NamingContextKind.Domain,
+                "dc01.child.contoso.com",
+                ConnectionSecurityLevel.SignedAndSealed,
+                3,
+                100,
+                1,
+                [],
+                false));
+            writer.Complete(
+                RunCoverage.Of(
+                    CoverageId.ForDomains("contoso.com", ["child.contoso.com", "contoso.com"]),
+                    [DomainCoverage.Read("child.contoso.com"), DomainCoverage.Read("contoso.com")],
+                    [
+                        ForestPartitionCoverage.Read(
+                            "CN=Configuration," + DomainDn,
+                            NamingContextKind.Configuration),
+                        ForestPartitionCoverage.Read(
+                            "CN=Schema,CN=Configuration," + DomainDn,
+                            NamingContextKind.Schema),
+                    ],
+                    SysvolCoverage.Of([])),
+                Finished);
+        }
+
+        var tree = ReadTree();
+
+        Assert.Equal(childDn, tree.Roots[0].DistinguishedName);
+        Assert.Equal(DomainDn, tree.ForestRootDistinguishedName);
+    }
+
+    [Fact]
+    public void ABundleWithoutItsNamedForestRootPartitionIsRefusedRatherThanUsingAChildDomain()
+    {
+        const string childDn = "DC=child," + DomainDn;
+        using (var writer = BundleWriter.Create(_directory, Started))
+        {
+            writer.WriteCoverage(new(
+                childDn,
+                NamingContextKind.Domain,
+                "dc01.child.contoso.com",
+                ConnectionSecurityLevel.SignedAndSealed,
+                3,
+                100,
+                1,
+                [],
+                false));
+            writer.Complete(
+                RunCoverage.Of(
+                    CoverageId.ForDomains("contoso.com", ["child.contoso.com"]),
+                    [DomainCoverage.Read("child.contoso.com")],
+                    [
+                        ForestPartitionCoverage.Read(
+                            "CN=Configuration," + DomainDn,
+                            NamingContextKind.Configuration),
+                        ForestPartitionCoverage.Read(
+                            "CN=Schema,CN=Configuration," + DomainDn,
+                            NamingContextKind.Schema),
+                    ],
+                    SysvolCoverage.Of([])),
+                Finished);
+        }
+
+        var opening = BundleReader.Open(_directory);
+        Assert.True(opening.IsSuccess);
+        using var reader = opening.Value;
+
+        var refusal = Assert.Throws<InvalidDataException>(reader.ReadTree);
+
+        Assert.Contains(DomainDn, refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("forest", refusal.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void AContainerObjectsWereCapturedUnderIsInTheTree()
     {
         WriteBundle(writer =>

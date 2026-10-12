@@ -5,23 +5,23 @@
         <ResourceDictionary Source="Controls.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <Style x:Key="HomePanel" TargetType="Border" BasedOn="{StaticResource Card}">
-        <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-        <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Padding" Value="0" />
     </Style>
     <Style x:Key="HomePanelHeading" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource ObjectSectionHeadingBackground}" />
+        <Setter Property="Background" Value="{DynamicResource ObjectSectionHeadingBackground}" />
         <Setter Property="Padding" Value="14,10" />
         <Setter Property="CornerRadius" Value="7,7,0,0" />
     </Style>
     <Style x:Key="HomeLabel" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
         <Setter Property="FontSize" Value="{StaticResource LabelFontSize}" />
-        <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
         <Setter Property="Margin" Value="0,0,0,5" />
     </Style>
     <Style x:Key="HomeColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TableColumnHeader}">
-        <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
+        <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
         <Setter Property="ContentTemplate">
             <Setter.Value>
                 <DataTemplate>

@@ -48,6 +48,11 @@ internal abstract partial class ObjectSectionViewModel : ObservableObject
 /// <summary>Navigation metadata only: hidden sections must not prepare rows or read saved products.</summary>
 internal sealed class UnloadedObjectSectionViewModel(ObjectSectionDefinition definition) : ObjectSectionViewModel(definition);
 
+internal sealed class ObjectHelpSectionViewModel(ObjectSectionDefinition definition) : ObjectSectionViewModel(definition)
+{
+    public string SupportedControlScope => ControlEdgePage.SupportedScope;
+}
+
 /// <summary>
 /// One attribute on screen: what it is called, what it says, and what the bundle actually stored.
 /// </summary>
@@ -247,6 +252,12 @@ internal sealed class AttributeValueViewModel
 /// </remarks>
 internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
 {
+    private static readonly HashSet<string> OverviewOnlyAttributes = new(
+        ["objectClass", "objectGUID", "objectSid", "sAMAccountName", "userPrincipalName", "description", "whenCreated", "sIDHistory"],
+        StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> IdentityCardAttributes = new(
+        ["objectClass", "objectGUID", "objectSid", "sAMAccountName", "userPrincipalName", "description", "sIDHistory"],
+        StringComparer.OrdinalIgnoreCase);
     private readonly ObjectPermissions _permissions;
 
     /// <summary>Creates the overview.</summary>
@@ -267,7 +278,11 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
         _permissions = permissions;
         ObjectType = objectType;
         Values = definition.Rows(attributes);
-        Cards = new(Values);
+        IdentityCards = new(Values.Where(value => IdentityCardAttributes.Contains(value.Attribute)).ToArray());
+        ActivityCards = new(Values.Where(value => !IdentityCardAttributes.Contains(value.Attribute)).ToArray());
+        var accountAttributes = definition.Attributes.Where(attribute => !OverviewOnlyAttributes.Contains(attribute)).ToArray();
+        Account = accountAttributes.Contains("userAccountControl", StringComparer.OrdinalIgnoreCase)
+            ? new AccountSectionViewModel(definition with { Attributes = accountAttributes }, attributes) : null;
     }
 
     /// <summary>What kind of object it is.</summary>
@@ -325,7 +340,10 @@ internal sealed class OverviewSectionViewModel : ObjectSectionViewModel
 
     /// <summary>The identity attributes this section is responsible for.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
-    public AttributeCardsViewModel Cards { get; }
+    public AttributeCardsViewModel IdentityCards { get; }
+    public AttributeCardsViewModel ActivityCards { get; }
+    public AccountSectionViewModel? Account { get; }
+    public bool HasAccount => Account is not null;
 }
 
 /// <summary>
@@ -364,7 +382,6 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 
         _wasRead = attributes is not null;
         Values = definition.Rows(attributes);
-        Cards = new(Values);
         _stored = Values.FirstOrDefault(v =>
             string.Equals(v.Attribute, "userAccountControl", StringComparison.OrdinalIgnoreCase))
             ?? new AttributeValueViewModel(
@@ -374,7 +391,6 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 
     /// <summary>Every attribute this section is responsible for, worded and stored.</summary>
     public IReadOnlyList<AttributeValueViewModel> Values { get; }
-    public AttributeCardsViewModel Cards { get; }
 
     /// <summary>What the account's state flags say, one sentence each.</summary>
     public IReadOnlyList<string> Flags =>
@@ -435,6 +451,15 @@ internal sealed class AccountSectionViewModel : ObjectSectionViewModel
 /// thing. All four produce no entries and one of them is the most open object in the forest.
 /// <see cref="Emptiness"/> is where they are told apart.
 /// </remarks>
+internal enum PermissionEntryTypeFilter
+{
+    All,
+    Allow,
+    Deny,
+}
+
+internal sealed record PermissionEntryTypeChoice(string Label, PermissionEntryTypeFilter Value);
+
 internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewModel
 {
     private readonly ObjectPermissions _permissions;
@@ -456,6 +481,8 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
     /// </remarks>
     [ObservableProperty]
     private PrincipalGroupViewModel? _selectedPrincipal;
+    [ObservableProperty] private string _permissionSearchText = "";
+    [ObservableProperty] private PermissionEntryTypeFilter _permissionTypeFilter;
 
     /// <summary>
     /// Whether the operator has asked the classifier for its opinion of these permissions.
@@ -513,7 +540,8 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
             Principals.Add(group);
         }
 
-        SelectedPrincipal = Principals.FirstOrDefault();
+        ApplyPermissionFilters();
+        SelectedPrincipal = VisiblePrincipals.FirstOrDefault();
     }
 
     /// <summary>Each principal named by the list, and that principal's entries.</summary>
@@ -523,6 +551,15 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
     /// something is the first thing worth seeing.
     /// </remarks>
     public ObservableCollection<PrincipalGroupViewModel> Principals { get; } = [];
+    public IReadOnlyList<PrincipalGroupViewModel> VisiblePrincipals =>
+        Principals.Where(principal => principal.HasVisibleEntries).ToArray();
+    public bool HasVisiblePrincipals => VisiblePrincipals.Count != 0;
+    public IReadOnlyList<PermissionEntryTypeChoice> PermissionTypeChoices { get; } =
+    [
+        new("All", PermissionEntryTypeFilter.All),
+        new("Allow", PermissionEntryTypeFilter.Allow),
+        new("Deny", PermissionEntryTypeFilter.Deny),
+    ];
 
     /// <summary>Whether there is a principal list to read at all.</summary>
     public bool HasPrincipals => Principals.Count > 0;
@@ -620,6 +657,19 @@ internal sealed partial class PermissionsSectionViewModel : ObjectSectionViewMod
     {
         foreach (var principal in Principals)
             principal.SetClassified(value);
+    }
+
+    partial void OnPermissionSearchTextChanged(string value) => ApplyPermissionFilters();
+    partial void OnPermissionTypeFilterChanged(PermissionEntryTypeFilter value) => ApplyPermissionFilters();
+
+    private void ApplyPermissionFilters()
+    {
+        foreach (var principal in Principals)
+            principal.ApplyFilter(PermissionSearchText, PermissionTypeFilter);
+        OnPropertyChanged(nameof(VisiblePrincipals));
+        OnPropertyChanged(nameof(HasVisiblePrincipals));
+        if (SelectedPrincipal?.HasVisibleEntries != true)
+            SelectedPrincipal = VisiblePrincipals.FirstOrDefault();
     }
 
     private Notice? Emptied()
@@ -1060,9 +1110,11 @@ internal sealed class NotBuiltSectionViewModel : ObjectSectionViewModel
 /// the principal, where they come from, roughly what they hold and how many entries say so all have
 /// to be on the one line an operator is scanning.
 /// </remarks>
-internal sealed class PrincipalGroupViewModel
+internal sealed class PrincipalGroupViewModel : ObservableObject
 {
     private readonly PermissionTrustee _trustee;
+    private string _filterSearch = "";
+    private PermissionEntryTypeFilter _filterType;
 
     /// <summary>Creates a screen's view of one principal's permissions.</summary>
     /// <param name="trustee">The principal.</param>
@@ -1117,6 +1169,9 @@ internal sealed class PrincipalGroupViewModel
 
     /// <summary>The principal's entries, in the list's canonical order.</summary>
     public IReadOnlyList<PermissionEntryViewModel> Entries { get; }
+    public IReadOnlyList<PermissionEntryViewModel> VisibleEntries => Entries.Where(Visible).ToArray();
+    public bool HasVisibleEntries => VisibleEntries.Count != 0;
+    public string VisibleEntryCount => VisibleEntries.Count == 1 ? "1 entry" : $"{VisibleEntries.Count} entries";
 
     /// <summary>How many entries name this principal.</summary>
     public string EntryCount => Entries.Count == 1 ? "1 entry" : $"{Entries.Count} entries";
@@ -1150,6 +1205,8 @@ internal sealed class PrincipalGroupViewModel
         }
     }
 
+    public string VisibleRightsSummary => Summarize(VisibleEntries);
+
     /// <summary>Whether any of this principal's entries is a denial.</summary>
     public bool HasDenials => Entries.Any(e => e.IsDenial);
 
@@ -1181,6 +1238,40 @@ internal sealed class PrincipalGroupViewModel
     {
         foreach (var entry in Entries)
             entry.IsClassified = isClassified;
+    }
+
+    public void ApplyFilter(string search, PermissionEntryTypeFilter type)
+    {
+        _filterSearch = search.Trim();
+        _filterType = type;
+        OnPropertyChanged(nameof(VisibleEntries));
+        OnPropertyChanged(nameof(HasVisibleEntries));
+        OnPropertyChanged(nameof(VisibleEntryCount));
+        OnPropertyChanged(nameof(VisibleRightsSummary));
+    }
+
+    private bool Visible(PermissionEntryViewModel entry)
+    {
+        if (_filterType == PermissionEntryTypeFilter.Allow && !entry.Type.StartsWith("Allow", StringComparison.Ordinal)
+            || _filterType == PermissionEntryTypeFilter.Deny && !entry.IsDenial)
+            return false;
+        if (string.IsNullOrEmpty(_filterSearch)) return true;
+        return Principal.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)
+            || Domain.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)
+            || entry.Right.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)
+            || entry.Type.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)
+            || entry.Scope.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase)
+            || entry.Inheritance.Contains(_filterSearch, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Summarize(IReadOnlyList<PermissionEntryViewModel> entries)
+    {
+        var rights = entries.SelectMany(entry => entry.Rights).Select(right => right.Name)
+            .Distinct(StringComparer.Ordinal).ToList();
+        if (rights.Contains("Full control", StringComparer.Ordinal)) return "Full control";
+        if (rights.Count == 0) return "No matching rights";
+        return rights.Count <= 3 ? string.Join(", ", rights)
+            : string.Join(", ", rights.Take(3)) + $", and {rights.Count - 3} more";
     }
 }
 

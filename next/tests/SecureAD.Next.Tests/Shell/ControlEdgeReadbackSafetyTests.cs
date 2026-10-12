@@ -267,7 +267,7 @@ public sealed class ControlEdgeReadbackSafetyTests
         screen.OpenObject(new(new("CN=Other,DC=contoso,DC=com", "Other", Guid.NewGuid(), "group", "DC=contoso,DC=com")));
         Assert.Null(screen.Opened);
         Assert.False(screen.HasOpenObject);
-        Assert.NotNull(screen.ViewRefusal);
+        Assert.NotNull(screen.ObjectRefusal);
     }
 
     [Fact]

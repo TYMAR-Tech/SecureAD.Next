@@ -151,6 +151,46 @@ public sealed class DelegationViewModelTests
         Assert.Contains("Page 1: 1 recorded entries on this page", screen.DelegationStatus);
     }
 
+    [Fact]
+    public async Task CompletedSearchCollapsesToAnEditableSummaryWithoutDiscardingTheAnswer()
+    {
+        var (screen, source) = Model();
+        await SelectPrincipal(screen);
+        await screen.FindDelegationsCommand.ExecuteAsync(null);
+
+        Assert.False(screen.IsDelegationSearchEditing);
+        Assert.False(screen.ShowsDelegationSearchEditor);
+        Assert.True(screen.ShowsDelegationSearchSummary);
+        Assert.Contains("Helpdesk", screen.DelegationSearchSummary, StringComparison.Ordinal);
+        Assert.Contains(DelegationText.Get(screen.IncludeGroupHeldPermissions ? "GroupHeldIncluded" : "DirectOnly"),
+            screen.DelegationSearchSummary, StringComparison.Ordinal);
+
+        screen.EditDelegationSearchCommand.Execute(null);
+
+        Assert.True(screen.IsDelegationSearchEditing);
+        Assert.True(screen.ShowsDelegationSearchEditor);
+        Assert.False(screen.ShowsDelegationSearchSummary);
+        Assert.True(screen.HasDelegationAnswer);
+        Assert.Single(screen.Delegations);
+        Assert.Single(source.DelegationQueries);
+    }
+
+    [Fact]
+    public async Task DelegationDisplayedPageFilterDoesNotChangeTheSavedAnswer()
+    {
+        var (screen, source) = Model();
+        await SelectPrincipal(screen);
+        await screen.FindDelegationsCommand.ExecuteAsync(null);
+        Assert.Single(screen.VisibleDelegations);
+
+        screen.DelegationResultSearch = "no displayed match";
+
+        Assert.Empty(screen.VisibleDelegations);
+        Assert.True(screen.HasDelegationAnswer);
+        Assert.Single(screen.Delegations);
+        Assert.Single(source.DelegationQueries);
+    }
+
     [Theory]
     [InlineData("principal")]
     [InlineData("permission")]
@@ -283,7 +323,7 @@ public sealed class DelegationViewModelTests
         Assert.Equal(Target, source.OpenedObject);
         Assert.True(screen.HasOpenObject);
         Assert.Equal(ObjectSectionCatalog.Permissions, screen.Opened!.Selected!.Key);
-        Assert.False(screen.ShowsDelegationsListing);
+        Assert.True(screen.ShowsDelegationsListing);
         screen.CloseObject();
         Assert.True(screen.ShowsDelegationsListing);
         Assert.True(screen.HasDelegationAnswer);

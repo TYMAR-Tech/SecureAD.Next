@@ -6,13 +6,13 @@
         <Style x:Key="Tier0Cell" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="8" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
         <Style x:Key="Tier0Header" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TableColumnHeader}">
-            <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
-            <Setter Property="Foreground" Value="{StaticResource AttributeLabelBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource AttributeLabelBrush}" />
             <Setter Property="ContentTemplate">
-                <Setter.Value><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource AttributeLabelBrush}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
+                <Setter.Value><DataTemplate><TextBlock Text="{Binding}" Foreground="{DynamicResource AttributeLabelBrush}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
             </Setter>
         </Style>
     </UserControl.Resources>
@@ -23,18 +23,57 @@
                 <TextBlock Text="Tier 0 overview" Style="{StaticResource SectionTitle}" />
             </DockPanel>
             <TextBlock Text="Whole-run context here. Route inspection stays in each object's Path to Tier 0 tab."
-                       TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{StaticResource SecondaryTextBrush}" />
+                       TextWrapping="Wrap" Margin="0,0,0,10" Foreground="{DynamicResource SecondaryTextBrush}" />
             <TextBlock Text="{Binding LoadingText}" TextWrapping="Wrap" Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
             <TextBox Text="{Binding ViewRefusal.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                     Foreground="{StaticResource FaultBrush}" Visibility="{Binding HasViewRefusal,Converter={StaticResource Shown}}" />
-            <Border Background="{StaticResource AssetNavigationBackground}" BorderBrush="{StaticResource AttributeCardBorderBrush}"
-                    BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding HasViewRefusal,Converter={StaticResource Shown}}" />
+            <WrapPanel Margin="0,0,0,8">
+                <Border Style="{StaticResource Card}" Width="165" Margin="0,0,8,8">
+                    <StackPanel><TextBlock Text="Classified Tier 0" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding Tier0ClassifiedCount,StringFormat={}{0:N0}}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="Classification, not a discovered attack" Style="{StaticResource Caption}" /></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="190" Margin="0,0,8,8">
+                    <StackPanel><TextBlock Text="Other objects with supported routes" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding Tier0OtherSupportedCount,StringFormat={}{0:N0}}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="Excludes classified Tier 0" Style="{StaticResource Caption}" /></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="150" Margin="0,0,8,8">
+                    <StackPanel><TextBlock Text="Unresolved" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding Tier0UnresolvedCount,StringFormat={}{0:N0}}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="Not a safe result" Style="{StaticResource Caption}" /></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="150" Margin="0,0,0,8">
+                    <StackPanel><TextBlock Text="Not assessed" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding Tier0UnassessedCount,StringFormat={}{0:N0}}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="Separate from unresolved" Style="{StaticResource Caption}" /></StackPanel>
+                </Border>
+            </WrapPanel>
+            <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8"
+                    Visibility="{Binding Tier0HasLimitations,Converter={StaticResource Shown}}">
+                <TextBlock Text="Unsupported, unresolved or unassessed analysis remains. A supported-results filter does not clear the hidden identities."
+                           TextWrapping="Wrap" />
+            </Border>
+            <Border Background="{DynamicResource AssetNavigationBackground}" BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
                 <TextBox Text="{Binding Tier0OverviewStatus,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
             </Border>
-            <Expander Header="Coverage details" Margin="0,0,0,12">
+            <Expander Header="Coverage details" Margin="0,0,0,10">
                 <TextBox Text="{Binding Tier0OverviewCoverage,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="8" />
             </Expander>
-            <TextBox Text="{Binding Tier0ObjectLimitation,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+            <TextBox Text="{Binding Tier0ObjectLimitation,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{DynamicResource FaultBrush}" />
+            <Border Background="{DynamicResource SurfaceRaisedBackground}" BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                    BorderThickness="1" CornerRadius="5" Padding="1" Margin="0,8,0,10" HorizontalAlignment="Left">
+                <UniformGrid Rows="1">
+                    <RadioButton Content="Tier 0 and supported routes" GroupName="Tier0Scope"
+                                 Style="{StaticResource BrowsingScopeSegment}"
+                                 IsChecked="{Binding Tier0SupportedOnly,Mode=TwoWay}" />
+                    <RadioButton Content="All identities" GroupName="Tier0Scope"
+                                 Style="{StaticResource BrowsingScopeSegment}"
+                                 IsChecked="{Binding Tier0AllIdentities,Mode=TwoWay}" />
+                </UniformGrid>
+            </Border>
         </StackPanel>
         <WrapPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
             <TextBlock Text="{Binding Tier0PageDescription}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
@@ -46,13 +85,14 @@
         <DataGrid ItemsSource="{Binding Tier0Objects}" SelectedItem="{Binding SelectedTier0Object}"
                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column"
                   ColumnHeaderStyle="{StaticResource Tier0Header}" CanUserSortColumns="False"
-                  RowBackground="{StaticResource SurfaceRaisedBackground}" AlternatingRowBackground="{StaticResource AssetNavigationBackground}"
-                  HorizontalGridLinesBrush="{StaticResource AttributeCardBorderBrush}" GridLinesVisibility="Horizontal">
+                  RowBackground="{DynamicResource SurfaceRaisedBackground}" AlternatingRowBackground="{DynamicResource AssetNavigationBackground}"
+                  HorizontalGridLinesBrush="{DynamicResource AttributeCardBorderBrush}" GridLinesVisibility="Horizontal">
             <DataGrid.InputBindings>
                 <KeyBinding Key="Enter" Command="{Binding OpenTier0PathCommand}" />
             </DataGrid.InputBindings>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Object" Binding="{Binding Name}" ElementStyle="{StaticResource Tier0Cell}" Width="2*" MinWidth="180" />
+                <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" ElementStyle="{StaticResource Tier0Cell}" Width="*" MinWidth="130" />
                 <DataGridTextColumn Header="Shortest supported distance" Binding="{Binding Distance}" ElementStyle="{StaticResource Tier0Cell}" Width="Auto" />
                 <DataGridTextColumn Header="Qualification" Binding="{Binding Qualification}" ElementStyle="{StaticResource Tier0Cell}" Width="2*" MinWidth="200" />
                 <DataGridTextColumn Header="Best-supported route" Binding="{Binding Best}" ElementStyle="{StaticResource Tier0Cell}" Width="*" MinWidth="180" />

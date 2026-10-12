@@ -116,7 +116,7 @@ public sealed class DashboardRedesignTests
             {
                 Assert.True(text.IsVisible);
                 Assert.True(At(text, view).Y > At(badge, view).Y);
-                Assert.Equal(32, text.FontSize);
+                Assert.Equal((double)view.FindResource("DashboardMetricFontSize"), text.FontSize);
             });
             Assert.Equal(At(metrics[0], view).Y, At(metrics[1], view).Y, 3);
             Assert.Equal(At(metrics[2], view).Y, At(metrics[3], view).Y, 3);

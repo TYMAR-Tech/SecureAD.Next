@@ -26,6 +26,14 @@ internal static class ControlEdgeDeriver
     /// </remarks>
     public static ControlObjectEvaluation Derive(ObjectAttributes subject, ObjectPermissions? permissions,
         JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid)
+        => DeriveCore(subject, permissions, context, generation, derivationGeneration, domainSid, attributeWritesOnly: false);
+
+    internal static ControlObjectEvaluation DeriveAttributeWrites(ObjectAttributes subject, ObjectPermissions? permissions,
+        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid)
+        => DeriveCore(subject, permissions, context, generation, derivationGeneration, domainSid, attributeWritesOnly: true);
+
+    private static ControlObjectEvaluation DeriveCore(ObjectAttributes subject, ObjectPermissions? permissions,
+        JudgingContext context, Guid generation, Guid? derivationGeneration, Func<string, string?> domainSid, bool attributeWritesOnly)
     {
         var sidValue = subject.Find("objectSid")?.OnlyValue;
         var targetSid = sidValue?.Bytes is { } bytes ? Sid.ToText(bytes) : sidValue?.Text;
@@ -51,6 +59,13 @@ internal static class ControlEdgeDeriver
         if ((uncertainty & ControlUncertainty.DescriptorUnreadable) != 0)
             return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, []);
 
+        if (attributeWritesOnly)
+        {
+            var attributes = new List<ControlEdge>();
+            uncertainty |= AddScopedEdges(subject, permissions, normalized, context, generation, derivationGeneration,
+                domainSid, effective.Outcome, uncertainty, attributes, attributeWritesOnly: true);
+            return new(subject.DistinguishedName, targetSid, targetScope, effective.Outcome.ToString(), uncertainty, attributes);
+        }
         var candidates = normalized.Entries.Where(Applies).Select(entry => entry.Trustee)
             .Where(trustee => trustee.Sid != "S-1-3-4")
             .DistinctBy(trustee => trustee.Sid, StringComparer.OrdinalIgnoreCase).ToList();
@@ -99,7 +114,7 @@ internal static class ControlEdgeDeriver
             }
         }
         uncertainty |= AddScopedEdges(subject, permissions, normalized, context, generation, derivationGeneration,
-            domainSid, effective.Outcome, uncertainty, edges);
+            domainSid, effective.Outcome, uncertainty, edges, attributeWritesOnly: false);
         uncertainty |= ReplicationControlDeriver.Add(subject, permissions, normalized, context, generation,
             derivationGeneration, domainSid, effective.Outcome, uncertainty, edges);
         uncertainty |= OwnershipControlDeriver.Add(subject, permissions, context, generation, derivationGeneration, domainSid, edges);
@@ -113,7 +128,7 @@ internal static class ControlEdgeDeriver
     private static ControlUncertainty AddScopedEdges(ObjectAttributes subject, ObjectPermissions original,
         ObjectPermissions normalized, JudgingContext context, Guid generation, Guid? derivationGeneration,
         Func<string, string?> domainSid, EffectiveAccessOutcome outcome, ControlUncertainty descriptorUncertainty,
-        List<ControlEdge> edges)
+        List<ControlEdge> edges, bool attributeWritesOnly)
     {
         var classes = subject.Find("objectClass")?.Values;
         var isGroup = classes?.Any(value => Same(value.Text, "group")) == true;
@@ -126,9 +141,12 @@ internal static class ControlEdgeDeriver
         foreach (var (right, capability, operation) in new[] { (0x20, ControlCapability.CanModifyGroupMembership, "member"),
             (0x08, ControlCapability.CanAddSelfToGroup, "Self-Membership"),
             (ControlAccess, ControlCapability.CanResetPassword, "User-Force-Change-Password"),
-            (0x20, ControlCapability.CanWriteKeyCredentialLink, "msDS-KeyCredentialLink") })
+            (0x20, ControlCapability.CanWriteKeyCredentialLink, "msDS-KeyCredentialLink"),
+            (0x20, ControlCapability.CanWriteServicePrincipalName, "servicePrincipalName"),
+            (0x20, ControlCapability.CanWriteResourceBasedConstrainedDelegation, "msDS-AllowedToActOnBehalfOfOtherIdentity") })
         {
-            var accountOperation = capability is ControlCapability.CanResetPassword or ControlCapability.CanWriteKeyCredentialLink;
+            if (attributeWritesOnly && !AttributeWriteRules.IsAttributeWrite(capability)) continue;
+            var accountOperation = capability == ControlCapability.CanResetPassword || AttributeWriteRules.IsAttributeWrite(capability);
             if (classKnown && !(accountOperation ? isAccount : isGroup)) continue;
             var relevant = normalized.Entries.Select((entry, index) => (Entry: entry, Original: original.Entries[index],
                     Scope: OperationScope(entry, right, operation, classes?.LastOrDefault()?.Text, catalogue)))
@@ -155,6 +173,8 @@ internal static class ControlEdgeDeriver
                     {
                         ControlCapability.CanResetPassword => ControlUncertainty.PasswordResetScopeNotEvaluated,
                         ControlCapability.CanWriteKeyCredentialLink => ControlUncertainty.KeyCredentialLinkScopeNotEvaluated,
+                        ControlCapability.CanWriteServicePrincipalName => ControlUncertainty.ServicePrincipalNameScopeNotEvaluated,
+                        ControlCapability.CanWriteResourceBasedConstrainedDelegation => ControlUncertainty.ResourceBasedDelegationScopeNotEvaluated,
                         _ => ControlUncertainty.MembershipScopeNotEvaluated,
                     };
                 if (evidence.Any(item => !IsSupported(item.Entry.AceType))) unknown |= ControlUncertainty.ConditionalOrUnsupportedAce;
@@ -176,6 +196,8 @@ internal static class ControlEdgeDeriver
                     {
                         ControlCapability.CanResetPassword => $"ResetPasswordRightScope[{item.Entry.Ordinal}]",
                         ControlCapability.CanWriteKeyCredentialLink => $"KeyCredentialLinkWriteScope[{item.Entry.Ordinal}]",
+                        ControlCapability.CanWriteServicePrincipalName => $"ServicePrincipalNameWriteScope[{item.Entry.Ordinal}]",
+                        ControlCapability.CanWriteResourceBasedConstrainedDelegation => $"ResourceBasedDelegationWriteScope[{item.Entry.Ordinal}]",
                         _ => $"ACE {item.Entry.Ordinal} reaches membership operation",
                     },
                     item.Scope.State, item.Scope.Source)).ToList();

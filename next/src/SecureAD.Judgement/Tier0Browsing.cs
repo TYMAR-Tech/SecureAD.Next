@@ -3,7 +3,17 @@ using Microsoft.Data.Sqlite;
 
 namespace SecureAD.Judgement;
 
-public sealed record Tier0OverviewMark(Guid GenerationId, string CalculationFingerprint, string AfterDn);
+public enum Tier0OverviewScope
+{
+    Supported,
+    All,
+}
+
+public sealed record Tier0OverviewMark(
+    Guid GenerationId,
+    string CalculationFingerprint,
+    Tier0OverviewScope Scope,
+    string AfterDn);
 public sealed record Tier0OverviewRow(Tier0Target Subject, Tier0DistanceFacts Distance, SupportedRouteGrade? BestGrade);
 public sealed record Tier0OverviewPage(Tier0RunSummary Summary, IReadOnlyList<Tier0OverviewRow> Objects, Tier0OverviewMark? Next)
 {
@@ -20,16 +30,27 @@ public sealed record Tier0RouteDetails(Guid GenerationId, Guid? DerivationGenera
 internal static class Tier0Browsing
 {
     internal static Tier0OverviewPage? ReadPage(SqliteConnection connection, JudgementDescription description,
-        Tier0OverviewMark? after, CancellationToken token)
+        Tier0OverviewScope scope, Tier0OverviewMark? after, CancellationToken token)
     {
+        if (!Enum.IsDefined(scope)) throw new ArgumentOutOfRangeException(nameof(scope));
         var summary = Tier0DistanceStorage.ReadSummary(connection, description, token);
         if (summary is null) return null;
         if (after is not null && (after.GenerationId != description.GenerationId
-            || after.CalculationFingerprint != summary.CalculationFingerprint || string.IsNullOrWhiteSpace(after.AfterDn)))
+            || after.CalculationFingerprint != summary.CalculationFingerprint || after.Scope != scope
+            || string.IsNullOrWhiteSpace(after.AfterDn)))
             throw new ArgumentException("The Tier 0 page belongs to another saved calculation.", nameof(after));
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT target FROM tier0_distance WHERE target>$after COLLATE NOCASE ORDER BY target COLLATE NOCASE LIMIT 51";
+        command.CommandText = scope == Tier0OverviewScope.Supported
+            ? """
+              SELECT target FROM tier0_distance
+              WHERE target>$after COLLATE NOCASE
+                AND (classification=$established OR supported_distance IS NOT NULL)
+              ORDER BY target COLLATE NOCASE LIMIT 51
+              """
+            : "SELECT target FROM tier0_distance WHERE target>$after COLLATE NOCASE ORDER BY target COLLATE NOCASE LIMIT 51";
         command.Parameters.AddWithValue("$after", after?.AfterDn ?? "");
+        if (scope == Tier0OverviewScope.Supported)
+            command.Parameters.AddWithValue("$established", Tier0State.Established.ToString());
         var names = new List<string>();
         using (var read = command.ExecuteReader())
             while (read.Read()) { token.ThrowIfCancellationRequested(); names.Add(read.GetString(0)); }
@@ -40,7 +61,9 @@ internal static class Tier0Browsing
             var best = BestSupportedRouteStorage.ReadSelection(connection, description, distance, token);
             rows.Add(new(distance.Subject, distance.Facts, best.Best?.Grade));
         }
-        return new(summary, rows, names.Count > 50 ? new(description.GenerationId, summary.CalculationFingerprint, rows[^1].Subject.DistinguishedName) : null);
+        return new(summary, rows, names.Count > 50
+            ? new(description.GenerationId, summary.CalculationFingerprint, scope, rows[^1].Subject.DistinguishedName)
+            : null);
     }
 
     internal static Tier0RouteDetails? ReadObject(SqliteConnection connection, JudgementDescription description,

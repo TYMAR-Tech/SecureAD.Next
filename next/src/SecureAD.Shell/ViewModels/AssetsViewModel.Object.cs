@@ -1,6 +1,10 @@
+using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.Services;
 
@@ -8,39 +12,134 @@ namespace SecureAD.Shell.ViewModels;
 
 internal sealed partial class AssetsViewModel
 {
+    private long _objectRevision;
+    private CancellationTokenSource? _objectPending;
+    [ObservableProperty] private bool _isOpeningObject;
+    [ObservableProperty] private Notice? _objectRefusal;
+    public Task ObjectReadCompletion { get; private set; } = Task.CompletedTask;
+    public bool HasObjectRefusal => ObjectRefusal is not null;
+    public bool HasObjectPresentation => IsOpeningObject || Opened is not null || HasObjectRefusal;
+    public bool ShowsObjectContent => Opened is not null && !IsOpeningObject && !HasObjectRefusal;
+    public string ObjectTitle => Opened is { } value ? value.Name + " - Object details | SecureAD" : "Object details | SecureAD";
+    public event EventHandler? LocateObjectRequested;
+
+    partial void OnIsOpeningObjectChanged(bool value) => AnnounceObjectPresentation();
+    partial void OnObjectRefusalChanged(Notice? value) => AnnounceObjectPresentation();
+    partial void OnOpenedChanged(ObjectViewModel? value) => AnnounceObjectPresentation();
+
+    private void AnnounceObjectPresentation()
+    {
+        OnPropertyChanged(nameof(HasObjectRefusal));
+        OnPropertyChanged(nameof(HasObjectPresentation));
+        OnPropertyChanged(nameof(ShowsObjectContent));
+        OnPropertyChanged(nameof(ObjectTitle));
+        OnPropertyChanged(nameof(HasOpenObject));
+    }
+
+    private void CancelObjectRead()
+    {
+        _objectRevision++;
+        var pending = _objectPending;
+        _objectPending = null;
+        pending?.Cancel();
+        Opened?.Suspend();
+        IsOpeningObject = false;
+    }
+
+    private void ClearObjectPresentation()
+    {
+        CancelObjectRead();
+        Opened = null;
+        ObjectRefusal = null;
+        _groupObjectBack.Clear();
+    }
+
     private async Task OpenAsync(string bundle, string distinguishedName, string section)
     {
-        var revision = _revision + 1;
-        ObjectViewModel? opened = null;
-        await ReadViewAsync(bundle, reader => reader.ReadObjectAttributes(bundle, distinguishedName), (attributes, current) =>
+        var revision = _objectRevision;
+        var pending = new CancellationTokenSource();
+        _objectPending = pending;
+        using var navigation = NavigationDiagnostics.Begin(bundle, "open captured object");
+        try
         {
-            if (attributes is null)
+            var result = await _assets.ReadAsync(bundle, (reader, token) =>
             {
-                if (ShowsTier0)
+                token.ThrowIfCancellationRequested();
+                var attributes = reader.ReadObjectAttributes(bundle, distinguishedName);
+                return (Attributes: attributes, Current: reader.CaptureReadValidity());
+            }, pending.Token);
+            if (pending.IsCancellationRequested || revision != _objectRevision || BundlePath != bundle) return;
+            if (!result.Attributes.IsSuccess) throw new InvalidOperationException(result.Attributes.Error.Description);
+            if (!result.Current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
+            if (result.Attributes.Value is not { } attributes)
+            {
+                ObjectRefusal = new Notice(NavigationText.Get("Refused"), NavigationText.Get("ObjectMissing"));
+                if (section == ObjectSectionCatalog.SavedTier0Path)
                 {
                     Tier0ObjectLimitation = "The selected saved analysis identity has no captured object to open. Its unresolved or unassessed result remains in the overview; no object details or route are inferred.";
-                    return;
                 }
-                RefuseView(NavigationText.Get("ObjectMissing"));
+                navigation.Complete("refused", "object missing");
                 return;
             }
             var objectClass = ClassOf(attributes);
-            opened = new ObjectViewModel(distinguishedName, objectClass ?? "not recorded", objectClass,
-                (definition, token) => ReadSectionAsync(bundle, attributes, objectClass, definition, current, token));
-            _objectCurrent = current;
+            var opened = new ObjectViewModel(distinguishedName, objectClass ?? "not recorded", objectClass,
+                (definition, token) => ReadSectionAsync(bundle, attributes, objectClass, definition, result.Current, token))
+            {
+                ObjectGuid = attributes.ObjectGuid,
+            };
             Opened = opened;
-        }, saved: false);
-        if (revision != _revision || opened is null || !ReferenceEquals(Opened, opened)) return;
-        opened.Show(section);
-        Announce();
-        await opened.ReadCompletion;
+            IsOpeningObject = false;
+            opened.Show(section);
+            navigation.Complete("success", null);
+            await opened.ReadCompletion;
+        }
+        catch (OperationCanceledException) when (pending.IsCancellationRequested) { navigation.Complete("cancelled", null); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException
+            or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            if (revision == _objectRevision && !pending.IsCancellationRequested)
+                ObjectRefusal = new Notice(NavigationText.Get("Refused"), error.Message);
+            navigation.Complete("refused", error.GetType().Name);
+        }
+        finally
+        {
+            if (ReferenceEquals(_objectPending, pending))
+            {
+                _objectPending = null;
+                IsOpeningObject = false;
+            }
+            pending.Dispose();
+        }
+    }
+
+    [RelayCommand]
+    private void LocateObject()
+    {
+        if (Opened is not { } opened || BundlePath is null) return;
+        LocateObjectRequested?.Invoke(this, EventArgs.Empty);
+        Pane = AssetsPane.Objects;
+        var parent = SecureAD.Kernel.Naming.DnHelper.GetParentDn(opened.DistinguishedName);
+        var node = Roots.SelectMany(root => root.ThisAndBelow()).FirstOrDefault(value =>
+            string.Equals(value.DistinguishedName, parent, StringComparison.OrdinalIgnoreCase));
+        if (node is not null)
+        {
+            node.IsSelected = true;
+            Selected = node;
+        }
+        else
+        {
+            ObjectSearchText = opened.Name;
+            SearchObjects();
+        }
     }
 
     private async Task<ObjectSectionViewModel> ReadSectionAsync(string bundle, ObjectAttributes attributes,
         string? objectClass, ObjectSectionDefinition definition, Func<bool> current, CancellationToken token)
     {
         var dn = attributes.DistinguishedName;
-        if (definition.Key == ObjectSectionCatalog.Membership && Pane == AssetsPane.Groups)
+        if (definition.Key == ObjectSectionCatalog.Help)
+            return new ObjectHelpSectionViewModel(definition);
+        if (definition.Key == ObjectSectionCatalog.Membership && string.Equals(objectClass, "group", StringComparison.OrdinalIgnoreCase))
         {
             var members = new GroupMembershipSectionViewModel(definition, attributes,
                 (names, cancellation) => ReadBoundAsync(bundle, current,
@@ -69,7 +168,7 @@ internal sealed partial class AssetsViewModel
             var sidValue = attributes.Find("objectSid")?.OnlyValue;
             var sid = sidValue?.Bytes is { } bytes ? Sid.ToText(bytes) : sidValue?.Text;
             var scope = sid is not null && Sid.IsBuiltinDomain(sid) ? attributes.DomainFqdn : null;
-            var controls = new ControlEdgesSectionViewModel(definition);
+            var controls = new ControlEdgesSectionViewModel(definition, DnHelper.ExtractFirstRdn(dn));
             controls.ConfigureMemberAttributionAsync(
                 (row, cancellation) => ReadBoundAsync(bundle, current,
                     reader => reader.ReadMemberAttribution(bundle, row.HolderSid, row.HolderScope, row.Target), cancellation,

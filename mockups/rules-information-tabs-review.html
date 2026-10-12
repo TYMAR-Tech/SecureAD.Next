@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureAD - Rules information presentation</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 15px/1.55 "Segoe UI", Arial, sans-serif;
+      --canvas: #151b24;
+      --surface: #202936;
+      --section-header: #283444;
+      --text: #f1f5fc;
+      --label: #c1cede;
+      --muted: #c1cede;
+      --border: #65778f;
+      --divider: #4b5b70;
+      --accent: #b7d5ff;
+      --rail: #152033;
+      --capsule: #304666;
+      --rail-text: #f1f5fc;
+      --tab-background: #ffffff;
+      --tab-text: #12161a;
+      --notice-background: #3e3320;
+      --notice-text: #ffe1a3;
+      background: var(--canvas);
+      color: var(--text);
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --canvas: #dfe7f0;
+      --surface: #ffffff;
+      --section-header: #eaf1f9;
+      --text: #12161a;
+      --label: #375571;
+      --muted: #4c555f;
+      --border: #b9cada;
+      --divider: #dde1e6;
+      --accent: #1a5fcc;
+      --rail: #1e2938;
+      --capsule: #2a3648;
+      --notice-background: #fbeec9;
+      --notice-text: #7a4e00;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible, a:focus-visible, [role="tabpanel"]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    [hidden] { display: none !important; }
+    .review-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--divider);
+      background: var(--surface);
+    }
+    .review-context { margin-right: auto; }
+    .review-context strong { display: block; font-size: 14px; }
+    .review-context small { display: block; color: var(--muted); font-size: 12px; }
+    .preview-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .control-group { display: flex; align-items: center; gap: 4px; }
+    .control-group > span { margin-right: 4px; color: var(--muted); font-size: 12px; }
+    .control-group button {
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 9px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .control-group button[aria-pressed="true"] {
+      border-color: var(--accent);
+      background: var(--section-header);
+      box-shadow: inset 0 -2px var(--accent);
+      font-weight: 600;
+    }
+    .stage { padding: 18px; }
+    .detail-preview { max-width: 1080px; margin: 0 auto; }
+    .detail-preview.narrow { max-width: 640px; }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      width: fit-content;
+      max-width: 100%;
+      padding: 3px;
+      margin-bottom: 14px;
+      background: var(--rail);
+      border: 1px solid var(--border);
+      border-radius: 23px;
+    }
+    .tabs button {
+      padding: 8px 17px;
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      background: var(--capsule);
+      color: var(--rail-text);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .tabs button:hover { border-color: var(--accent); }
+    .tabs button[aria-selected="true"] {
+      border-color: var(--tab-text);
+      background: var(--tab-background);
+      color: var(--tab-text);
+      font-weight: 650;
+    }
+    .sections { display: grid; gap: 14px; }
+    .information-section {
+      overflow: hidden;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .section-heading {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px 14px;
+      padding: 10px 16px;
+      background: var(--section-header);
+      border-bottom: 1px solid var(--divider);
+    }
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.35;
+      font-weight: 650;
+      color: var(--text);
+    }
+    .section-heading .qualifier { color: var(--muted); font-size: 12px; }
+    .section-body { padding: 13px 16px 16px; }
+    .section-body p {
+      max-width: 90ch;
+      margin: 0;
+      font-weight: 400;
+      overflow-wrap: anywhere;
+    }
+    .attributes { margin: 0; }
+    .attribute-row {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.8fr) minmax(0, 2fr);
+      gap: 8px 20px;
+      align-items: baseline;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .attribute-row:first-child { padding-top: 0; }
+    .attribute-row:last-child { padding-bottom: 0; border-bottom: 0; }
+    dt { color: var(--label); font-weight: 600; }
+    dd { margin: 0; min-width: 0; }
+    code {
+      color: var(--text);
+      font: 14px/1.5 Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+    .outcome-row {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .execution-status {
+      padding: 3px 9px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .outcome-row p { padding-top: 3px; }
+    .limitation .section-heading {
+      border-left: 4px solid var(--notice-text);
+      padding-left: 12px;
+    }
+    .reference-link { display: inline-block; color: var(--accent); font-weight: 600; }
+    .reference-address {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font: 13px/1.6 Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 640px) {
+      .stage { padding: 12px; }
+      .tabs { border-radius: 15px; }
+      .tabs button { padding-inline: 11px; }
+      .section-heading { padding: 9px 12px; }
+      .section-body { padding: 12px; }
+      .attribute-row { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="review-bar">
+    <div class="review-context">
+      <strong>Rule-detail mockup: SEC-010 - Unconstrained delegation</strong>
+      <small>Existing rule guidance; illustrative saved figures. Preview only - no application changes.</small>
+    </div>
+    <div class="preview-controls">
+      <div class="control-group" aria-label="Preview theme">
+        <span>Theme:</span>
+        <button type="button" data-theme="dark" aria-pressed="true">Dark</button>
+        <button type="button" data-theme="light" aria-pressed="false">Light</button>
+      </div>
+      <div class="control-group" aria-label="Preview width">
+        <span>Pane:</span>
+        <button type="button" data-width="fit" aria-pressed="true">Fit</button>
+        <button type="button" data-width="narrow" aria-pressed="false">Narrow</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage">
+    <article class="detail-preview" id="detailPreview">
+      <nav class="tabs" role="tablist" aria-label="Rule information">
+        <button type="button" role="tab" id="summaryTab" aria-controls="summaryPanel"
+                aria-selected="true" tabindex="0">Summary</button>
+        <button type="button" role="tab" id="evidenceTab" aria-controls="evidencePanel"
+                aria-selected="false" tabindex="-1">Evidence used</button>
+        <button type="button" role="tab" id="scopeTab" aria-controls="scopePanel"
+                aria-selected="false" tabindex="-1">Scope &amp; limitations</button>
+        <button type="button" role="tab" id="referenceTab" aria-controls="referencePanel"
+                aria-selected="false" tabindex="-1">Reference</button>
+      </nav>
+
+      <section id="summaryPanel" role="tabpanel" aria-labelledby="summaryTab" tabindex="0">
+        <div class="sections">
+          <section class="information-section">
+            <header class="section-heading">
+              <h2>What this rule detects:</h2>
+            </header>
+            <div class="section-body">
+              <p>Reports a user or service account whose account options trust it for unconstrained delegation.</p>
+            </div>
+          </section>
+          <section class="information-section">
+            <header class="section-heading">
+              <h2>Why it matters:</h2>
+            </header>
+            <div class="section-body">
+              <p>Any service running as this account can impersonate whoever authenticates to it, to any other service. An attacker who compromises the account inherits that: every user who has authenticated to it becomes an identity he can borrow, including administrators.</p>
+            </div>
+          </section>
+          <section class="information-section">
+            <header class="section-heading">
+              <h2>What to do:</h2>
+            </header>
+            <div class="section-body">
+              <p>Move the service to resource-based constrained delegation, which lets each resource decide who may impersonate to it. Removing the setting outright will break whatever relied on it, so identify what authenticates to this account first - Microsoft marks unconstrained delegation &quot;Supported (not recommended)&quot; rather than unsupported, and it is often load-bearing.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="evidencePanel" role="tabpanel" aria-labelledby="evidenceTab" tabindex="0" hidden>
+        <div class="sections">
+          <section class="information-section">
+            <header class="section-heading">
+              <h2>Captured attributes:</h2>
+              <span class="qualifier">Required inputs declared by this rule</span>
+            </header>
+            <div class="section-body">
+              <dl class="attributes">
+                <div class="attribute-row">
+                  <dt>Account state:</dt>
+                  <dd><code>userAccountControl</code></dd>
+                </div>
+                <div class="attribute-row">
+                  <dt>Object class:</dt>
+                  <dd><code>objectClass</code></dd>
+                </div>
+                <div class="attribute-row">
+                  <dt>Primary group:</dt>
+                  <dd><code>primaryGroupID</code></dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+          <section class="information-section">
+            <header class="section-heading">
+              <h2>Saved execution result:</h2>
+            </header>
+            <div class="section-body outcome-row">
+              <span class="execution-status">Completed</span>
+              <p>Judged 2,101 objects and reported 1.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="scopePanel" role="tabpanel" aria-labelledby="scopeTab" tabindex="0" hidden>
+        <div class="sections">
+          <section class="information-section limitation">
+            <header class="section-heading">
+              <h2>Assessment boundary:</h2>
+            </header>
+            <div class="section-body">
+              <p>It reads that one setting and nothing else: it does not report constrained delegation or resource-based constrained delegation, which are the safer forms and are not judged here at all, and it cannot say whether anyone has ever actually authenticated to this account.</p>
+            </div>
+          </section>
+          <section class="information-section limitation">
+            <header class="section-heading">
+              <h2>Usage is not recorded:</h2>
+            </header>
+            <div class="section-body">
+              <p>An account nothing uses carries the same setting as one every administrator signs in through, and the directory does not record the difference.</p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="referencePanel" role="tabpanel" aria-labelledby="referenceTab" tabindex="0" hidden>
+        <section class="information-section">
+          <header class="section-heading">
+            <h2>Microsoft reference:</h2>
+          </header>
+          <div class="section-body">
+            <a class="reference-link" href="https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"
+               target="_blank" rel="noopener noreferrer">Security assessment: Unsecure account attributes</a>
+            <span class="reference-address">https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes</span>
+          </div>
+        </section>
+      </section>
+    </article>
+  </main>
+
+  <script>
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
+
+    function selectTab(selected) {
+      tabs.forEach(tab => {
+        const active = tab === selected;
+        tab.setAttribute("aria-selected", String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach(panel => {
+        panel.hidden = panel.id !== selected.getAttribute("aria-controls");
+      });
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => selectTab(tab));
+      tab.addEventListener("keydown", event => {
+        const index = tabs.indexOf(tab);
+        let next;
+        if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+        else if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        selectTab(tabs[next]);
+        tabs[next].focus();
+      });
+    });
+
+    document.querySelectorAll("button[data-theme]").forEach(button => {
+      button.addEventListener("click", () => {
+        document.documentElement.dataset.theme = button.dataset.theme;
+        document.querySelectorAll("button[data-theme]").forEach(item =>
+          item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+
+    document.querySelectorAll("button[data-width]").forEach(button => {
+      button.addEventListener("click", () => {
+        document.getElementById("detailPreview").classList.toggle(
+          "narrow", button.dataset.width === "narrow");
+        document.querySelectorAll("button[data-width]").forEach(item =>
+          item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+  </script>
+</body>
+</html>

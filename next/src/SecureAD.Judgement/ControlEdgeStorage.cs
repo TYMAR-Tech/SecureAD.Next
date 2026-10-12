@@ -8,7 +8,7 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    internal const int EngineVersion = 9;
+    internal const int EngineVersion = 10;
 
     public static void CreateTables(SqliteConnection connection)
     {

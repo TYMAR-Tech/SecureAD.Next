@@ -5,11 +5,11 @@ using SecureAD.Shell.Settings;
 namespace SecureAD.Shell.ViewModels;
 
 /// <summary>
-/// What this installation has been told.
+/// What this installation has been told about appearance and capture concurrency.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>It carries one setting, and the other one is not here.</b> Where runs are kept is chosen on
+/// <b>The run-library setting is not here.</b> Where runs are kept is chosen on
 /// Home, which is where an operator needs it - at the moment he has nowhere to put a run. Repeating
 /// the chooser here would be a second control over one value, and
 /// <see cref="RunLibraryLocation"/> exists precisely so there is one.
@@ -29,6 +29,9 @@ namespace SecureAD.Shell.ViewModels;
 /// </remarks>
 internal sealed partial class SettingsViewModel : ObservableObject
 {
+    private readonly ApplicationTheme? _appearance;
+    private ThemeVariant _selectedAppearance = ThemeVariant.Dark;
+
     [ObservableProperty]
     private string _typed = string.Empty;
 
@@ -37,16 +40,52 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Creates the settings screen over the values it can change.</summary>
     /// <param name="concurrency">How many domains this machine reads at the same time.</param>
-    public SettingsViewModel(DomainConcurrency concurrency)
+    public SettingsViewModel(DomainConcurrency concurrency) : this(concurrency, appearance: null) { }
+
+    public SettingsViewModel(DomainConcurrency concurrency, ApplicationTheme? appearance)
     {
         ArgumentNullException.ThrowIfNull(concurrency);
 
         Concurrency = concurrency;
+        _appearance = appearance;
+        _selectedAppearance = appearance?.Current ?? ThemeVariant.Dark;
         Typed = concurrency.Effective.ToString(System.Globalization.CultureInfo.CurrentCulture);
     }
 
     /// <summary>How many domains this machine reads at the same time.</summary>
     public DomainConcurrency Concurrency { get; }
+    public IReadOnlyList<ThemeVariant> AppearanceChoices { get; } = Enum.GetValues<ThemeVariant>();
+    public string AppearanceHeading => "Appearance";
+    public string AppearanceExplanation =>
+        "Changes the application colors only. Audit evidence, analysis, and saved results do not change.";
+    public string? AppearanceProblem => _appearance?.Problem;
+    public bool HasAppearanceProblem => !string.IsNullOrWhiteSpace(AppearanceProblem);
+
+    public ThemeVariant SelectedAppearance
+    {
+        get => _selectedAppearance;
+        set
+        {
+            if (_selectedAppearance == value) return;
+            var previous = _selectedAppearance;
+            if (_appearance is null)
+            {
+                SetProperty(ref _selectedAppearance, value);
+                return;
+            }
+
+            var chosen = _appearance.Choose(value);
+            if (chosen.IsSuccess)
+                SetProperty(ref _selectedAppearance, value);
+            else
+            {
+                _selectedAppearance = previous;
+                OnPropertyChanged(nameof(SelectedAppearance));
+            }
+            OnPropertyChanged(nameof(AppearanceProblem));
+            OnPropertyChanged(nameof(HasAppearanceProblem));
+        }
+    }
 
     /// <summary>The heading over the one setting this screen carries.</summary>
     /// <remarks>

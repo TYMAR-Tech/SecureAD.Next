@@ -508,6 +508,11 @@ public sealed class VouchedValueReachabilityGateTests
     /// 75 adds <c>BroadAdministrativeMembershipEvidence.IsComplete</c>: a supported positive
     /// membership can coexist with capture or scope gaps; complete inputs with no limits and
     /// incomplete inputs or a nonempty limitation collection drive opposite values.
+    /// 76 and 77 add <c>ServiceAccountFindingEvidence.IsComplete</c> and
+    /// <c>ServiceAdministrativeMembership.IsComplete</c>: unread account values and separately
+    /// recorded membership/capture/processing gaps make established positives incomplete.
+    /// 78 adds <c>AttributeWritePermissionEvidence.IsComplete</c>: positive permission proof
+    /// remains incomplete when other permission, identity or account-state inputs have gaps.
     /// </para>
     /// </summary>
     [Fact]
@@ -522,7 +527,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -556,6 +561,9 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "RequesterResourceContext" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "BroadAdministrativeMembershipEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ServiceAccountFindingEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ServiceAdministrativeMembership" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "AttributeWritePermissionEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipLink" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CapturedMemberReferences" && v.Name == "IsComplete");
     }
@@ -693,6 +701,14 @@ public sealed class VouchedValueReachabilityGateTests
                 "contoso.com", "S-1-5-21-1-2-3", null);
             yield return new SecureAD.Judgement.RequesterResourceContext(domain, ["contoso.com"], new string('a', 64));
             yield return new SecureAD.Judgement.RequesterResourceContext(domain, [], new string('a', 64));
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.ServiceAccountFindingEvidence))
+        {
+            var account = new SecureAD.Evidence.Findings.ServiceAccountAssociation(Guid.NewGuid(), "CN=Service,DC=contoso,DC=com", "contoso.com",
+                DateTimeOffset.UnixEpoch, SecureAD.Evidence.EvidenceCompleteness.Complete, SecureAD.Evidence.Findings.ServiceAccountKind.SpnBearingUser,
+                [new(0, "top", null), new(1, "user", null)], [new(0, "HTTP/service.contoso.com", null)], [new(0, "66048", null)], 66048, []);
+            yield return new SecureAD.Evidence.Findings.ServiceAccountFindingEvidence(account, null);
+            yield return new SecureAD.Evidence.Findings.ServiceAccountFindingEvidence(account with { MissingAttributes = ["userAccountControl"] }, null);
         }
         // The generic linear vectors cannot coordinate the nested expansion's stop/limits with
         // the outer availability flag. Exercise the real public getters; do not exempt them.

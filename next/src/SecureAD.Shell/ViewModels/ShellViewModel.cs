@@ -452,7 +452,7 @@ internal sealed partial class ShellViewModel : ObservableObject
         }
         if (value == ShellSection.Rules)
         {
-            if (Library.Selected is { } selected) Rules.Show(selected.Path, selected.Name);
+            if (Library.Selected is { } selected) Rules.Show(selected.Path);
             else Rules.Clear();
             return;
         }

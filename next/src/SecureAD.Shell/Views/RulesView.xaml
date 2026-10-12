@@ -6,7 +6,7 @@
         <DataTemplate x:Key="SelectedRuleDetails">
             <Border Style="{StaticResource RuleCard}" Margin="0">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="{StaticResource AttributeHeaderBackground}" Padding="16,12" CornerRadius="7,7,0,0">
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource AttributeHeaderBackground}" Padding="16,12" CornerRadius="7,7,0,0">
                         <StackPanel>
                             <TextBlock Text="{Binding Rule}" Style="{StaticResource RuleLabel}" />
                             <TextBlock Text="{Binding Name}" Style="{StaticResource SectionTitle}" TextWrapping="Wrap" />
@@ -16,64 +16,176 @@
                             </WrapPanel>
                         </StackPanel>
                     </Border>
-                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource AttributeCardBorderBrush}" BorderThickness="0,1,0,1" Padding="16,10">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="This run" Style="{StaticResource Caption}" Margin="0,0,10,0" />
-                            <ContentControl DockPanel.Dock="Left" Style="{StaticResource StateMark}" Content="{Binding State}" Margin="0,0,8,0" />
-                            <TextBlock Text="{Binding Outcome}" Style="{StaticResource StateText}" Tag="{Binding State}" TextWrapping="Wrap" />
-                        </DockPanel>
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="0,1,0,1" Padding="16,10">
+                        <WrapPanel>
+                            <ContentControl Style="{StaticResource StateMark}" Content="{Binding State}" Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding Assessment}" Style="{StaticResource StateText}" Tag="{Binding State}" Margin="0,0,16,0" />
+                            <TextBlock Text="{Binding FindingSummary}" FontWeight="SemiBold" Margin="0,0,16,0" />
+                            <TextBlock Text="{Binding Judged,StringFormat={}{0:N0} objects judged}" Style="{StaticResource Caption}" />
+                        </WrapPanel>
                     </Border>
                     <TextBlock DockPanel.Dock="Bottom" Text="Severity classifies a finding; the saved execution outcome is a separate fact. Guidance is not new analysis of this run."
                                Style="{StaticResource Caption}" Margin="16,8" />
                     <ScrollViewer x:Name="RuleExplanationScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="16" MaxWidth="1100" HorizontalAlignment="Stretch">
-                            <TextBlock Text="Looks for" Style="{StaticResource RuleLabel}" />
-                            <TextBox Text="{Binding LooksFor, Mode=OneWay}" Style="{StaticResource RuleText}" />
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                        <TabControl x:Name="RuleInformationTabs" Style="{StaticResource RuleInformationTabs}" Margin="12">
+                            <TabItem Header="Summary" Style="{StaticResource RuleInformationTab}">
                                 <StackPanel>
-                                    <TextBlock Text="Evidence used" Style="{StaticResource RuleLabel}" />
-                                    <TextBox Text="{Binding DeclaredEvidence, Mode=OneWay}" Style="{StaticResource RuleText}" Margin="0" />
+                                    <Border Style="{StaticResource RuleInformationSection}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <TextBlock Text="What this rule detects:" Style="{StaticResource RuleInformationTitle}" />
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <TextBox Text="{Binding LooksFor,Mode=OneWay}" Style="{StaticResource RuleText}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource RuleInformationSection}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <TextBlock Text="Why it matters:" Style="{StaticResource RuleInformationTitle}" />
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <TextBox Text="{Binding WhyItMatters,Mode=OneWay}" Style="{StaticResource RuleText}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource RuleInformationSection}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <TextBlock Text="What to do:" Style="{StaticResource RuleInformationTitle}" />
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <TextBox Text="{Binding WhatToDo,Mode=OneWay}" Style="{StaticResource RuleText}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
-                            </Border>
-                            <Border Background="{StaticResource AttributeHeaderBackground}" BorderBrush="{StaticResource AttributeSourceBrush}"
-                                    BorderThickness="3,0,0,0" Padding="12"
-                                    Visibility="{Binding HasScopeNotes, Converter={StaticResource Shown}}">
+                            </TabItem>
+                            <TabItem Header="Evidence used" Style="{StaticResource RuleInformationTab}">
                                 <StackPanel>
-                                    <TextBlock Text="Scope and limitations" Style="{StaticResource RuleLabel}" />
+                                    <Border Style="{StaticResource RuleInformationSection}"
+                                            Visibility="{Binding HasCapturedInputs,Converter={StaticResource Shown}}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <WrapPanel>
+                                                    <TextBlock Text="Captured attributes:" Style="{StaticResource RuleInformationTitle}" />
+                                                    <TextBlock Text="Required inputs declared by this rule" Style="{StaticResource Caption}"
+                                                               VerticalAlignment="Center" Margin="14,0,0,0" />
+                                                </WrapPanel>
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <ItemsControl ItemsSource="{Binding CapturedInputs}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border BorderBrush="{DynamicResource DividerBrush}"
+                                                                    BorderThickness="0,0,0,1" Padding="0,8">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="140" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Label}" Style="{StaticResource RuleLabel}"
+                                                                               Margin="0,0,12,0" TextWrapping="Wrap" />
+                                                                    <TextBox Grid.Column="1" Text="{Binding Attribute,Mode=OneWay}"
+                                                                             Style="{StaticResource RuleText}"
+                                                                             FontFamily="{StaticResource IdentifierFontFamily}" />
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource RuleInformationSection}"
+                                            Visibility="{Binding HasRequiredDerivedFacts,Converter={StaticResource Shown}}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <TextBlock Text="Required derived facts:" Style="{StaticResource RuleInformationTitle}" />
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <ItemsControl ItemsSource="{Binding RequiredDerivedFacts}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBox Text="{Binding Mode=OneWay}" Style="{StaticResource RuleText}"
+                                                                     FontFamily="{StaticResource IdentifierFontFamily}" Margin="0,5" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBox Text="{Binding InputDeclarationNotice,Mode=OneWay}" Style="{StaticResource RuleText}"
+                                             Visibility="{Binding HasNoInputDeclaration,Converter={StaticResource Shown}}" Margin="0,0,0,14" />
+                                    <Border Style="{StaticResource RuleInformationSection}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource RuleInformationHeading}">
+                                                <TextBlock Text="Saved execution result:" Style="{StaticResource RuleInformationTitle}" />
+                                            </Border>
+                                            <Border Style="{StaticResource RuleInformationBody}">
+                                                <StackPanel>
+                                                    <Border BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1"
+                                                            CornerRadius="5" Padding="9,3" HorizontalAlignment="Left" Margin="0,0,0,9">
+                                                        <TextBlock Text="{Binding Assessment}" />
+                                                    </Border>
+                                                    <TextBox Text="{Binding Outcome,Mode=OneWay}" Style="{StaticResource RuleText}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </TabItem>
+                            <TabItem Header="Scope &amp; limitations" Style="{StaticResource RuleInformationTab}">
+                                <StackPanel>
                                     <ItemsControl ItemsSource="{Binding ScopeNotes}">
-                                        <ItemsControl.ItemTemplate><DataTemplate>
-                                            <DockPanel Margin="0,0,0,8">
-                                                <TextBlock DockPanel.Dock="Left" Text="•" Margin="0,0,8,0" Foreground="{StaticResource AttributeLabelBrush}" />
-                                                <TextBox Text="{Binding Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource AttributeLabelBrush}" />
-                                            </DockPanel>
-                                        </DataTemplate></ItemsControl.ItemTemplate>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource RuleInformationSection}">
+                                                    <StackPanel>
+                                                        <Border Style="{StaticResource RuleInformationHeading}"
+                                                                BorderBrush="{DynamicResource FaultBrush}" BorderThickness="4,0,0,1">
+                                                            <TextBlock Text="{Binding Heading}" Style="{StaticResource RuleInformationTitle}" />
+                                                        </Border>
+                                                        <Border Style="{StaticResource RuleInformationBody}">
+                                                            <TextBox Text="{Binding Text,Mode=OneWay}" Style="{StaticResource RuleText}" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <TextBox Text="This build has no recorded scope or limitation guidance for this rule."
+                                             Style="{StaticResource RuleText}"
+                                             Visibility="{Binding HasNoScopeNotes,Converter={StaticResource Shown}}" />
                                 </StackPanel>
-                            </Border>
-                            <StackPanel Margin="0,14,0,0" Visibility="{Binding HasMicrosoftReference, Converter={StaticResource Shown}}">
-                                <TextBlock Text="Microsoft reference" Style="{StaticResource RuleLabel}" />
-                                <TextBox Text="{Binding MicrosoftReference, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                                         Foreground="{StaticResource FocusBrush}" />
-                            </StackPanel>
-                        </StackPanel>
+                            </TabItem>
+                            <TabItem Header="Reference" Style="{StaticResource RuleInformationTab}">
+                                <Border Style="{StaticResource RuleInformationSection}">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource RuleInformationHeading}">
+                                            <TextBlock Text="Microsoft reference:" Style="{StaticResource RuleInformationTitle}" />
+                                        </Border>
+                                        <Border Style="{StaticResource RuleInformationBody}">
+                                            <StackPanel>
+                                                <TextBox Text="{Binding MicrosoftReference,Mode=OneWay}" Style="{StaticResource RuleText}"
+                                                         Foreground="{DynamicResource FocusBrush}"
+                                                         Visibility="{Binding HasMicrosoftReference,Converter={StaticResource Shown}}" />
+                                                <TextBox Text="This build has no recorded Microsoft reference for this rule."
+                                                         Style="{StaticResource RuleText}"
+                                                         Visibility="{Binding HasNoMicrosoftReference,Converter={StaticResource Shown}}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </TabItem>
+                        </TabControl>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
     <DockPanel Margin="{StaticResource ScreenPadding}">
-        <Border DockPanel.Dock="Top" Style="{StaticResource RuleCard}" Background="{StaticResource AttributeHeaderBackground}" Padding="14">
-            <StackPanel>
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding RunName}" Style="{StaticResource RowTitle}" Margin="18,0,0,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Rules and their results" Style="{StaticResource ScreenTitle}" />
-                </DockPanel>
-                <TextBox Text="{Binding BundlePath, Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                         FontFamily="{StaticResource IdentifierFontFamily}" FontSize="{StaticResource CaptionFontSize}" Margin="0,6,0,0" />
-                <TextBlock Text="Whole captured forest. Saved rule outcomes for this run, not a selected directory container."
-                           Style="{StaticResource Caption}" Margin="0,6,0,0" />
-            </StackPanel>
-        </Border>
         <TextBlock DockPanel.Dock="Top" Text="Choose a run on Home to see its saved rule results." Style="{StaticResource Caption}"
                    Visibility="{Binding HasNoRun, Converter={StaticResource Shown}}" />
         <TextBlock DockPanel.Dock="Top" Text="Loading saved results..." Style="{StaticResource Caption}"
@@ -82,46 +194,69 @@
                 Visibility="{Binding HasRulesRefusal, Converter={StaticResource Shown}}">
             <StackPanel>
                 <TextBlock Text="{Binding RulesRefusal.Title}" Style="{StaticResource RowTitle}" />
-                <TextBox Text="{Binding RulesRefusal.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{StaticResource FaultBrush}" />
+                <TextBox Text="{Binding RulesRefusal.Detail, Mode=OneWay}" Style="{StaticResource SelectableMessage}" Foreground="{DynamicResource FaultBrush}" />
             </StackPanel>
         </Border>
         <Grid Visibility="{Binding HasResults, Converter={StaticResource Shown}}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="360" MinWidth="260" MaxWidth="600" />
+                <ColumnDefinition Width="560" MinWidth="420" MaxWidth="760" />
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" MinWidth="300" />
             </Grid.ColumnDefinitions>
             <Border Grid.Column="0" Style="{StaticResource RuleCard}" Margin="0">
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Background="{StaticResource ObjectSectionHeadingBackground}" Padding="12,10" CornerRadius="7,7,0,0">
-                        <TextBlock Text="Rules" Style="{StaticResource RowTitle}" />
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource ObjectSectionHeadingBackground}" Padding="12,10" CornerRadius="7,7,0,0">
+                        <TextBlock Text="Rule results" Style="{StaticResource RowTitle}" />
                     </Border>
-                    <TextBlock DockPanel.Dock="Bottom" Text="Select a rule to read its explanation. Drag the divider to adjust the widths."
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource AttributeHeaderBackground}" Padding="10">
+                        <WrapPanel>
+                            <TextBox Width="230" Text="{Binding RuleSearchText,UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Search rule identifier, name or category" Margin="0,0,8,0" />
+                            <ComboBox Width="120" ItemsSource="{Binding RuleAssessmentChoices}"
+                                      SelectedItem="{Binding RuleAssessmentFilter}" Margin="0,0,8,0" />
+                            <ComboBox Width="110" ItemsSource="{Binding RuleSeverityChoices}"
+                                      SelectedItem="{Binding RuleSeverityFilter}" />
+                        </WrapPanel>
+                    </Border>
+                    <TextBlock DockPanel.Dock="Bottom" Text="Zero reported does not mean the assessment completed; read the separate saved status."
                                Style="{StaticResource Caption}" Margin="12,8" />
-                    <ListBox x:Name="RulesList" ItemsSource="{Binding RuleRows}" SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
-                             ItemContainerStyle="{StaticResource RuleListItem}" Background="Transparent" BorderThickness="0" Padding="6"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             AutomationProperties.Name="Rules and saved outcomes">
-                        <ListBox.ItemTemplate><DataTemplate>
-                            <StackPanel>
-                                <WrapPanel>
-                                    <TextBlock Text="{Binding Rule}" Style="{StaticResource RuleLabel}" Margin="0,0,12,4" />
-                                    <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" />
-                                </WrapPanel>
-                                <TextBlock Text="{Binding Name}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                <DockPanel>
-                                    <ContentControl DockPanel.Dock="Left" Style="{StaticResource StateMark}" Content="{Binding State}" Margin="0,0,6,0" />
-                                    <TextBlock Text="{Binding Outcome}" Style="{StaticResource StateText}" Tag="{Binding State}" TextWrapping="Wrap" />
-                                </DockPanel>
-                                <TextBlock Text="{Binding Severity, StringFormat=Severity: {0}}" Style="{StaticResource Caption}" Margin="0,6,0,0" />
-                            </StackPanel>
-                        </DataTemplate></ListBox.ItemTemplate>
-                    </ListBox>
+                    <DataGrid x:Name="RulesTable" ItemsSource="{Binding VisibleRuleRows}"
+                              SelectedItem="{Binding SelectedRule,Mode=TwoWay}"
+                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              HeadersVisibility="Column" SelectionMode="Single"
+                              AutomationProperties.Name="Rules and saved outcomes">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Rule" Width="3*" MinWidth="220">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="2">
+                                            <TextBlock Text="{Binding Rule}" Style="{StaticResource RuleLabel}" />
+                                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="Auto" MinWidth="80" />
+                            <DataGridTemplateColumn Header="Assessment" Width="*" MinWidth="105">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <DockPanel>
+                                            <ContentControl DockPanel.Dock="Left" Style="{StaticResource StateMark}"
+                                                            Content="{Binding State}" Margin="0,0,6,0" />
+                                            <TextBlock Text="{Binding Assessment}" Style="{StaticResource StateText}"
+                                                       Tag="{Binding State}" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Reported" Binding="{Binding Findings}" Width="Auto" MinWidth="75" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </DockPanel>
             </Border>
             <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ShowsPreview="True"
-                          Background="{StaticResource AttributeCardBorderBrush}" AutomationProperties.Name="Resize rules list" />
+                          Background="{DynamicResource AttributeCardBorderBrush}" AutomationProperties.Name="Resize rules list" />
             <ContentControl Grid.Column="2" x:Name="RuleDetail" Content="{Binding SelectedRule}" ContentTemplate="{StaticResource SelectedRuleDetails}"
                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
         </Grid>

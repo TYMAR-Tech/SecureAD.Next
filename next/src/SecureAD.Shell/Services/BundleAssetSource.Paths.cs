@@ -78,14 +78,20 @@ internal sealed partial class BundleAssetSource
     public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory) =>
         WithRun(bundleDirectory, reader => reader.ReadTier0FindingSummary(bundleDirectory));
 
-    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after) =>
-        WithRun(bundleDirectory, reader => reader.ReadTier0Overview(bundleDirectory, after));
+    public Result<Tier0OverviewPage?> ReadTier0Overview(
+        string bundleDirectory,
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadTier0Overview(bundleDirectory, scope, after));
 }
 
 internal sealed partial class AssetReadRequest
 {
-    public Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after) =>
-        ReadProduct(bundleDirectory, reader => reader.ReadTier0Overview(after, _readCancellation),
+    public Result<Tier0OverviewPage?> ReadTier0Overview(
+        string bundleDirectory,
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after) =>
+        ReadProduct(bundleDirectory, reader => reader.ReadTier0Overview(scope, after, _readCancellation),
             "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:");
 
     /// <inheritdoc/>

@@ -45,8 +45,6 @@ public sealed class PopulatedAttributeCardTests
     }
 
     [Theory]
-    [InlineData("Overview")]
-    [InlineData("Account")]
     [InlineData("Delegation")]
     [InlineData("PolicyLinks")]
     [InlineData("OtherValues")]
@@ -101,7 +99,7 @@ public sealed class PopulatedAttributeCardTests
             .Select(control => (string?)control.Ancestors(wpf + "DataTemplate").First().Attribute("DataType")).ToArray();
         Assert.Equal(new[]
         {
-            "{x:Type vm:OverviewSectionViewModel}", "{x:Type vm:AccountSectionViewModel}",
+            "{x:Type vm:OverviewSectionViewModel}", "{x:Type vm:OverviewSectionViewModel}",
             "{x:Type vm:AttributeSectionViewModel}", "{x:Type vm:PolicyLinksSectionViewModel}",
             "{x:Type vm:OtherValuesSectionViewModel}",
         }, consumers);
@@ -135,28 +133,31 @@ public sealed class PopulatedAttributeCardTests
         var definition = ObjectSectionCatalog.For(objectClass).Single(item => item.Key == ObjectSectionCatalog.Overview);
         var data = new ObjectAttributes(Dn, Guid.Empty, DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete, [], "contoso.com");
         var missing = new OverviewSectionViewModel(definition, Judgement.ControlEdgeDeriverTests.Permissions(), data, objectClass);
-        Assert.DoesNotContain(missing.Cards.VisibleValues, row => row.Attribute == "userPrincipalName");
-        missing.Cards.ShowMissingAttributes = true;
-        Assert.Equal("No captured value", Assert.Single(missing.Cards.VisibleValues, row => row.Attribute == "userPrincipalName").Worded);
+        Assert.DoesNotContain(missing.IdentityCards.VisibleValues, row => row.Attribute == "userPrincipalName");
+        missing.IdentityCards.ShowMissingAttributes = true;
+        Assert.Equal("No captured value", Assert.Single(missing.IdentityCards.VisibleValues, row => row.Attribute == "userPrincipalName").Worded);
         var populated = new OverviewSectionViewModel(definition, Judgement.ControlEdgeDeriverTests.Permissions(),
             data with { Attributes = [new("userPrincipalName", AttributeCardinality.SingleValued, [new(0, "example@contoso.com", null)])] }, objectClass);
-        Assert.Equal("example@contoso.com", Assert.Single(populated.Cards.VisibleValues).Worded);
+        Assert.Equal("example@contoso.com", Assert.Single(populated.IdentityCards.VisibleValues).Worded);
     }
 
     [Fact]
     public void MissingFilterDoesNotChangeSecurityQualificationsOrEmptySectionExplanations() => OnSta(() =>
     {
-        var account = (AccountSectionViewModel)Section("Account", true, empty: true);
+        var definition = ObjectSectionCatalog.For("user").Single(section => section.Key == ObjectSectionCatalog.Overview);
+        var overview = new OverviewSectionViewModel(definition, Judgement.ControlEdgeDeriverTests.Permissions(),
+            new(Dn, Guid.Empty, DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete, [], "contoso.com"), "user");
+        var account = Assert.IsType<AccountSectionViewModel>(overview.Account);
         var before = account.Emptiness;
-        var (host, _, _) = AssetCardViewTests.Present(account);
+        var (host, _, _) = AssetCardViewTests.Present(overview);
         Layout(host, 850, 800);
         Assert.DoesNotContain(Descendants<Border>(host), border => border.Name == "AttributeCardSurface");
         Assert.NotNull(before);
-        Assert.Contains(Descendants<TextBlock>(host), text => text.Text == before.Title && text.ActualHeight > 0);
-        account.Cards.ShowMissingAttributes = true;
+        Assert.Contains(Descendants<TextBlock>(host), text => text.Text == before.Detail && text.ActualHeight > 0);
+        overview.ActivityCards.ShowMissingAttributes = true;
         Assert.Equal(before, account.Emptiness);
         Assert.False(account.HasFlags);
-        var overview = new OverviewSectionViewModel(new("Overview", "Overview", ["description"]),
+        overview = new OverviewSectionViewModel(new("Overview", "Overview", ["description"]),
             Judgement.ControlEdgeDeriverTests.Permissions() with
             {
                 Entries = [new(0, "AccessAllowed",
@@ -167,10 +168,10 @@ public sealed class PopulatedAttributeCardTests
         var (ownerHost, _, _) = AssetCardViewTests.Present(overview);
         Layout(ownerHost, 850, 800);
         Assert.Contains(Descendants<TextBlock>(ownerHost), text => text.Text == overview.OwnerQualification && text.ActualHeight > 0);
-        Assert.Empty(overview.Cards.VisibleValues);
-        overview.Cards.ShowMissingAttributes = true;
+        Assert.Empty(overview.IdentityCards.VisibleValues);
+        overview.IdentityCards.ShowMissingAttributes = true;
         Assert.True(overview.HasOwnerQualification);
-        Assert.Single(overview.Cards.VisibleValues);
+        Assert.Single(overview.IdentityCards.VisibleValues);
     });
 
     [Fact]
@@ -181,23 +182,23 @@ public sealed class PopulatedAttributeCardTests
         source.Attributes = new(Dn, Guid.Empty, DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete,
             [new("objectClass", AttributeCardinality.SingleValued, [new(0, "computer", null)])], "contoso.com");
         screen.OpenObject(new(new(Dn, "Example", Guid.Empty, "computer", "DC=contoso,DC=com")));
-        screen.Opened!.Show(ObjectSectionCatalog.Account);
-        var account = Assert.IsType<AccountSectionViewModel>(screen.Opened.Content);
+        var overview = Assert.IsType<OverviewSectionViewModel>(screen.Opened!.Content);
+        var account = Assert.IsType<AccountSectionViewModel>(overview.Account);
         source.Reads.Clear();
-        account.Cards.ShowMissingAttributes = true;
-        Assert.NotEmpty(account.Cards.VisibleValues);
-        account.Cards.ShowMissingAttributes = false;
-        Assert.Empty(account.Cards.VisibleValues);
+        overview.ActivityCards.ShowMissingAttributes = true;
+        Assert.NotEmpty(overview.ActivityCards.VisibleValues);
+        overview.ActivityCards.ShowMissingAttributes = false;
+        Assert.Empty(overview.ActivityCards.VisibleValues);
         Assert.Empty(source.Reads);
+        screen.Opened.Show(ObjectSectionCatalog.Permissions);
+        Assert.IsType<UnloadedObjectSectionViewModel>(screen.Opened.Section(ObjectSectionCatalog.Overview));
         screen.Opened.Show(ObjectSectionCatalog.Overview);
-        Assert.IsType<OverviewSectionViewModel>(screen.Opened.Content);
-        Assert.IsType<UnloadedObjectSectionViewModel>(screen.Opened.Section(ObjectSectionCatalog.Account));
-        screen.Opened.Show(ObjectSectionCatalog.Account);
-        Assert.False(Assert.IsType<AccountSectionViewModel>(screen.Opened.Content).Cards.ShowMissingAttributes);
+        overview = Assert.IsType<OverviewSectionViewModel>(screen.Opened.Content);
+        Assert.False(overview.ActivityCards.ShowMissingAttributes);
         source.IsCurrent = false;
-        screen.Opened.Show(ObjectSectionCatalog.Overview);
+        screen.Opened.Show(ObjectSectionCatalog.Permissions);
         Assert.True(screen.Opened.HasRefusal);
-        account.Cards.ShowMissingAttributes = true;
+        overview.ActivityCards.ShowMissingAttributes = true;
         Assert.Null(screen.Opened.Content);
     }
 
@@ -212,7 +213,6 @@ public sealed class PopulatedAttributeCardTests
         return key switch
         {
             "Overview" => new OverviewSectionViewModel(definition, Judgement.ControlEdgeDeriverTests.Permissions(), data, "user"),
-            "Account" => new AccountSectionViewModel(definition, data),
             "Delegation" => new AttributeSectionViewModel(definition, data),
             "PolicyLinks" => new PolicyLinksSectionViewModel(definition, data),
             "OtherValues" => new OtherValuesSectionViewModel(definition,
@@ -223,8 +223,6 @@ public sealed class PopulatedAttributeCardTests
 
     private static AttributeCardsViewModel Cards(ObjectSectionViewModel section) => section switch
     {
-        OverviewSectionViewModel value => value.Cards,
-        AccountSectionViewModel value => value.Cards,
         AttributeSectionViewModel value => value.Cards,
         PolicyLinksSectionViewModel value => value.Cards,
         OtherValuesSectionViewModel value => value.Cards,

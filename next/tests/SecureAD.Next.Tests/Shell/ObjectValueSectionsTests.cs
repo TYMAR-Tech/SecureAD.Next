@@ -7,7 +7,7 @@ using Xunit;
 namespace SecureAD.Next.Tests.Shell;
 
 /// <summary>
-/// The two sections that read what an object is: Overview and Account.
+/// The combined Overview presentation and its account-state model.
 /// </summary>
 /// <remarks>
 /// The subject throughout is what the screen says when there is nothing to say. An attribute with
@@ -240,7 +240,7 @@ public sealed class ObjectValueSectionsTests
     [Fact]
     public void AnObjectWhoseValuesWereNotReadSaysTheStateWasNotRead()
     {
-        var account = new AccountSectionViewModel(Definition(ObjectSectionCatalog.Account), null);
+        var account = UnreadAccount();
 
         Assert.Equal("The account state was not read", account.Emptiness!.Title);
     }
@@ -465,7 +465,14 @@ public sealed class ObjectValueSectionsTests
         ApplicationData: []);
 
     private static AccountSectionViewModel Account(params ObjectAttribute[] attributes) =>
-        new(Definition(ObjectSectionCatalog.Account), Attributes(attributes));
+        Assert.IsType<AccountSectionViewModel>(new OverviewSectionViewModel(
+            ObjectSectionCatalog.For("user").Single(section => section.Key == ObjectSectionCatalog.Overview),
+            Permissions(), Attributes(attributes), "user").Account);
+
+    private static AccountSectionViewModel UnreadAccount() =>
+        Assert.IsType<AccountSectionViewModel>(new OverviewSectionViewModel(
+            ObjectSectionCatalog.For("user").Single(section => section.Key == ObjectSectionCatalog.Overview),
+            Permissions(), null, "user").Account);
 
     /// <summary>The catalogue's own definition, so a test cannot invent a section.</summary>
     private static ObjectSectionDefinition Definition(string key) =>

@@ -145,6 +145,10 @@ public sealed class ControlEdgeLayoutTests
         [63] = "657F2FDEEB8AA4A078AC6ED7A8A28ACAA260EA8E6E4DEB6B5D90A29315976E3A",
         // Observed SEC-062 typed membership layout; no historical checkpoint is replaced.
         [64] = "9CCE1CA02BFE4BC2E0F43AE2DE6E660A05AC3BFB4A5243ACC6AD81FE8F4C465F",
+        // Observed SEC-100/101 typed account/membership table; earlier checkpoints remain frozen.
+        [65] = "4F2097C2B23BECFBBC8F17526B3C9EC70C0B4CBE7BCD91CA9123B43CF2026F0D",
+        // Observed attribute-write finding and shared-occurrence tables; all older layouts remain frozen.
+        [66] = "F2C7D50E54B4D1DDCAF35DA3935E47EF515AC4EFED7F11683E29E1C9D70439A6",
     };
 
     [Fact]

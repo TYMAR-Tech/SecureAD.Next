@@ -46,9 +46,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private Func<bool>? _filterValidity;
     private DirectoryTree? _retainedTree;
     private Func<bool>? _treeCurrent;
-    private AssetsPane _objectPane;
-    private Func<bool>? _objectCurrent;
-    private ListingQuestion? _objectQuestion;
 
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _loadingText = "";
@@ -248,10 +245,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// The object the operator opened from the listing, or null while the listing is showing.
     /// </summary>
     /// <remarks>
-    /// <b>It replaces the grid rather than opening beside it or in a window of its own.</b> The
-    /// predecessor had a left pane and a pop-out window, and both existed because two panes left no
-    /// room for an entry table on a laptop. The tree stays, because an operator reading one
-    /// object's permissions is still somewhere in the directory and will move to a neighbour next.
+    /// The detached presentation shares this run's protected source, but not the listing's
+    /// cancellation or selection. Main-window navigation must not replace the object being read.
     /// </remarks>
     [ObservableProperty]
     private ObjectViewModel? _opened;
@@ -341,14 +336,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Whether a container is selected, and so whether there are objects to list.</summary>
     public bool HasSelection => Selected is not null;
 
-    /// <summary>Whether an object is open and its permissions are showing.</summary>
-    public bool HasOpenObject => Opened is not null && Pane == _objectPane;
+    /// <summary>Whether detached details are open for an object.</summary>
+    public bool HasOpenObject => Opened is not null;
 
     /// <summary>
-    /// Whether the listing is showing. Its own answer rather than the negation of
-    /// <see cref="HasOpenObject"/>, for the reason <see cref="HasNoRun"/> gives.
+    /// Whether the main listing is showing. Detached object details do not replace it.
     /// </summary>
-    public bool ShowsListing => !HasOpenObject;
+    public bool ShowsListing => _active && HasTree;
 
     /// <summary>
     /// Whether the listing was read and the selected part of the directory genuinely holds no
@@ -468,6 +462,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         CancelRead();
         if (!string.Equals(BundlePath, bundleDirectory, StringComparison.OrdinalIgnoreCase))
         {
+            ClearObjectPresentation();
             _resetting = true;
             ClearGroups();
             _resetting = false;
@@ -489,7 +484,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Forgets the run being shown, so nothing describes a run no longer chosen.</summary>
     public void Clear()
     {
-        Opened?.Suspend();
+        ClearObjectPresentation();
         CancelRead();
         _resetting = true;
         _assets.CloseRun();
@@ -502,7 +497,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         _retainedTree = null;
         _treeCurrent = null;
         Selected = null;
-        Opened = null;
         Roots.Clear();
         Gaps.Clear();
         Objects.Clear();
@@ -519,6 +513,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Shortfall = null;
         LapsComputers.Clear();
         LapsCounts.Clear();
+        ResetLapsFilters();
+        SelectedLapsComputer = null;
         LapsTotal = 0;
         LapsShortfall = null;
         LapsRefusal = null;
@@ -537,6 +533,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void Read()
     {
+        ClearObjectPresentation();
         CancelRead();
         _retainedTree = null;
         _treeCurrent = null;
@@ -568,7 +565,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         _resetting = true;
         ResetGroupPaging();
         ResetTier0Paging();
-        Opened = null;
         ResetObjectSearch();
         ShowsCaptureCoverageDetails = false;
         Roots.Clear();
@@ -606,8 +602,22 @@ internal sealed partial class AssetsViewModel : ObservableObject
         foreach (var node in Roots.SelectMany(root => root.ThisAndBelow()))
             node.PropertyChanged += OnNodeChanged;
         foreach (var gap in tree.Gaps) Gaps.Add(new TreeGapViewModel(gap));
+
+        var automaticSelection = tree.ForestRootDistinguishedName is null
+            ? Roots.FirstOrDefault()
+            : Roots.SingleOrDefault(root => string.Equals(
+                root.DistinguishedName,
+                tree.ForestRootDistinguishedName,
+                StringComparison.OrdinalIgnoreCase));
+        if (tree.ForestRootDistinguishedName is not null && automaticSelection is null)
+        {
+            throw new InvalidDataException(
+                $"The captured forest root '{tree.ForestRootDistinguishedName}' is not in its directory tree.");
+        }
+
         _resetting = true;
-        Selected = Roots.FirstOrDefault();
+        Selected = automaticSelection;
+        if (automaticSelection is not null) automaticSelection.IsSelected = true;
         _resetting = false;
         HasLooked = true;
     }
@@ -694,14 +704,12 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     private void Open(string distinguishedName, string section)
     {
-        if (!_active || BundlePath is null || _captureIsRunning) return;
-        CancelRead();
-        ViewRefusal = null;
-        _objectPane = Pane;
-        _objectQuestion = Question();
+        if (BundlePath is null || _captureIsRunning || (!_active && !HasObjectPresentation)) return;
+        CancelObjectRead();
+        IsOpeningObject = true;
+        ObjectRefusal = null;
         Opened = null;
-        Refusal = null;
-        ReadCompletion = OpenAsync(BundlePath, distinguishedName, section);
+        ReadCompletion = ObjectReadCompletion = OpenAsync(BundlePath, distinguishedName, section);
     }
 
     /// <summary>
@@ -732,14 +740,18 @@ internal sealed partial class AssetsViewModel : ObservableObject
             Open(group, ObjectSectionCatalog.Membership);
             return;
         }
-        CancelRead();
-        Opened = null;
-        if (_pages.TryGetValue(Pane, out var page) && page.Question == Question() && page.IsCurrent())
+        DismissObjectDetails();
+    }
+
+    internal void DismissObjectDetails()
+    {
+        ClearObjectPresentation();
+        if (_active && _pages.TryGetValue(Pane, out var page) && page.Question == Question() && page.IsCurrent())
         {
             ViewRefusal = null;
             _listingReady = true;
         }
-        else
+        else if (_active)
             LoadVisible();
         Announce();
     }
@@ -787,7 +799,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(NothingFoundReason));
         if (Pane == AssetsPane.Findings)
         {
-            Opened = null;
             LoadVisible();
         }
     }
@@ -869,7 +880,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         CancelRead();
         if (value != AssetsPane.Objects) ResetObjectSearch();
-        Opened?.Suspend();
         ViewRefusal = null;
         if (!_active || _resetting) return;
         if (!HasLooked && BundlePath is not null && !_captureIsRunning)
@@ -877,23 +887,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
             Read();
             return;
         }
-        if (HasOpenObject && _objectQuestion != Question()) Opened = null;
-        if (HasOpenObject)
-        {
-            if (_objectCurrent?.Invoke() == true)
-            {
-                Opened!.Resume();
-                ReadCompletion = Opened.ReadCompletion;
-            }
-            else
-            {
-                Opened = null;
-                ClearListing(value);
-                RefuseView(SavedPathText.Get("GenerationChanged"));
-            }
-        }
-        else
-            LoadVisible();
+        LoadVisible();
         OnPropertyChanged(nameof(ShowsObjects));
         OnPropertyChanged(nameof(ShowsFindings));
         OnPropertyChanged(nameof(ShowsLaps));
@@ -933,9 +927,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         if (_resetting) return;
         UseSelectedGroupLocation();
-        var leavesDelegationObject = HasOpenObject && ShowsDelegations;
         ResetObjectSearch();
-        Opened = null;
         PageNumber = 1;
         _findingsBack.Clear();
         _findingsFrom = null;
@@ -943,8 +935,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ClearListing(AssetsPane.Findings);
         ClearListing(AssetsPane.Laps);
         ClearListing(AssetsPane.Groups);
-        if (leavesDelegationObject) Pane = AssetsPane.Objects;
-        else if (Pane != AssetsPane.Delegations) LoadVisible();
+        if (Pane != AssetsPane.Delegations) LoadVisible();
         Announce();
     }
 
@@ -978,7 +969,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         ClearListing(AssetsPane.Groups);
         if (Pane is AssetsPane.Objects or AssetsPane.Laps or AssetsPane.Groups)
         {
-            Opened = null;
             LoadVisible();
         }
         Announce();
@@ -994,6 +984,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         AnnounceDelegations();
         AnnounceGroups();
         AnnounceTier0();
+        AnnounceScopeTree();
         OnPropertyChanged(nameof(HasViewRefusal));
         OnPropertyChanged(nameof(IsOpeningTree));
         OnPropertyChanged(nameof(HasListingResult));
@@ -1008,10 +999,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         OnPropertyChanged(nameof(HasOpenObject));
         OnPropertyChanged(nameof(ShowsListing));
 
-        // The two halves derive from ShowsListing, so opening or closing an object changes them
-        // without either of them being assigned. Left out, the grid draws once and never moves,
-        // which reads as a tab that does nothing. Held by
-        // AssetsViewModelTests.OpeningAnObjectTakesTheFindingsGridOffTheScreen.
         OnPropertyChanged(nameof(ShowsObjectListing));
         OnPropertyChanged(nameof(ShowsFindingsListing));
         OnPropertyChanged(nameof(ShowsLapsListing));

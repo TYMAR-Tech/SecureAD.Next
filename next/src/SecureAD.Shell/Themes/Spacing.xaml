@@ -39,7 +39,7 @@
     <Thickness x:Key="DenseRowPadding">8,4</Thickness>
     <Thickness x:Key="DenseCellPadding">8,3</Thickness>
     <Thickness x:Key="DenseHeaderPadding">8,6</Thickness>
-    <sys:Double x:Key="DenseRowMinHeight">26</sys:Double>
+    <sys:Double x:Key="DenseRowMinHeight">32</sys:Double>
 
     <!-- ===================================================================================
          COMFORTABLE - wizards and settings.
@@ -50,7 +50,7 @@
 
     <Thickness x:Key="ComfortableRowPadding">12,10</Thickness>
     <Thickness x:Key="ComfortableFieldPadding">8,6</Thickness>
-    <Thickness x:Key="ComfortableButtonPadding">14,7</Thickness>
+    <Thickness x:Key="ComfortableButtonPadding">10,5</Thickness>
     <sys:Double x:Key="ComfortableRowMinHeight">32</sys:Double>
 
     <!-- ===================================================================================
@@ -58,7 +58,7 @@
          =================================================================================== -->
 
     <!-- The padding inside a screen, between its content and the window chrome. -->
-    <Thickness x:Key="ScreenPadding">20</Thickness>
+    <Thickness x:Key="ScreenPadding">12</Thickness>
 
     <!-- The width of the label column in a label-and-value row. One value, so that every such row
          in the product lines up whether or not it is on the same screen. -->

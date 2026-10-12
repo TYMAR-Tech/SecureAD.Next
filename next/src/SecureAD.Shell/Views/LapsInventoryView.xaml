@@ -3,6 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock Text="LAPS coverage" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="Saved computer states and expiry values; no password is read and no rotation is performed."
+                       Style="{StaticResource Caption}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource AttributeHeaderBackground}"
+                BorderBrush="{DynamicResource AttributeCardBorderBrush}"
+                BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="{Binding ScopeTreeAction}" Command="{Binding ToggleScopeTreeCommand}"
+                        Margin="12,0,0,0" />
+                <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                    <Run Text="Scope: " FontWeight="SemiBold" /><Run Text="{Binding LapsLocation,Mode=OneWay}" />
+                </TextBlock>
+            </DockPanel>
+        </Border>
 
         <!-- THE COUNTS ARE THE FEATURE. An operator watching a rollout is reading "412 not managed"
              far more often than any row, and a page of a hundred machines says nothing about an
@@ -11,23 +28,30 @@
         <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding LapsCounts}" Margin="0,0,0,8">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" />
+                    <WrapPanel />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,24,0">
-                        <TextBlock Text="{Binding Label}"
-                                   Style="{StaticResource BlockLabel}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,6,0" />
-                        <TextBlock Text="{Binding Count}"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
+                    <Border Style="{StaticResource Card}" Width="190" Margin="0,0,8,8">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Label}" Style="{StaticResource Caption}" />
+                            <TextBlock Text="{Binding Count,StringFormat={}{0:N0}}" Style="{StaticResource SectionTitle}" />
+                        </StackPanel>
+                    </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <Border DockPanel.Dock="Top" Background="{DynamicResource AttributeHeaderBackground}"
+                BorderBrush="{DynamicResource AttributeCardBorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="10" Margin="0,0,0,8">
+            <DockPanel>
+                <ComboBox DockPanel.Dock="Right" Width="155" ItemsSource="{Binding LapsStateChoices}"
+                          SelectedItem="{Binding LapsStateFilter}" Margin="10,0,0,0" />
+                <TextBox Text="{Binding LapsSearchText,UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Filter the displayed page by computer or domain" />
+            </DockPanel>
+        </Border>
 
         <!-- WHY A REFUSAL IS A SENTENCE RATHER THAN AN EMPTY TABLE, as the findings grid says: a
              container with no computers and a bundle that would not open draw the same blank grid,
@@ -42,7 +66,7 @@
                            Margin="0,0,0,4" />
                 <TextBox Text="{Binding LapsRefusal.Detail, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
-                         Foreground="{StaticResource SecondaryTextBrush}" />
+                         Foreground="{DynamicResource SecondaryTextBrush}" />
             </StackPanel>
         </Border>
 
@@ -51,19 +75,40 @@
              ones nobody has deployed to. -->
         <TextBlock DockPanel.Dock="Top"
                    Text="{Binding LapsShortfall}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    TextWrapping="Wrap"
                    Margin="0,0,0,8"
                    Visibility="{Binding HasLapsShortfall, Converter={StaticResource Shown}}" />
 
         <TextBlock DockPanel.Dock="Bottom"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Margin="0,8,0,0">
             <Run Text="{Binding LapsTotal, Mode=OneWay}" />
             <Run Text="computers in this container" />
         </TextBlock>
 
-        <DataGrid ItemsSource="{Binding LapsComputers}"
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Margin="0,8,0,0"
+                Visibility="{Binding HasSelectedLapsComputer,Converter={StaticResource Shown}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Open object window"
+                        Command="{Binding OpenLapsComputerCommand}" CommandParameter="{Binding SelectedLapsComputer}"
+                        Style="{StaticResource PrimaryButton}" Margin="12,0,0,0" />
+                <StackPanel>
+                    <TextBlock Text="{Binding SelectedLapsComputer.Name}" Style="{StaticResource RowTitle}" />
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource Caption}">
+                        <Run Text="{Binding SelectedLapsComputer.Domain,Mode=OneWay}" /><Run Text=" · " />
+                        <Run Text="{Binding SelectedLapsComputer.Management,Mode=OneWay}" /><Run Text=" · " />
+                        <Run Text="{Binding SelectedLapsComputer.Capability,Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource Caption}">
+                        <Run Text="Windows expiry " /><Run Text="{Binding SelectedLapsComputer.WindowsLapsExpiry,Mode=OneWay}" />
+                        <Run Text=" · Legacy expiry " /><Run Text="{Binding SelectedLapsComputer.LegacyLapsExpiry,Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <DataGrid ItemsSource="{Binding VisibleLapsComputers}" SelectedItem="{Binding SelectedLapsComputer,Mode=TwoWay}"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   HeadersVisibility="Column"
@@ -71,6 +116,7 @@
 
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" Width="*" />
 
                 <!-- The state, and the mark beside it. Unexpected is not coloured as bad: the
                      machine is managed and there is no exposure - what is wrong is that Microsoft

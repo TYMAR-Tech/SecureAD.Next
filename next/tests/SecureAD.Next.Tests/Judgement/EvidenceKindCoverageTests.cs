@@ -50,6 +50,29 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(new UnexpectedResourceBasedDelegationWrite().Definition, "CN=Service target,DC=contoso,DC=com",
+            AttributeWriteRuleTests.ReadPublishedFindings().Single(finding => finding.RuleId == "SEC-014").Evidence,
+            read =>
+            {
+                var proof = Assert.IsType<AttributeWritePermissionEvidence>(read);
+                Assert.Equal(AttributeWritePermissionKind.ResourceBasedConstrainedDelegation, proof.PermissionKind);
+                Assert.Equal("msDS-AllowedToActOnBehalfOfOtherIdentity", proof.Attribute.LdapName);
+                Assert.Equal(0x20, Assert.Single(proof.Entries).AccessMask);
+                Assert.True(proof.IsComplete);
+            }),
+        new Sample(new ServiceAccountWithAdministrativeMembership().Definition, "CN=Unconventional account,DC=contoso,DC=com",
+            new ServiceAccountFindingEvidence(new(Guid.NewGuid(), "CN=Unconventional account,DC=contoso,DC=com", "contoso.com",
+                DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete, ServiceAccountKind.SpnBearingUser,
+                [new(0, "top", null), new(1, "user", null)], [new(0, "HTTP/service.contoso.com", null)], [new(0, "66048", null)], 66048, []), null),
+            read =>
+            {
+                var evidence = Assert.IsType<ServiceAccountFindingEvidence>(read);
+                Assert.Equal(ServiceAccountKind.SpnBearingUser, evidence.Account.Kind);
+                Assert.Equal(66048u, evidence.Account.UserAccountControl);
+                Assert.Equal("HTTP/service.contoso.com", Assert.Single(evidence.Account.ServicePrincipalNames).Text);
+                Assert.Single(evidence.AdministrativeMembership!.Links);
+                Assert.True(evidence.IsComplete);
+            }),
         new Sample(new BroadAdministrativeGroupMembership().Definition, "CN=Renamed domain administrators,DC=contoso,DC=com",
             new BroadAdministrativeMembershipEvidence(ThisCapture, Guid.NewGuid(), new('a', 64),
                 SecureAD.Derivation.PrincipalClassificationRegistry.Version, BroadAdministrativeGroupMembership.PolicyVersion,
@@ -447,10 +470,12 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
             Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
-                or BroadAdministrativeMembershipEvidence))
+                or BroadAdministrativeMembershipEvidence or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence))
                 .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
             .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1))
-            .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings()).ToArray();
+            .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings())
+            .Concat(ServiceAccountRuleTests.ReadPublishedFindings())
+            .Concat(AttributeWriteRuleTests.ReadPublishedFindings()).ToArray();
 
         foreach (var sample in Samples)
         {

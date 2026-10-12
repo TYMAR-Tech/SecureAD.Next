@@ -26,10 +26,12 @@
                     spacing, control templates resolve all of them. A dictionary moved above
                     its dependencies fails while parsing rather than quietly rendering wrong.
 
-                    Palette is the only file a second theme replaces, and nothing outside
-                    Brushes.xaml may reference it.
+                    A theme switch replaces the active semantic palette, then recreates the one
+                    shared brush dictionary against it. Application-level brush objects do not
+                    re-evaluate an internal DynamicResource when only their palette is replaced;
+                    every production brush use is therefore dynamic and receives the new objects.
                 -->
-                <ResourceDictionary Source="Themes/Palette.xaml" />
+                <ResourceDictionary Source="Themes/Palette.Dark.xaml" />
                 <ResourceDictionary Source="Themes/Brushes.xaml" />
                 <ResourceDictionary Source="Themes/Type.xaml" />
                 <ResourceDictionary Source="Themes/Spacing.xaml" />

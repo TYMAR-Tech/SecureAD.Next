@@ -537,6 +537,17 @@ public sealed class DerivationReader : IDisposable
             && nesting.Outcome is not (DerivationPhaseOutcome.DidNotRun or DerivationPhaseOutcome.Failed);
     }
 
+    /// <summary>Reads one principal's saved membership routes independently of its protection verdict.</summary>
+    public MembershipRouteSummary MembershipRoutesOf(string sid, string? scope)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sid);
+        var id = FindSidId(sid, scope ?? "");
+        if (id is null) return MembershipRouteSummary.NotDerived;
+        var key = id.Value.ToString(CultureInfo.InvariantCulture);
+        return MembershipRouteStorage.Read(_connection, key).GetValueOrDefault(key, MembershipRouteSummary.NotDerived);
+    }
+
     /// <summary>
     /// How many principals claimed a member no captured object answers to, or null where the
     /// nesting was never derived.

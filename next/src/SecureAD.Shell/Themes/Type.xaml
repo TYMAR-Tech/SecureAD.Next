@@ -28,8 +28,8 @@
     <FontFamily x:Key="IdentifierFontFamily">Cascadia Mono, Consolas</FontFamily>
 
     <!-- The name of the screen: "New audit". One per screen. -->
-    <sys:Double x:Key="ScreenTitleFontSize">24</sys:Double>
-    <sys:Double x:Key="DashboardMetricFontSize">32</sys:Double>
+    <sys:Double x:Key="ScreenTitleFontSize">22</sys:Double>
+    <sys:Double x:Key="DashboardMetricFontSize">28</sys:Double>
 
     <!-- A section within a screen. -->
     <sys:Double x:Key="SectionTitleFontSize">18</sys:Double>
@@ -38,7 +38,7 @@
     <sys:Double x:Key="RowTitleFontSize">16</sys:Double>
 
     <!-- Ordinary text, and the default for everything not named otherwise. -->
-    <sys:Double x:Key="BodyFontSize">15</sys:Double>
+    <sys:Double x:Key="BodyFontSize">14</sys:Double>
 
     <!-- Labels beside values, and text in a dense table. -->
     <sys:Double x:Key="LabelFontSize">14</sys:Double>

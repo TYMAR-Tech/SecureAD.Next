@@ -362,7 +362,30 @@ public sealed class BundleReader : IDisposable
     /// pure function of it, so a cache would buy a second copy of the same answer and an
     /// obligation to keep it in step with nothing.
     /// </remarks>
-    public DirectoryTree ReadTree() => DirectoryTreeReader.Read(Connection);
+    public DirectoryTree ReadTree()
+    {
+        var tree = DirectoryTreeReader.Read(Connection);
+        var labels = Description.ForestFqdn.Split(
+            '.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (labels.Length == 0)
+            throw new InvalidDataException("The bundle does not name its forest.");
+
+        var expected = string.Join(',', labels.Select(label => "DC=" + label));
+        var root = tree.Roots.SingleOrDefault(node =>
+            node.PartitionKind == NamingContextKind.Domain
+            && string.Equals(
+                node.DistinguishedName,
+                expected,
+                StringComparison.OrdinalIgnoreCase));
+        if (root is null)
+        {
+            throw new InvalidDataException(
+                $"The bundle names '{Description.ForestFqdn}' as its forest but did not record "
+                + $"the corresponding root domain partition '{expected}' as read.");
+        }
+
+        return tree with { ForestRootDistinguishedName = root.DistinguishedName };
+    }
 
     /// <summary>Reads failed-controller history; an unreadable history never means no failures.</summary>
     public Result<IReadOnlyList<DomainCaptureFailure>> ReadDomainCaptureFailures()

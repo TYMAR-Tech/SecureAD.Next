@@ -82,6 +82,27 @@ public sealed class GroupsBrowsingTests
     }
 
     [Fact]
+    public async Task GroupsScopeTreeStartsCompactAndTogglesWithoutChangingTheQuestion()
+    {
+        var (model, source) = Model();
+        model.Pane = AssetsPane.Groups;
+        await model.ReadCompletion;
+        var selected = model.Selected;
+        var queries = source.GroupQueries.Count;
+
+        Assert.False(model.ShowsScopeTree);
+        Assert.Equal("Show scope tree", model.ScopeTreeAction);
+
+        model.ToggleScopeTreeCommand.Execute(null);
+
+        Assert.True(model.ShowsScopeTree);
+        Assert.Equal("Hide scope tree", model.ScopeTreeAction);
+        Assert.Same(selected, model.Selected);
+        Assert.Equal(queries, source.GroupQueries.Count);
+        Assert.Contains(Root, model.GroupLocation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GroupsCycleButtonUsesItsRowRatherThanAnUnrelatedSelection()
     {
         var (model, source) = Model();

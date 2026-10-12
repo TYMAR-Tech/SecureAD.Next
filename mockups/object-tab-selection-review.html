@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureAD - object tab selection review</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 14px/1.4 "Segoe UI", Arial, sans-serif;
+      --canvas: #151b24;
+      --surface: #202936;
+      --field: #161e2a;
+      --subtle: #283444;
+      --heading: #303f54;
+      --ink: #f1f5fc;
+      --muted: #c1cede;
+      --line: #65778f;
+      --accent: #b7d5ff;
+      --accent-ink: #11243e;
+      --selected-tab: #ffffff;
+      --selected-tab-ink: #12161a;
+      --selected: #344e73;
+      background: #10151d;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 760px; background: #10151d; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .review {
+      min-height: 54px;
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #10151d;
+      border-bottom: 1px solid var(--line);
+    }
+    .review strong { display: block; }
+    .review span { color: var(--muted); font-size: 12px; }
+    .choices { margin-left: auto; display: flex; gap: 6px; }
+    .choices button, .actions button {
+      min-height: 32px;
+      padding: 5px 11px;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    .choices button[aria-pressed="true"] {
+      color: var(--accent-ink);
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    .frame {
+      height: calc(100dvh - 54px);
+      min-height: 620px;
+      padding: 10px;
+      background: var(--canvas);
+    }
+    .window {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--canvas);
+    }
+    .object-header {
+      padding: 10px 10px 0;
+      background: var(--subtle);
+      border-bottom: 1px solid var(--line);
+    }
+    .identity-row { display: flex; align-items: flex-start; gap: 12px; }
+    h1 { margin: 0; font-size: 22px; }
+    h1 span { color: var(--muted); font-size: 16px; font-weight: 500; }
+    .dn { margin-top: 4px; font: 600 13px/1.35 Consolas, monospace; }
+    .actions { margin-left: auto; display: flex; gap: 7px; }
+    .tab-strip {
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      gap: 2px;
+      margin: 10px -10px 0;
+      padding: 0 10px;
+      background: #1b2532;
+      border-top: 1px solid #4b5b70;
+      border-radius: 20px;
+      padding: 2px;
+    }
+    .tab {
+      position: relative;
+      min-height: 42px;
+      padding: 7px 12px;
+      color: var(--muted);
+      background: var(--selected);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      border-radius: 0;
+      white-space: nowrap;
+    }
+    .tab:hover { color: var(--ink); background: #28384c; }
+    .tab.help { margin-left: auto; }
+
+    /* A: maximum clarity, redundant fill + text + edge. */
+    [data-design="filled"] .tab.current {
+      color: var(--selected-tab-ink);
+      background: var(--selected-tab);
+      border-radius: 6px;
+      box-shadow: inset 0 0 0 1px var(--selected-tab-ink);
+      font-weight: 750;
+    }
+
+    /* B: conventional desktop tab connected to its content surface. */
+    [data-design="connected"] .tab-strip { border-bottom: 1px solid var(--line); }
+    [data-design="connected"] .tab.current {
+      z-index: 1;
+      margin-top: 4px;
+      margin-bottom: -1px;
+      color: var(--ink);
+      background: var(--canvas);
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--accent);
+      border-bottom-color: var(--canvas);
+      border-radius: 5px 5px 0 0;
+      font-weight: 700;
+    }
+
+    /* C: lower color area, still three cues and keyboard-safe. */
+    [data-design="outlined"] .tab.current {
+      color: var(--ink);
+      background: var(--selected);
+      border: 2px solid var(--accent);
+      border-radius: 5px;
+      font-weight: 700;
+    }
+    [data-design="outlined"] .tab.current::before {
+      content: "";
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      vertical-align: 1px;
+    }
+
+    main { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
+    .question {
+      display: inline-flex;
+      padding: 2px;
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+    }
+    .question button {
+      min-height: 34px;
+      padding: 5px 12px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 3px;
+    }
+    .question button.current {
+      color: var(--accent-ink);
+      background: var(--accent);
+      font-weight: 700;
+    }
+    .toolbar {
+      margin-top: 10px;
+      padding: 9px;
+      display: flex;
+      gap: 8px;
+      background: var(--subtle);
+      border: 1px solid var(--line);
+      border-radius: 5px 5px 0 0;
+    }
+    input {
+      flex: 1;
+      min-height: 34px;
+      padding: 5px 8px;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); }
+    th { padding: 8px; color: var(--muted); background: #152033; text-align: left; }
+    td { padding: 10px 8px; border-top: 1px solid #4b5b70; }
+    tr.selected { background: var(--selected); box-shadow: inset 4px 0 var(--accent); }
+    .explanation {
+      padding: 9px 12px;
+      color: var(--muted);
+      background: var(--field);
+      border-top: 1px solid var(--line);
+    }
+    .explanation strong { color: var(--ink); }
+    @media (max-width: 1050px) {
+      .choices { flex-wrap: wrap; justify-content: flex-end; }
+      .tab { padding-inline: 8px; }
+      .tab.help { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="review">
+    <div>
+      <strong>Object-section selected-tab alternatives</strong>
+      <span>Click a design, then click the search box—the selected tab must remain obvious when keyboard focus moves.</span>
+    </div>
+    <div class="choices">
+      <button type="button" data-choice="filled" aria-pressed="true">A · White selected tab</button>
+      <button type="button" data-choice="connected" aria-pressed="false">B · Connected tab</button>
+      <button type="button" data-choice="outlined" aria-pressed="false">C · Outlined marker</button>
+    </div>
+  </header>
+  <div class="frame">
+    <section class="window" id="window" data-design="filled">
+      <header class="object-header">
+        <div class="identity-row">
+          <div>
+            <h1>ba.admin <span>(User)</span></h1>
+            <div class="dn">CN=ba.admin,OU=Users,OU=BA Lab,DC=ba,DC=ad,DC=lab</div>
+          </div>
+          <div class="actions">
+            <button type="button">Back to the listing</button>
+            <button type="button">Locate in main window</button>
+            <button type="button">Copy DN</button>
+          </div>
+        </div>
+        <nav class="tab-strip" aria-label="Object sections">
+          <button class="tab" type="button">Overview</button>
+          <button class="tab" type="button">Delegation</button>
+          <button class="tab" type="button">Membership</button>
+          <button class="tab" type="button">Permissions</button>
+          <button class="tab current" type="button" aria-current="page">Control edges</button>
+          <button class="tab" type="button">Tier 0 findings and routes</button>
+          <button class="tab" type="button">Other captured values</button>
+          <button class="tab" type="button">Findings</button>
+          <button class="tab" type="button">Evidence</button>
+          <button class="tab help" type="button">Help</button>
+        </nav>
+      </header>
+      <main>
+        <div class="question">
+          <button type="button">Who can control ba.admin?</button>
+          <button type="button" class="current">What can ba.admin control?</button>
+        </div>
+        <div class="toolbar">
+          <input type="search" placeholder="Search target or capability..." aria-label="Search control relationships">
+          <button type="button">Show expected</button>
+        </div>
+        <table>
+          <thead><tr><th>Target</th><th>Capability</th><th>Support</th><th>Expectedness</th></tr></thead>
+          <tbody>
+            <tr class="selected"><td>Domain Admins</td><td>Can change group membership</td><td>Established</td><td>Unexpected</td></tr>
+            <tr><td>OU=Servers</td><td>Can change permissions</td><td>Established</td><td>Unknown</td></tr>
+          </tbody>
+        </table>
+        <div class="explanation">
+          <strong>Selected: A · White selected tab.</strong>
+          It uses exact white fill, dark lettering, bold weight, a dark outline, and rounded corners.
+          B is the most conventional desktop treatment. C preserves more dark surface but is easier to miss.
+        </div>
+      </main>
+    </section>
+  </div>
+  <script>
+    document.querySelectorAll("[data-choice]").forEach(button => button.addEventListener("click", () => {
+      document.getElementById("window").dataset.design = button.dataset.choice;
+      document.querySelectorAll("[data-choice]").forEach(item =>
+        item.setAttribute("aria-pressed", String(item === button)));
+    }));
+  </script>
+</body>
+</html>

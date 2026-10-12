@@ -79,7 +79,10 @@ internal interface IAssetReader
     /// <summary>Reads whole-run SEC-071 counts, independent of the findings grid's current filters and page.</summary>
     Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory);
 
-    Result<Tier0OverviewPage?> ReadTier0Overview(string bundleDirectory, Tier0OverviewMark? after);
+    Result<Tier0OverviewPage?> ReadTier0Overview(
+        string bundleDirectory,
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after);
 
     /// <summary>Reads a page of stored control statements, with coverage and hidden expected counts.</summary>
     Result<ControlEdgePage> ReadControlEdges(string bundleDirectory, string? target, string? holderSid,

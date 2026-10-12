@@ -120,7 +120,7 @@ public sealed partial class SavedTier0PathSectionTests
     }
 
     [Fact]
-    public async Task P246LeavingTheAssetsPaneCancelsAndReturningReadsFresh()
+    public async Task DetachedObjectReadContinuesWhenTheMainAssetsPaneChanges()
     {
         var source = Source();
         var screen = OpenScreen(source);
@@ -130,13 +130,13 @@ public sealed partial class SavedTier0PathSectionTests
         var completion = screen.Opened.ReadCompletion;
         source.CompleteRead = null;
         screen.Pane = AssetsPane.Findings;
-        Assert.True(pending.Token.IsCancellationRequested);
+        Assert.False(pending.Token.IsCancellationRequested);
         pending.Release();
         await completion;
         screen.Pane = AssetsPane.Objects;
         await screen.ReadCompletion;
         var section = Assert.IsType<SavedTier0PathSectionViewModel>(screen.Opened.Selected);
-        Assert.Equal(2, source.PathQueries.Count);
+        Assert.Single(source.PathQueries);
         Assert.Equal("SEC-071 — Unexpected route to Tier 0", section.Result);
     }
 

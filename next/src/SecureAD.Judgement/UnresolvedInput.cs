@@ -99,6 +99,15 @@ public enum UnresolvedReason
 
     /// <summary>A captured membership hop has unsupported or contradictory authorization scope.</summary>
     MembershipScopeUnsupported,
+
+    /// <summary>The saved membership-route derivation stopped at its recorded processing limit.</summary>
+    MembershipProcessingLimit,
+    /// <summary>Captured SID history cannot be followed through the saved security-membership routes.</summary>
+    MembershipIdentityUnsupported,
+    /// <summary>The captured schema does not identify the requested property-write attribute.</summary>
+    AttributeWriteSchemaUnavailable,
+    /// <summary>The requested property's permission or expectedness assessment has unresolved inputs.</summary>
+    AttributeWriteIncomplete,
 }
 
 /// <summary>

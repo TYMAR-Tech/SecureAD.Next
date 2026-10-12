@@ -47,7 +47,7 @@
                  BorderThickness="0"
                  Background="Transparent">
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
@@ -84,12 +84,12 @@
 
         <TextBlock Style="{StaticResource Caption}"
                    TextWrapping="Wrap"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Margin="0,4,0,0"
                    Text="Typed, and recorded as typed. This product does not check it against anything and does not present it as verified." />
 
         <TextBlock Style="{StaticResource Caption}"
-                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Foreground="{DynamicResource SecondaryTextBrush}"
                    Margin="0,16,0,0">
             <Run Text="Recorded against" />
             <Run Text="{Binding RunBy, Mode=OneWay}" />

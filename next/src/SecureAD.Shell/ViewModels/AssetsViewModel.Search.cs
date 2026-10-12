@@ -34,7 +34,6 @@ internal sealed partial class AssetsViewModel
     private void SearchObjects()
     {
         CancelRead();
-        Opened = null;
         _objectSearchQuery = ObjectSearchText.Trim();
         _objectSearchAfter = _objectSearchNext = null;
         _objectSearchBack.Clear();
@@ -51,7 +50,6 @@ internal sealed partial class AssetsViewModel
         ResetObjectSearch();
         if (wasSearch)
         {
-            Opened = null;
             LoadVisible();
         }
         Announce();

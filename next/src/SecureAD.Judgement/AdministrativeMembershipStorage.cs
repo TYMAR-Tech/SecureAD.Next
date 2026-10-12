@@ -75,16 +75,7 @@ internal static class AdministrativeMembershipStorage
             || all.Select(identity => identity.ObjectGuid).Distinct().Count() != all.Length
             || all.Select(identity => identity.DistinguishedName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != all.Length)
             throw Invalid();
-        var domains = new Dictionary<string, AdministrativeMembershipIdentity>(StringComparer.OrdinalIgnoreCase);
-        foreach (var domain in evidence.Domains)
-        {
-            ValidateIdentity(domain);
-            if (domain.ObjectClass != "domainDNS" || domain.DomainFqdn is null || domain.GroupType is not null || domain.SidScope is not null
-                || domain.NamingContext != domain.DistinguishedName || !Same(DnHelper.DnToFqdn(domain.NamingContext), domain.DomainFqdn)
-                || PrincipalClassificationRegistry.DomainRid(domain.Sid + "-0") != 0
-                || !domains.TryAdd(domain.DomainFqdn, domain)) throw Invalid();
-        }
-        if (domains.Values.Select(domain => domain.Sid).Distinct(StringComparer.OrdinalIgnoreCase).Count() != domains.Count) throw Invalid();
+        var domains = ValidateDomains(evidence.Domains);
         var principals = evidence.Principals.ToDictionary(identity => identity.ObjectGuid);
         if (!principals.TryGetValue(evidence.TargetGuid, out var target)) throw Invalid();
         foreach (var identity in evidence.Principals)
@@ -173,14 +164,30 @@ internal static class AdministrativeMembershipStorage
                 && limit.Reason == AdministrativeMembershipReason.SourceIncomplete))) throw Invalid();
     }
 
-    private static void ValidateIdentity(AdministrativeMembershipIdentity identity)
+    internal static Dictionary<string, AdministrativeMembershipIdentity> ValidateDomains(IReadOnlyList<AdministrativeMembershipIdentity> identities)
+    {
+        var domains = new Dictionary<string, AdministrativeMembershipIdentity>(StringComparer.OrdinalIgnoreCase);
+        foreach (var domain in identities)
+        {
+            ValidateIdentity(domain);
+            if (domain.ObjectClass != "domainDNS" || domain.DomainFqdn is null || domain.GroupType is not null || domain.SidScope is not null
+                || domain.NamingContext != domain.DistinguishedName || !Same(DnHelper.DnToFqdn(domain.NamingContext), domain.DomainFqdn)
+                || PrincipalClassificationRegistry.DomainRid(domain.Sid + "-0") != 0
+                || !domains.TryAdd(domain.DomainFqdn, domain)) throw Invalid();
+        }
+        if (domains.Values.Select(domain => domain.Sid).Distinct(StringComparer.OrdinalIgnoreCase).Count() != domains.Count) throw Invalid();
+        return domains;
+    }
+
+    internal static void ValidateIdentity(AdministrativeMembershipIdentity identity, bool includeMembershipValues = false)
     {
         if (string.IsNullOrWhiteSpace(identity.DistinguishedName) || string.IsNullOrWhiteSpace(identity.NamingContext)
             || string.IsNullOrWhiteSpace(identity.Sid) || !Within(identity.DistinguishedName, identity.NamingContext)
             || Sid.ToBytes(identity.Sid) is not { } bytes
             || identity.Values is not { Count: > 0 } || !Enum.IsDefined(identity.Completeness)
             || identity.Values.Any(value => value is null || value.Ordinal < 0
-                || value.Attribute is not ("objectSid" or "objectClass" or "groupType" or "isDeleted"))
+                || value.Attribute is not ("objectSid" or "objectClass" or "groupType" or "isDeleted")
+                    && (!includeMembershipValues || value.Attribute != "primaryGroupID"))
             || (Sid.IsBuiltinDomain(identity.Sid) ? identity.DomainFqdn is null || !Same(identity.SidScope, identity.DomainFqdn) : identity.SidScope is not null))
             throw Invalid();
         var sids = identity.Values.Where(value => value.Attribute == "objectSid").ToArray();
@@ -196,7 +203,7 @@ internal static class AdministrativeMembershipStorage
                 || parsed != type || type is < int.MinValue or > uint.MaxValue)) throw Invalid();
     }
 
-    private static HashSet<Guid> Reach(IEnumerable<Guid> starts, IReadOnlyList<AdministrativeMembershipLink> links, bool reverse)
+    internal static HashSet<Guid> Reach(IEnumerable<Guid> starts, IReadOnlyList<AdministrativeMembershipLink> links, bool reverse)
     {
         var adjacent = links.GroupBy(link => reverse ? link.MemberGuid : link.GroupGuid)
             .ToDictionary(group => group.Key, group => group.Select(link => reverse ? link.GroupGuid : link.MemberGuid).ToArray());

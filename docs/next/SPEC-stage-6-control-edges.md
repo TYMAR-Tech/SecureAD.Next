@@ -213,6 +213,8 @@ An edge class not on this list is stage 7 work or later, and is named in section
 | `CanAddSelfToGroup` | `MembershipEscalation` | `Self-Membership` (`bf9679c0-0de6-11d0-a285-00aa003049e2`) reaching the group | `Established`, with the semantic precondition `AddedMemberSid == RequesterSid`. See 5.2 |
 | `CanResetPassword` | `CredentialExposure` | `User-Force-Change-Password` (`00299570-246d-11d0-a768-00aa006e0529`) reaching the object | `Established` |
 | `CanWriteKeyCredentialLink` | `CredentialExposure` | write property reaching `msDS-KeyCredentialLink` | `Established` |
+| `CanWriteServicePrincipalName` | `CredentialExposure` | write property reaching `servicePrincipalName`, not its restricted validated write | permission only; successful registration or authentication is not established |
+| `CanWriteResourceBasedConstrainedDelegation` | `ConditionalEscalation` | write property reaching `msDS-AllowedToActOnBehalfOfOtherIdentity` | permission only; a usable delegation configuration or impersonation is not established |
 | `CanReplicateSecretDomainData` | `ReplicationControl` | `DS-Replication-Get-Changes` **and** `DS-Replication-Get-Changes-All` on a naming-context root | `Established`. Target is the naming context, never an object beneath it (`AC-78`). Scope defined in 5.3 |
 | `CanReplicateFilteredAttributes` | `ReplicationControl` | `DS-Replication-Get-Changes` **and either** `DS-Replication-Get-Changes-All` **or** `DS-Replication-Get-Changes-In-Filtered-Set` (`89e95b76-444d-4c62-991a-0facbeda640c`) | `Established`, exactly the `AC-77` predicate. The derivation records **which** qualifying right completed the compound |
 

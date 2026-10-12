@@ -9,8 +9,8 @@
             <views:DomainDetailsView />
         </DataTemplate>
         <Style x:Key="WizardCard" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AttributeCardBorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AttributeCardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="7" />
             <Setter Property="Padding" Value="14" />
@@ -18,13 +18,13 @@
         </Style>
         <Style x:Key="WizardText" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="Margin" Value="0,0,0,6" />
         </Style>
         <Style x:Key="WizardHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TableColumnHeader}">
-            <Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" />
+            <Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" />
             <Setter Property="ContentTemplate">
-                <Setter.Value><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource AttributeLabelBrush}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
+                <Setter.Value><DataTemplate><TextBlock Text="{Binding}" Foreground="{DynamicResource AttributeLabelBrush}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
             </Setter>
         </Style>
     </UserControl.Resources>
@@ -34,11 +34,11 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="New audit" Style="{StaticResource ScreenTitle}" />
-                    <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource Identifier}" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource Identifier}" Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding DomainCountLabel}" Style="{StaticResource WizardText}" HorizontalAlignment="Right" />
-                    <TextBlock Text="{Binding WizardStep}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding WizardStep}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
                 </StackPanel>
             </Grid>
 
@@ -46,8 +46,8 @@
                 <Border Padding="10,6" CornerRadius="5" Margin="0,0,10,0">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-                            <Style.Triggers><DataTrigger Binding="{Binding IsOnDomains}" Value="True"><Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
+                            <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsOnDomains}" Value="True"><Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
                         </Style>
                     </Border.Style>
                     <TextBlock Text="1  Domains &amp; readiness" FontWeight="SemiBold" />
@@ -55,8 +55,8 @@
                 <Border Padding="10,6" CornerRadius="5">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="Background" Value="{StaticResource AssetNavigationBackground}" />
-                            <Style.Triggers><DataTrigger Binding="{Binding IsOnReview}" Value="True"><Setter Property="Background" Value="{StaticResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
+                            <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsOnReview}" Value="True"><Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
                         </Style>
                     </Border.Style>
                     <TextBlock Text="2  Review &amp; run" FontWeight="SemiBold" />
@@ -78,12 +78,12 @@
                         <TextBlock Text="{Binding Progress.Elapsed}" TextWrapping="Wrap" Margin="0,0,18,0" />
                         <TextBlock Text="{Binding Progress.LastUpdateAge}" TextWrapping="Wrap" />
                     </WrapPanel>
-                    <TextBlock Text="{Binding Progress.Caveat}" Style="{StaticResource Caption}" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding Progress.Caveat}" Style="{StaticResource Caption}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
             </Border>
 
-            <Border x:Name="WizardPreparationAttention" DockPanel.Dock="Top" BorderBrush="{StaticResource FaultBrush}" BorderThickness="3,1,1,1"
-                    Background="{StaticResource FaultSubtleBrush}" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
+            <Border x:Name="WizardPreparationAttention" DockPanel.Dock="Top" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="3,1,1,1"
+                    Background="{DynamicResource FaultSubtleBrush}" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
                     Visibility="{Binding ShowsPreparationAttention,Converter={StaticResource Shown}}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Command="{Binding ShowDetailsCommand}" VerticalAlignment="Top" Margin="12,0,0,0">
@@ -98,7 +98,7 @@
                 </DockPanel>
             </Border>
 
-            <Border DockPanel.Dock="Top" Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}"
+            <Border DockPanel.Dock="Top" Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
                     BorderThickness="1" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding ShowsStandaloneNotice,Converter={StaticResource Shown}}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissNoticeCommand}" VerticalAlignment="Top" />
@@ -109,7 +109,7 @@
                 </DockPanel>
             </Border>
 
-            <Border DockPanel.Dock="Bottom" Background="{StaticResource SurfaceBackground}" BorderBrush="{StaticResource DividerBrush}"
+            <Border DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBackground}" BorderBrush="{DynamicResource DividerBrush}"
                     BorderThickness="1,1,1,0" CornerRadius="6,6,0,0" Padding="12,10" Margin="0,10,0,0">
                 <DockPanel LastChildFill="True">
                     <WrapPanel DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -131,10 +131,10 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding IsOnDomains,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="The forest and controllers are discovered for you. Review any issue before continuing; no directory modifications are performed."
-                                   Style="{StaticResource WizardText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                   Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" />
                         <WrapPanel Margin="0,4,0,10">
                             <TextBlock Text="This machine's site: " Style="{StaticResource FieldLabel}" />
-                            <TextBlock Text="{Binding SiteDescription}" TextWrapping="Wrap" Foreground="{StaticResource NotEstablishedBrush}" />
+                            <TextBlock Text="{Binding SiteDescription}" TextWrapping="Wrap" Foreground="{DynamicResource NotEstablishedBrush}" />
                         </WrapPanel>
                         <StackPanel Visibility="{Binding IsBusy,Converter={StaticResource Shown}}" Margin="0,0,0,10">
                             <TextBlock Text="{Binding BusyMessage}" Style="{StaticResource WizardText}" />
@@ -153,8 +153,8 @@
                                           SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                                           ColumnHeaderStyle="{StaticResource WizardHeader}" HorizontalScrollBarVisibility="Auto"
                                           MinRowHeight="{StaticResource DenseRowMinHeight}" MaxHeight="300"
-                                          Background="Transparent" BorderBrush="{StaticResource DividerBrush}"
-                                          HorizontalGridLinesBrush="{StaticResource DividerBrush}">
+                                          Background="Transparent" BorderBrush="{DynamicResource DividerBrush}"
+                                          HorizontalGridLinesBrush="{DynamicResource DividerBrush}">
                                     <DataGrid.Columns>
                                         <DataGridTemplateColumn Header="Include" Width="Auto">
                                             <DataGridTemplateColumn.CellTemplate><DataTemplate>
@@ -181,7 +181,7 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock Text="An excluded domain is different from an unreachable one. Exclusion requires a reason and the person authorizing it."
-                                           TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,10,0,0" />
+                                           TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,10,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -197,13 +197,13 @@
                                                  IsChecked="{Binding CaptureAndAnalyse,Mode=TwoWay}" IsEnabled="{Binding MayChangeObjectScope}">
                                         <StackPanel><TextBlock Text="Capture and analyse" FontWeight="SemiBold" />
                                             <TextBlock Text="Read and seal evidence, derive reusable facts, then judge and save findings. Analysis does not reconnect to AD."
-                                                       TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
+                                                       TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
                                     </RadioButton>
                                     <RadioButton Style="{StaticResource ChoiceRadio}" GroupName="Intent" Margin="0,12,0,0"
                                                  IsChecked="{Binding CaptureOnly,Mode=TwoWay}" IsEnabled="{Binding MayChangeObjectScope}">
                                         <StackPanel><TextBlock Text="Capture only" FontWeight="SemiBold" />
                                             <TextBlock Text="Read and seal evidence, then stop. Derive facts and Judge remain available on the saved run in Home."
-                                                       TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
+                                                       TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
                                     </RadioButton>
                                 </StackPanel>
                             </Border>
@@ -214,13 +214,13 @@
                                     <ItemsControl ItemsSource="{Binding Review.WillBeRead}">
                                         <ItemsControl.ItemTemplate><DataTemplate>
                                             <WrapPanel Margin="0,2"><TextBlock Text="{Binding Domain}" FontWeight="SemiBold" Margin="0,0,12,0" />
-                                                <TextBlock Text="{Binding Controller}" Foreground="{StaticResource SecondaryTextBrush}" /></WrapPanel>
+                                                <TextBlock Text="{Binding Controller}" Foreground="{DynamicResource SecondaryTextBrush}" /></WrapPanel>
                                         </DataTemplate></ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <TextBlock Text="{Binding Review.ConcurrencyStatement}" Style="{StaticResource WizardText}" Margin="0,12,0,0" />
-                                    <TextBlock Text="{Binding Review.ConcurrencyCaveat,Mode=OneTime}" Style="{StaticResource WizardText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                    <TextBlock Text="{Binding Review.ConcurrencyCaveat,Mode=OneTime}" Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" />
                                     <TextBlock Text="{Binding UnestablishedFactSummary}" Style="{StaticResource WizardText}" />
-                                    <TextBlock Text="{Binding UnattestedExclusionNote}" Style="{StaticResource WizardText}" Foreground="{StaticResource FaultBrush}" Visibility="{Binding HasUnattestedExclusions,Converter={StaticResource Shown}}" />
+                                    <TextBlock Text="{Binding UnattestedExclusionNote}" Style="{StaticResource WizardText}" Foreground="{DynamicResource FaultBrush}" Visibility="{Binding HasUnattestedExclusions,Converter={StaticResource Shown}}" />
                                     <TextBlock Text="{Binding Review.NotReadHeading}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,6" />
                                     <ItemsControl ItemsSource="{Binding Exclusions}">
                                         <ItemsControl.ItemTemplate><DataTemplate>
@@ -253,10 +253,10 @@
                                         </StackPanel>
                                     </Expander>
                                     <TextBlock Text="No directory modifications or remediation. A successful read can still contain limitations."
-                                               Style="{StaticResource WizardText}" Foreground="{StaticResource SecondaryTextBrush}" Margin="0,12,0,0" />
+                                               Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,12,0,0" />
                                 </StackPanel>
                             </Border>
-                            <Border Background="{StaticResource FaultSubtleBrush}" Padding="12" Margin="0,0,0,12"
+                            <Border Background="{DynamicResource FaultSubtleBrush}" Padding="12" Margin="0,0,0,12"
                                     Visibility="{Binding Review.HasWarnings,Converter={StaticResource Shown}}">
                                 <StackPanel><TextBlock Text="Worth knowing before you start" FontWeight="SemiBold" TextWrapping="Wrap" />
                                     <ItemsControl ItemsSource="{Binding Review.Warnings}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,4,0,0" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
@@ -279,7 +279,7 @@
                                     <TextBlock Text="{Binding JudgementOutputText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel></Border>
                             </UniformGrid>
-                            <Border Background="{StaticResource FaultSubtleBrush}" BorderBrush="{StaticResource FaultBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,12"
+                            <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,12"
                                     Visibility="{Binding HasOutputLimitations,Converter={StaticResource Shown}}">
                                 <TextBlock Text="Review the separate outcomes below. Incomplete or stopped analysis is not a finding of safety; already sealed evidence remains available." TextWrapping="Wrap" />
                             </Border>
@@ -301,12 +301,12 @@
                 </ScrollViewer>
             </Grid>
         </DockPanel>
-        <Border Background="{StaticResource ScrimBrush}" Visibility="{Binding HasDetails,Converter={StaticResource Shown}}">
-            <Border Background="{StaticResource SurfaceBackground}" Margin="28" BorderBrush="{StaticResource DividerBrush}" BorderThickness="1" CornerRadius="8">
+        <Border Background="{DynamicResource ScrimBrush}" Visibility="{Binding HasDetails,Converter={StaticResource Shown}}">
+            <Border Background="{DynamicResource SurfaceBackground}" Margin="28" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="8">
                 <ContentControl Content="{Binding Details}" />
             </Border>
         </Border>
-        <Border Background="{StaticResource ScrimBrush}" Visibility="{Binding StopConfirmationRequested,Converter={StaticResource Shown}}">
+        <Border Background="{DynamicResource ScrimBrush}" Visibility="{Binding StopConfirmationRequested,Converter={StaticResource Shown}}">
             <Border Style="{StaticResource WizardCard}" MaxWidth="540" Margin="20" VerticalAlignment="Center">
                 <StackPanel>
                     <TextBlock Text="Stop this audit?" Style="{StaticResource SectionTitle}" />

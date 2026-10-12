@@ -33,7 +33,8 @@ public sealed partial class SavedTier0PathSectionTests
             route.CalculationFingerprint, PathInputAvailability.Recorded, route.Coverage, true, true,
             1200, 28, 5, 76, 48, 1124, 0, 64);
         return new(summary, [new(route.Subject, route.Distance, route.BestGrade)],
-            anotherPage ? new(route.GenerationId, route.CalculationFingerprint, route.Subject.DistinguishedName) : null);
+            anotherPage ? new(route.GenerationId, route.CalculationFingerprint, Tier0OverviewScope.Supported,
+                route.Subject.DistinguishedName) : null);
     }
 
     [Fact]
@@ -76,12 +77,13 @@ public sealed partial class SavedTier0PathSectionTests
         model.ShowTier0OverviewCommand.Execute(null);
         await model.ReadCompletion;
         Assert.Single(source.Tier0OverviewQueries);
+        Assert.Equal(Tier0OverviewScope.Supported, source.Tier0OverviewQueries[0].Scope);
         Assert.Contains("1,200", model.Tier0OverviewStatus);
         Assert.Contains("1,124", model.Tier0OverviewStatus);
         Assert.Single(model.Tier0Objects);
         model.NextTier0PageCommand.Execute(null);
         await model.ReadCompletion;
-        Assert.NotNull(source.Tier0OverviewQueries[^1]);
+        Assert.NotNull(source.Tier0OverviewQueries[^1].After);
         var calls = source.Tier0OverviewQueries.Count;
         var selected = model.SelectedTier0Object;
         model.OpenTier0PathCommand.Execute(null);
@@ -99,6 +101,31 @@ public sealed partial class SavedTier0PathSectionTests
         Assert.Equal(calls, source.Tier0OverviewQueries.Count);
         Assert.Same(selected, model.SelectedTier0Object);
         Assert.StartsWith("Page 2", model.Tier0PageDescription);
+    }
+
+    [Fact]
+    public async Task ConnectedOverviewStartsSupportedAndAllIdentitiesRestartsBoundedPaging()
+    {
+        var saved = Connected();
+        var source = Source();
+        source.Tree = new([new("DC=contoso,DC=com", "contoso", Guid.NewGuid(), TreeNodeOrigin.Partition, [])], []);
+        source.Tier0Overview = Result<Tier0OverviewPage?>.Success(Overview(saved, true));
+        var model = new AssetsViewModel(source);
+        model.Show(Bundle, false);
+        model.Pane = AssetsPane.Tier0;
+        await model.ReadCompletion;
+
+        Assert.True(model.Tier0SupportedOnly);
+        Assert.False(model.Tier0AllIdentities);
+        Assert.Equal((Tier0OverviewScope.Supported, null), source.Tier0OverviewQueries[0]);
+
+        model.Tier0AllIdentities = true;
+        await model.ReadCompletion;
+
+        Assert.False(model.Tier0SupportedOnly);
+        Assert.True(model.Tier0AllIdentities);
+        Assert.Equal((Tier0OverviewScope.All, null), source.Tier0OverviewQueries[^1]);
+        Assert.StartsWith("Page 1", model.Tier0PageDescription);
     }
 
     [Fact]
@@ -181,7 +208,7 @@ public sealed partial class SavedTier0PathSectionTests
         var view = Assert.IsType<UserControl>(XamlReader.Parse(root.ToString()));
         view.DataContext = model;
         LayoutPath(view, width, height);
-        Assert.Equal(5, Assert.Single(PathDescendants<DataGrid>(view)).Columns.Count);
+        Assert.Equal(6, Assert.Single(PathDescendants<DataGrid>(view)).Columns.Count);
         var header = Assert.Single(PathDescendants<TextBlock>(view), text => text.Text == "Object");
         Assert.Equal(view.FindResource("AttributeLabelBrush").ToString(), header.Foreground.ToString());
         Assert.Contains(PathDescendants<TextBox>(view), text => text.Text.Contains("1,200", StringComparison.Ordinal));

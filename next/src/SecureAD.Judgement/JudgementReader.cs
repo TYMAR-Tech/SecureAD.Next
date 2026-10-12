@@ -149,6 +149,7 @@ public sealed record StoredJudgement(
 public sealed partial class JudgementReader : IDisposable
 {
     private readonly SqliteConnection _connection;
+    private string? _findingDerivationSeal;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
 
@@ -288,12 +289,15 @@ public sealed partial class JudgementReader : IDisposable
         return BestSupportedRouteStorage.Read(_connection, Description, distinguishedName, cancellationToken);
     }
 
-    public Tier0OverviewPage? ReadTier0Overview(Tier0OverviewMark? after, CancellationToken cancellationToken)
+    public Tier0OverviewPage? ReadTier0Overview(
+        Tier0OverviewScope scope,
+        Tier0OverviewMark? after,
+        CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        return Tier0Browsing.ReadPage(_connection, Description, after, cancellationToken);
+        return Tier0Browsing.ReadPage(_connection, Description, scope, after, cancellationToken);
     }
 
     public Tier0RouteDetails? ReadTier0RouteDetails(string distinguishedName, CancellationToken cancellationToken)
@@ -941,7 +945,14 @@ public sealed partial class JudgementReader : IDisposable
         spn.generation                      AS spn_generation,
         am.proof                            AS am_proof,
         am.fingerprint                      AS am_fingerprint,
-        am.generation                       AS am_generation
+        am.generation                       AS am_generation,
+        svc.proof                           AS svc_proof,
+        svc.fingerprint                     AS svc_fingerprint,
+        svc.generation                      AS svc_generation,
+        aw.finding_id                       AS aw_finding_id,
+        aw.proof                            AS aw_proof,
+        aw.fingerprint                      AS aw_fingerprint,
+        aw.generation                       AS aw_generation
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -961,6 +972,8 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_circular_membership cy ON cy.finding_id = f.finding_id
         LEFT JOIN finding_duplicate_spn spn ON spn.finding_id = f.finding_id
         LEFT JOIN finding_broad_administrative_membership am ON am.finding_id = f.finding_id
+        LEFT JOIN finding_service_account svc ON svc.finding_id = f.finding_id
+        LEFT JOIN finding_attribute_write aw ON aw.finding_id = f.finding_id
         LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
@@ -1028,7 +1041,33 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (ruleId == "SEC-062")
+        if (ruleId is "SEC-014" or "SEC-024" or "SEC-025")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("aw_finding_id")))
+                throw new InvalidDataException("The attribute-write finding has no saved typed evidence.");
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = AttributeWriteFindingStorage.Read(_connection, reader.GetInt64(reader.GetOrdinal("aw_finding_id")),
+                reader.GetString(reader.GetOrdinal("aw_proof")), (byte[])reader.GetValue(reader.GetOrdinal("aw_fingerprint")),
+                reader.GetString(reader.GetOrdinal("aw_generation")), Description, _findingDerivationSeal, ruleId,
+                Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))), reader.GetString(reader.GetOrdinal("distinguished_name")),
+                reader.GetString(reader.GetOrdinal("domain_fqdn")), reader.GetString(reader.GetOrdinal("object_class")),
+                reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
+                Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-100" or "SEC-101")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("svc_proof")))
+                throw new InvalidDataException("The service-account finding has no saved typed evidence.");
+            if (ruleId == "SEC-100")
+                _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = ServiceAccountFindingStorage.Read(reader.GetString(reader.GetOrdinal("svc_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("svc_fingerprint")), reader.GetString(reader.GetOrdinal("svc_generation")),
+                Description, _findingDerivationSeal, ruleId, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId == "SEC-062")
         {
             if (reader.IsDBNull(reader.GetOrdinal("am_proof")))
                 throw new InvalidDataException("The broad administrative-membership finding has no saved evidence.");

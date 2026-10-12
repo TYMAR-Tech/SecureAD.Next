@@ -12,27 +12,45 @@ internal sealed partial class AssetsViewModel
     [ObservableProperty] private string _tier0OverviewStatus = "";
     [ObservableProperty] private string _tier0OverviewCoverage = "";
     [ObservableProperty] private string _tier0ObjectLimitation = "";
+    [ObservableProperty] private Tier0OverviewScope _tier0OverviewScope = Tier0OverviewScope.Supported;
+    [ObservableProperty] private int _tier0ClassifiedCount;
+    [ObservableProperty] private int _tier0OtherSupportedCount;
+    [ObservableProperty] private int _tier0UnresolvedCount;
+    [ObservableProperty] private int _tier0UnassessedCount;
+    [ObservableProperty] private bool _tier0HasLimitations;
     private Tier0OverviewMark? _tier0After;
     private Tier0OverviewMark? _tier0Next;
     private readonly Stack<Tier0OverviewMark?> _tier0Back = [];
     public bool ShowsTier0 => Pane == AssetsPane.Tier0;
     public bool ShowsTier0Listing => ShowsTier0 && ShowsListing;
-    public string Tier0PageDescription => $"Page {_tier0Back.Count + 1} - {Tier0Objects.Count:N0} recorded analysis identities shown";
+    public bool ShowsSupportedTier0 => Tier0OverviewScope == Tier0OverviewScope.Supported;
+    public bool ShowsAllTier0 => Tier0OverviewScope == Tier0OverviewScope.All;
+    public string Tier0PageDescription => $"Page {_tier0Back.Count + 1} - {Tier0Objects.Count:N0} "
+        + (ShowsSupportedTier0 ? "classified or supported identities shown" : "recorded analysis identities shown");
 
     private Task LoadTier0Async(ListingQuestion question)
     {
         var selected = SelectedTier0Object?.DistinguishedName;
-        return ReadViewAsync(question.Bundle, reader => reader.ReadTier0Overview(question.Bundle, _tier0After),
+        return ReadViewAsync(question.Bundle,
+            reader => reader.ReadTier0Overview(question.Bundle, Tier0OverviewScope, _tier0After),
             (page, current) =>
             {
                 if (page is null)
                 {
                     Tier0OverviewStatus = "Saved Tier 0 analysis is not available. Judge this sealed capture to produce it.";
+                    Tier0HasLimitations = true;
                     _tier0Next = null;
                 }
                 else
                 {
                     var summary = page.Summary;
+                    Tier0ClassifiedCount = summary.ClassifiedTier0Objects;
+                    Tier0OtherSupportedCount = summary.OtherObjectsWithSupportedRoute;
+                    Tier0UnresolvedCount = summary.UnresolvedObjects;
+                    Tier0UnassessedCount = summary.UnassessedObjects;
+                    Tier0HasLimitations = !summary.Coverage.InputsComplete || !summary.Coverage.AnalysisComplete
+                        || !summary.Coverage.ProcessingComplete || summary.UnresolvedObjects != 0
+                        || summary.UnassessedObjects != 0;
                     Tier0OverviewStatus = $"{summary.ObjectsWithSupportedRoute:N0} with supported distance (including distance zero)   |   "
                         + $"{summary.UnresolvedObjects:N0} unresolved   |   {summary.UnassessedObjects:N0} not assessed\n"
                         + $"{summary.RecordedSubjects:N0} recorded analysis identities; not captured inventory or displayed-page totals.\n"
@@ -69,6 +87,27 @@ internal sealed partial class AssetsViewModel
     [RelayCommand] private void ShowObjectPath() => Opened?.Show(ObjectSectionCatalog.SavedTier0Path);
     [RelayCommand] private void ShowObjectFindings() => Opened?.Show(ObjectSectionCatalog.Findings);
 
+    public bool Tier0SupportedOnly
+    {
+        get => ShowsSupportedTier0;
+        set { if (value) Tier0OverviewScope = Tier0OverviewScope.Supported; }
+    }
+
+    public bool Tier0AllIdentities
+    {
+        get => ShowsAllTier0;
+        set { if (value) Tier0OverviewScope = Tier0OverviewScope.All; }
+    }
+
+    partial void OnTier0OverviewScopeChanged(Tier0OverviewScope value)
+    {
+        CancelRead();
+        ResetTier0Paging();
+        ViewRefusal = null;
+        if (ShowsTier0 && _active) LoadVisible();
+        AnnounceTier0();
+    }
+
     partial void OnSelectedTier0ObjectChanged(Tier0RowViewModel? value)
     {
         Tier0ObjectLimitation = "";
@@ -78,6 +117,10 @@ internal sealed partial class AssetsViewModel
     {
         OnPropertyChanged(nameof(ShowsTier0));
         OnPropertyChanged(nameof(ShowsTier0Listing));
+        OnPropertyChanged(nameof(ShowsSupportedTier0));
+        OnPropertyChanged(nameof(ShowsAllTier0));
+        OnPropertyChanged(nameof(Tier0SupportedOnly));
+        OnPropertyChanged(nameof(Tier0AllIdentities));
         OnPropertyChanged(nameof(Tier0PageDescription));
         OpenTier0PathCommand.NotifyCanExecuteChanged();
         OpenTier0FindingsCommand.NotifyCanExecuteChanged();
