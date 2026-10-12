@@ -26,6 +26,35 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-012", "Delegation configuration", MitreTechnique: null,
+            WhyItMatters: ConstrainedDelegationToRelevantService.Explanation,
+            WhatToDo: "Review whether this delegation is required.",
+            About: ConstrainedDelegationToRelevantService.Summary + "\n\n" + ConstrainedDelegationToRelevantService.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/security/kerberos/kerberos-constrained-delegation-overview"),
+        new RuleGuidance("SEC-013", "Delegation configuration", MitreTechnique: null,
+            WhyItMatters: ResourceBasedDelegationOnRelevantResource.Explanation,
+            WhatToDo: "Review the recorded grants and whether this delegation is required.",
+            About: ResourceBasedDelegationOnRelevantResource.Summary + "\n\n" + ResourceBasedDelegationOnRelevantResource.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-sfu/3bff5864-8135-400e-bdd9-33b552051d94"),
+        new RuleGuidance("SEC-050", "Group membership", MitreTechnique: null,
+            WhyItMatters: LargePrivilegedGroupReview.Explanation,
+            WhatToDo: "Review whether the recorded members still need this privilege.",
+            About: LargePrivilegedGroupReview.Explanation + "\n\n"
+                + "The default Direct-count review thresholds are 10 for Domain Admins, 5 for Enterprise Admins, 5 for Schema Admins and 15 for domain BUILTIN Administrators; only counts strictly above them trigger a finding. "
+                + "These are product review defaults, not Microsoft limits. Nested groups count once in Direct; Known total and primary-group relationships remain separate.",
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
+        new RuleGuidance("SEC-051", "Group membership", MitreTechnique: null,
+            WhyItMatters: GroupNestedInDomainAdmins.Explanation,
+            WhatToDo: "Review its membership and who can change it.",
+            About: GroupNestedInDomainAdmins.Explanation + "\n\n"
+                + "Each finding retains the captured direct member link and both group identities; membership shape is not an effective-access or attack-path calculation.",
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
+        new RuleGuidance("SEC-061", "Group membership", MitreTechnique: null,
+            WhyItMatters: BroadPreWindows2000Membership.Explanation,
+            WhatToDo: "Review whether this compatibility access is still required.",
+            About: BroadPreWindows2000Membership.Explanation + "\n\n"
+                + "Reports one finding per resource-domain legacy group with supported broad membership, keeping symbolic broad identities and alternative recorded security links rather than expanding them into accounts.",
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-014", "Property permissions", MitreTechnique: null,
             WhyItMatters: "An unexpected holder has permission to change the RBCD attribute that controls who may act on behalf of other identities to this account's services. "
                 + AttributeWriteRules.ScopeNote,

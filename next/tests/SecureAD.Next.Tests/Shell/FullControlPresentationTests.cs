@@ -84,7 +84,10 @@ public sealed class FullControlPresentationTests
         var result = Judgement.PasswordResetControlTests.Evaluate(Judgement.ControlEdgeDeriverTests.Permissions(Allow(0)));
         using var reader = Open(Store([result]));
         var page = reader.ReadControlEdges(null, null, null, true, 0);
-        Assert.Equal(2, page.Edges.Count(edge => edge.EdgeClass == ControlEdgeClass.CredentialExposure && page.FullControlSupports.ContainsKey(edge.Id)));
+        var credentials = page.Edges.Where(edge => edge.EdgeClass == ControlEdgeClass.CredentialExposure).ToArray();
+        Assert.Equal(new[] { ControlCapability.CanResetPassword, ControlCapability.CanWriteKeyCredentialLink, ControlCapability.CanWriteServicePrincipalName }.Order(),
+            credentials.Select(edge => edge.Capability).Order());
+        Assert.All(credentials, edge => Assert.True(page.FullControlSupports.ContainsKey(edge.Id)));
     }
 
     [Fact]

@@ -293,6 +293,12 @@ public sealed class JudgementWriter : IDisposable
             membershipDaclRequests, offlineSelection, beginPhase, status, _statements);
     }
 
+    internal DelegationResourceScope? DelegationScope(JudgementDescription description, string target, CancellationToken token)
+    {
+        ThrowIfFinished();
+        return DelegationScopeReader.Read(_connection, description, target, token);
+    }
+
     internal void StartAutomaticOwnership(JudgementDescription description, string ownerRightsContextHash)
     {
         ThrowIfFinished();
@@ -608,7 +614,17 @@ public sealed class JudgementWriter : IDisposable
         diagnostic?.Part("validate-tier0-findings");
         Tier0RouteFindingStorage.RequirePublishable(_connection);
         CircularMembershipStorage.RequirePublishable(_connection);
-        AdministrativeMembershipStorage.RequirePublishable(_connection, cancellationToken);
+        GroupMembershipFindingStorage.RequirePublishable(_connection,
+            _rulesWritten.Overlaps(["SEC-061", "SEC-062"]) ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null,
+            cancellationToken);
+        GroupMembershipReviewFindingStorage.AttachKnownTotals(_connection, GenerationId, cancellationToken);
+        GroupMembershipReviewFindingStorage.RequirePublishable(_connection,
+            _rulesWritten.Overlaps(["SEC-050", "SEC-051"]) ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null,
+            cancellationToken);
+        DelegationConfigurationFindingStorage.RequirePublishable(_connection,
+            _pathDescription,
+            _rulesWritten.Overlaps(["SEC-012", "SEC-013"]) ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null,
+            cancellationToken);
         ServiceAccountFindingStorage.RequirePublishable(_connection,
             _rulesWritten.Contains("SEC-100") ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         AttributeWriteFindingStorage.RequirePublishable(_connection, _rulesWritten.Overlaps(["SEC-014", "SEC-024", "SEC-025"])
@@ -820,6 +836,12 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case DelegationConfigurationEvidence delegationConfiguration:
+                DelegationConfigurationFindingStorage.Write(_connection, transaction, findingId, GenerationId, delegationConfiguration);
+                break;
+            case GroupMembershipReviewEvidence review:
+                GroupMembershipReviewFindingStorage.Write(_connection, transaction, findingId, GenerationId, review);
+                break;
             case AttributeWritePermissionEvidence attribute:
                 AttributeWriteFindingStorage.Write(_connection, transaction, findingId, GenerationId, attribute,
                     new SharedPermissionStorage(_connection, transaction, _statements, _session));
@@ -827,8 +849,8 @@ public sealed class JudgementWriter : IDisposable
             case ServiceAccountFindingEvidence service:
                 ServiceAccountFindingStorage.Write(_connection, transaction, findingId, GenerationId, service);
                 break;
-            case BroadAdministrativeMembershipEvidence membership:
-                AdministrativeMembershipStorage.Write(_connection, transaction, findingId, GenerationId, membership);
+            case BroadGroupMembershipEvidence membership:
+                GroupMembershipFindingStorage.Write(_connection, transaction, findingId, GenerationId, membership);
                 break;
             case DuplicateSpnEvidence duplicate:
                 DuplicateSpnStorage.Write(_connection, transaction, findingId, GenerationId, duplicate);

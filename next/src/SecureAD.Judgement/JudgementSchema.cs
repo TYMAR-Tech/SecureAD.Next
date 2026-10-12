@@ -132,8 +132,8 @@ public static class JudgementSchema
     /// <para>60 saves distinct structural member totals and separate missing-reference and evidence
     /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
-    // Format 66 saves attribute-write findings with source-bound references to the shared original permission entries.
-    public const int Version = 66;
+    // Format 69 retains independent original-source hashes beside delegation metadata and resource-scope references.
+    public const int Version = 69;
 
     private static readonly string[] TableDdl =
     [
@@ -697,7 +697,9 @@ public static class JudgementSchema
         Tier0PathStorage.CreateTables(connection);
         CircularMembershipStorage.CreateTables(connection);
         DuplicateSpnStorage.CreateTables(connection);
-        AdministrativeMembershipStorage.CreateTables(connection);
+        GroupMembershipFindingStorage.CreateTables(connection);
+        GroupMembershipReviewFindingStorage.CreateTables(connection);
+        DelegationConfigurationFindingStorage.CreateTables(connection);
         ServiceAccountFindingStorage.CreateTables(connection);
         AttributeWriteFindingStorage.CreateTables(connection);
         GroupInventoryStorage.CreateTables(connection);

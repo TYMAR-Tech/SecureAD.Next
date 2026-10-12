@@ -50,6 +50,28 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(new ConstrainedDelegationToRelevantService().Definition, "CN=Delegating account,DC=contoso,DC=com",
+            DelegationConfigurationRuleTests.ReadPublishedFindings().Single(finding => finding.RuleId == "SEC-012").Evidence,
+            read =>
+            {
+                var evidence = Assert.IsType<DelegationConfigurationEvidence>(read);
+                Assert.Equal(DelegationConfigurationKind.Constrained, evidence.ConfigurationKind);
+                Assert.Equal("LDAP/service.contoso.com", Assert.Single(evidence.Services).ConfiguredService);
+                Assert.True(evidence.Scope.EstablishedTier0);
+                Assert.NotEmpty(evidence.Scope.AnchorDns);
+            }),
+        new Sample(new LargePrivilegedGroupReview().Definition, "CN=Renamed privileged group,DC=contoso,DC=com",
+            MembershipReviewRuleTests.ReadPublishedFindings().Single(finding => finding.RuleId == "SEC-050").Evidence,
+            read =>
+            {
+                var evidence = Assert.IsType<GroupMembershipReviewEvidence>(read);
+                Assert.Equal(GroupMembershipReviewKind.PrivilegedGroupSize, evidence.ReviewKind);
+                Assert.Equal(11, evidence.DirectMembers);
+                Assert.Equal(10, evidence.ReviewThreshold);
+                Assert.Equal(11, evidence.KnownTotal!.KnownMembers);
+                Assert.Equal(11, evidence.MemberValues.Count);
+                Assert.True(evidence.IsComplete);
+            }),
         new Sample(new UnexpectedResourceBasedDelegationWrite().Definition, "CN=Service target,DC=contoso,DC=com",
             AttributeWriteRuleTests.ReadPublishedFindings().Single(finding => finding.RuleId == "SEC-014").Evidence,
             read =>
@@ -74,12 +96,13 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                 Assert.True(evidence.IsComplete);
             }),
         new Sample(new BroadAdministrativeGroupMembership().Definition, "CN=Renamed domain administrators,DC=contoso,DC=com",
-            new BroadAdministrativeMembershipEvidence(ThisCapture, Guid.NewGuid(), new('a', 64),
+            new BroadGroupMembershipEvidence(ThisCapture, Guid.NewGuid(), new('a', 64),
                 SecureAD.Derivation.PrincipalClassificationRegistry.Version, BroadAdministrativeGroupMembership.PolicyVersion,
-                "DC=contoso,DC=com", "CN=Configuration,DC=contoso,DC=com", Guid.NewGuid(), [], [], [], [], true, []),
+                "DC=contoso,DC=com", "CN=Configuration,DC=contoso,DC=com", Guid.NewGuid(), [], [], [], [], true, [],
+                BroadMembershipTarget.AdministrativeGroup),
             read =>
             {
-                var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(read);
+                var evidence = Assert.IsType<BroadGroupMembershipEvidence>(read);
                 Assert.Equal(2, evidence.Principals.Count);
                 Assert.Equal("S-1-5-21-1-2-3-513", Assert.Single(evidence.BroadSources).Sid);
                 var witness = Assert.Single(Assert.Single(evidence.Links).Witnesses);
@@ -470,12 +493,15 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
             Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
-                or BroadAdministrativeMembershipEvidence or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence))
+                or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence or DelegationConfigurationEvidence
+                or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence))
                 .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
             .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1))
             .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings())
             .Concat(ServiceAccountRuleTests.ReadPublishedFindings())
             .Concat(AttributeWriteRuleTests.ReadPublishedFindings()).ToArray();
+        findings = findings.Concat(MembershipReviewRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-050")).ToArray();
+        findings = findings.Concat(DelegationConfigurationRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-012")).ToArray();
 
         foreach (var sample in Samples)
         {

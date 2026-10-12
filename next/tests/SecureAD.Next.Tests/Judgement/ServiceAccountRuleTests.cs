@@ -754,7 +754,7 @@ public sealed class ServiceAccountRuleTests
         using var cancellation = new CancellationTokenSource();
         var context = JudgingContext.At(Started) with
         {
-            AdministrativeMembership = AdministrativeMembershipIndex.Create(inputs.ReadMembershipInput(), inputs.Binding(),
+            AdministrativeMembership = CapturedGroupMembershipIndex.Create(inputs.ReadMembershipInput(), inputs.Binding(),
                 inputs.ReadNamingContexts().Value, cancellation.Token),
             MembershipRoutes = derivation.MembershipRoutesOf,
         };
@@ -795,7 +795,7 @@ public sealed class ServiceAccountRuleTests
                 ServicePrincipalNames = [.. evidence.Account.ServicePrincipalNames, new(evidence.Account.ServicePrincipalNames.Count, "", null)],
                 MissingAttributes = ["servicePrincipalName"],
             } },
-            BroadAdministrativeMembershipEvidence evidence => evidence with
+            BroadGroupMembershipEvidence evidence => evidence with
                 { InputsComplete = false, Limitations = [new(finding.DistinguishedName, AdministrativeMembershipReason.CaptureIncomplete)] },
             _ => throw new InvalidOperationException("The fixture must provide an administrative/service finding."),
         };
@@ -829,9 +829,9 @@ public sealed class ServiceAccountRuleTests
     }
 
     private static ServiceAccountFindingEvidence Evidence(Finding finding) => Assert.IsType<ServiceAccountFindingEvidence>(finding.Evidence);
-    private sealed record Source(string Dn, Guid? Guid, IReadOnlyList<EvidenceAttribute> Attributes);
-    private static Guid Id(string dn) => new(SHA256.HashData(Encoding.UTF8.GetBytes(dn)).AsSpan(0, 16));
-    private static Source Account(string kind = "user", string[]? spns = null, uint uac = 512, uint primary = 513,
+    internal sealed record Source(string Dn, Guid? Guid, IReadOnlyList<EvidenceAttribute> Attributes);
+    internal static Guid Id(string dn) => new(SHA256.HashData(Encoding.UTF8.GetBytes(dn)).AsSpan(0, 16));
+    internal static Source Account(string kind = "user", string[]? spns = null, uint uac = 512, uint primary = 513,
         string dn = AccountDn, string sid = DomainSid + "-1100", string name = "unconventional")
     {
         var classes = new List<string> { "top", "person", "organizationalPerson", "user" };
@@ -841,7 +841,7 @@ public sealed class ServiceAccountRuleTests
             Texts("primaryGroupID", [primary.ToString(CultureInfo.InvariantCulture)]), Texts("servicePrincipalName", spns ?? ["HTTP/service.contoso.com"]),
             Texts("sAMAccountName", [name]), Texts("memberOf", [])]);
     }
-    private static Source Group(string dn, string sid, long type, params string[] members) =>
+    internal static Source Group(string dn, string sid, long type, params string[] members) =>
         new(dn, Id(dn), [Texts("objectClass", ["top", "group"]), Binary("objectSid", sid),
             Texts("groupType", [type.ToString(CultureInfo.InvariantCulture)]), Texts("member", members)]);
     private static Source Domain(string dn, string sid) => new(dn, Id(dn), [Texts("objectClass", ["top", "domainDNS"]), Binary("objectSid", sid)]);
@@ -849,7 +849,7 @@ public sealed class ServiceAccountRuleTests
     private static EvidenceAttribute Texts(string name, IEnumerable<string> values) => new(name, StoredAttributeCompleteness.Complete,
         values.Select(EvidenceValue.OfText).ToArray());
     private static EvidenceAttribute Binary(string name, string sid) => new(name, StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(Sid.ToBytes(sid)!)]);
-    private static Source With(Source source, string name, IReadOnlyList<EvidenceValue> values) => source with
+    internal static Source With(Source source, string name, IReadOnlyList<EvidenceValue> values) => source with
     {
         Attributes = source.Attributes.Where(attribute => attribute.LdapDisplayName != name)
             .Append(new EvidenceAttribute(name, StoredAttributeCompleteness.Complete, values)).ToArray(),
@@ -885,12 +885,12 @@ public sealed class ServiceAccountRuleTests
         var subject = inputs.Bundle.ReadObjectAttributes(subjectDn)!;
         return Administrative.Judge(changeSubject?.Invoke(subject) ?? subject, JudgingContext.At(Started) with
         {
-            AdministrativeMembership = AdministrativeMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None),
+            AdministrativeMembership = CapturedGroupMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None),
             MembershipRoutes = (sid, scope) => change(derivation.MembershipRoutesOf(sid, scope)),
         });
     }
 
-    private static string Capture(IReadOnlyList<Source> sources, string[]? omit = null, bool partial = false)
+    internal static string Capture(IReadOnlyList<Source> sources, string[]? omit = null, bool partial = false)
     {
         var directory = TempDirectories.Create("service-pair");
         using var writer = BundleWriter.Create(directory, Started);
@@ -916,7 +916,12 @@ public sealed class ServiceAccountRuleTests
                     if (!list.Any(existing => existing.Dn == source.Dn)) list.Add(source);
             }
             foreach (var source in list.Where(source => omit?.Contains(source.Dn) != true))
-                writer.WriteObject(new(partition, source.Dn, source.Guid, source.Attributes, Started));
+            {
+                var id = writer.WriteObject(new(partition, source.Dn, source.Guid, source.Attributes, Started));
+                if (source.Guid is { } objectGuid && source.Attributes.SingleOrDefault(attribute =>
+                    attribute.LdapDisplayName == "nTSecurityDescriptor")?.Values.SingleOrDefault()?.Bytes is { } bytes)
+                    writer.WriteSecurityDescriptor(id, bytes, AceNormalizer.Normalize(objectGuid, SecurityDescriptorParser.Parse(bytes)));
+            }
         }
         writer.Complete(RunCoverage.Of(CoverageId.ForDomains("contoso.com", ["contoso.com", "child.contoso.com"]),
             [DomainCoverage.Read("contoso.com"), partial ? DomainCoverage.Excluded("child.contoso.com", ExclusionKind.ByChoice, "Synthetic partial scope")

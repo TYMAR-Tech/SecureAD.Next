@@ -952,7 +952,15 @@ public sealed partial class JudgementReader : IDisposable
         aw.finding_id                       AS aw_finding_id,
         aw.proof                            AS aw_proof,
         aw.fingerprint                      AS aw_fingerprint,
-        aw.generation                       AS aw_generation
+        aw.generation                       AS aw_generation,
+        mr.proof                            AS mr_proof,
+        mr.fingerprint                      AS mr_fingerprint,
+        mr.generation                       AS mr_generation,
+        dc.proof                            AS dc_proof,
+        dc.fingerprint                      AS dc_fingerprint,
+        dc.generation                       AS dc_generation,
+        dc.account_source_hash              AS dc_account_source_hash,
+        dc.resource_source_hash             AS dc_resource_source_hash
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -971,9 +979,11 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_tier0_route z ON z.finding_id = f.finding_id
         LEFT JOIN finding_circular_membership cy ON cy.finding_id = f.finding_id
         LEFT JOIN finding_duplicate_spn spn ON spn.finding_id = f.finding_id
-        LEFT JOIN finding_broad_administrative_membership am ON am.finding_id = f.finding_id
+        LEFT JOIN finding_broad_group_membership am ON am.finding_id = f.finding_id
         LEFT JOIN finding_service_account svc ON svc.finding_id = f.finding_id
         LEFT JOIN finding_attribute_write aw ON aw.finding_id = f.finding_id
+        LEFT JOIN finding_membership_review mr ON mr.finding_id = f.finding_id
+        LEFT JOIN finding_delegation_configuration dc ON dc.finding_id = f.finding_id
         LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
@@ -1041,7 +1051,33 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (ruleId is "SEC-014" or "SEC-024" or "SEC-025")
+        if (ruleId is "SEC-012" or "SEC-013")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("dc_proof")))
+                throw new InvalidDataException("The delegation-configuration finding has no saved typed evidence.");
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = DelegationConfigurationFindingStorage.Read(_connection, reader.GetString(reader.GetOrdinal("dc_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("dc_fingerprint")),
+                (byte[])reader.GetValue(reader.GetOrdinal("dc_account_source_hash")), (byte[])reader.GetValue(reader.GetOrdinal("dc_resource_source_hash")),
+                reader.GetString(reader.GetOrdinal("dc_generation")),
+                Description, _findingDerivationSeal, ruleId, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-050" or "SEC-051")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("mr_proof")))
+                throw new InvalidDataException("The membership review has no saved typed evidence.");
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GroupMembershipReviewFindingStorage.Read(_connection, reader.GetString(reader.GetOrdinal("mr_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("mr_fingerprint")), reader.GetString(reader.GetOrdinal("mr_generation")),
+                Description, _findingDerivationSeal, ruleId, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-014" or "SEC-024" or "SEC-025")
         {
             if (reader.IsDBNull(reader.GetOrdinal("aw_finding_id")))
                 throw new InvalidDataException("The attribute-write finding has no saved typed evidence.");
@@ -1067,14 +1103,16 @@ public sealed partial class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
                 reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
         }
-        else if (ruleId == "SEC-062")
+        else if (ruleId is "SEC-062" or "SEC-061")
         {
             if (reader.IsDBNull(reader.GetOrdinal("am_proof")))
-                throw new InvalidDataException("The broad administrative-membership finding has no saved evidence.");
-            evidence = AdministrativeMembershipStorage.Read(reader.GetString(reader.GetOrdinal("am_proof")),
+                throw new InvalidDataException("The broad group-membership finding has no saved evidence.");
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GroupMembershipFindingStorage.Read(reader.GetString(reader.GetOrdinal("am_proof")),
                 (byte[])reader.GetValue(reader.GetOrdinal("am_fingerprint")), reader.GetString(reader.GetOrdinal("am_generation")),
-                Description, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                Description, _findingDerivationSeal, ruleId, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
                 reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")),
                 reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
                 Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
         }

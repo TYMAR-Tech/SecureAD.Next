@@ -112,7 +112,7 @@ internal static class ServiceAccountFindingStorage
         if (all.Any(identity => identity is null || identity.ObjectGuid == Guid.Empty)
             || all.Select(identity => identity.ObjectGuid).Distinct().Count() != all.Length
             || all.Select(identity => identity.DistinguishedName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != all.Length) throw Invalid();
-        var domains = AdministrativeMembershipStorage.ValidateDomains(membership.Domains);
+        var domains = GroupMembershipFindingStorage.ValidateDomains(membership.Domains);
         var principals = membership.Principals.ToDictionary(identity => identity.ObjectGuid);
         if (membership.Principals.Where(identity => identity.ObjectClass != "foreignSecurityPrincipal")
             .GroupBy(identity => (identity.Sid.ToUpperInvariant(), identity.SidScope?.ToUpperInvariant()))
@@ -120,7 +120,7 @@ internal static class ServiceAccountFindingStorage
         if (!principals.TryGetValue(account.ObjectGuid, out var source) || !principals.TryGetValue(membership.TargetGuid, out var target)) throw Invalid();
         foreach (var identity in membership.Principals)
         {
-            AdministrativeMembershipStorage.ValidateIdentity(identity, includeMembershipValues: true);
+            GroupMembershipFindingStorage.ValidateIdentity(identity, includeMembershipValues: true);
             if (identity.ObjectClass is not ("group" or "user" or "computer" or "foreignSecurityPrincipal")
                 || identity.DomainFqdn is null || !domains.TryGetValue(identity.DomainFqdn, out var domain)
                 || !Same(identity.NamingContext, domain.NamingContext)
@@ -138,7 +138,7 @@ internal static class ServiceAccountFindingStorage
             || source.ObjectClass is not ("user" or "computer")
             || !source.Values.Where(value => value.Attribute == "objectClass").OrderBy(value => value.Ordinal).Select(value => (value.Ordinal, value.Value))
                 .SequenceEqual(account.ObjectClasses.OrderBy(value => value.Ordinal).Select(value => (value.Ordinal, value.Text!)))
-            || !AdministrativeMembershipIndex.TargetScopeMatches(target, PrincipalClassificationRegistry.For(target.Sid), membership.ForestRootNamingContext))
+            || !CapturedGroupMembershipIndex.TargetScopeMatches(target, PrincipalClassificationRegistry.For(target.Sid), membership.ForestRootNamingContext))
             throw Invalid();
         var keys = new HashSet<(Guid Group, Guid Member, Guid Reference)>();
         var references = new HashSet<Guid>();
@@ -166,8 +166,8 @@ internal static class ServiceAccountFindingStorage
             }
             references.Add(reference.ObjectGuid);
         }
-        var fromAccount = AdministrativeMembershipStorage.Reach([account.ObjectGuid], membership.Links, reverse: true);
-        var fromTarget = AdministrativeMembershipStorage.Reach([target.ObjectGuid], membership.Links, reverse: false);
+        var fromAccount = GroupMembershipFindingStorage.Reach([account.ObjectGuid], membership.Links, reverse: true);
+        var fromTarget = GroupMembershipFindingStorage.Reach([target.ObjectGuid], membership.Links, reverse: false);
         if (!fromAccount.Contains(target.ObjectGuid) || membership.Links.Any(link => !fromAccount.Contains(link.MemberGuid) || !fromTarget.Contains(link.GroupGuid))
             || membership.Principals.Any(identity => !fromAccount.Contains(identity.ObjectGuid) && !references.Contains(identity.ObjectGuid))
             || all.Any(identity => identity.Completeness != EvidenceCompleteness.Complete && !membership.Limitations.Any(limit =>

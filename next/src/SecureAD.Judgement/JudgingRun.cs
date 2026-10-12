@@ -492,7 +492,8 @@ public static class JudgingRun
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
-        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route and not DuplicateServicePrincipalNames))
+        if (rules.Any(rule => rule is not IObjectRule and not UnexpectedTier0Route and not DuplicateServicePrincipalNames
+            and not ConstrainedDelegationToRelevantService and not ResourceBasedDelegationOnRelevantResource))
             throw new ArgumentException("A scheduled rule has no supported execution stage.", nameof(rules));
         var pathRule = rules.OfType<UnexpectedTier0Route>().SingleOrDefault();
         var duplicateSpnRule = rules.OfType<DuplicateServicePrincipalNames>().SingleOrDefault();
@@ -760,7 +761,7 @@ public static class JudgingRun
                     }
                     context = context with
                     {
-                        AdministrativeMembership = AdministrativeMembershipIndex.Create(membership,
+                        AdministrativeMembership = CapturedGroupMembershipIndex.Create(membership,
                             inputs.Binding(), contexts.Value, cancellationToken),
                         MembershipRoutes = reader.MembershipRoutesOf,
                     };
@@ -865,6 +866,14 @@ public static class JudgingRun
         var duplicateSpns = duplicateSpnRule is null ? null : new DuplicateSpnAssessment(duplicateSpnRule,
             bundle.Description.ForestFqdn, seal.Hash, bundle.Description.EveryDeclaredUnitRecordedAsRead);
         var spnWatch = new System.Diagnostics.Stopwatch();
+        var configurationRules = rules.Where(rule => rule is ConstrainedDelegationToRelevantService
+            or ResourceBasedDelegationOnRelevantResource).ToArray();
+        var configuration = configurationRules.Length == 0 ? null : new DelegationConfigurationAssessment(configurationRules,
+            seal.Hash, derivationGeneration ?? throw new InvalidOperationException("Delegation configuration requires its declared derivation."),
+            FindingInputBinding.DerivationSeal(bundleDirectory, derivationGeneration)
+                ?? throw new InvalidOperationException("Delegation configuration has no selected derivation seal."),
+            bundle.Description.EveryDeclaredUnitRecordedAsRead,
+            context.AdministrativeMembership ?? throw new InvalidOperationException("Delegation configuration has no captured identity index."));
 
         long objectsRead = 0;
         writer.StartSelfMembershipAssessments();
@@ -940,6 +949,12 @@ public static class JudgingRun
             work.Laps.Stop();
             progress.BeginOperation("store-group-inventory");
             writer.WriteGroupInventory(subject);
+            if (configuration is not null)
+            {
+                work.Rules.Start();
+                try { configuration.Add(subject, cancellationToken); }
+                finally { work.Rules.Stop(); }
+            }
             if (duplicateSpns is not null)
             {
                 spnWatch.Start();
@@ -1238,6 +1253,14 @@ public static class JudgingRun
             tallies.Add(new Tally(duplicateSpnRule, execution, spnWatch.Elapsed));
             progress.EndRule(duplicateSpnRule.Definition.Id, spnWatch.Elapsed, execution.ObjectsJudged, execution.ObjectsNotApplicable);
         }
+        if (configuration is not null)
+            foreach (var result in configuration.Complete(
+                target => writer.DelegationScope(ownershipDescription, target, cancellationToken), cancellationToken))
+            {
+                progress.BeginRule(result.Rule.Definition.Id);
+                tallies.Add(new Tally(result.Rule, result.Execution, result.Time));
+                progress.EndRule(result.Rule.Definition.Id, result.Time, result.Execution.ObjectsJudged, result.Execution.ObjectsNotApplicable);
+            }
         foreach (var tally in tallies)
             writer.Write(tally.ToExecution(), cancellationToken);
 

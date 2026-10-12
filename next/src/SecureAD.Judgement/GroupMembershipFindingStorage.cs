@@ -9,13 +9,13 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
-internal static class AdministrativeMembershipStorage
+internal static class GroupMembershipFindingStorage
 {
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            CREATE TABLE finding_broad_administrative_membership (
+            CREATE TABLE finding_broad_group_membership (
                 finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
                 generation TEXT NOT NULL, proof TEXT NOT NULL,
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
@@ -24,13 +24,13 @@ internal static class AdministrativeMembershipStorage
     }
 
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction, long findingId,
-        Guid generation, BroadAdministrativeMembershipEvidence evidence)
+        Guid generation, BroadGroupMembershipEvidence evidence)
     {
         Validate(evidence);
         var json = JsonSerializer.Serialize(evidence, ProofSerialization.Options);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "INSERT INTO finding_broad_administrative_membership VALUES($id,$generation,$proof,$hash)";
+        command.CommandText = "INSERT INTO finding_broad_group_membership VALUES($id,$generation,$proof,$hash)";
         command.Parameters.AddWithValue("$id", findingId);
         command.Parameters.AddWithValue("$generation", generation.ToString("D"));
         command.Parameters.AddWithValue("$proof", json);
@@ -38,32 +38,37 @@ internal static class AdministrativeMembershipStorage
         if (command.ExecuteNonQuery() != 1) throw Invalid();
     }
 
-    internal static BroadAdministrativeMembershipEvidence Read(string json, byte[] fingerprint, string generation,
-        JudgementDescription description, Guid targetGuid, string dn, string domain, string subjectKey, string subjectKind, Severity severity) =>
+    internal static BroadGroupMembershipEvidence Read(string json, byte[] fingerprint, string generation,
+        JudgementDescription description, string? derivationSeal, string rule, Guid targetGuid,
+        string dn, string domain, string objectClass, string subjectKey, string subjectKind, Severity severity) =>
         Decode(json, fingerprint, generation, description.GenerationId, description.EvidenceSeal, description.DerivationGenerationId,
-            targetGuid, dn, domain, subjectKey, subjectKind, severity);
+            derivationSeal, rule, targetGuid, dn, domain, objectClass, subjectKey, subjectKind, severity);
 
-    private static BroadAdministrativeMembershipEvidence Decode(string json, byte[] fingerprint, string generation,
-        Guid expectedGeneration, string evidenceSeal, Guid? derivationGeneration, Guid targetGuid,
-        string dn, string domain, string subjectKey, string subjectKind, Severity severity)
+    private static BroadGroupMembershipEvidence Decode(string json, byte[] fingerprint, string generation,
+        Guid expectedGeneration, string evidenceSeal, Guid? derivationGeneration, string? derivationSeal, string rule, Guid targetGuid,
+        string dn, string domain, string objectClass, string subjectKey, string subjectKind, Severity severity)
     {
         if (generation != expectedGeneration.ToString("D")
             || !OwnershipAuditStorage.Hash(generation + "\0" + json).AsSpan().SequenceEqual(fingerprint)) throw Invalid();
-        var evidence = JsonSerializer.Deserialize<BroadAdministrativeMembershipEvidence>(json, ProofSerialization.Options) ?? throw Invalid();
+        var evidence = JsonSerializer.Deserialize<BroadGroupMembershipEvidence>(json, ProofSerialization.Options) ?? throw Invalid();
         Validate(evidence);
         var target = evidence.Principals.Single(identity => identity.ObjectGuid == evidence.TargetGuid);
-        if (evidence.EvidenceSeal != evidenceSeal || evidence.DerivationGenerationId != derivationGeneration
+        var expectedRule = evidence.TargetKind == BroadMembershipTarget.AdministrativeGroup ? "SEC-062" : "SEC-061";
+        var expectedSeverity = evidence.TargetKind == BroadMembershipTarget.AdministrativeGroup ? Severity.High : Severity.Medium;
+        if (rule != expectedRule || evidence.EvidenceSeal != evidenceSeal || evidence.DerivationGenerationId != derivationGeneration
+            || evidence.DerivationSeal != derivationSeal
             || target.ObjectGuid != targetGuid || target.DistinguishedName != dn || target.DomainFqdn != domain
-            || subjectKey != targetGuid.ToString("D") || subjectKind != nameof(FindingSubjectKind.DirectoryObject)
-            || severity != Severity.High) throw Invalid();
+            || objectClass != "group" || subjectKey != targetGuid.ToString("D") || subjectKind != nameof(FindingSubjectKind.DirectoryObject)
+            || severity != expectedSeverity) throw Invalid();
         return evidence;
     }
 
-    internal static void Validate(BroadAdministrativeMembershipEvidence evidence)
+    internal static void Validate(BroadGroupMembershipEvidence evidence)
     {
-        if (!Seal(evidence.EvidenceSeal) || !Seal(evidence.DerivationSeal) || evidence.DerivationGenerationId == Guid.Empty
+        if (!Enum.IsDefined(evidence.TargetKind) || !Seal(evidence.EvidenceSeal) || !Seal(evidence.DerivationSeal) || evidence.DerivationGenerationId == Guid.Empty
             || evidence.PrincipalCatalogueVersion != PrincipalClassificationRegistry.Version
-            || evidence.PolicyVersion != BroadAdministrativeGroupMembership.PolicyVersion || evidence.TargetGuid == Guid.Empty
+            || evidence.PolicyVersion != (evidence.TargetKind == BroadMembershipTarget.AdministrativeGroup
+                ? BroadAdministrativeGroupMembership.PolicyVersion : BroadPreWindows2000Membership.PolicyVersion) || evidence.TargetGuid == Guid.Empty
             || evidence.Principals is not { Count: > 0 } || evidence.Domains is not { Count: > 0 }
             || evidence.BroadSources is not { Count: > 0 } || evidence.Links is not { Count: > 0 } || evidence.Limitations is null
             || evidence.Limitations.Any(limit => limit is null || string.IsNullOrWhiteSpace(limit.DistinguishedName) || !Enum.IsDefined(limit.Reason))
@@ -80,36 +85,23 @@ internal static class AdministrativeMembershipStorage
         if (!principals.TryGetValue(evidence.TargetGuid, out var target)) throw Invalid();
         foreach (var identity in evidence.Principals)
         {
-            ValidateIdentity(identity);
-            if (identity.ObjectClass is not ("group" or "foreignSecurityPrincipal")) throw Invalid();
-            // The capture's partition-associated DNS label is not an issuer for a special SID.
-            var configurationIdentity = identity.ObjectClass == "foreignSecurityPrincipal" && AdministrativeMembershipIndex.Special(identity.Sid)
-                && Same(identity.NamingContext, evidence.ConfigurationNamingContext)
-                && (identity.DomainFqdn is null || Same(identity.DomainFqdn, DnHelper.DnToFqdn(identity.NamingContext)));
-            if (!configurationIdentity && (identity.DomainFqdn is null || !domains.TryGetValue(identity.DomainFqdn, out var domain)
-                || !Same(identity.NamingContext, domain.NamingContext)
-                || identity.ObjectClass != "foreignSecurityPrincipal" && !Sid.IsBuiltinDomain(identity.Sid)
-                    && !Same(Sid.IssuingDomain(identity.Sid), domain.Sid))) throw Invalid();
-            if (identity.ObjectClass == "group")
-            {
-                if (identity.GroupType is not { } type || (type & 0x80000000L) == 0 || (type & 0x0f) is not (2 or 4 or 5 or 8)
-                    || ((type & 0x0f) == 5) != Sid.IsBuiltinDomain(identity.Sid)) throw Invalid();
-            }
-            else if (identity.GroupType is not null) throw Invalid();
+            ValidateScopedIdentity(identity, domains, evidence.ConfigurationNamingContext, securityGroup: true);
         }
         if (evidence.Principals.Where(identity => identity.ObjectClass == "group")
             .GroupBy(identity => (identity.Sid.ToUpperInvariant(), identity.SidScope?.ToUpperInvariant()))
             .Any(group => group.Count() != 1)) throw Invalid();
         var definition = PrincipalClassificationRegistry.For(target.Sid);
         var targetScope = target.GroupType.GetValueOrDefault() & 0x0f;
-        if (!AdministrativeMembershipIndex.IsTarget(definition) || target.ObjectClass != "group" || target.DomainFqdn is null
-            || (definition.Tier0Scope switch
+        var scopeMatches = evidence.TargetKind == BroadMembershipTarget.PreWindows2000CompatibleAccess
+            ? Same(target.Sid, CapturedGroupMembershipIndex.LegacyGroupSid) && targetScope == 5
+            : CapturedGroupMembershipIndex.IsTarget(definition) && (definition.Tier0Scope switch
             {
-                Tier0IdentityScope.Domain => targetScope != 2,
-                Tier0IdentityScope.BuiltinDomain => targetScope != 5,
-                Tier0IdentityScope.ForestRoot => targetScope is not (2 or 8) || !Same(target.NamingContext, evidence.ForestRootNamingContext),
-                _ => true,
-            })) throw Invalid();
+                Tier0IdentityScope.Domain => targetScope == 2,
+                Tier0IdentityScope.BuiltinDomain => targetScope == 5,
+                Tier0IdentityScope.ForestRoot => targetScope is 2 or 8 && Same(target.NamingContext, evidence.ForestRootNamingContext),
+                _ => false,
+            });
+        if (!scopeMatches || target.ObjectClass != "group" || target.DomainFqdn is null) throw Invalid();
         var sourceKeys = new HashSet<(string Sid, string Scope)>();
         var broadIds = new HashSet<Guid>();
         foreach (var source in evidence.BroadSources)
@@ -119,9 +111,9 @@ internal static class AdministrativeMembershipStorage
                 || !sourceKeys.Add((source.Sid.ToUpperInvariant(), source.SidScope?.ToUpperInvariant() ?? ""))) throw Invalid();
             foreach (var id in source.IdentityGuids)
             {
-                if (!broadIds.Add(id) || !principals.TryGetValue(id, out var identity)
+                if (id == evidence.TargetGuid || !broadIds.Add(id) || !principals.TryGetValue(id, out var identity)
                     || !Same(identity.Sid, source.Sid) || !Same(identity.SidScope, source.SidScope)
-                    || identity.ObjectClass == "foreignSecurityPrincipal" && !AdministrativeMembershipIndex.Special(identity.Sid)) throw Invalid();
+                    || identity.ObjectClass == "foreignSecurityPrincipal" && !CapturedGroupMembershipIndex.Special(identity.Sid)) throw Invalid();
             }
         }
         var linkKeys = new HashSet<(Guid Group, Guid Member, Guid Reference)>();
@@ -136,7 +128,7 @@ internal static class AdministrativeMembershipStorage
                 || link.MemberGuid != link.MemberReferenceGuid && (reference.ObjectClass != "foreignSecurityPrincipal"
                     || member.ObjectClass != "group" || !Same(reference.DomainFqdn, group.DomainFqdn)
                     || Sid.IsBuiltinDomain(member.Sid) && !Same(reference.DomainFqdn, member.DomainFqdn))) throw Invalid();
-            var supports = AdministrativeMembershipIndex.Special(member.Sid)
+            var supports = CapturedGroupMembershipIndex.Special(member.Sid)
                 ? (group.GroupType!.Value & 0x0f) is 4 or 5
                 : RequesterTrusteeReading.SupportsSecurityNesting(group.GroupType!.Value, member.GroupType,
                     Same(group.DomainFqdn, member.DomainFqdn), Sid.IsBuiltinDomain(group.Sid));
@@ -179,6 +171,27 @@ internal static class AdministrativeMembershipStorage
         return domains;
     }
 
+    internal static void ValidateScopedIdentity(AdministrativeMembershipIdentity identity,
+        IReadOnlyDictionary<string, AdministrativeMembershipIdentity> domains, string? configuration, bool securityGroup)
+    {
+        ValidateIdentity(identity);
+        if (identity.ObjectClass is not ("group" or "foreignSecurityPrincipal")) throw Invalid();
+        var configurationIdentity = identity.ObjectClass == "foreignSecurityPrincipal" && CapturedGroupMembershipIndex.Special(identity.Sid)
+            && Same(identity.NamingContext, configuration)
+            && (identity.DomainFqdn is null || Same(identity.DomainFqdn, DnHelper.DnToFqdn(identity.NamingContext)));
+        if (!configurationIdentity && (identity.DomainFqdn is null || !domains.TryGetValue(identity.DomainFqdn, out var domain)
+            || !Same(identity.NamingContext, domain.NamingContext)
+            || identity.ObjectClass != "foreignSecurityPrincipal" && !Sid.IsBuiltinDomain(identity.Sid)
+                && !Same(Sid.IssuingDomain(identity.Sid), domain.Sid))) throw Invalid();
+        if (identity.ObjectClass == "foreignSecurityPrincipal")
+        {
+            if (identity.GroupType is not null) throw Invalid();
+        }
+        else if (securityGroup && (identity.GroupType is not { } type || (type & 0x80000000L) == 0
+            || (type & 0x0f) is not (2 or 4 or 5 or 8) || ((type & 0x0f) == 5) != Sid.IsBuiltinDomain(identity.Sid)))
+            throw Invalid();
+    }
+
     internal static void ValidateIdentity(AdministrativeMembershipIdentity identity, bool includeMembershipValues = false)
     {
         if (string.IsNullOrWhiteSpace(identity.DistinguishedName) || string.IsNullOrWhiteSpace(identity.NamingContext)
@@ -215,32 +228,33 @@ internal static class AdministrativeMembershipStorage
         return seen;
     }
 
-    internal static void RequirePublishable(SqliteConnection connection, CancellationToken token)
+    internal static void RequirePublishable(SqliteConnection connection, string? derivationSeal, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT f.finding_id FROM finding f LEFT JOIN finding_broad_administrative_membership b ON b.finding_id=f.finding_id
-            WHERE f.rule_id='SEC-062' AND b.finding_id IS NULL
+            SELECT f.finding_id FROM finding f LEFT JOIN finding_broad_group_membership b ON b.finding_id=f.finding_id
+            WHERE f.rule_id IN ('SEC-062','SEC-061') AND b.finding_id IS NULL
             UNION ALL
-            SELECT b.finding_id FROM finding_broad_administrative_membership b LEFT JOIN finding f ON f.finding_id=b.finding_id
-            WHERE f.finding_id IS NULL OR f.rule_id<>'SEC-062'
+            SELECT b.finding_id FROM finding_broad_group_membership b LEFT JOIN finding f ON f.finding_id=b.finding_id
+            WHERE f.finding_id IS NULL OR f.rule_id NOT IN ('SEC-062','SEC-061')
             LIMIT 1
             """;
         if (command.ExecuteScalar() is not null) throw Invalid();
         command.CommandText = """
             SELECT b.proof,b.fingerprint,b.generation,j.judgement_generation_id,j.evidence_seal,j.derivation_generation_id,
-                   f.object_guid,f.distinguished_name,f.domain_fqdn,f.subject_key,f.subject_kind,f.severity
-            FROM finding_broad_administrative_membership b JOIN finding f ON f.finding_id=b.finding_id CROSS JOIN judgement j
+                   f.object_guid,f.distinguished_name,f.domain_fqdn,f.subject_key,f.subject_kind,f.severity,f.rule_id,f.object_class
+            FROM finding_broad_group_membership b JOIN finding f ON f.finding_id=b.finding_id CROSS JOIN judgement j
             """;
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
             token.ThrowIfCancellationRequested();
-            if (reader.IsDBNull(5) || reader.GetString(11) != nameof(Severity.High)) throw Invalid();
+            if (reader.IsDBNull(5) || !Enum.TryParse<Severity>(reader.GetString(11), out var severity)) throw Invalid();
             Decode(reader.GetString(0), (byte[])reader.GetValue(1), reader.GetString(2), Guid.Parse(reader.GetString(3)),
-                reader.GetString(4), Guid.Parse(reader.GetString(5)), Guid.Parse(reader.GetString(6)), reader.GetString(7),
-                reader.GetString(8), reader.GetString(9), reader.GetString(10), Severity.High);
+                reader.GetString(4), Guid.Parse(reader.GetString(5)), derivationSeal, reader.GetString(12),
+                Guid.Parse(reader.GetString(6)), reader.GetString(7), reader.GetString(8), reader.GetString(13),
+                reader.GetString(9), reader.GetString(10), severity);
         }
     }
 
@@ -252,5 +266,5 @@ internal static class AdministrativeMembershipStorage
             if (Same(current, context)) return true;
         return false;
     }
-    private static InvalidDataException Invalid() => new("The saved broad administrative-membership finding does not match its scoped membership evidence or generation.");
+    private static InvalidDataException Invalid() => new("The saved broad group-membership finding does not match its scoped membership evidence, policy or generation.");
 }

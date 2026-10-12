@@ -31,7 +31,7 @@ public sealed class ServiceAccountWithAdministrativeMembership : IObjectRule
         if (reading.Account is not { } account) return new([], reading.Missing, []);
         if (context.AdministrativeMembership is not { } index || context.MembershipRoutes is null)
             return new([], reading.Missing, [new(DerivedFactKind.AdministrativeMembership, UnresolvedReason.NotDerived)]);
-        var sid = AdministrativeMembershipIndex.ReadSid(subject);
+        var sid = CapturedGroupMembershipIndex.ReadSid(subject);
         if (sid is null) return RuleVerdict.CouldNotJudge([.. reading.Missing, "objectSid"]);
         var assessment = index.ForServiceAccount(subject, context.MembershipRoutes(sid, null));
         var findings = assessment.Memberships.Select(membership =>
@@ -49,7 +49,7 @@ public sealed class ServiceAccountWithAdministrativeMembership : IObjectRule
                 detail += "\n\nAdditional administrative membership could not be fully assessed."
                     + (membership.RouteIncompleteReasons == MembershipRouteIncompleteReason.None ? "" : " "
                         + new MembershipRouteSummary([], membership.RouteIncompleteReasons).CompletenessDescription)
-                    + string.Concat(membership.Limitations.Select(limit => "\n" + AdministrativeMembershipIndex.Describe(limit.Reason)
+                    + string.Concat(membership.Limitations.Select(limit => "\n" + CapturedGroupMembershipIndex.Describe(limit.Reason)
                         + ": " + limit.DistinguishedName));
             return new Finding(Definition.Id, Definition.Version, Definition.Severity,
                 new(FindingSubjectKind.Account, Key(account.ObjectGuid, target.ObjectGuid)), account.ObjectGuid,

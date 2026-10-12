@@ -345,7 +345,9 @@ internal sealed class FindingRowViewModel
         && (_finding.Evidence switch
         {
             KerberoastableAccountEvidence evidence => evidence.MembershipRoutes.IsComplete,
-            BroadAdministrativeMembershipEvidence evidence => evidence.IsComplete,
+            BroadGroupMembershipEvidence evidence => evidence.IsComplete,
+            GroupMembershipReviewEvidence evidence => evidence.IsComplete,
+            DelegationConfigurationEvidence evidence => evidence.IsComplete,
             ServiceAccountFindingEvidence evidence => evidence.IsComplete,
             AttributeWritePermissionEvidence evidence => evidence.IsComplete,
             _ => true,

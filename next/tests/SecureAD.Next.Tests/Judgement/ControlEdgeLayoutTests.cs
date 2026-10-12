@@ -149,6 +149,12 @@ public sealed class ControlEdgeLayoutTests
         [65] = "4F2097C2B23BECFBBC8F17526B3C9EC70C0B4CBE7BCD91CA9123B43CF2026F0D",
         // Observed attribute-write finding and shared-occurrence tables; all older layouts remain frozen.
         [66] = "F2C7D50E54B4D1DDCAF35DA3935E47EF515AC4EFED7F11683E29E1C9D70439A6",
+        // Observed membership-review and neutral broad-membership layout; older checkpoints remain frozen.
+        [67] = "E77EE049291AF593820FC969FEE23D8EC7150F2AA410ACDEB4DB559712D4BC8A",
+        // Observed captured delegation-configuration table; every older layout remains frozen.
+        [68] = "A8F03CEA1F6E105B12476DF9B7DCC7BD83119C82F3D47314D0516EB0F4CF4C8B",
+        // Independent captured-source hashes supplement delegation metadata; prior checkpoints stay unchanged.
+        [69] = "89B2069C0F4A99E3CD705F9F9784801B82CEC9CFE96FD0693BCE4473D31C39AA",
     };
 
     [Fact]

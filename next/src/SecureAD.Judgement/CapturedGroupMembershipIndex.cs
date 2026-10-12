@@ -6,26 +6,32 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
-internal sealed class AdministrativeMembershipIndex
+internal sealed partial class CapturedGroupMembershipIndex
 {
+    internal static readonly string LegacyGroupSid = WellKnownSidCatalog.AllSids
+        .Single(value => value.ConstantName == "ALIAS_PREW2KCOMPACC").Sid;
+    private static readonly int DomainAdminsRid = WellKnownSidCatalog.AllRelativeIdentifiers
+        .Single(value => value.ConstantName == "DOMAIN_ADMINS").Rid;
     private readonly CapturedMembershipInput _input;
     private readonly Tier0InputBinding _binding;
     private readonly IReadOnlyDictionary<string, NamingContextKind> _contexts;
     private readonly CancellationToken _token;
     private readonly Dictionary<Guid, int> _guids = [];
-    private readonly Dictionary<(string Sid, string Scope), int> _identities = [];
+    private readonly Dictionary<(string Sid, string Scope), (int Count, bool KnownAccount)> _identities = [];
     private readonly HashSet<(string Sid, string Scope)> _historicalIdentities = [];
     private readonly List<ObjectAttributes> _foreignPrincipals = [];
     private readonly Dictionary<(string Sid, string Scope), List<ObjectAttributes>> _groups = [];
     private readonly Dictionary<string, ObjectAttributes?> _domains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<(ObjectAttributes Source, AttributeValue Value)>> _backlinks = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Assessment> _assessments = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string Dn, BroadMembershipTarget Kind), Assessment> _assessments = [];
     private readonly List<AdministrativeMembershipLimitation> _inventoryLimitations = [];
+    private readonly List<AdministrativeMembershipLimitation> _legacyInventoryLimitations = [];
+    private readonly List<AdministrativeMembershipLimitation> _domainAdminInventoryLimitations = [];
     private IReadOnlyList<AdministrativeMembershipLimitation>? _serviceInventoryLimitations;
     private readonly Dictionary<string, ILookup<string, AttributeValue>> _memberValues = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AdministrativeMembershipReason?> _memberValueLimits = new(StringComparer.OrdinalIgnoreCase);
 
-    private AdministrativeMembershipIndex(CapturedMembershipInput input, Tier0InputBinding binding,
+    private CapturedGroupMembershipIndex(CapturedMembershipInput input, Tier0InputBinding binding,
         IReadOnlyDictionary<string, NamingContextKind> contexts, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -44,7 +50,13 @@ internal sealed class AdministrativeMembershipIndex
             if (sid is not null && !RequesterTrusteeReading.HasClass(source, "foreignSecurityPrincipal"))
             {
                 var identityKey = Key(sid, source.DomainFqdn);
-                _identities[identityKey] = _identities.GetValueOrDefault(identityKey) + 1;
+                var previous = _identities.GetValueOrDefault(identityKey);
+                var account = !RequesterTrusteeReading.HasClass(source, "group")
+                    && (RequesterTrusteeReading.HasClass(source, "user") || RequesterTrusteeReading.HasClass(source, "computer")
+                        || RequesterTrusteeReading.HasClass(source, "inetOrgPerson"))
+                    && OrderedValues(source.Find("objectClass")?.Values ?? [])
+                    && source.Find("objectClass")!.Values.All(value => value.Text is not null && value.Bytes is null);
+                _identities[identityKey] = (previous.Count + 1, account && (previous.Count == 0 || previous.KnownAccount));
             }
             if (!RequesterTrusteeReading.HasClass(source, "foreignSecurityPrincipal"))
                 foreach (var historical in AttributeReading.SidsOf(source, "sIDHistory").Sids)
@@ -96,8 +108,17 @@ internal sealed class AdministrativeMembershipIndex
             if (root is null)
             {
                 _inventoryLimitations.Add(new(pair.Key, AdministrativeMembershipReason.IdentityUnverified));
+                _legacyInventoryLimitations.Add(new(pair.Key, AdministrativeMembershipReason.IdentityUnverified));
+                _domainAdminInventoryLimitations.Add(new(pair.Key, AdministrativeMembershipReason.IdentityUnverified));
                 continue;
             }
+            if (_groups.GetValueOrDefault(Key(LegacyGroupSid, domain)) is not { Count: 1 } legacy
+                || !Unique(legacy[0]) || !Same(legacy[0].DomainFqdn, domain) || !Same(NamingContext(legacy[0]), pair.Key))
+                _legacyInventoryLimitations.Add(new(pair.Key, AdministrativeMembershipReason.IdentityUnverified));
+            if (_groups.GetValueOrDefault(Key(ReadSid(root)! + "-" + DomainAdminsRid, domain)) is not { Count: 1 } administrators
+                || !Unique(administrators[0]) || !Same(administrators[0].DomainFqdn, domain)
+                || !Same(NamingContext(administrators[0]), pair.Key))
+                _domainAdminInventoryLimitations.Add(new(pair.Key, AdministrativeMembershipReason.IdentityUnverified));
             var expected = WellKnownSidCatalog.AllSids.Select(value => PrincipalClassificationRegistry.For(value.Sid))
                 .Where(value => IsTarget(value) && value.Tier0Scope == Tier0IdentityScope.BuiltinDomain)
                 .Concat(WellKnownSidCatalog.AllRelativeIdentifiers.Select(value =>
@@ -114,10 +135,10 @@ internal sealed class AdministrativeMembershipIndex
         }
     }
 
-    internal static AdministrativeMembershipIndex Create(CapturedMembershipInput input, Tier0InputBinding binding,
+    internal static CapturedGroupMembershipIndex Create(CapturedMembershipInput input, Tier0InputBinding binding,
         IReadOnlyDictionary<string, NamingContextKind> contexts, CancellationToken token) => new(input, binding, contexts, token);
 
-    internal sealed record Assessment(BroadAdministrativeMembershipEvidence? Evidence, IReadOnlyList<string> Missing,
+    internal sealed record Assessment(BroadGroupMembershipEvidence? Evidence, IReadOnlyList<string> Missing,
         IReadOnlyList<UnresolvedInput> Unresolved);
 
     internal (AdministrativeMembershipIdentity? Identity, IReadOnlyList<AdministrativeMembershipIdentity> Domains,
@@ -140,7 +161,11 @@ internal sealed class AdministrativeMembershipIndex
         return (identity, domains.Values.ToArray(), limits.ToArray());
     }
 
-    internal Assessment For(ObjectAttributes subject)
+    internal Assessment For(ObjectAttributes subject) => For(subject, BroadMembershipTarget.AdministrativeGroup);
+
+    internal Assessment ForLegacyGroup(ObjectAttributes subject) => For(subject, BroadMembershipTarget.PreWindows2000CompatibleAccess);
+
+    private Assessment For(ObjectAttributes subject, BroadMembershipTarget kind)
     {
         _token.ThrowIfCancellationRequested();
         var source = _input.FindUnique(subject.DistinguishedName, _token);
@@ -148,23 +173,26 @@ internal sealed class AdministrativeMembershipIndex
             || source.CapturedUtc != subject.CapturedUtc || !Same(ReadSid(source), ReadSid(subject))
             || GroupType(source) != GroupType(subject))
             return new(null, [], [new(DerivedFactKind.AdministrativeMembership, UnresolvedReason.IdentityUnreadable)]);
-        if (_assessments.TryGetValue(source.DistinguishedName, out var existing)) return WithInventory(existing);
+        var key = (source.DistinguishedName, kind);
+        if (_assessments.TryGetValue(key, out var existing)) return WithInventory(existing, kind);
         var sid = ReadSid(source);
         if (sid is null) return new(null, ["objectSid"], []);
         var definition = PrincipalClassificationRegistry.For(sid);
-        if (!IsTarget(definition)) return WithInventory(new(null, [], []));
+        if (kind == BroadMembershipTarget.AdministrativeGroup ? !IsTarget(definition) : !Same(sid, LegacyGroupSid))
+            return WithInventory(new(null, [], []), kind);
         var context = NamingContext(source);
         if (definition.Tier0Scope == Tier0IdentityScope.ForestRoot && _binding.ForestRootNamingContext is { } root
             && context is not null && !Same(context, root)) return WithInventory(new(null, [], []));
-        var result = Assess(source, definition);
-        _assessments.Add(source.DistinguishedName, result);
-        return WithInventory(result);
+        var result = Assess(source, definition, kind);
+        _assessments.Add(key, result);
+        return WithInventory(result, kind);
     }
 
-    private Assessment WithInventory(Assessment assessment) => assessment with
+    private Assessment WithInventory(Assessment assessment, BroadMembershipTarget kind = BroadMembershipTarget.AdministrativeGroup) => assessment with
     {
         Unresolved = assessment.Unresolved
-            .Concat(_inventoryLimitations.Count == 0 ? [] : new[] { new UnresolvedInput(DerivedFactKind.AdministrativeMembership, UnresolvedReason.IdentityUnreadable) })
+            .Concat((kind == BroadMembershipTarget.AdministrativeGroup ? _inventoryLimitations : _legacyInventoryLimitations).Count == 0
+                ? [] : new[] { new UnresolvedInput(DerivedFactKind.AdministrativeMembership, UnresolvedReason.IdentityUnreadable) })
             .Concat(_input.IsComplete ? [] : new[] { new UnresolvedInput(DerivedFactKind.AdministrativeMembership, UnresolvedReason.MembershipIncomplete) })
             .Distinct().OrderBy(value => value.Reason).ToArray(),
     };
@@ -438,9 +466,9 @@ internal sealed class AdministrativeMembershipIndex
     internal static bool IsTarget(PrincipalClassification value) => value.Tier0ObjectClass == "group"
         && value.ControlPlaneScope is PrincipalAuthorityScope.Domain or PrincipalAuthorityScope.Forest or PrincipalAuthorityScope.Schema;
 
-    private Assessment Assess(ObjectAttributes targetSource, PrincipalClassification definition)
+    private Assessment Assess(ObjectAttributes targetSource, PrincipalClassification definition, BroadMembershipTarget kind)
     {
-        var limits = _inventoryLimitations.ToHashSet();
+        var limits = (kind == BroadMembershipTarget.AdministrativeGroup ? _inventoryLimitations : _legacyInventoryLimitations).ToHashSet();
         var principals = new Dictionary<Guid, AdministrativeMembershipIdentity>();
         var domains = new Dictionary<string, AdministrativeMembershipIdentity>(StringComparer.OrdinalIgnoreCase);
         var links = new Dictionary<(Guid Group, Guid Member, Guid Reference), List<AdministrativeMembershipWitness>>();
@@ -455,7 +483,7 @@ internal sealed class AdministrativeMembershipIndex
             return Result(null);
         }
         var targetScope = target.GroupType.GetValueOrDefault() & 0x0f;
-        var expectedScope = definition.Tier0Scope switch
+        var expectedScope = kind == BroadMembershipTarget.PreWindows2000CompatibleAccess ? targetScope == 5 : definition.Tier0Scope switch
         {
             Tier0IdentityScope.BuiltinDomain => targetScope == 5,
             Tier0IdentityScope.Domain => targetScope == 2,
@@ -526,14 +554,15 @@ internal sealed class AdministrativeMembershipIndex
         var savedPrincipals = principals.Values.Where(identity => retained.Contains(identity.ObjectGuid)).OrderBy(identity => identity.ObjectGuid).ToArray();
         var usedDomains = savedPrincipals.Where(identity => identity.DomainFqdn is not null).Select(identity => identity.DomainFqdn!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var evidence = new BroadAdministrativeMembershipEvidence(_binding.EvidenceSeal, _binding.DerivationGenerationId, _binding.DerivationSeal,
-            PrincipalClassificationRegistry.Version, BroadAdministrativeGroupMembership.PolicyVersion, _binding.ForestRootNamingContext,
+        var evidence = new BroadGroupMembershipEvidence(_binding.EvidenceSeal, _binding.DerivationGenerationId, _binding.DerivationSeal,
+            PrincipalClassificationRegistry.Version, kind == BroadMembershipTarget.AdministrativeGroup
+                ? BroadAdministrativeGroupMembership.PolicyVersion : BroadPreWindows2000Membership.PolicyVersion, _binding.ForestRootNamingContext,
             _binding.ConfigurationNamingContext, target.ObjectGuid, savedPrincipals,
             domains.Values.Where(domain => usedDomains.Contains(domain.DomainFqdn!)).OrderBy(domain => domain.DistinguishedName, StringComparer.OrdinalIgnoreCase).ToArray(),
             broad.OrderBy(pair => pair.Key.Sid, StringComparer.Ordinal).ThenBy(pair => pair.Key.Scope, StringComparer.Ordinal)
                 .Select(pair => new AdministrativeBroadSource(pair.Key.Sid, pair.Key.Scope.Length == 0 ? null : pair.Key.Scope,
                     BroadPrincipalCatalogue.NameOf(pair.Key.Sid)!, pair.Value.Order().ToArray())).ToArray(),
-            savedLinks, _input.IsComplete, SavedLimits());
+            savedLinks, _input.IsComplete, SavedLimits(), kind);
         return Result(evidence);
 
         void Visit(ObjectAttributes groupSource, AdministrativeMembershipIdentity group, ObjectAttributes referenceSource,
@@ -588,12 +617,13 @@ internal sealed class AdministrativeMembershipIndex
                 if (BroadPrincipalCatalogue.IsBroad(member.Sid)) Limit(memberSource, AdministrativeMembershipReason.IdentityUnverified);
                 return;
             }
+            if (kind == BroadMembershipTarget.PreWindows2000CompatibleAccess && member.ObjectGuid == target.ObjectGuid) return;
             principals.TryAdd(member.ObjectGuid, member);
             principals.TryAdd(reference.ObjectGuid, reference);
             var key = (group.ObjectGuid, member.ObjectGuid, reference.ObjectGuid);
             if (!links.TryGetValue(key, out var witnesses)) links[key] = witnesses = [];
             witnesses.Add(witness);
-            if (BroadPrincipalCatalogue.IsBroad(member.Sid))
+            if (member.ObjectGuid != target.ObjectGuid && BroadPrincipalCatalogue.IsBroad(member.Sid))
             {
                 var identityKey = Key(member.Sid, member.DomainFqdn);
                 if (!broad.TryGetValue(identityKey, out var ids)) broad[identityKey] = ids = [];
@@ -608,7 +638,7 @@ internal sealed class AdministrativeMembershipIndex
         void Limit(ObjectAttributes source, AdministrativeMembershipReason reason) => limits.Add(new(source.DistinguishedName, reason));
         AdministrativeMembershipLimitation[] SavedLimits() => limits.OrderBy(value => value.Reason)
             .ThenBy(value => value.DistinguishedName, StringComparer.OrdinalIgnoreCase).ToArray();
-        Assessment Result(BroadAdministrativeMembershipEvidence? evidence) => new(evidence, [],
+        Assessment Result(BroadGroupMembershipEvidence? evidence) => new(evidence, [],
             limits.Select(value => new UnresolvedInput(DerivedFactKind.AdministrativeMembership, value.Reason switch
             {
                 AdministrativeMembershipReason.GroupScopeUnsupported => UnresolvedReason.MembershipScopeUnsupported,
@@ -633,7 +663,7 @@ internal sealed class AdministrativeMembershipIndex
             : RequesterTrusteeReading.HasClass(source, "user") ? "user"
             : RequesterTrusteeReading.HasClass(source, "inetOrgPerson") ? "inetOrgPerson" : null;
         if (kind is null || Special(sid) && !isStub
-            || !isStub && _identities.GetValueOrDefault(Key(sid, source.DomainFqdn)) != 1
+            || !isStub && _identities.GetValueOrDefault(Key(sid, source.DomainFqdn)).Count != 1
             || isStub && source.Find("groupType")?.HasValue == true) return Unverified();
         var configurationIdentity = Special(sid) && isStub && _contexts[context] == NamingContextKind.Configuration
             && Same(context, _binding.ConfigurationNamingContext)

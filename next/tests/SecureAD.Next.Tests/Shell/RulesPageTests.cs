@@ -23,6 +23,22 @@ public sealed class RulesPageTests
     public static TheoryData<string> RuleIds() => new(RuleCatalogue.All.Select(rule => rule.Definition.Id));
 
     [Theory]
+    [InlineData("SEC-012")]
+    [InlineData("SEC-013")]
+    public void DelegationGuidanceUsesApprovedWordsInTheExistingScopeSection(string id)
+    {
+        var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == id).Definition;
+        var row = new RuleRowViewModel(id, definition, null);
+        var summary = id == "SEC-012" ? ConstrainedDelegationToRelevantService.Summary : ResourceBasedDelegationOnRelevantResource.Summary;
+        var scope = id == "SEC-012" ? ConstrainedDelegationToRelevantService.ScopeNote : ResourceBasedDelegationOnRelevantResource.ScopeNote;
+        var explanation = id == "SEC-012" ? ConstrainedDelegationToRelevantService.Explanation : ResourceBasedDelegationOnRelevantResource.Explanation;
+        Assert.Equal(summary, row.LooksFor);
+        Assert.Equal(scope, Assert.Single(row.ScopeNotes).Text);
+        Assert.True(row.HasScopeNotes);
+        Assert.Equal(WhiteSpace(explanation), WhiteSpace(row.About));
+    }
+
+    [Theory]
     [MemberData(nameof(RuleIds))]
     public void StructuredGuidanceKeepsEveryAuthoredParagraphAndDeclaredInput(string id)
     {

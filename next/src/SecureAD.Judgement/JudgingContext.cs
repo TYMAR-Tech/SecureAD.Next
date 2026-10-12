@@ -205,7 +205,7 @@ public sealed record JudgingContext(
     internal IReadOnlyDictionary<string, NamingContextKind>? NamingContexts { get; init; }
     internal Func<string, ObjectAttributes?>? ControlPrincipals { get; init; }
     internal CircularMembershipIndex? NestingCycles { get; init; }
-    internal AdministrativeMembershipIndex? AdministrativeMembership { get; init; }
+    internal CapturedGroupMembershipIndex? AdministrativeMembership { get; init; }
     internal Func<string, string?, SecureAD.Evidence.Findings.MembershipRouteSummary>? MembershipRoutes { get; init; }
     internal AttributeWriteAssessment? AttributeWrites { get; init; }
 

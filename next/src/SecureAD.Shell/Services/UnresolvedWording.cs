@@ -50,6 +50,9 @@ internal static class UnresolvedWording
         // a different instruction from everything below it.
         var split = token.Split('.', 2);
 
+        if (split.Length == 2 && split[0] == "DelegationConfiguration")
+            return DelegationConfigurationLimitations.Describe(split[1]);
+
         if (split.Length != 2)
             return $"{token} was not captured, so the rules that read it could not decide.";
 

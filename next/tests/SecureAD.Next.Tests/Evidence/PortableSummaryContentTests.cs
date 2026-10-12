@@ -234,7 +234,7 @@ public sealed class PortableSummaryContentTests
     [Fact]
     public async Task JudgingAppendsEveryRuleAndTheFindingsBySeverity()
     {
-        var bundle = await ACapturedForest();
+        var bundle = await ACapturedForest(withAdministrativeEvidence: true);
         Summarised(bundle);
         Derive(bundle);
 
@@ -271,7 +271,7 @@ public sealed class PortableSummaryContentTests
     [Fact]
     public async Task ThePortableSummaryOfAJudgedRunHoldsNoNameFromTheForest()
     {
-        var bundle = await ACapturedForest();
+        var bundle = await ACapturedForest(withAdministrativeEvidence: true);
         Summarised(bundle);
         Derive(bundle);
         Judge(bundle);
@@ -533,18 +533,19 @@ public sealed class PortableSummaryContentTests
     /// </para>
     /// </param>
     /// <returns>The bundle's directory.</returns>
-    private static async Task<string> ACapturedForest(bool withAnObjectOutsideAnyDomain = false)
+    private static async Task<string> ACapturedForest(bool withAnObjectOutsideAnyDomain = false, bool withAdministrativeEvidence = false)
     {
         var captured = await Capture(
-            TempDirectories.Create("summary-content"), withAnObjectOutsideAnyDomain);
+            TempDirectories.Create("summary-content"), withAnObjectOutsideAnyDomain, withAdministrativeEvidence: withAdministrativeEvidence);
 
         return captured.BundleDirectory;
     }
 
     private static async Task<CaptureRunResult> Capture(
-        string root, bool withAnObjectOutsideAnyDomain = false, TimeProvider? clock = null)
+        string root, bool withAnObjectOutsideAnyDomain = false, TimeProvider? clock = null, bool withAdministrativeEvidence = false)
     {
         var controller = AForest(withAnObjectOutsideAnyDomain);
+        if (withAdministrativeEvidence) AdministrativeGroupCaptureFixture.AddTo(controller);
         var plan = CapturePlan.For(
             controller.DomainController,
             "example.com",

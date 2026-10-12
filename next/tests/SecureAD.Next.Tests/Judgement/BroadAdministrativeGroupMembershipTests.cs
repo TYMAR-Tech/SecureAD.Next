@@ -41,7 +41,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         var directory = Prepared(Group(target, rid == 544 ? "S-1-5-32-544" : DomainSid + "-" + rid, type, [Wide]), Broad());
         using var reader = Open(directory);
         var finding = Assert.Single(reader.Read().Findings);
-        var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(finding.Evidence);
+        var evidence = Assert.IsType<BroadGroupMembershipEvidence>(finding.Evidence);
         Assert.Equal(("SEC-062", Severity.High, Id(target), target, "contoso.com", Id(target).ToString("D")),
             (finding.RuleId, finding.Severity, finding.ObjectGuid, finding.DistinguishedName, finding.DomainFqdn, finding.Subject.Key));
         Assert.Equal(FindingSubjectKind.DirectoryObject, finding.Subject.Kind);
@@ -109,7 +109,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
             Group(two, DomainSid + "-1202", -2147483646, [Wide]),
             Group(guests, DomainSid + "-514", -2147483646), Broad()));
         var finding = Assert.Single(reader.Read().Findings);
-        var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(finding.Evidence);
+        var evidence = Assert.IsType<BroadGroupMembershipEvidence>(finding.Evidence);
         Assert.Equal(2, evidence.BroadSources.Count);
         Assert.Equal(5, evidence.Links.Count);
         Assert.Equal(5, evidence.Principals.Count);
@@ -173,7 +173,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
             domain => Assert.Equal("child.contoso.com", domain), domain => Assert.Equal("contoso.com", domain));
         foreach (var finding in findings)
         {
-            var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(finding.Evidence);
+            var evidence = Assert.IsType<BroadGroupMembershipEvidence>(finding.Evidence);
             Assert.Equal(finding.DomainFqdn, evidence.Principals.Single(principal => principal.ObjectGuid == evidence.TargetGuid).SidScope);
             Assert.Single(reader.ReadPage(FindingsQuery.About(finding.DistinguishedName)).Value.Findings);
         }
@@ -262,10 +262,10 @@ public sealed class BroadAdministrativeGroupMembershipTests
         {
             Objects = input.Objects.Select(source => source.DistinguishedName == Wide ? source with { Completeness = limited } : source).ToArray(),
         });
-        var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
+        var evidence = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
         Assert.False(verdict.IsComplete);
         Assert.Contains(evidence.Limitations, limit => limit.Reason == AdministrativeMembershipReason.SourceIncomplete);
-        AdministrativeMembershipStorage.Validate(evidence);
+        GroupMembershipFindingStorage.Validate(evidence);
     }
 
     [Fact]
@@ -302,7 +302,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         Assert.Contains(verdict.Unresolved, value => value.Reason == UnresolvedReason.IdentityUnreadable);
         if (positive)
         {
-            var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
+            var evidence = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
             Assert.False(evidence.IsComplete);
             Assert.Contains(evidence.Limitations, limit => limit.DistinguishedName == Root
                 && limit.Reason == AdministrativeMembershipReason.IdentityUnverified);
@@ -318,7 +318,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         using var inputs = JudgingInputs.Open(directory, CancellationToken.None).Value;
         Assert.True(inputs.OpenDerivation().IsSuccess);
         var input = inputs.ReadMembershipInput() with { IsComplete = false };
-        var index = AdministrativeMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None);
+        var index = CapturedGroupMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None);
         var verdict = Rule.Judge(inputs.Bundle.ReadObjectAttributes(Wide)!, JudgingContext.At(Started) with { AdministrativeMembership = index });
         Assert.Empty(verdict.Findings);
         Assert.False(verdict.IsComplete);
@@ -462,7 +462,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         Assert.True(Judge(directory).IsSuccess);
         using var reader = Open(directory);
         var finding = Assert.Single(reader.Read().Findings);
-        Assert.False(Assert.IsType<BroadAdministrativeMembershipEvidence>(finding.Evidence).IsComplete);
+        Assert.False(Assert.IsType<BroadGroupMembershipEvidence>(finding.Evidence).IsComplete);
         Assert.Contains("Additional membership could not be fully assessed", finding.Detail);
         Assert.Equal(JudgementRunState.CompletedDegraded, reader.Description.State);
         Assert.Equal(RuleExecutionOutcome.Indeterminate, Assert.Single(reader.ReadRuleExecutions().Executions).Outcome);
@@ -477,11 +477,11 @@ public sealed class BroadAdministrativeGroupMembershipTests
         Assert.True(inputs.OpenDerivation().IsSuccess);
         var input = inputs.ReadMembershipInput();
         var contexts = inputs.ReadNamingContexts().Value;
-        Assert.Throws<InvalidDataException>(() => AdministrativeMembershipIndex.Create(
+        Assert.Throws<InvalidDataException>(() => CapturedGroupMembershipIndex.Create(
             input with { DerivationGenerationId = Guid.NewGuid() }, inputs.Binding(), contexts, CancellationToken.None));
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
-        Assert.ThrowsAny<OperationCanceledException>(() => AdministrativeMembershipIndex.Create(
+        Assert.ThrowsAny<OperationCanceledException>(() => CapturedGroupMembershipIndex.Create(
             input, inputs.Binding(), contexts, cancelled.Token));
     }
 
@@ -501,7 +501,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
                     ? attribute with { Values = [new(0, null, Sid.ToBytes(ChildSid + "-513"))] } : attribute).ToArray(),
             } : source).ToArray(),
         };
-        var index = AdministrativeMembershipIndex.Create(changed.Prepare(CancellationToken.None), inputs.Binding(),
+        var index = CapturedGroupMembershipIndex.Create(changed.Prepare(CancellationToken.None), inputs.Binding(),
             inputs.ReadNamingContexts().Value, CancellationToken.None);
         var verdict = Rule.Judge(inputs.Bundle.ReadObjectAttributes(Da)!, JudgingContext.At(Started) with { AdministrativeMembership = index });
         Assert.Empty(verdict.Findings);
@@ -553,10 +553,10 @@ public sealed class BroadAdministrativeGroupMembershipTests
                     ? attribute with { Values = attribute.Values.Select(value => value with { Ordinal = 1 }).ToArray() } : attribute).ToArray(),
             } : source).ToArray(),
         };
-        var index = AdministrativeMembershipIndex.Create(altered.Prepare(CancellationToken.None), inputs.Binding(),
+        var index = CapturedGroupMembershipIndex.Create(altered.Prepare(CancellationToken.None), inputs.Binding(),
             inputs.ReadNamingContexts().Value, CancellationToken.None);
         var verdict = Rule.Judge(inputs.Bundle.ReadObjectAttributes(Da)!, JudgingContext.At(Started) with { AdministrativeMembership = index });
-        var evidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
+        var evidence = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(verdict.Findings).Evidence);
         Assert.False(verdict.IsComplete);
         Assert.False(evidence.IsComplete);
         Assert.Equal(1, Assert.Single(Assert.Single(evidence.Links).Witnesses).Ordinal);
@@ -573,7 +573,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         await OwnAccountMembershipPathTests.RunCoverageHostAsync(host, directory, PathRequesterPolicy.SupportedCapturedQuestions);
         using var reader = Open(directory);
         var finding = Assert.Single(reader.Read().Findings, finding => finding.RuleId == "SEC-062");
-        Assert.IsType<BroadAdministrativeMembershipEvidence>(finding.Evidence);
+        Assert.IsType<BroadGroupMembershipEvidence>(finding.Evidence);
         Assert.Contains(reader.ReadRuleExecutions().Executions, execution => execution.RuleId == "SEC-062");
         Assert.Equal(BroadAdministrativeGroupMembership.Guidance, RuleGuidanceCatalogue.For("SEC-062")!.WhatToDo);
     }
@@ -587,8 +587,8 @@ public sealed class BroadAdministrativeGroupMembershipTests
         var whole = Assert.Single(reader.Read().Findings);
         var page = reader.ReadPage(FindingsQuery.About(Da));
         Assert.True(page.IsSuccess, page.Error?.Description);
-        var complete = Assert.IsType<BroadAdministrativeMembershipEvidence>(whole.Evidence);
-        var paged = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(page.Value.Findings).Evidence);
+        var complete = Assert.IsType<BroadGroupMembershipEvidence>(whole.Evidence);
+        var paged = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(page.Value.Findings).Evidence);
         var json = JsonSerializer.Serialize(complete, ProofSerialization.Options);
         Assert.Contains("\"BroadSources\"", json, StringComparison.Ordinal);
         Assert.Equal(json, JsonSerializer.Serialize(paged, ProofSerialization.Options));
@@ -610,16 +610,16 @@ public sealed class BroadAdministrativeGroupMembershipTests
         var one = Assert.Single(first.Read().Findings);
         var two = Assert.Single(second.Read().Findings);
         Assert.Equal((one.Subject, one.ObjectGuid, one.Detail), (two.Subject, two.ObjectGuid, two.Detail));
-        var a = Assert.IsType<BroadAdministrativeMembershipEvidence>(one.Evidence);
-        var b = Assert.IsType<BroadAdministrativeMembershipEvidence>(two.Evidence);
+        var a = Assert.IsType<BroadGroupMembershipEvidence>(one.Evidence);
+        var b = Assert.IsType<BroadGroupMembershipEvidence>(two.Evidence);
         Assert.Equal(a.Principals.Select(principal => principal.ObjectGuid), b.Principals.Select(principal => principal.ObjectGuid));
         Assert.Equal(a.Links.Select(link => (link.GroupGuid, link.MemberGuid)), b.Links.Select(link => (link.GroupGuid, link.MemberGuid)));
         var directory = Capture(sources);
         Derive(directory);
         var direct = Assess(directory, input => input);
         var reordered = Assess(directory, input => input with { Objects = input.Objects.Reverse().ToArray() });
-        var directEvidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(direct.Findings).Evidence);
-        var reorderedEvidence = Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(reordered.Findings).Evidence);
+        var directEvidence = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(direct.Findings).Evidence);
+        var reorderedEvidence = Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(reordered.Findings).Evidence);
         var json = JsonSerializer.Serialize(directEvidence, ProofSerialization.Options);
         Assert.Contains("\"Links\"", json, StringComparison.Ordinal);
         Assert.Equal(json, JsonSerializer.Serialize(reorderedEvidence, ProofSerialization.Options));
@@ -642,7 +642,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"UPDATE finding_broad_administrative_membership SET proof=json_set(proof,$path,{value})";
+            command.CommandText = $"UPDATE finding_broad_group_membership SET proof=json_set(proof,$path,{value})";
             command.Parameters.AddWithValue("$path", path);
             Assert.Equal(1, command.ExecuteNonQuery());
             RefreshFingerprint(connection);
@@ -663,20 +663,21 @@ public sealed class BroadAdministrativeGroupMembershipTests
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = copy, Pooling = false, ForeignKeys = false }.ToString());
         connection.Open();
-        AdministrativeMembershipStorage.RequirePublishable(connection, CancellationToken.None);
+        var derivationSeal = FindingInputBinding.DerivationSeal(directory, reader.Description.DerivationGenerationId);
+        GroupMembershipFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None);
         using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE finding_broad_administrative_membership SET fingerprint=zeroblob(32)";
+        command.CommandText = "UPDATE finding_broad_group_membership SET fingerprint=zeroblob(32)";
         Assert.Equal(1, command.ExecuteNonQuery());
-        Assert.Throws<InvalidDataException>(() => AdministrativeMembershipStorage.RequirePublishable(connection, CancellationToken.None));
+        Assert.Throws<InvalidDataException>(() => GroupMembershipFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None));
         RefreshFingerprint(connection);
         command.CommandText = "UPDATE finding SET rule_id='SEC-026' WHERE rule_id='SEC-062'";
         Assert.Equal(1, command.ExecuteNonQuery());
-        Assert.Throws<InvalidDataException>(() => AdministrativeMembershipStorage.RequirePublishable(connection, CancellationToken.None));
+        Assert.Throws<InvalidDataException>(() => GroupMembershipFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None));
         command.CommandText = "UPDATE finding SET rule_id='SEC-062' WHERE rule_id='SEC-026'";
         Assert.Equal(1, command.ExecuteNonQuery());
-        command.CommandText = "DELETE FROM finding_broad_administrative_membership";
+        command.CommandText = "DELETE FROM finding_broad_group_membership";
         Assert.Equal(1, command.ExecuteNonQuery());
-        Assert.Throws<InvalidDataException>(() => AdministrativeMembershipStorage.RequirePublishable(connection, CancellationToken.None));
+        Assert.Throws<InvalidDataException>(() => GroupMembershipFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None));
     }
 
     [Fact]
@@ -686,7 +687,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE finding_broad_administrative_membership SET generation=$generation";
+            command.CommandText = "UPDATE finding_broad_group_membership SET generation=$generation";
             command.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("D"));
             Assert.Equal(1, command.ExecuteNonQuery());
             RefreshFingerprint(connection);
@@ -744,7 +745,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
                     ? value with { Value = "-2147483644" } : value).ToArray() } : identity).ToArray() },
             _ => evidence with { InputsComplete = false, Limitations = [] },
         };
-        Assert.Throws<InvalidDataException>(() => AdministrativeMembershipStorage.Validate(invalid));
+        Assert.Throws<InvalidDataException>(() => GroupMembershipFindingStorage.Validate(invalid));
     }
 
     [Theory]
@@ -789,14 +790,14 @@ public sealed class BroadAdministrativeGroupMembershipTests
         }
     }
 
-    private sealed record Source(string Dn, string Kind, string? Sid, long? Type, string[] Members, string[] MemberOf,
-        bool MissingGuid = false);
+    internal sealed record Source(string Dn, string Kind, string? Sid, long? Type, string[] Members, string[] MemberOf,
+        bool MissingGuid = false, int PrimaryGroup = 513);
 
-    private static Source Group(string dn, string sid, long? type, string[]? members = null) => new(dn, "group", sid, type, members ?? [], []);
+    internal static Source Group(string dn, string sid, long? type, string[]? members = null) => new(dn, "group", sid, type, members ?? [], []);
     private static Source Broad() => Group(Wide, DomainSid + "-513", -2147483646);
-    private static Source Stub(string dn, string sid) => new(dn, "foreignSecurityPrincipal", sid, null, [], []);
+    internal static Source Stub(string dn, string sid) => new(dn, "foreignSecurityPrincipal", sid, null, [], []);
     private static Source User() => new(Narrow, "user", DomainSid + "-1100", null, [], []);
-    private static Guid Id(string dn) => new(SHA256.HashData(Encoding.UTF8.GetBytes(dn)).AsSpan(0, 16));
+    internal static Guid Id(string dn) => new(SHA256.HashData(Encoding.UTF8.GetBytes(dn)).AsSpan(0, 16));
 
     private static string Prepared(params Source[] sources)
     {
@@ -818,8 +819,8 @@ public sealed class BroadAdministrativeGroupMembershipTests
         return result.Value;
     }
 
-    private static BroadAdministrativeMembershipEvidence Evidence(JudgementReader reader) =>
-        Assert.IsType<BroadAdministrativeMembershipEvidence>(Assert.Single(reader.Read().Findings).Evidence);
+    private static BroadGroupMembershipEvidence Evidence(JudgementReader reader) =>
+        Assert.IsType<BroadGroupMembershipEvidence>(Assert.Single(reader.Read().Findings).Evidence);
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
@@ -834,11 +835,11 @@ public sealed class BroadAdministrativeGroupMembershipTests
         using var inputs = JudgingInputs.Open(directory, CancellationToken.None).Value;
         Assert.True(inputs.OpenDerivation().IsSuccess);
         var input = change(inputs.ReadMembershipInput()).Prepare(CancellationToken.None);
-        var index = AdministrativeMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None);
+        var index = CapturedGroupMembershipIndex.Create(input, inputs.Binding(), inputs.ReadNamingContexts().Value, CancellationToken.None);
         return Rule.Judge(inputs.Bundle.ReadObjectAttributes(Da)!, JudgingContext.At(Started) with { AdministrativeMembership = index });
     }
 
-    private static string Capture(IReadOnlyList<Source> sources, bool partial = false)
+    internal static string Capture(IReadOnlyList<Source> sources, bool partial = false)
     {
         var directory = TempDirectories.Create("sec062");
         using var writer = BundleWriter.Create(directory, Started);
@@ -884,7 +885,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
                 if (source.Kind == "user")
                 {
                     attributes.Add(Texts("userAccountControl", ["512"]));
-                    attributes.Add(Texts("primaryGroupID", ["513"]));
+                    attributes.Add(Texts("primaryGroupID", [source.PrimaryGroup.ToString(CultureInfo.InvariantCulture)]));
                 }
                 writer.WriteObject(new(partition, source.Dn, source.MissingGuid ? null : Id(source.Dn), attributes, Started));
             }
@@ -906,7 +907,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
     private static void RefreshFingerprint(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT generation,proof FROM finding_broad_administrative_membership";
+        command.CommandText = "SELECT generation,proof FROM finding_broad_group_membership";
         string generation;
         string json;
         using (var read = command.ExecuteReader())
@@ -915,7 +916,7 @@ public sealed class BroadAdministrativeGroupMembershipTests
             generation = read.GetString(0);
             json = read.GetString(1);
         }
-        command.CommandText = "UPDATE finding_broad_administrative_membership SET fingerprint=$hash";
+        command.CommandText = "UPDATE finding_broad_group_membership SET fingerprint=$hash";
         command.Parameters.AddWithValue("$hash", OwnershipAuditStorage.Hash(generation + "\0" + json));
         Assert.Equal(1, command.ExecuteNonQuery());
     }

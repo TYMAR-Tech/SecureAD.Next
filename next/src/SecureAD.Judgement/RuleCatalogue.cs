@@ -29,6 +29,8 @@ public static class RuleCatalogue
     [
         new UnconstrainedDelegationOnAccount(),
         new UnconstrainedDelegationOnNonDomainController(),
+        new ConstrainedDelegationToRelevantService(),
+        new ResourceBasedDelegationOnRelevantResource(),
         new AdminCountWithoutProtection(),
         new NoKerberosPreauthentication(),
         new PrivilegedSidHistory(),
@@ -47,6 +49,9 @@ public static class RuleCatalogue
         new UnexpectedTier0Route(),
         new CircularGroupMembership(),
         new DuplicateServicePrincipalNames(),
+        new LargePrivilegedGroupReview(),
+        new GroupNestedInDomainAdmins(),
+        new BroadPreWindows2000Membership(),
         new BroadAdministrativeGroupMembership(),
         new ServiceAccountWithAdministrativeMembership(),
         new ServiceAccountWithNonExpiringPassword(),

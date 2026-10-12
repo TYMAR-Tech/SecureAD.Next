@@ -109,7 +109,13 @@ public sealed class KeyCredentialLinkWorkflowTests
         var directory = Prepared($"O:SYG:SYD:(OA;ID;WP;{SetGuid};;{TargetSid})(OA;;WP;{AttributeGuid};;{TargetSid})", "same", [new AdminCountWithoutProtection()]);
         using var reader = JudgementReader.Open(directory).Value;
         var byObject = Assert.Single(KeyEdges(reader, UserDn));
-        var byHolder = Assert.Single(reader.ReadControlEdges(null, TargetSid, null, true, 0).Edges);
+        var holderPage = reader.ReadControlEdges(null, TargetSid, null, true, 0);
+        var byHolder = Assert.Single(holderPage.Edges, edge => edge.Capability == ControlCapability.CanWriteKeyCredentialLink);
+        Assert.Equal(new[] { ControlCapability.CanWriteKeyCredentialLink, ControlCapability.CanWriteServicePrincipalName,
+                ControlCapability.CanWriteResourceBasedConstrainedDelegation }.Order(),
+            holderPage.Edges.Select(edge => edge.Capability).Order());
+        Assert.All(holderPage.Edges.Where(edge => edge.Capability != ControlCapability.CanWriteKeyCredentialLink),
+            edge => Assert.Equal(ControlEvaluationState.Unknown, edge.EvaluationState));
         Assert.NotNull(byHolder.DerivationGenerationId);
         Assert.Equal((byObject.Id, reader.Description.GenerationId, reader.Description.DerivationGenerationId,
                 ControlEdgeClass.CredentialExposure),

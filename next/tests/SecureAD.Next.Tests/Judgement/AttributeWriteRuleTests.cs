@@ -698,7 +698,7 @@ public sealed class AttributeWriteRuleTests
         {
             ProtectedPrincipals = facts, SchemaGuids = catalogue, ForestFqdn = "contoso.com",
             NamingContexts = new Dictionary<string, NamingContextKind>(StringComparer.OrdinalIgnoreCase) { [Root] = NamingContextKind.Domain, [Child] = NamingContextKind.Domain },
-            AdministrativeMembership = AdministrativeMembershipIndex.Create(input, binding,
+            AdministrativeMembership = CapturedGroupMembershipIndex.Create(input, binding,
                 new Dictionary<string, NamingContextKind>(StringComparer.OrdinalIgnoreCase) { [Root] = NamingContextKind.Domain, [Child] = NamingContextKind.Domain }, CancellationToken.None),
         };
         var permissions = new ObjectPermissions(subject.DistinguishedName, DescriptorAvailability.Read, null, null, DaclState.Present,

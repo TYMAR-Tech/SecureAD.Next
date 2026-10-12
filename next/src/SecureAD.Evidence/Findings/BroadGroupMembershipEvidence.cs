@@ -49,13 +49,23 @@ public enum AdministrativeMembershipReason
 /// <summary>A source-local limitation; positive links elsewhere remain evidence.</summary>
 public sealed record AdministrativeMembershipLimitation(string DistinguishedName, AdministrativeMembershipReason Reason);
 
-/// <summary>One administrative group's broad membership and compact supported links, bound to the saved inputs.</summary>
-public sealed record BroadAdministrativeMembershipEvidence(string EvidenceSeal, Guid DerivationGenerationId,
+/// <summary>The finding policy applied to a scoped broad-membership proof.</summary>
+public enum BroadMembershipTarget
+{
+    /// <summary>A verified administrative group in the existing control-plane definition.</summary>
+    AdministrativeGroup = 1,
+    /// <summary>A resource-domain legacy group, not an additional Tier-0 definition.</summary>
+    PreWindows2000CompatibleAccess = 2,
+}
+
+/// <summary>One scoped group's broad membership and compact supported links, bound to the saved inputs.</summary>
+public sealed record BroadGroupMembershipEvidence(string EvidenceSeal, Guid DerivationGenerationId,
     string DerivationSeal, int PrincipalCatalogueVersion, int PolicyVersion,
     string? ForestRootNamingContext, string? ConfigurationNamingContext, Guid TargetGuid,
     IReadOnlyList<AdministrativeMembershipIdentity> Principals, IReadOnlyList<AdministrativeMembershipIdentity> Domains,
     IReadOnlyList<AdministrativeBroadSource> BroadSources, IReadOnlyList<AdministrativeMembershipLink> Links,
-    bool InputsComplete, IReadOnlyList<AdministrativeMembershipLimitation> Limitations) : FindingEvidence
+    bool InputsComplete, IReadOnlyList<AdministrativeMembershipLimitation> Limitations,
+    BroadMembershipTarget TargetKind) : FindingEvidence
 {
     /// <summary>Completeness of this assessment, independent of its established positive membership.</summary>
     public bool IsComplete => InputsComplete && Limitations.Count == 0;

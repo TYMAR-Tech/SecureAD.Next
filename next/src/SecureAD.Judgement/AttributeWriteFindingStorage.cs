@@ -103,8 +103,8 @@ internal static class AttributeWriteFindingStorage
             || expected == ControlExpectednessReason.UnexpectedBroadPrincipal && !BroadPrincipalCatalogue.IsBroad(evidence.HolderSid)
             || evidence.Limitations.Any(string.IsNullOrWhiteSpace) || evidence.Limitations.Distinct(StringComparer.Ordinal).Count() != evidence.Limitations.Count
             || evidence.Entries.Count != evidence.Scopes.Count) throw Invalid();
-        AdministrativeMembershipStorage.ValidateIdentity(evidence.Target);
-        var domains = AdministrativeMembershipStorage.ValidateDomains(evidence.Domains);
+        GroupMembershipFindingStorage.ValidateIdentity(evidence.Target);
+        var domains = GroupMembershipFindingStorage.ValidateDomains(evidence.Domains);
         if (!domains.TryGetValue(evidence.Target.DomainFqdn, out var domain)
             || evidence.Target.NamingContext != domain.NamingContext || !Same(Sid.IssuingDomain(evidence.Target.Sid), domain.Sid)) throw Invalid();
         var operation = AttributeWriteRules.Operation(AttributeWriteRules.RuleFor(evidence.PermissionKind));

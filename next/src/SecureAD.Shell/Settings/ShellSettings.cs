@@ -53,11 +53,17 @@ namespace SecureAD.Shell.Settings;
 /// </para>
 /// </param>
 /// <param name="Appearance">The chosen application theme, or null for the default Dark theme.</param>
+[method: JsonConstructor]
 internal sealed record ShellSettings(
     string? RunLibraryPath,
     int? DomainsAtOnce,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Appearance = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Appearance)
 {
+    public ShellSettings(string? RunLibraryPath, int? DomainsAtOnce)
+        : this(RunLibraryPath, DomainsAtOnce, Appearance: null)
+    {
+    }
+
     /// <summary>The settings of an installation nobody has configured yet.</summary>
     public static ShellSettings Unconfigured { get; } =
         new(RunLibraryPath: null, DomainsAtOnce: null, Appearance: null);

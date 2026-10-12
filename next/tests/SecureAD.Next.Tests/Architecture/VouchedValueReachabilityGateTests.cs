@@ -505,7 +505,7 @@ public sealed class VouchedValueReachabilityGateTests
     /// least one original value; empty and nonempty witness collections drive both outcomes.
     /// 74 adds <c>CapturedMemberReferences.IsComplete</c>: only the displayed references were
     /// resolved, not a membership expansion; explicit resolved/unresolved rows drive both values.
-    /// 75 adds <c>BroadAdministrativeMembershipEvidence.IsComplete</c>: a supported positive
+    /// 75 adds <c>BroadGroupMembershipEvidence.IsComplete</c>: a supported positive
     /// membership can coexist with capture or scope gaps; complete inputs with no limits and
     /// incomplete inputs or a nonempty limitation collection drive opposite values.
     /// 76 and 77 add <c>ServiceAccountFindingEvidence.IsComplete</c> and
@@ -513,6 +513,10 @@ public sealed class VouchedValueReachabilityGateTests
     /// recorded membership/capture/processing gaps make established positives incomplete.
     /// 78 adds <c>AttributeWritePermissionEvidence.IsComplete</c>: positive permission proof
     /// remains incomplete when other permission, identity or account-state inputs have gaps.
+    /// 79 adds <c>GroupMembershipReviewEvidence.IsComplete</c>: source-list review is qualified
+    /// separately by captured-input gaps and the saved structural total's limitations.
+    /// 80 adds <c>DelegationConfigurationEvidence.IsComplete</c>: captured configuration and
+    /// shared resource-scope qualifications remain distinct from concrete requester authorization.
     /// </para>
     /// </summary>
     [Fact]
@@ -527,7 +531,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -560,7 +564,9 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "ClassifiedPermissionEntry" && v.Name == "RightsAreComplete");
         Assert.Contains(found, v => v.Type.Name == "RequesterResourceContext" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipEvidence" && v.Name == "IsComplete");
-        Assert.Contains(found, v => v.Type.Name == "BroadAdministrativeMembershipEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "BroadGroupMembershipEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "GroupMembershipReviewEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "DelegationConfigurationEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ServiceAccountFindingEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ServiceAdministrativeMembership" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "AttributeWritePermissionEvidence" && v.Name == "IsComplete");
@@ -709,6 +715,24 @@ public sealed class VouchedValueReachabilityGateTests
                 [new(0, "top", null), new(1, "user", null)], [new(0, "HTTP/service.contoso.com", null)], [new(0, "66048", null)], 66048, []);
             yield return new SecureAD.Evidence.Findings.ServiceAccountFindingEvidence(account, null);
             yield return new SecureAD.Evidence.Findings.ServiceAccountFindingEvidence(account with { MissingAttributes = ["userAccountControl"] }, null);
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.GroupMembershipReviewEvidence))
+        {
+            var evidence = Assert.IsType<SecureAD.Evidence.Findings.GroupMembershipReviewEvidence>(
+                Assert.Single(SecureAD.Next.Tests.Judgement.MembershipReviewRuleTests.ReadPublishedFindings(),
+                    finding => finding.RuleId == "SEC-050").Evidence);
+            yield return evidence;
+            yield return evidence with { InputsComplete = false };
+            yield return evidence with { KnownTotal = evidence.KnownTotal! with { Limitations = ["SourceLimited"] } };
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.DelegationConfigurationEvidence))
+        {
+            var evidence = Assert.IsType<SecureAD.Evidence.Findings.DelegationConfigurationEvidence>(
+                Assert.Single(SecureAD.Next.Tests.Judgement.DelegationConfigurationRuleTests.ReadPublishedFindings(),
+                    finding => finding.RuleId == "SEC-012").Evidence);
+            yield return evidence with { Scope = evidence.Scope with { Limitations = [] }, Limitations = [] };
+            yield return evidence with { InputsComplete = false };
+            yield return evidence with { Limitations = ["ServiceResourceUnresolved"] };
         }
         // The generic linear vectors cannot coordinate the nested expansion's stop/limits with
         // the outer availability flag. Exercise the real public getters; do not exempt them.

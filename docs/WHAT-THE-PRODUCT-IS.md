@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 26 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 31 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -58,6 +58,230 @@ This is demo readiness, not final physical-display or full product acceptance; o
 validation findings remain recorded. Group rule implementations only where captured evidence and
 accepted finding behavior genuinely overlap, retaining bounded validated sessions and the existing
 decision to leave SEC-083 until the end.
+
+**Current rule checkpoint delivery and SEC-002 next session, owner-requested 2026-10-12.**
+The owner requested committing and pushing the current validated work, then implementing
+SEC-002 in a new session rather than starting its application changes in this one.
+This delivery includes the SEC-050/051/061 membership trio, SEC-012/013 configuration pair,
+their shared saved-evidence/readback changes, the owner-run membership lab checkpoint and all
+pending governing updates.
+The request supersedes those batches' earlier no-commit/no-push restrictions for this delivery,
+not the remaining boundaries or authorization for live access, new packaging or production acceptance.
+SEC-002 is now the selected next batch; do not ask the owner again which rule to take.
+Its exact severity, finding grouping and existing-screen wording still need explicit approval
+after a concrete bounded proposal based on recorded policy and the existing replication capability.
+Reuse `CanReplicateSecretDomainData`, established by Get-Changes together with Get-Changes-All,
+on the applicable naming-context root, preserving original permission occurrences, scoped
+expectedness and exact source/resource/generation binding.
+The separate filtered-attribute-set capability must not be substituted for secret-domain-data
+replication, and neither permission evidence nor a group-held grant proves credential extraction
+or concrete individual-requester authorization.
+The new session must preserve this checkpoint and later uncommitted work, use existing captured
+lab evidence and synthetic/offline verification, keep explicit unassessed results and meaningful
+historical tests/measurement records, and keep the current layout/themes unchanged.
+Wizard customization, file-opening tracing and further performance work remain deferred;
+SEC-083 stays last, and no new commit/push, recapture, discovery activation, production budget
+change, production-data export or package replacement is authorized for that future implementation.
+Publication preparation also found eight failed-test markers in the prior `a0ab4c8` main CI run,
+beyond the two previously recorded UI checks; its broader failures predate this delivery and
+remain untriaged rather than proof that the current full suite passes or attribution to these
+new batches.
+Retain the verified 656-check focused result and zero-error build separately from that finding.
+The owner then explicitly required fixing those eight reported CI errors before proceeding with
+publication or the new session.
+Reproduce the specific failed checks against the current staged delivery, fix confirmed current
+defects and tightly coupled expectations without weakening checks or changing frozen evidence,
+preserve the approved UI behavior and all pending rule work, and complete bounded rebuilt
+verification before resuming the already requested commit/push and SEC-002 handoff.
+The first full current-source run passes 8,156 of 8,158 checks, with all eight reported failures
+corrected and only the new SEC-012/013 Rules-screen scope-note section missing.
+The owner explicitly approved using every previously approved word in the existing explanation
+and Scope and limitations sections, moving the final "This finding does not establish..." sentence
+to the latter without new wording or screen redesign; implement that formatting correction and
+repeat the full-source validation before publication.
+The correction is complete: all 8,160 full-suite tests pass, the full explicit Release solution
+rebuild has zero errors and the 11 corrected/adapted checks pass again against that rebuild.
+All 11 checks detect ten explicitly rebuilt defects in a separate source copy with passing
+restored controls, including both approved delegation scope-note placements.
+The changes preserve absent-theme/default-Dark settings and JSON roundtrip behavior, replace
+stale count/version assumptions with exact current capability/header checks, and add captured
+domain/admin-group evidence only to the judging fixtures rather than weakening production refusal.
+The 37 XAML files, frozen layout/classifier anchors and original evidence/historical handoffs
+remain unchanged; publication and the selected SEC-002 new-session handoff can resume.
+
+**SEC-012 and SEC-013 delegation-configuration pair, owner-selected 2026-10-12.**
+The owner selected these two as the next bounded rule batch: constrained delegation to sensitive
+services and resource-based constrained delegation configured on privileged resources.
+Do not ask again which batch to take.
+The owner approved scope covering established Tier 0 plus controllers/dependencies positively
+identified as relevant by the existing analysis, not established Tier 0 resources alone.
+SEC-012 must support the match between a configured service name and its captured resource;
+SEC-013 examines captured RBCD configuration on the relevant resource.
+Unresolved target identities remain explicitly unassessed rather than safe, and a relevance
+reason must not relabel an ordinary controller/dependency as established Tier 0.
+The owner approved High severity for both rules, rather than importing the predecessor's
+High/Critical split; configured delegation warrants prompt review without claiming successful
+impersonation or takeover.
+The owner approved one SEC-012 finding per delegating-account/captured-resource pair, combining
+supported service names in the details, and one SEC-013 finding per affected resource with its
+RBCD configuration and original permission entries together.
+Retain every original configuration occurrence and assessment gap rather than multiplying rows
+or dropping supporting values.
+The owner approved SEC-013 only where the captured RBCD configuration contains a supported
+delegation grant, not every populated attribute.
+Readable settings granting nobody delegation do not trigger the same warning; damaged or
+unsupported configuration remains explicitly unassessed, and a supported stored grant is not
+authorization for a particular requester or proof of successful impersonation.
+The owner approved the existing-screen titles and explanations, without layout or theme changes:
+- SEC-012, **Constrained delegation to a Tier 0-relevant service**: "The captured settings configure
+  this account for constrained delegation to the recorded services on a Tier 0-relevant resource.
+  Review whether this delegation is required. This finding does not establish successful
+  impersonation, credential extraction or a completed Tier 0 path." Show the delegating account,
+  captured resource, supported service names and original configuration occurrences, with explicit gaps.
+- SEC-013, **RBCD delegation grant on a Tier 0-relevant resource**: "The captured RBCD settings
+  contain a supported delegation grant on this Tier 0-relevant resource. Review the recorded grants
+  and whether this delegation is required. This finding does not establish authorization for a
+  particular requester, successful impersonation or a completed Tier 0 path." Show the resource,
+  original delegation entries, scope evidence and explicit gaps, keeping group-held grants separate
+  from individual-member authorization.
+Do not ask again for the selected pair, scope, High severity, grouping, grant-only SEC-013 policy
+or those titles/explanations.
+Start from captured delegation configuration, existing service identities and the authoritative
+Tier-0 definition, not the predecessor's SID/name heuristics or a separate privileged-resource list.
+Keep configured delegation separate from SEC-014's permission to change RBCD, successful
+impersonation, operations and completed Tier-0 paths, with unavailable or ambiguous targets explicit.
+Preserve the pending SEC-050/051/061 implementation and lab checkpoint, all earlier uncommitted
+governing updates, published layout/themes, original captures and historical verification.
+Use synthetic/offline verification and existing captured evidence only, leave wizard options and
+the file-opening investigation deferred and SEC-083 last, and do not commit, push, recapture,
+activate discovery or change production budgets.
+
+The pair is implemented and offline verified in Judgement 69, preserving earlier observed layout
+checkpoints rather than replacing them.
+SEC-012 matches the complete configured SPN to a unique supported captured registration, retaining
+ports, instance names and original ordinals; unavailable owners, ambiguous registrations and
+uncaptured HOST mappings remain explicitly unassessed rather than hostname guesses.
+SEC-013 interprets the complete raw descriptor in its original order, keeps named group-held grant
+occurrences separate from requesters, and refuses a definite grant from damaged or unsupported
+earlier entries; a stored generic bit is not expanded into an already-held right.
+The relevant resource references the existing shared classification/relevance witnesses, while
+separate original-source fingerprints prevent a rehashed finding body from relabelling captured
+settings or identities.
+All 656 affected checks pass again after the full explicit zero-error Release solution rebuild,
+including direct and primary-group domain-controller membership, controller relevance without a
+Tier-0 relabel, disabled settings and positive findings beside capture gaps.
+All 79 new behavior cases across 32 methods detect 29 rebuilt defects with 29 passing restored
+controls in two independent isolated builds; a compiler-inlined constant check was corrected to
+read the loaded engine and re-proven, and the coupled standalone-writer publication regression
+was corrected without weakening the missing-metadata/source guards.
+The existing offline CLI publishes the original-seal-verified lab copy with 31 rules and 12,649
+findings, preserving all 12,646 earlier findings, 12,606 property-proof bodies apart from the
+independently checked new judgement generation, 12,607 original permission occurrences and
+earlier rule outcomes/gaps.
+In that input SEC-012/013 produce no findings but remain explicitly Indeterminate: one configured
+service lacks a supported captured resource match and one RBCD resource lacks positively
+established relevance; this is not a clean result, and synthetic captured fixtures establish the
+pair's positive behavior.
+The pending membership handoff and original evidence/result hashes remain unchanged, all 37
+published XAML files are hash-identical, and no full-suite, owner-run lab-host, physical-display
+or production acceptance is claimed.
+The catalogue now schedules 31 rules, leaving nine proposed candidates, without UI layout/theme,
+wizard, live access, budget, package, commit or push changes.
+
+**SEC-050, SEC-051 and SEC-061 membership trio, owner-selected 2026-10-12.**
+The owner selected these three as the next bounded rule batch: privileged-group size, group
+nesting in Domain Admins, and membership of Pre-Windows 2000 Compatible Access.
+Do not ask again which batch to take.
+The owner approved SEC-050 as a Low-severity review finding using the existing Direct member count,
+with default warnings strictly above 10 for each domain's Domain Admins, 5 for forest-root
+Enterprise Admins, 5 for forest-root Schema Admins and 15 for each domain's BUILTIN Administrators.
+Exactly the threshold does not trigger a finding; nested groups count once as direct members,
+and saved Known total and primary-group relationships remain separate.
+These are the product's review-policy defaults, not Microsoft limits, proof that a smaller group
+is safe, a processing budget or a reason to omit members.
+The owner approved SEC-051 as a Low-severity review finding for each group directly nested in
+Domain Admins, with one finding per nested-group/Domain-Admins pair.
+Nesting can be intentional: show the recorded relationship and advise reviewing the group's
+membership and who can change it, not automatically flattening it or calling it a proven attack.
+The owner approved SEC-061 as Medium only when broad identities, such as Everyone or Authenticated
+Users, reach a domain's Pre-Windows 2000 Compatible Access group through recorded direct membership
+or valid security-group nesting, with one finding per affected legacy group.
+Ordinary named members do not automatically trigger a finding; retain supporting links and missing
+evidence without claiming object-specific read access or a completed attack.
+The owner approved the following titles and explanations in the existing Rules and Findings
+screens, without layout or theme changes:
+- SEC-050, **Large privileged group**: "The captured Direct member count exceeds this group's
+  membership review threshold. Review whether the recorded members still need this privilege.
+  Group size alone does not prove unsafe access." Show Direct count, Review threshold and the
+  separate saved Known total where available.
+- SEC-051, **Group nested in Domain Admins**: "This group is directly nested in Domain Admins.
+  Review its membership and who can change it. Nesting may be intentional; this finding does
+  not prove an attack." Retain the original link for each nested-group/Domain-Admins pair.
+- SEC-061, **Broad membership of Pre-Windows 2000 Compatible Access**: "Broad identities reach
+  this legacy group through the recorded security-group relationships. Review whether this
+  compatibility access is still required. This finding does not establish object-specific
+  read access or a completed attack." Retain supporting links and explicit incomplete evidence
+  for each affected legacy group.
+Do not ask again for those policies, severities, titles, grouping or wording.
+The owner also proposed letting administrators choose options suited to their environment in the
+New audit wizard, including these thresholds; record that as future work, not part of this batch
+or approval of a new wizard layout, wording or configuration implementation.
+Reuse existing captured membership and scoped group identities, preserving the approved distinction
+between Direct member links, Known total and separate primary-group relationships rather than
+silently changing their meaning or introducing further unapproved policy.
+Preserve the published UI, earlier rule delivery, pending governing updates, original evidence
+and historical verification, use synthetic/offline verification only, keep the file-opening
+investigation deferred and SEC-083 last, and do not commit, push, recapture or change production budgets.
+
+The trio is implemented in Judgement 67, reusing the neutral captured-group membership engine and
+scoped identity proof rather than adding a second legacy-membership implementation or another
+Tier-0 definition.
+SEC-050 saves original Direct references and copies the existing saved Known total after findings
+are written, preserving its separate limitations; SEC-051 saves each direct nested-group/target pair
+and original link, and SEC-061 uses compact supported broad links without expanding their populations.
+Whole and selected-page readback require exact source/resource/generation binding and typed evidence,
+and the existing coverage wording reflects both source gaps and the saved total's limitations.
+All 566 affected checks pass, including a repeat after the explicit full zero-error Release solution
+rebuild, and all 87 new behavior cases across 34 methods detect 24 rebuilt defects with 24 passing
+restored controls.
+The existing offline CLI publishes a disposable seal-verified lab copy with 29 rules and three
+SEC-061 findings, while SEC-050/051 correctly produce no findings in that input; focused synthetic
+captures establish their positive and threshold-boundary cases.
+Exact comparison preserves all 12,646 existing findings, 12,606 property-proof bodies apart from
+the independently checked new judgement generation, 12,607 original permission occurrences,
+existing rule outcomes and explicit gaps, with original captures and historical results unchanged.
+The shared-engine change retains the earlier nonempty service and administrative behavior checks,
+and all 37 published XAML files remain hash-identical; no full-suite, physical-display, owner-run
+lab-host or production-scale acceptance is claimed.
+At the membership-trio checkpoint, the catalogue scheduled 29 rules with 11 proposed candidates
+remaining; wizard options remain deferred.
+
+**Owner-returned membership-trio lab checkpoint, 2026-10-12.**
+After the owner supplied the logs from the correct relocated run library, the run records 29 rules
+over 8,441 objects with SEC-050/051/061 all Succeeded, taking 135/93/135 ms respectively.
+The remaining qualification is SEC-071 Indeterminate, as in the earlier lab result; capture seals,
+derivation completes and judgement publishes CompletedDegraded rather than an all-clear.
+Findings total 12,649: 6 Critical, 12,624 High, 8 Medium and 11 Low, matching the earlier offline
+membership checkpoint by severity, not independently proving which rule produced each new row or
+equivalence of this fresh capture's saved proof bodies.
+The logged executable hash and engine module identity differ from the previous 26-rule run and
+are retained privately; the base-commit version banner alone does not identify uncommitted sources,
+and this text-only review does not independently match the published binary to the verified source.
+Summary-reported judging is 36.4 s versus the prior 42.1 s lab run, with 363 ms combined membership
+rule time and 737 ms for the property trio, not a controlled benchmark or production-scale claim.
+The Evidence-file opening pause is 11,934 ms against 49 ms reading/hashing, while Derivation and
+Judgement opens are about 2 ms; keep this separate and owner-deferred rather than restarting tracing.
+This establishes owner-run lab completion and expected aggregate rule/finding behavior, not
+physical-display, completed-run browsing, every-proof or production acceptance, and authorizes no
+new code, measurement tooling, live access, package replacement, commit or push.
+
+**File-opening investigation deferred; return to rule delivery, owner-directed 2026-10-12.**
+After comparison with the retained production records showed millisecond-scale seal openings
+rather than the lab's seconds-long pause, the owner directed returning to the remaining rules.
+Keep the lab pause and its unconfirmed cause recorded, but defer further tracing rather than
+treating it as a current prerequisite or claiming it has been fixed.
+This is a priority decision, not approval of another rule batch or its finding policies; SEC-083
+remains last and the existing evidence, UI, verification and production-data boundaries remain intact.
 
 **Delivery and lab diagnostic continuation, owner-requested 2026-10-11.**
 The owner explicitly requested committing, merging and pushing all pending work, including the
@@ -114,6 +338,14 @@ checks rather than a separate profile of one function.
 This is lab timing confirmation, not production-scale acceptance, a diagnosed file-open cause or
 approval for further optimization, measurement tooling, implementation, deployment, commit or push.
 
+Read-only comparison of retained production records on 2026-10-12 finds no analogous seconds-long
+pause at their recorded seal-creation opens.
+The October 10 production run's longest recorded opening is 12.913 ms, with millisecond-scale
+opens also in October 8 retained timing records and the October 5 published judgement log.
+Production elapsed reading/hashing intervals remain separate costs, and absence in these
+earlier-build records neither establishes the intermittent lab pause's cause nor rules out later
+saved-view delays or authorizes further measurement or changes.
+
 **SEC-014, SEC-024 and SEC-025 property-permission trio, owner-selected 2026-10-11.**
 After completing SEC-100/101, the owner approved taking these three rules together as the next
 bounded implementation batch: unexpected permission to configure resource-based constrained
@@ -133,8 +365,8 @@ Preserve the completed service-account changes, their verification handoff and t
 SEC-002 and the Group Policy rules remain separate, SEC-083 remains last, and no live access,
 capture/discovery/budget change, performance campaign, commit or push is authorized.
 
-The trio is implemented and offline verified in Judgement 66/control engine 10, with 26
-scheduled rules and 14 remaining proposed candidates.
+At the property-trio checkpoint, the trio was implemented and offline verified in Judgement
+66/control engine 10, with 26 scheduled rules and 14 remaining proposed candidates.
 Shared saved permission occurrences preserve the original entry positions, attribute scope and
 inheritance; missing captured schema, unreadable permission or unresolved expectedness remains
 explicit, and a group-held permission is not multiplied by its members.

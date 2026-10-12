@@ -186,6 +186,18 @@ public sealed class JsonShellSettingsStoreTests : IDisposable
         Assert.Equal(4, read.Value.DomainsAtOnce);
     }
 
+    [Fact]
+    public void BothSettingsConstructorFormsPreserveAnUnchosenAppearanceAndRoundTrip()
+    {
+        var implicitAppearance = new ShellSettings(@"D:\audits", 4);
+        var explicitAppearance = new ShellSettings(@"D:\audits", 4, Appearance: null);
+        Assert.Equal(explicitAppearance, implicitAppearance);
+        Assert.Null(implicitAppearance.Appearance);
+        Assert.True(Store().Write(implicitAppearance).IsSuccess);
+        Assert.Equal(implicitAppearance, Store().Read().Value);
+        Assert.DoesNotContain("Appearance", File.ReadAllText(_path), StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// A settings file asking for no domains at once is refused.
     /// </summary>

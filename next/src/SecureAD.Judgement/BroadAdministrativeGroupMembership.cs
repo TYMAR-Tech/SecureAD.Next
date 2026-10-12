@@ -30,7 +30,7 @@ public sealed class BroadAdministrativeGroupMembership : IObjectRule
         if (!RequesterTrusteeReading.HasClass(subject, "group")) return RuleVerdict.Judged([]);
         if (context.AdministrativeMembership is not { } index)
             return RuleVerdict.CouldNotResolve([new(DerivedFactKind.AdministrativeMembership, UnresolvedReason.NotDerived)]);
-        if (AdministrativeMembershipIndex.ReadSid(subject) is null) return RuleVerdict.CouldNotJudge(["objectSid"]);
+        if (CapturedGroupMembershipIndex.ReadSid(subject) is null) return RuleVerdict.CouldNotJudge(["objectSid"]);
         var assessment = index.For(subject);
         var findings = new List<Finding>();
         if (assessment.Evidence is { } evidence)
@@ -44,7 +44,7 @@ public sealed class BroadAdministrativeGroupMembership : IObjectRule
                     + (link.MemberReferenceGuid == link.MemberGuid ? "" : " (recorded through " + names[link.MemberReferenceGuid] + ")")));
             if (!evidence.IsComplete)
                 detail += "\n\nAdditional membership could not be fully assessed:\n" + string.Join("\n",
-                    evidence.Limitations.Select(limit => AdministrativeMembershipIndex.Describe(limit.Reason) + ": " + limit.DistinguishedName));
+                    evidence.Limitations.Select(limit => CapturedGroupMembershipIndex.Describe(limit.Reason) + ": " + limit.DistinguishedName));
             findings.Add(new("SEC-062", 1, Severity.High, new(FindingSubjectKind.DirectoryObject, target.ObjectGuid.ToString("D")),
                 target.ObjectGuid, target.DistinguishedName, target.DomainFqdn!, "group", detail, subject.Completeness, evidence)
                 { PrincipalName = subject.Find("sAMAccountName")?.OnlyValue?.Text ?? subject.DistinguishedName });

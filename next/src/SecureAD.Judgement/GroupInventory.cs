@@ -32,6 +32,10 @@ internal static class GroupInventoryStorage
 {
     internal const int PageSize = 50;
 
+    internal static int DirectCount(IReadOnlyList<AttributeValue> values) => values
+        .Where(value => !string.IsNullOrWhiteSpace(value.Text)).Select(value => value.Text!)
+        .Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
@@ -66,8 +70,7 @@ internal static class GroupInventoryStorage
     {
         if (!RequesterTrusteeReading.HasClass(subject, "group")) return;
         var members = subject.Find("member")?.Values;
-        var direct = members?.Where(value => !string.IsNullOrWhiteSpace(value.Text)).Select(value => value.Text!)
-            .Distinct(StringComparer.OrdinalIgnoreCase).Count() ?? 0;
+        var direct = DirectCount(members ?? []);
         var unreadable = members?.Count(value => string.IsNullOrWhiteSpace(value.Text)) ?? 0;
         var command = statements.Bind("INSERT INTO group_inventory VALUES($dn,$guid,$name,$account,$domain,$type,$direct,$unreadable,$description,$parent,$reversed,NULL,NULL,NULL,NULL)",
             transaction, ("$dn", subject.DistinguishedName), ("$guid", subject.ObjectGuid?.ToString("D")),

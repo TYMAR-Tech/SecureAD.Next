@@ -88,6 +88,7 @@ public sealed class OfflineAuditJourneyTests
             ("sAMAccountName", ["svc-web"]),
             ("userAccountControl", ["524800"]),
             ("primaryGroupID", ["513"]));
+        AdministrativeGroupCaptureFixture.AddTo(controller);
         return controller;
     }
 
