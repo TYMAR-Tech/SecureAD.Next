@@ -26,6 +26,43 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-014", "Property permissions", MitreTechnique: null,
+            WhyItMatters: "An unexpected holder has permission to change the RBCD attribute that controls who may act on behalf of other identities to this account's services. "
+                + AttributeWriteRules.ScopeNote,
+            WhatToDo: AttributeWriteRules.Guidance,
+            About: "Reports established WRITE_PROPERTY permission on msDS-AllowedToActOnBehalfOfOtherIdentity using captured account identity, schema and scoped expectedness.\n\n"
+                + "Permission is not proof of a successful RBCD configuration or service impersonation. WRITE_DAC and ownership pivots are separate assessments. "
+                + AttributeWriteRules.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-ada2/cea4ac11-a4b2-4f2d-84cc-aebb4a4ad405"),
+        new RuleGuidance("SEC-024", "Property permissions", MitreTechnique: null,
+            WhyItMatters: "An unexpected holder has permission to change service principal names registered on this account. " + AttributeWriteRules.ScopeNote,
+            WhatToDo: AttributeWriteRules.Guidance,
+            About: "Reports established WRITE_PROPERTY permission on servicePrincipalName, including a captured containing property set.\n\n"
+                + "Restricted validated-SPN writes are not unrestricted attribute-write permission. Existing SPNs, service usage, password strength and successful Kerberos ticket requests are not prerequisites established here. "
+                + AttributeWriteRules.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/windows/win32/api/ntdsapi/nf-ntdsapi-dswriteaccountspnw"),
+        new RuleGuidance("SEC-025", "Property permissions", MitreTechnique: null,
+            WhyItMatters: "An unexpected holder has permission to change the account's key-credential-link attribute. " + AttributeWriteRules.ScopeNote,
+            WhatToDo: AttributeWriteRules.Guidance,
+            About: "Reports the existing CanWriteKeyCredentialLink permission assessment for msDS-KeyCredentialLink.\n\n"
+                + "The SELF-only validated computer operation is separate. Adding a usable key, certificate infrastructure, authentication and credential extraction are not established. "
+                + AttributeWriteRules.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c"),
+        new RuleGuidance("SEC-100", "Service accounts", MitreTechnique: null,
+            WhyItMatters: "A service-associated account has an established security-membership route to a verified administrative group. "
+                + ServiceAccountWithAdministrativeMembership.ScopeNote,
+            WhatToDo: ServiceAccountWithAdministrativeMembership.Guidance,
+            About: "Reports sMSA/gMSA accounts and ordinary SPN-bearing users with captured security membership in Domain Admins, "
+                + "forest-root Enterprise Admins or Schema Admins, or resource-domain BUILTIN Administrators.\n\n"
+                + "Disabled accounts remain visible as dormant exposure. Established membership remains a finding when other routes could not be assessed. "
+                + ServiceAccountWithAdministrativeMembership.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
+        new RuleGuidance("SEC-101", "Service accounts", MitreTechnique: null,
+            WhyItMatters: "An ordinary SPN-bearing user has Password never expires set. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
+            WhatToDo: ServiceAccountWithNonExpiringPassword.Guidance,
+            About: "Reports ordinary SPN-bearing users with the captured Password never expires setting; managed service accounts and computers are excluded.\n\n"
+                + "Disabled accounts remain visible as dormant exposure. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties"),
         new RuleGuidance("SEC-062", "Group membership", MitreTechnique: null,
             WhyItMatters: BroadAdministrativeGroupMembership.Explanation,
             WhatToDo: BroadAdministrativeGroupMembership.Guidance,

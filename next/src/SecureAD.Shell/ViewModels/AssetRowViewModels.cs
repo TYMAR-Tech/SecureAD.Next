@@ -342,7 +342,14 @@ internal sealed class FindingRowViewModel
         + (principal.Scope is { } scope ? " (" + scope + ")" : string.Empty);
 
     private bool EvidenceIsComplete => _finding.Coverage == EvidenceCompleteness.Complete
-        && (_finding.Evidence is not KerberoastableAccountEvidence evidence || evidence.MembershipRoutes.IsComplete);
+        && (_finding.Evidence switch
+        {
+            KerberoastableAccountEvidence evidence => evidence.MembershipRoutes.IsComplete,
+            BroadAdministrativeMembershipEvidence evidence => evidence.IsComplete,
+            ServiceAccountFindingEvidence evidence => evidence.IsComplete,
+            AttributeWritePermissionEvidence evidence => evidence.IsComplete,
+            _ => true,
+        });
 
     /// <summary>
     /// Whether the evidence this rests on was complete, in words.

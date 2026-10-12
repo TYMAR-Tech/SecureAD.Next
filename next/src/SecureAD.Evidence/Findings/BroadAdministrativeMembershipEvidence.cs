@@ -40,6 +40,10 @@ public enum AdministrativeMembershipReason
     GroupScopeUnsupported,
     /// <summary>A foreign reference has no unique current captured principal to qualify.</summary>
     ForeignPrincipalUnresolved,
+    /// <summary>The account's primary-group identifier was absent or unusable.</summary>
+    PrimaryGroupUnavailable,
+    /// <summary>A captured foreign reference matches SID history, which the saved routes do not resolve.</summary>
+    HistoricalIdentityUnsupported,
 }
 
 /// <summary>A source-local limitation; positive links elsewhere remain evidence.</summary>

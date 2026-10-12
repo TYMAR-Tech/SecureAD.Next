@@ -544,16 +544,26 @@ public sealed class JudgementWriter : IDisposable
                 });
         }
 
-        foreach (var finding in execution.Findings)
+        try
         {
+            foreach (var finding in execution.Findings)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                WriteFinding(transaction, finding);
+            }
+
+            additional?.Invoke(transaction);
             cancellationToken.ThrowIfCancellationRequested();
-            WriteFinding(transaction, finding);
+            transaction.Commit();
+        }
+        catch
+        {
+            _session.Discard();
+            throw;
         }
 
-        additional?.Invoke(transaction);
-        cancellationToken.ThrowIfCancellationRequested();
-        transaction.Commit();
         _outcomes.Add(execution.Outcome);
+        _session.Promote();
     }
 
     /// <summary>
@@ -599,6 +609,10 @@ public sealed class JudgementWriter : IDisposable
         Tier0RouteFindingStorage.RequirePublishable(_connection);
         CircularMembershipStorage.RequirePublishable(_connection);
         AdministrativeMembershipStorage.RequirePublishable(_connection, cancellationToken);
+        ServiceAccountFindingStorage.RequirePublishable(_connection,
+            _rulesWritten.Contains("SEC-100") ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        AttributeWriteFindingStorage.RequirePublishable(_connection, _rulesWritten.Overlaps(["SEC-014", "SEC-024", "SEC-025"])
+            ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
@@ -806,6 +820,13 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case AttributeWritePermissionEvidence attribute:
+                AttributeWriteFindingStorage.Write(_connection, transaction, findingId, GenerationId, attribute,
+                    new SharedPermissionStorage(_connection, transaction, _statements, _session));
+                break;
+            case ServiceAccountFindingEvidence service:
+                ServiceAccountFindingStorage.Write(_connection, transaction, findingId, GenerationId, service);
+                break;
             case BroadAdministrativeMembershipEvidence membership:
                 AdministrativeMembershipStorage.Write(_connection, transaction, findingId, GenerationId, membership);
                 break;

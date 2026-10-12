@@ -13,10 +13,65 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
-**Initial-demo UI checkpoint - owner-approved publication and return to rules, 2026-10-11.**
+**Lab file-opening trace - MEDIUM; next owner-side checkpoint, 2026-10-11.**
+The owner requested committing, merging and pushing all pending delivery work and will continue in VS Code on the lab machine to investigate the intermittent file-opening pause.
+The [shared opening timer](../next/src/SecureAD.Evidence/BundleSealing.cs#L121) stops before SecureAD reads or hashes the file; the proposed first diagnostic is one short Windows file-system trace of existing offline judging on copied lab evidence, with matching executable provenance and all processes touching the bundle folder included.
+The cause remains unproven, including antivirus and application-thread pauses, so preserve originals and private verification records without changing security settings, integrity checks, analysis, production budgets or the decision to leave SEC-083 last.
+
+**Property-rule lab slowdown - HIGH; indexed-support correction implemented and offline measured, 2026-10-11.**
+The supplied current-format three-domain lab run logs 33,579 ms for SEC-014/024/025 versus 175 ms for SEC-100/101, and its sealed result contains 12,606 property findings carrying two or three schema definitions each while the introduced producer scanned the entire schema for every finding.
+The same supporting permission/schema material is validated again while writing, publishing and reading completed results, with 12,607 property occurrences referencing just 15 shared entry values; these repetitions are code-confirmed, not separately profiled timings for each function, and the 6,599 ms publication-validation bucket includes other checks too.
+The approved correction replaces the full scan with existing indexed lookups while retaining all scoped meanings and target-class support; two same-host existing-CLI comparisons reduce trio time from 5.954/9.186 s to 0.427/0.860 s and whole-process time from 20.013/39.279 s to 15.417/32.242 s, with substantial other-stage variability recorded rather than a promised lab or production speed.
+
+**Property-rule slowdown verification - exact saved answers preserved; lab timing follow-up confirmed, 2026-10-11.**
+Both comparison pairs preserve all 12,646 findings, all 12,606 complete property-proof bodies apart from the independently verified new judgement generation, all 12,607 original permission occurrences, rule outcomes and explicit incomplete-input records.
+All 402 focused checks and the complete zero-error Release solution rebuild pass, and every new indexed-support case detects rebuilt defects that drop a scope meaning or the captured target class, with passing rebuilt restorations.
+Original captures, prior handoffs and pending work remain preserved; the owner's fresh-capture lab logs confirm trio time of 0.850 s versus 33.579 s and completed judging of 42.1 s versus about 88 s with unchanged object/finding totals, not exact follow-up proof equivalence or production-scale acceptance.
+
+**Lab sealing file-open delays - MEDIUM; separate cause still unproven, 2026-10-11.**
+The original run records 12,739 ms opening Judgement against 520 ms reading/hashing; the follow-up opens Judgement in 2.18 ms but takes 9,421 ms opening Evidence against 55 ms reading/hashing, with capture rising from 15.7 s to 24.2 s.
+The delay therefore remains observed on a different sealed file, not resolved by the rule correction or proof of slow hashing, slow storage or interference by security software, while the aggregate final-validation bucket remains 6.404 s versus 6.599 s.
+Keep the delay separate from the property-rule correction and do not change sealing, file protection, packages or security settings without a separately justified proposal.
+
+**SEC-014/SEC-024/SEC-025 property-permission trio - implemented and offline verified, 2026-10-11.**
+The three owner-approved High rules use the approved permission-only labels and one finding per named permission-holder/target, with captured attribute identity, existing scoped expectedness and original permission occurrences saved through shared references in Judgement 66/control engine 10.
+All 96 new rule cases across 34 methods and nine related control cases detect rebuilt deliberate defects, with 40 useful variants and 41 passing rebuilt restorations; all 399 final focused checks pass, the broader affected run passes 1,093 checks with only the two unchanged published-UI architecture failures, the final transaction/account-identity corrections pass 384 targeted checks, and the complete Release solution rebuild has zero errors.
+The completed SEC-100/101 work, its handoff, pending governing updates, published layout and historical evidence remain preserved, restricted validated writes and permission pivots are not promoted into successful operations or Tier 0 paths, and no live access, recapture, discovery/budget change, performance campaign, package replacement, commit or push occurred, with SEC-083 still last.
+
+**Property-trio source/verification controls - corrected and mutation-verified, 2026-10-11.**
+Attribute identifiers now come from the existing authoritative schema catalogue rather than a second literal list, and the source guard distinguishes quoted documentation URLs from directory identifiers while still finding a separate identifier on the same line.
+The real scheduler records missing objectClass as an unassessed input rather than calling the object not applicable, both the typed finding body and each original permission occurrence are required on saved readback, and failed rule transactions discard pending shared-entry identities before another rule writes.
+The original ineffective independent-property mutation, incorrect inherited-flag fixture and missing-descriptor fixture attempts remain retained with compact provenance rather than being counted as passes or used to weaken any guard; current-format lab, physical-display and production acceptance remain outstanding.
+
+**Property-trio verification cleanup - LOW; one compiler-held temporary directory outstanding, 2026-10-11.**
+Verified generated source/build copies and temporary test data were removed while retaining compact results, source/binary fingerprints, deliberate-defect recipes and the original unsuccessful attempts.
+One recorded isolated temporary directory still contains a compiler-held analyzer file, so the cleanup receipt records it as outstanding rather than stopping a shared compiler or claiming complete removal.
+The preceding SEC-100/101 verification campaign, original captures, frozen anchors, published packages and workspace source are untouched.
+
+**SEC-100/SEC-101 service-account pair - implemented and offline verified, 2026-10-11.**
+The approved High administrative-membership and Medium non-expiring-password rules share captured service identification, retain disabled accounts as dormant exposure, exclude managed accounts/computers from SEC-101 and save original account values and qualified membership links in Judgement 65.
+All 98 new parameterized rule cases across 45 methods and six related controls detect rebuilt deliberate defects, 333 focused checks pass, the broader affected run has 728 passing checks and two pre-existing architecture failures, and the Release solution rebuild has zero errors.
+Published UI checkpoint `253b66b`, pending governing-document updates and historical evidence remain preserved; the existing coverage indicator now respects saved incompleteness without changing layout or labels, and no live access, recapture, budget change, performance campaign, package replacement, commit or push occurred, with SEC-083 still last.
+
+**Historical foreign-reference membership - MEDIUM; explicitly unsupported, shared-route correction outstanding, 2026-10-11.**
+The existing saved security-membership routes do not resolve a foreign-security-principal reference through captured SID history to its current account or group.
+SEC-100 records this as unsupported analysis separately from missing captured evidence and processing limits, preserves independently established current membership and never treats the unassessed historical relationship as clean.
+Correcting that shared route product is separate work; do not invent historical membership edges, replace frozen identity fixtures or silently widen this approved pair.
+
+**SEC-100/101 verification attempts and older lab inputs - retained; current-format lab acceptance outstanding, 2026-10-11.**
+All 104 affected parameterized cases detect an explicitly rebuilt defect across 54 useful variants and 57 passing restored controls, with the three original unsuccessful variants and their provenance retained.
+The surviving cancellation variant was still stopped by the shared input helper, the initial schema-constant variant required rebuilding its dependent test assembly, and the target-issuer fixture now avoids an unrelated current-SID collision; no frozen check or production guard was weakened.
+The retained 2026-10-08 and 2026-10-07 lab captures are Evidence 14 and 13 rather than current Evidence 16, so they remain untouched and are not claimed as current-build lab acceptance; verification uses current-format synthetic captured evidence without migration or recapture.
+
+**Published UI architecture guards - LOW; pre-existing failures, not corrected by rule delivery, 2026-10-11.**
+The affected architecture run reports the expression-bodied object-window constructor and the nullable Appearance default in settings, with both source files unchanged from published checkpoint `253b66b`.
+All other 728 affected checks pass, including the pair's saved results, shared membership behavior and existing finding/rule presentation.
+Keep these two failures recorded rather than weakening their guards, changing the approved UI or calling the complete architecture suite green.
+
+**Initial-demo UI checkpoint - published and verified; returning to rules, 2026-10-11.**
 The owner considers the current UI sufficient for initial demos and requested committing and pushing all pending UI work while retaining remaining polish and physical acceptance as outstanding.
 The current checkpoint has 1,574 passing Shell checks, 14 detected and rebuilt Rules-information regressions, a zero-error Release rebuild and one separately recorded pre-existing constructor-format architecture failure.
-Publish the current UI branch to the new primary repository, then resume bounded remaining-rule delivery with genuinely shared-input batches and SEC-083 kept at the end.
+Commit `253b66b` is pushed to `jistrand_microsoft/SecureAD.Next` on `ui-charcoal-object-windows`, with exact local/remote identity verified; the next implementation is the approved SEC-100/SEC-101 pair and SEC-083 remains last.
 
 **Twelve-screen mockup parity and live Dark/Light themes - mixed-theme and Light-activation defects corrected and executable-verified; repeat lab acceptance outstanding, 2026-10-10.**
 The duplicated component brush dictionaries are removed, and a theme change now replaces the application palette then recreates its one shared brush dictionary so existing canvases, cards, tables, text and controls all receive the chosen colors.
@@ -93,10 +148,10 @@ An additional whole-judging-subsystem run produced three identifiable failures b
 The new evidence-kind sample and current-format assertion were corrected and verified in the final targeted suite, while the diagnostic source-registration failure was independently reproduced in the preserved pre-rule baseline.
 Retain the unfinished run log and its input paths separately from the 2,177 completed affected checks; this is not a claim that the current full suite has passed.
 
-**Remaining-rule delivery - owner priority; SEC-083 deferred to the end, 2026-10-10.**
-The owner requested starting the remaining rules, then explicitly deferred the legacy GPP stored-password finding SEC-083 until the end rather than approving its proposed first-slice severity, wording or grouping.
-Its optional XML password scan remains disabled by default, ordinary GPO/SYSVOL evidence still supports other policy rules, and the next slice must come from another remaining current-evidence family.
-Continue bounded rule delivery with existing shared permission/path products and owner approval for new finding behavior, preserving all uncommitted work/evidence and the completed production baseline without restarting optimization, live access, unapproved capture extensions, UI changes, commit or push.
+**Remaining-rule delivery - service and property batches complete; grouped candidates reconciled and SEC-083 last, 2026-10-11.**
+The catalogue ships 26 rules and the reconciled handoff has 14 proposed new-rule candidates: group membership SEC-050/051/061, replication SEC-002, delegation configuration SEC-012/013, policy settings SEC-064/065/066, policy control SEC-080/081/082, managed-password access SEC-102 and legacy GPP SEC-083.
+The approved SEC-100/101 pair and SEC-014/024/025 trio are implemented; other batches still require their specific finding-policy decisions, and inventory, correlation aliases and shared target-specific assessments must not become duplicate rules to reproduce the predecessor's count.
+SEC-083 remains last with its optional XML scan disabled by default, ordinary GPO/SYSVOL capture stays enabled, and all subsequent work preserves the shared permission/path contracts and explicit incompleteness without unapproved capture extensions or performance campaigns.
 
 **Owner priority - finishing rules/features; further optimization deferred, 2026-10-10.**
 The owner explicitly prefers finishing the application and returning to performance/storage work after rules and features are implemented, unless there is a concrete, worthwhile gain.

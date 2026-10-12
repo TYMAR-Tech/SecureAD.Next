@@ -67,7 +67,7 @@ public enum DerivedFactKind
     /// <summary>Recorded circular membership components, including direct group self-loops.</summary>
     NestingCycles,
 
-    /// <summary>Source-bound broad administrative membership, separate from protected-account derivation.</summary>
+    /// <summary>Source-bound administrative membership, separate from the protected-account verdict.</summary>
     AdministrativeMembership,
 }
 
@@ -206,6 +206,8 @@ public sealed record JudgingContext(
     internal Func<string, ObjectAttributes?>? ControlPrincipals { get; init; }
     internal CircularMembershipIndex? NestingCycles { get; init; }
     internal AdministrativeMembershipIndex? AdministrativeMembership { get; init; }
+    internal Func<string, string?, SecureAD.Evidence.Findings.MembershipRouteSummary>? MembershipRoutes { get; init; }
+    internal AttributeWriteAssessment? AttributeWrites { get; init; }
 
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only

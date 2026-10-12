@@ -55,6 +55,7 @@ internal static class FullControlEvaluator
         && edge.Capability is ControlCapability.CanWriteDacl or ControlCapability.CanSetOwner
             or ControlCapability.CanModifyGroupMembership or ControlCapability.CanResetPassword
             or ControlCapability.CanWriteKeyCredentialLink or ControlCapability.CanReplicateSecretDomainData
+            or ControlCapability.CanWriteServicePrincipalName or ControlCapability.CanWriteResourceBasedConstrainedDelegation
             or ControlCapability.CanReplicateFilteredAttributes;
 
     internal static void Validate(FullControlAssessment value, IReadOnlyList<ControlEdge> edges)

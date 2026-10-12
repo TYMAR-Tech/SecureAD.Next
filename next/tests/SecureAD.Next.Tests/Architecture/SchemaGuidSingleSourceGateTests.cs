@@ -30,8 +30,9 @@ namespace SecureAD.Next.Tests.Architecture;
 /// <b>What it does not do.</b> Comment lines are skipped, so a GUID quoted in an explanation does
 /// not fail the build - the same allowance every other guard here makes, because a guard's own
 /// prose names the thing it forbids. The skip is a text heuristic on the leading characters of a
-/// line, not a parser, so a GUID in a trailing comment after code would still be caught. That is
-/// the safe direction to be wrong in.
+/// line, not a parser, so a GUID in a trailing comment after code would still be caught. Quoted
+/// HTTP documentation URLs are references, not directory identifiers; a separate literal on the
+/// same line remains in scope.
 /// </para>
 /// </summary>
 public sealed class SchemaGuidSingleSourceGateTests
@@ -43,6 +44,10 @@ public sealed class SchemaGuidSingleSourceGateTests
     private static readonly Regex GuidLiteral = new(
         @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
         RegexOptions.Compiled);
+    private static readonly Regex QuotedWebReference = new(
+        "\"https?://[^\"\\r\\n]+\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static bool ContainsIdentifierLiteral(string source) => GuidLiteral.IsMatch(QuotedWebReference.Replace(source, ""));
 
     /// <summary>
     /// The files allowed to contain GUID literals, one per kind of GUID, with the reason each
@@ -80,6 +85,7 @@ public sealed class SchemaGuidSingleSourceGateTests
     {
         var offenders = RebuildTree
             .ScanPattern(RebuildTree.ProductionFiles(), GuidLiteral)
+            .Where(s => ContainsIdentifierLiteral(s.Text))
             .Where(s => !GuidOwners.ContainsKey(Path.GetFileName(s.File)))
             .ToList();
 
@@ -109,6 +115,13 @@ public sealed class SchemaGuidSingleSourceGateTests
         Assert.DoesNotMatch(GuidLiteral, "userAccountControl");
     }
 
+    [Theory]
+    [InlineData("const string Attribute = \"bf967a68-0de6-11d0-a285-00aa003049e2\";", true)]
+    [InlineData("Reference: \"https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c\"", false)]
+    [InlineData("Reference: \"https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c\", Attribute: \"bf967a68-0de6-11d0-a285-00aa003049e2\"", true)]
+    public void DocumentationUrlsDoNotHideSeparateIdentifierLiterals(string source, bool containsIdentifier) =>
+        Assert.Equal(containsIdentifier, ContainsIdentifierLiteral(source));
+
     /// <summary>
     /// The allowlist-decay test. An exemption that is no longer needed must fail rather than
     /// quietly become permanent - so if a declared owner ever stops holding literals, whether
@@ -119,6 +132,7 @@ public sealed class SchemaGuidSingleSourceGateTests
     {
         var literalsByFile = RebuildTree
             .ScanPattern(RebuildTree.ProductionFiles(), GuidLiteral)
+            .Where(s => ContainsIdentifierLiteral(s.Text))
             .GroupBy(s => Path.GetFileName(s.File), StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
@@ -146,6 +160,7 @@ public sealed class SchemaGuidSingleSourceGateTests
 
         var inTests = RebuildTree
             .ScanPattern(RebuildTree.AllFiles(), GuidLiteral)
+            .Where(s => ContainsIdentifierLiteral(s.Text))
             .Where(s => !productionPaths.Contains(s.File))
             .ToList();
 

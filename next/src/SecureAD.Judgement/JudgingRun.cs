@@ -762,6 +762,7 @@ public static class JudgingRun
                     {
                         AdministrativeMembership = AdministrativeMembershipIndex.Create(membership,
                             inputs.Binding(), contexts.Value, cancellationToken),
+                        MembershipRoutes = reader.MembershipRoutesOf,
                     };
                 }
 
@@ -922,6 +923,9 @@ public static class JudgingRun
         using var descriptors = bundle.StreamDescriptorObjects(cancellationToken);
         work.Order.Stop();
         var permissionPreparation = new PermissionClassificationPreparation(descriptors, classificationSchema, writer.GenerationId);
+        var attributeWriteRules = rules.Any(rule => rule is UnexpectedResourceBasedDelegationWrite
+            or UnexpectedServicePrincipalNameWrite or UnexpectedKeyCredentialLinkWrite);
+        var attributeWriteBinding = attributeWriteRules ? inputs.Binding() : null;
         progress.BeginOperation("read-object");
         foreach (var subject in descriptors.Objects)
         {
@@ -1005,6 +1009,25 @@ public static class JudgingRun
                         ? permissions : readPermissions(dn),
                 }
                 : context;
+            if (attributeWriteRules && AttributeWriteRules.IsAccount(subject))
+            {
+                ControlObjectEvaluation attributePermissions;
+                if (tier0Discovery is null) attributePermissions = edges;
+                else
+                {
+                    progress.BeginOperation("derive-control-edges");
+                    work.ControlDerive.Start();
+                    try { attributePermissions = ControlEdgeDeriver.DeriveAttributeWrites(subject, permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids); }
+                    finally { work.ControlDerive.Stop(); }
+                }
+                objectContext = objectContext with
+                {
+                    AttributeWrites = new AttributeWriteAssessment(subject, attributePermissions, controlContext, attributeWriteBinding!,
+                        scope.Value.AllDeclaredDomainsAreComplete, permissions?.Entries.Any(entry =>
+                            EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
+                            && (entry.AccessMask & unchecked((int)0xf0000000)) != 0) == true, writer.GenerationId),
+                };
+            }
             work.Rules.Start();
             foreach (var tally in tallies)
             {
@@ -1737,6 +1760,14 @@ public static class JudgingRun
 
         private void Judge(ObjectAttributes subject, JudgingContext context)
         {
+            // Without a class, a class-filtered rule cannot establish that the object is outside its scope.
+            if (rule.Definition.SubjectClasses.Count > 0
+                && subject.Find("objectClass")?.Values.Any(value => !string.IsNullOrWhiteSpace(value.Text)) != true)
+            {
+                _notJudged++;
+                _missing["objectClass"] = _missing.GetValueOrDefault("objectClass") + 1;
+                return;
+            }
             if (!rule.Definition.IsAbout(subject))
             {
                 _notApplicable++;

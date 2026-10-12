@@ -70,6 +70,18 @@ internal static class UnresolvedWording
             {
                 UnresolvedReason.NotDerived or UnresolvedReason.MembershipIncomplete or UnresolvedReason.IdentityUnreadable => AdministrativeEvidenceUnavailable,
                 UnresolvedReason.MembershipScopeUnsupported => MembershipScopeUnsupported,
+                UnresolvedReason.MembershipProcessingLimit =>
+                    "The saved administrative-membership route calculation reached its recorded processing limit. "
+                    + "Established membership remains evidence; absence of other routes is not a complete answer.",
+                UnresolvedReason.ForestIdentityUnreadable =>
+                    "The captured forest-root identity is unavailable, so Enterprise Admins and Schema Admins membership could not be fully qualified.",
+                UnresolvedReason.MembershipIdentityUnsupported =>
+                    "A captured foreign reference matches SID history, which the saved security-membership routes do not resolve. "
+                    + "Established current membership remains evidence; membership through the historical identity is not assessed.",
+                UnresolvedReason.AttributeWriteSchemaUnavailable =>
+                    "The captured schema does not establish the requested attribute's identity; this attribute-write rule cannot report a complete answer.",
+                UnresolvedReason.AttributeWriteIncomplete =>
+                    "The attribute-write permission or the holder's administrative expectedness could not be assessed completely. Established findings remain evidence of the permissions shown.",
                 _ => $"{token} was undecided, and this version has no plainer way to say why.",
             };
 
@@ -129,6 +141,15 @@ internal static class UnresolvedWording
             UnresolvedReason.ForestIdentityUnreadable =>
                 "The captured forest could not be identified, so schema-scoped owner acceptance "
                 + "could not be checked. Check the run's recorded forest identity before judging again.",
+
+            UnresolvedReason.MembershipProcessingLimit =>
+                "The saved membership-route calculation reached its recorded processing limit; absence of other routes is not a complete answer.",
+            UnresolvedReason.MembershipIdentityUnsupported =>
+                "A captured historical identity cannot be followed through the saved security-membership routes; absence of a route is not a complete answer.",
+            UnresolvedReason.AttributeWriteSchemaUnavailable =>
+                "The captured schema does not establish the requested attribute-write identity.",
+            UnresolvedReason.AttributeWriteIncomplete =>
+                "The requested attribute-write permission or its expectedness has unresolved captured or derived inputs.",
 
             UnresolvedReason.OwnerServerBehaviorNotRecorded or UnresolvedReason.OwnerHeuristicNotRead or UnresolvedReason.OwnerRightsNotEvaluated =>
                 Ownership.GetString(reason.ToString(), CultureInfo.CurrentUICulture) ?? throw new MissingManifestResourceException(reason.ToString()),

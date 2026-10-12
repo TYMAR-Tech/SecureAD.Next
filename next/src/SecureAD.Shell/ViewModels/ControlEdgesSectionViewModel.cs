@@ -568,6 +568,8 @@ internal sealed class ControlEdgeRowViewModel
         ControlCapability.CanAddSelfToGroup => "Self-Membership candidate — own account only; requester not verified",
         ControlCapability.CanResetPassword => Text("PasswordResetLabel"),
         ControlCapability.CanWriteKeyCredentialLink => Text("KeyCredentialLinkLabel"),
+        ControlCapability.CanWriteServicePrincipalName => "Service-principal-name write permission",
+        ControlCapability.CanWriteResourceBasedConstrainedDelegation => "RBCD-configuration write permission",
         ControlCapability.CanReplicateSecretDomainData => Text("ReplicationSecretLabel"),
         ControlCapability.CanReplicateFilteredAttributes => Text("ReplicationFilteredLabel"),
         _ => "Unsupported capability",
