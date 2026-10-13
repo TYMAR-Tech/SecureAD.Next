@@ -411,7 +411,7 @@ public static class RuleGuidanceCatalogue
                 + "permission - it falls out of the group nesting underneath, which is why nobody "
                 + "notices.",
             WhatToDo:
-                "Follow the membership path on the finding and cut the link that brings the broad "
+                "Follow every membership path on the finding and cut the links that bring broad "
                 + "principal into the group the permission names, or narrow the permission so it "
                 + "names only the administrators who need it. Do not simply delete the entry: this "
                 + "product cannot know which principals your organisation intended to hold this "

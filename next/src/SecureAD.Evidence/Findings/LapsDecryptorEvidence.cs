@@ -54,7 +54,8 @@ public enum LapsDecryptorForm
 /// one principal, and Microsoft's documented answer to needing more than one is to "create a wrapper
 /// group that has all the relevant security principals as members". So the supported configuration
 /// is a group, and what matters is what ended up inside it - which is why
-/// <see cref="MembershipPath"/> carries the route and not just the endpoints.
+/// <see cref="LapsDecryptorRouteEvidence.MembershipPath"/> carries each route and not just the
+/// endpoints.
 /// </para>
 /// <para>
 /// <b>Correcting the policy does not undo the exposure</b>, for the same reason the subject is the
@@ -76,14 +77,9 @@ public enum LapsDecryptorForm
 /// The identifier the value resolved to, or null where it could not be resolved.
 /// </param>
 /// <param name="DecryptorName">What the decryptor is called, where this bundle can say.</param>
-/// <param name="BroadPrincipalSid">
-/// The broad principal that can decrypt, or null on a finding that could not resolve the decryptor
-/// at all.
-/// </param>
-/// <param name="BroadPrincipalName">What that principal is called.</param>
-/// <param name="MembershipPath">
-/// The route from the configured decryptor down to the broad principal. A single step where the
-/// decryptor is itself broad.
+/// <param name="BroadPrincipalRoutes">
+/// Every distinct broad principal currently supporting the policy finding, with the shortest
+/// captured membership route to each one. Empty where the decryptor could not be resolved.
 /// </param>
 /// <param name="ExpansionWasComplete">
 /// Whether the walk reached everything nested inside the decryptor.
@@ -94,9 +90,7 @@ public sealed record LapsDecryptorEvidence(
     LapsDecryptorForm Form,
     string? DecryptorSid,
     string? DecryptorName,
-    string? BroadPrincipalSid,
-    string? BroadPrincipalName,
-    IReadOnlyList<PathStep> MembershipPath,
+    IReadOnlyList<LapsDecryptorRouteEvidence> BroadPrincipalRoutes,
     bool ExpansionWasComplete) : FindingEvidence
 {
     /// <summary>
@@ -115,8 +109,24 @@ public sealed record LapsDecryptorEvidence(
     /// password isn't backed up" - so no password is being stored at all. Reporting the second as
     /// the first would send an operator to fix the wrong thing.
     /// </remarks>
-    public bool BroadPrincipalFound => BroadPrincipalSid is not null;
+    public bool BroadPrincipalFound => BroadPrincipalRoutes.Count > 0;
+}
 
+/// <summary>
+/// One independently supported route from a configured Windows LAPS decryptor to a broad
+/// principal.
+/// </summary>
+/// <param name="BroadPrincipalSid">The broad principal reached by this route.</param>
+/// <param name="BroadPrincipalName">What that principal is called.</param>
+/// <param name="MembershipPath">
+/// The ordered route from the configured decryptor down to the broad principal. A single step
+/// where the decryptor is itself broad.
+/// </param>
+public sealed record LapsDecryptorRouteEvidence(
+    string BroadPrincipalSid,
+    string? BroadPrincipalName,
+    IReadOnlyList<PathStep> MembershipPath)
+{
     /// <summary>The route as an operator would read it, naming what can be named.</summary>
     public string Route => string.Join(" -> ", MembershipPath.Select(s => s.Display));
 

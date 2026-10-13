@@ -157,6 +157,8 @@ public sealed class ControlEdgeLayoutTests
         [69] = "89B2069C0F4A99E3CD705F9F9784801B82CEC9CFE96FD0693BCE4473D31C39AA",
         // Observed SEC-002 source-linked finding table; every earlier checkpoint remains frozen.
         [70] = "345583820F71D406D52F9E84F05703A692BDE30BD571F334621B82695028BB17",
+        // Observed SEC-093 policy-level route grouping; every earlier checkpoint remains frozen.
+        [71] = "65F0B81CCA824DAF1B777110821B946389799590DBAA42AB4C97F9F79AD3C87F",
     };
 
     [Fact]
@@ -183,6 +185,8 @@ public sealed class ControlEdgeLayoutTests
     [InlineData("ALTER TABLE ownership_target ADD COLUMN unversioned TEXT")]
     [InlineData("DROP TABLE ownership_seed")]
     [InlineData("DROP TABLE ownership_relation")]
+    [InlineData("ALTER TABLE finding_laps_decryptor_route ADD COLUMN unversioned TEXT")]
+    [InlineData("DROP TABLE finding_laps_decryptor_path")]
     public void LayoutCheckpointRejectsUnversionedChanges(string mutation)
     {
         using var connection = Create();

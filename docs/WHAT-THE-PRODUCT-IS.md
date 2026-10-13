@@ -127,6 +127,22 @@ The handoff begins with the recommended SCOUT-01 publication correction alone an
 concrete bounded scope and displayed wording/grouping approval before application edits, preserving
 the committed baseline, later uncommitted work and original verification/evidence artifacts.
 
+**SCOUT-01 publication grouping - owner-approved 2026-10-13.**
+SEC-093 keeps one Critical finding at the existing Group Policy Object subject and acceptance
+identity, with one shortest captured membership route for every distinct broad principal supporting
+that policy finding; a second route must neither create a colliding finding nor be discarded.
+A one-route finding keeps its existing wording, while a multi-route finding names every supporting
+route in deterministic order inside the existing details column; the only shared guidance change is
+from following one membership path to following every membership path, with no layout change.
+This approval covers the publication collision only and does not approve the other SEC-093 review
+items, another Scout correction, live access, capture/discovery, a commit or a push.
+
+**SCOUT-01 local checkpoint - owner-requested 2026-10-13.**
+After the bounded implementation, actual saved readback, affected regression checks and isolated
+mutations passed, the owner requested a local SCOUT-01 commit without a push.
+This authorizes that one validated publication-collision checkpoint only; it does not authorize
+publishing it, beginning SCOUT-02, changing another SEC-093 behavior or performing live work.
+
 **SEC-002 checkpoint publication, owner-requested 2026-10-12.**
 The owner requested "commit and push" after the completed SEC-002 handoff.
 This authorizes publication of the validated 32-rule checkpoint, Judgement 70/control engine 10,

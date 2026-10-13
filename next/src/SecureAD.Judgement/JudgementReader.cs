@@ -918,10 +918,8 @@ public sealed partial class JudgementReader : IDisposable
         e.form                              AS e_form,
         e.decryptor_sid                     AS e_decryptor_sid,
         e.decryptor_name                    AS e_decryptor_name,
-        e.broad_principal_sid               AS e_broad_principal_sid,
-        e.broad_principal_name              AS e_broad_principal_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
-        e.route_length                      AS e_route_length,
+        e.route_count                       AS e_route_count,
         e.finding_id                        AS e_finding_id,
         t.trustee_sid                       AS t_trustee_sid,
         t.trustee_name                      AS t_trustee_name,
@@ -1040,10 +1038,10 @@ public sealed partial class JudgementReader : IDisposable
         // so either would drop an intact finding into the "no evidence" branch. This is P-112.
         var lapsReaderTrustee = reader.GetOrdinal("r_trustee_sid");
 
-        // configured_value, because it is NOT NULL on any row that exists. Both decryptor_sid and
-        // broad_principal_sid are legitimately null - a decryptor this capture could not resolve is
-        // exactly what one kind of SEC-093 finding says - so either as the discriminator would drop
-        // an intact finding into the "no evidence" branch below and throw on it. This is P-112.
+        // configured_value, because it is NOT NULL on any row that exists. decryptor_sid is
+        // legitimately null - a decryptor this capture could not resolve is exactly what one kind
+        // of SEC-093 finding says - so using it as the discriminator would drop an intact finding
+        // into the "no evidence" branch below and throw on it. This is P-112.
         var lapsDecryptorValue = reader.GetOrdinal("e_configured_value");
 
         // trustee_sid, because it is NOT NULL on any row that exists, for the same reason SEC-090's
@@ -1300,8 +1298,6 @@ public sealed partial class JudgementReader : IDisposable
             var policyName = reader.GetOrdinal("e_policy_display_name");
             var decryptorSid = reader.GetOrdinal("e_decryptor_sid");
             var decryptorName = reader.GetOrdinal("e_decryptor_name");
-            var broadSid = reader.GetOrdinal("e_broad_principal_sid");
-            var broadName = reader.GetOrdinal("e_broad_principal_name");
 
             evidence = new LapsDecryptorEvidence(
                 reader.IsDBNull(policyName) ? null : reader.GetString(policyName),
@@ -1309,9 +1305,9 @@ public sealed partial class JudgementReader : IDisposable
                 Enum.Parse<LapsDecryptorForm>(reader.GetString(reader.GetOrdinal("e_form"))),
                 reader.IsDBNull(decryptorSid) ? null : reader.GetString(decryptorSid),
                 reader.IsDBNull(decryptorName) ? null : reader.GetString(decryptorName),
-                reader.IsDBNull(broadSid) ? null : reader.GetString(broadSid),
-                reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
-                ReadLapsRoute("finding_laps_decryptor_path", findingId, reader.GetInt64(reader.GetOrdinal("e_route_length"))),
+                ReadLapsDecryptorRoutes(
+                    findingId,
+                    reader.GetInt64(reader.GetOrdinal("e_route_count"))),
                 reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
         }
         else
@@ -1396,6 +1392,83 @@ public sealed partial class JudgementReader : IDisposable
             route.Add(new(reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
         }
         if (route.Count != expectedLength) throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+        return route;
+    }
+
+    private LapsDecryptorRouteEvidence[] ReadLapsDecryptorRoutes(
+        long findingId,
+        long expectedCount)
+    {
+        var stored = new List<(string Sid, string? Name, long PathLength)>();
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText =
+                "SELECT route_ordinal, broad_principal_sid, broad_principal_name, path_length "
+                + "FROM finding_laps_decryptor_route WHERE finding_id=$id "
+                + "ORDER BY route_ordinal";
+            command.Parameters.AddWithValue("$id", findingId);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                if (reader.GetInt64(0) != stored.Count
+                    || stored.Count >= expectedCount
+                    || string.IsNullOrWhiteSpace(reader.GetString(1))
+                    || reader.GetInt64(3) < 1)
+                {
+                    throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+                }
+
+                stored.Add((
+                    reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    reader.GetInt64(3)));
+            }
+        }
+
+        if (stored.Count != expectedCount)
+            throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+
+        return stored
+            .Select((route, ordinal) => new LapsDecryptorRouteEvidence(
+                route.Sid,
+                route.Name,
+                ReadLapsDecryptorPath(findingId, ordinal, route.PathLength)))
+            .ToArray();
+    }
+
+    private List<PathStep> ReadLapsDecryptorPath(
+        long findingId,
+        int routeOrdinal,
+        long expectedLength)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText =
+            "SELECT step_ordinal, sid, name FROM finding_laps_decryptor_path "
+            + "WHERE finding_id=$id AND route_ordinal=$route ORDER BY step_ordinal";
+        command.Parameters.AddWithValue("$id", findingId);
+        command.Parameters.AddWithValue("$route", routeOrdinal);
+
+        using var reader = command.ExecuteReader();
+        var route = new List<PathStep>();
+        while (reader.Read())
+        {
+            if (reader.GetInt64(0) != route.Count
+                || route.Count >= expectedLength
+                || string.IsNullOrWhiteSpace(reader.GetString(1)))
+            {
+                throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+            }
+
+            route.Add(new(
+                reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2)));
+        }
+
+        if (route.Count != expectedLength)
+            throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
+
         return route;
     }
 

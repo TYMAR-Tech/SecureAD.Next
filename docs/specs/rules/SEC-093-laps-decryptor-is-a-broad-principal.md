@@ -44,6 +44,12 @@ needing more than one decryptor is a wrapper group:
 A wrapper group is the supported pattern and is not itself a finding. What makes it one is what
 ended up inside it.
 
+**One policy is one finding.** If a wrapper reaches more than one distinct broad principal, the
+policy finding retains the shortest captured membership route to each one, ordered first by route
+length and then by principal identifier. Alternate routes to the same broad principal do not create
+another accepted problem, and a second broad principal neither creates a second durable finding nor
+gets discarded from the supporting evidence.
+
 ## 3. What this rule refuses to claim
 
 **It does not say which machines are affected**, and this is a deliberate refusal rather than
@@ -179,7 +185,8 @@ let a wrong "read in full" retire the plainest finding this rule makes.
 |---|---|---|
 | P1 | The value is a broad principal's SID | Fires, naming that principal |
 | P2 | The value is a scoped group containing a broad principal by nesting | Fires, showing the membership path |
-| P3 | The value cannot be resolved | Incomplete finding, naming the value |
+| P3 | One wrapper contains two distinct broad principals | One policy finding publishes and reads back with both routes |
+| P4 | The value cannot be resolved | Incomplete finding, naming the value |
 | N1 | The value is a scoped group with no broad member | Silent |
 | N2 | No LAPS decryptor setting on the policy | Silent |
 | N3 | The setting is present in the user scope only | Silent |

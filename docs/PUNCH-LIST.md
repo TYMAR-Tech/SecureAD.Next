@@ -31,10 +31,10 @@ vulnerability in SecureAD; every row remains outstanding unless explicitly marke
 The complete retained ledger distinguishes executed counterexamples from source-confirmed defects,
 conditional scenarios, policy questions, existing safeguards and rejected allegations.
 
-**SCOUT-01 - SEC-093 publication collision - HIGH, open.**
-Two broad routes inside one configured decryptor produce the same durable policy finding key, and the actual judgement writer aborts on the uniqueness constraint.
-Publish one finding at the existing policy subject grain while retaining every typed supporting route and independent settings, membership and source limitations rather than silently dropping duplicates.
-Exercise rule output, writer and reader together with two broad routes and rebuilt negative controls, preserving exact source/generation binding and the previous published result on failure, as independently observed in the audit.
+**SCOUT-01 - SEC-093 publication collision - HIGH, corrected and locally checkpointed 2026-10-13.**
+SEC-093 now publishes one finding at the existing policy subject grain while retaining one shortest typed route for every distinct supporting broad principal in deterministic order, without changing rule identity, severity, subject scope, acceptance identity or the one-route wording.
+Fresh Release checks exercise genuine sealed synthetic evidence through rule output, writer, completed store, typed reader and current shell readback, including exact source/resource/generation binding, incomplete and negative controls, strict route refusal, failed/cancelled replacement preservation and isolated rebuilt mutations.
+The active/resultant-policy, qualified-name, historical-ciphertext, registry-operation and settings-completeness items remain open, and this owner-authorized local checkpoint does not authorize live work or a push.
 
 **SCOUT-02 - missing durable subject identity - MEDIUM, open.**
 SEC-010/011/022/027/028/029/033 turn an otherwise identified positive into a complete empty verdict when objectGUID is unreadable, and all seven branches were independently reproduced.

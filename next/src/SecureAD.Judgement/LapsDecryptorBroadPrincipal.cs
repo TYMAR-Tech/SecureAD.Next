@@ -196,15 +196,13 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                     configured,
                     form,
                     decryptorName,
-                    configured,
-                    [configured],
+                    [BuildRoute(configured, [configured], context.PrincipalNames)],
 
                     // The walk is beside the point here and is reported as it stands rather than
                     // claimed complete: nothing nested below matters when the decryptor is itself
                     // broad, but saying the membership was fully read when it was not would be a
                     // different untruth.
-                    expansion.IsComplete,
-                    context.PrincipalNames),
+                    expansion.IsComplete),
             ]);
         }
 
@@ -251,22 +249,23 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                     DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived)]);
         }
 
-        return RuleVerdict.Judged(
-        [
-            .. reached
+        var routes = reached
                 .OrderBy(r => r.Value.Count)
                 .ThenBy(r => r.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(r => Build(
-                    subject,
-                    objectGuid,
-                    policyName,
-                    configured,
-                    form,
-                    decryptorName,
-                    r.Key,
-                    r.Value,
-                    expansion.IsComplete,
-                    context.PrincipalNames)),
+                .Select(r => BuildRoute(r.Key, r.Value, context.PrincipalNames))
+                .ToArray();
+
+        return RuleVerdict.Judged(
+        [
+            Build(
+                subject,
+                objectGuid,
+                policyName,
+                configured,
+                form,
+                decryptorName,
+                routes,
+                expansion.IsComplete),
         ]);
     }
 
@@ -426,9 +425,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             form,
             DecryptorSid: null,
             DecryptorName: null,
-            BroadPrincipalSid: null,
-            BroadPrincipalName: null,
-            MembershipPath: [],
+            BroadPrincipalRoutes: [],
             ExpansionWasComplete: false);
 
         return new Finding(
@@ -450,7 +447,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             evidence);
     }
 
-    /// <summary>Builds a finding for one broad principal that can decrypt.</summary>
+    /// <summary>Builds one policy finding retaining every broad-principal route that supports it.</summary>
     private static Finding Build(
         ObjectAttributes subject,
         Guid objectGuid,
@@ -458,26 +455,16 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         string configured,
         LapsDecryptorForm form,
         string? decryptorName,
-        string broadSid,
-        IReadOnlyList<string> path,
-        bool complete,
-        Func<string, string?>? names)
+        IReadOnlyList<LapsDecryptorRouteEvidence> broadPrincipalRoutes,
+        bool complete)
     {
-        // Resolved once, here, rather than when the finding is shown, for the reason SEC-090 gives
-        // and P-128 measured: display-time resolution is one lookup per path entry per row per page.
-        var route = path
-            .Select(sid => new PathStep(sid, NameFor(sid, names)))
-            .ToArray();
-
         var evidence = new LapsDecryptorEvidence(
             policyName,
             configured,
             form,
             configured,
             decryptorName,
-            broadSid,
-            NameFor(broadSid, names),
-            route,
+            broadPrincipalRoutes,
             complete);
 
         return new Finding(
@@ -498,6 +485,19 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             subject.Completeness,
             evidence);
     }
+
+    private static LapsDecryptorRouteEvidence BuildRoute(
+        string broadSid,
+        IReadOnlyList<string> path,
+        Func<string, string?>? names) =>
+        new(
+            broadSid,
+            NameFor(broadSid, names),
+
+            // Resolved once here rather than when the finding is shown, for the reason SEC-090
+            // gives and P-128 measured: display-time resolution is one lookup per path entry per
+            // row per page.
+            path.Select(sid => new PathStep(sid, NameFor(sid, names))).ToArray());
 
     /// <summary>
     /// How a policy is named as the subject of a finding: what an administrator calls it, with the
@@ -522,19 +522,18 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
     private static string Detail(string? policyName, LapsDecryptorEvidence evidence)
     {
         var policy = policyName ?? "This policy";
-
-        var route = evidence.NestingDepth == 0
-            ? "which is named by the policy directly"
-            : $"reached through {evidence.NestingDepth} nested group(s): {evidence.Route}";
-
-        var name = evidence.BroadPrincipalName ?? evidence.BroadPrincipalSid;
+        var supports = evidence.BroadPrincipalRoutes.Count == 1
+            ? SingleRouteDetail(policy, evidence.BroadPrincipalRoutes[0])
+            : $"{policy} authorizes multiple broad principals to decrypt the Windows LAPS "
+                + "passwords it protects. Supporting routes: "
+                + string.Join("; ", evidence.BroadPrincipalRoutes.Select(RouteDetail));
 
         var completeness = evidence.ExpansionWasComplete
             ? string.Empty
             : " The membership walk did not finish, so there may be more inside it than is shown.";
 
-        return $"{policy} authorizes {name} to decrypt the Windows LAPS passwords it protects, "
-            + $"{route}. The policy sets ADPasswordEncryptionPrincipal to '{evidence.ConfiguredValue}'. "
+        return supports
+            + $". The policy sets ADPasswordEncryptionPrincipal to '{evidence.ConfiguredValue}'. "
             + "Windows LAPS encrypts each password against this one principal, so every member can "
             + "decrypt the local administrator password of every machine the policy covers, "
             + "whatever the directory permissions say. Correcting the setting protects only "
@@ -542,6 +541,18 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             + "password is encrypted, so the stored passwords must also be rotated."
             + completeness;
     }
+
+    private static string SingleRouteDetail(string policy, LapsDecryptorRouteEvidence route) =>
+        $"{policy} authorizes {route.BroadPrincipalName ?? route.BroadPrincipalSid} to decrypt the "
+        + $"Windows LAPS passwords it protects, {RouteDescription(route)}";
+
+    private static string RouteDetail(LapsDecryptorRouteEvidence route) =>
+        $"{route.BroadPrincipalName ?? route.BroadPrincipalSid}, {RouteDescription(route)}";
+
+    private static string RouteDescription(LapsDecryptorRouteEvidence route) =>
+        route.NestingDepth == 0
+            ? "which is named by the policy directly"
+            : $"reached through {route.NestingDepth} nested group(s): {route.Route}";
 
     /// <summary>What the operator is told about a decryptor this bundle cannot place.</summary>
     private static string UnresolvedDetail(string? policyName, LapsDecryptorEvidence evidence)

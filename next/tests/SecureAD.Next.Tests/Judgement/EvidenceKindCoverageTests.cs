@@ -404,17 +404,24 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                 Form: LapsDecryptorForm.QualifiedName,
                 DecryptorSid: "S-1-5-21-1004336348-1177238915-682003330-1180",
                 DecryptorName: "LAPS-Decryptors",
-                BroadPrincipalSid: "S-1-5-21-1004336348-1177238915-682003330-513",
-                BroadPrincipalName: "Domain Users",
-                MembershipPath:
+                BroadPrincipalRoutes:
                 [
-                    new PathStep(
-                        "S-1-5-21-1004336348-1177238915-682003330-1180", "LAPS-Decryptors"),
+                    new LapsDecryptorRouteEvidence(
+                        "S-1-5-21-1004336348-1177238915-682003330-513",
+                        "Domain Users",
+                        [
+                            new PathStep(
+                                "S-1-5-21-1004336348-1177238915-682003330-1180",
+                                "LAPS-Decryptors"),
 
-                    // Deliberately unnamed, for the reason the SEC-090 sample gives.
-                    new PathStep("S-1-5-21-1004336348-1177238915-682003330-1190", null),
-                    new PathStep(
-                        "S-1-5-21-1004336348-1177238915-682003330-513", "Domain Users"),
+                            // Deliberately unnamed, for the reason the SEC-090 sample gives.
+                            new PathStep(
+                                "S-1-5-21-1004336348-1177238915-682003330-1190",
+                                null),
+                            new PathStep(
+                                "S-1-5-21-1004336348-1177238915-682003330-513",
+                                "Domain Users"),
+                        ]),
                 ],
                 ExpansionWasComplete: true),
             read =>
@@ -425,11 +432,14 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                 Assert.Equal(LapsDecryptorForm.QualifiedName, e.Form);
                 Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-1180", e.DecryptorSid);
                 Assert.Equal("LAPS-Decryptors", e.DecryptorName);
-                Assert.Equal("S-1-5-21-1004336348-1177238915-682003330-513", e.BroadPrincipalSid);
-                Assert.Equal("Domain Users", e.BroadPrincipalName);
-                Assert.Equal(3, e.MembershipPath.Count);
-                Assert.Null(e.MembershipPath[1].Name);
-                Assert.Equal(2, e.NestingDepth);
+                var route = Assert.Single(e.BroadPrincipalRoutes);
+                Assert.Equal(
+                    "S-1-5-21-1004336348-1177238915-682003330-513",
+                    route.BroadPrincipalSid);
+                Assert.Equal("Domain Users", route.BroadPrincipalName);
+                Assert.Equal(3, route.MembershipPath.Count);
+                Assert.Null(route.MembershipPath[1].Name);
+                Assert.Equal(2, route.NestingDepth);
                 Assert.True(e.BroadPrincipalFound);
                 Assert.True(e.IsComplete);
             }),

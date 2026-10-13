@@ -79,13 +79,14 @@ public sealed class LapsDecryptorBroadPrincipalTests
             Expands(DomainUsers, [])));
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+        var route = Assert.Single(evidence.BroadPrincipalRoutes);
 
-        Assert.Equal(DomainUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(DomainUsers, route.BroadPrincipalSid);
         Assert.Equal(DomainUsers, evidence.DecryptorSid);
         Assert.Equal(DomainUsers, evidence.ConfiguredValue);
         Assert.Equal(LapsDecryptorForm.SecurityIdentifier, evidence.Form);
         Assert.True(evidence.BroadPrincipalFound);
-        Assert.Equal(0, evidence.NestingDepth);
+        Assert.Equal(0, route.NestingDepth);
         Assert.Equal(Severity.Critical, finding.Severity);
     }
 
@@ -158,13 +159,14 @@ public sealed class LapsDecryptorBroadPrincipalTests
                 [Member(AuthenticatedUsers, [WrapperGroup, ScopedGroup, AuthenticatedUsers])])));
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+        var route = Assert.Single(evidence.BroadPrincipalRoutes);
 
-        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(AuthenticatedUsers, route.BroadPrincipalSid);
         Assert.Equal(WrapperGroup, evidence.DecryptorSid);
-        Assert.Equal(2, evidence.NestingDepth);
+        Assert.Equal(2, route.NestingDepth);
         Assert.Equal(
             [WrapperGroup, ScopedGroup, AuthenticatedUsers],
-            evidence.MembershipPath.Select(s => s.Sid));
+            route.MembershipPath.Select(s => s.Sid));
     }
 
     /// <summary>
@@ -186,37 +188,216 @@ public sealed class LapsDecryptorBroadPrincipalTests
             ])));
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+        var route = Assert.Single(evidence.BroadPrincipalRoutes);
 
-        Assert.Equal(2, evidence.MembershipPath.Count);
-        Assert.Equal(1, evidence.NestingDepth);
+        Assert.Equal(2, route.MembershipPath.Count);
+        Assert.Equal(1, route.NestingDepth);
     }
 
     /// <summary>
-    /// Two <i>different</i> broad principals inside one decryptor are two findings that share a
-    /// subject, because both are routes into the same misconfigured policy.
+    /// Two <i>different</i> broad principals inside one decryptor are retained as supporting
+    /// routes on the same policy finding.
     /// </summary>
     /// <remarks>
     /// <b>Deliberately unlike SEC-090.</b> That rule keys its subject on the broad principal so
-    /// that accepting one route does not silence another. Here the thing an operator fixes is the
-    /// policy, so the policy is the subject and both findings name it.
+    /// that accepting one route does not silence another. Here the thing an operator fixes and
+    /// accepts is the policy, so every independently supported broad principal belongs to one
+    /// finding.
     /// </remarks>
     [Fact]
     public void TwoBroadPrincipalsInsideOneDecryptorBothNameThePolicy()
     {
-        var findings = Judge(
+        var finding = Assert.Single(Judge(
             [Setting(LapsKey, DecryptorValue, WrapperGroup)],
             Expands(WrapperGroup,
             [
                 Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers]),
                 Member(Everyone, [WrapperGroup, ScopedGroup, Everyone]),
-            ]));
+            ])));
 
-        Assert.Equal(2, findings.Count);
-        Assert.Single(findings.Select(f => f.Subject.Key).Distinct());
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        // Ordered shortest route first, which is the one to cut.
-        var first = Assert.IsType<LapsDecryptorEvidence>(findings[0].Evidence);
-        Assert.Equal(AuthenticatedUsers, first.BroadPrincipalSid);
+        Assert.Equal(
+            [AuthenticatedUsers, Everyone],
+            evidence.BroadPrincipalRoutes.Select(route => route.BroadPrincipalSid));
+        Assert.Equal(
+            [2, 3],
+            evidence.BroadPrincipalRoutes.Select(route => route.MembershipPath.Count));
+        Assert.Contains(PolicyName, finding.Subject.Key, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TwoBroadPrincipalsPublishAsOnePolicyFindingWithoutLosingEitherRoute()
+    {
+        var directory = LapsBundle.Build(
+            PolicyDn,
+            ["top", "groupPolicyContainer"],
+            operatingSystem: null,
+            operatingSystemVersion: null,
+            windowsLapsExpiration: null,
+            legacyLapsExpiration: null,
+            userAccountControl: null,
+            confidential: false,
+            windowsLapsInSchema: false,
+            Started);
+
+        var openedEvidence = BundleReader.Open(directory);
+        Assert.True(openedEvidence.IsSuccess, openedEvidence.Error?.Description);
+        using var evidenceReader = openedEvidence.Value!;
+        var policy = Assert.IsType<ObjectAttributes>(
+            evidenceReader.ReadObjectAttributes(PolicyDn));
+
+        var rule = new LapsDecryptorBroadPrincipal();
+        var verdict = rule.Judge(
+            policy,
+            Context(
+                [Setting(LapsKey, DecryptorValue, WrapperGroup)],
+                Expands(WrapperGroup,
+                [
+                    Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers]),
+                    Member(Everyone, [WrapperGroup, ScopedGroup, Everyone]),
+                ])));
+
+        var evidenceSeal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
+        using (var writer = JudgementWriter.Create(
+            directory,
+            evidenceSeal,
+            derivationGenerationId: null,
+            Started,
+            Started))
+        {
+            writer.Write(RuleExecution.Judged(rule.Definition, 1, 0, verdict.Findings));
+            writer.Complete(Started.AddMinutes(1));
+        }
+
+        var openedJudgement = JudgementReader.Open(directory);
+        Assert.True(openedJudgement.IsSuccess, openedJudgement.Error?.Description);
+        using var judgementReader = openedJudgement.Value!;
+        var stored = judgementReader.Read();
+        var finding = Assert.Single(stored.Findings);
+        var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
+
+        Assert.Equal(evidenceSeal, stored.Description.EvidenceSeal);
+        Assert.NotEqual(Guid.Empty, stored.Description.GenerationId);
+        Assert.Equal(policy.ObjectGuid, finding.ObjectGuid);
+        Assert.Equal(policy.DistinguishedName, finding.DistinguishedName);
+        Assert.Equal(FindingSubjectKind.Policy, finding.Subject.Kind);
+        Assert.Contains("Authenticated Users", finding.Detail, StringComparison.Ordinal);
+        Assert.Contains("Everyone", finding.Detail, StringComparison.Ordinal);
+        Assert.Collection(
+            evidence.BroadPrincipalRoutes,
+            route =>
+            {
+                Assert.Equal(AuthenticatedUsers, route.BroadPrincipalSid);
+                Assert.Equal(
+                    [WrapperGroup, AuthenticatedUsers],
+                    route.MembershipPath.Select(step => step.Sid));
+            },
+            route =>
+            {
+                Assert.Equal(Everyone, route.BroadPrincipalSid);
+                Assert.Equal(
+                    [WrapperGroup, ScopedGroup, Everyone],
+                    route.MembershipPath.Select(step => step.Sid));
+            });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FailedOrCancelledReplacementLeavesEarlierSec093GenerationReadable(
+        bool cancelReplacement)
+    {
+        var directory = LapsBundle.Build(
+            PolicyDn,
+            ["top", "groupPolicyContainer"],
+            operatingSystem: null,
+            operatingSystemVersion: null,
+            windowsLapsExpiration: null,
+            legacyLapsExpiration: null,
+            userAccountControl: null,
+            confidential: false,
+            windowsLapsInSchema: false,
+            Started);
+        var openedEvidence = BundleReader.Open(directory);
+        Assert.True(openedEvidence.IsSuccess, openedEvidence.Error?.Description);
+        using var evidenceReader = openedEvidence.Value!;
+        var policy = Assert.IsType<ObjectAttributes>(
+            evidenceReader.ReadObjectAttributes(PolicyDn));
+        var evidenceSeal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash;
+        var rule = new LapsDecryptorBroadPrincipal();
+
+        var earlier = rule.Judge(
+            policy,
+            Context(
+                [Setting(LapsKey, DecryptorValue, WrapperGroup)],
+                Expands(WrapperGroup,
+                    [Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers])])));
+        using (var writer = JudgementWriter.Create(
+            directory,
+            evidenceSeal,
+            derivationGenerationId: null,
+            Started,
+            Started))
+        {
+            writer.Write(RuleExecution.Judged(rule.Definition, 1, 0, earlier.Findings));
+            writer.Complete(Started.AddMinutes(1));
+        }
+
+        Guid earlierGeneration;
+        using (var before = JudgementReader.Open(directory).Value!)
+        {
+            var stored = before.Read();
+            earlierGeneration = stored.Description.GenerationId;
+            var evidence = Assert.IsType<LapsDecryptorEvidence>(
+                Assert.Single(stored.Findings).Evidence);
+            Assert.Equal(
+                AuthenticatedUsers,
+                Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
+        }
+
+        var replacement = rule.Judge(
+            policy,
+            Context(
+                [Setting(LapsKey, DecryptorValue, WrapperGroup)],
+                Expands(WrapperGroup,
+                [
+                    Member(AuthenticatedUsers, [WrapperGroup, AuthenticatedUsers]),
+                    Member(Everyone, [WrapperGroup, ScopedGroup, Everyone]),
+                ])));
+        using (var writer = JudgementWriter.Create(
+            directory,
+            evidenceSeal,
+            derivationGenerationId: null,
+            Started.AddHours(1),
+            Started.AddHours(1)))
+        {
+            writer.Write(RuleExecution.Judged(rule.Definition, 1, 0, replacement.Findings));
+
+            if (cancelReplacement)
+            {
+                using var cancellation = new CancellationTokenSource();
+                cancellation.Cancel();
+                Assert.ThrowsAny<OperationCanceledException>(
+                    () => writer.Complete(Started.AddHours(1).AddMinutes(1), cancellation.Token));
+            }
+            else
+            {
+                writer.Abandon(Started.AddHours(1).AddMinutes(1));
+            }
+        }
+
+        var openedAfter = JudgementReader.Open(directory);
+        Assert.True(openedAfter.IsSuccess, openedAfter.Error?.Description);
+        using var after = openedAfter.Value!;
+        var survived = after.Read();
+        var survivedEvidence = Assert.IsType<LapsDecryptorEvidence>(
+            Assert.Single(survived.Findings).Evidence);
+
+        Assert.Equal(earlierGeneration, survived.Description.GenerationId);
+        Assert.Equal(
+            AuthenticatedUsers,
+            Assert.Single(survivedEvidence.BroadPrincipalRoutes).BroadPrincipalSid);
     }
 
     // -------------------------------------------------------------------------------------------
@@ -248,7 +429,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
         Assert.False(expanded);
         Assert.Equal(LapsDecryptorForm.QualifiedName, evidence.Form);
         Assert.Null(evidence.DecryptorSid);
-        Assert.Null(evidence.BroadPrincipalSid);
+        Assert.Empty(evidence.BroadPrincipalRoutes);
         Assert.False(evidence.BroadPrincipalFound);
         Assert.False(evidence.IsComplete);
         Assert.Equal(@"AD\LAPSAdmins", evidence.ConfiguredValue);
@@ -313,7 +494,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         Assert.Equal(LapsDecryptorForm.SecurityIdentifier, evidence.Form);
         Assert.Equal(ScopedGroup, evidence.ConfiguredValue);
-        Assert.Null(evidence.BroadPrincipalSid);
+        Assert.Empty(evidence.BroadPrincipalRoutes);
         Assert.Contains("not backed up", finding.Detail, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -491,7 +672,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Equal(Everyone, evidence.BroadPrincipalSid);
+        Assert.Equal(Everyone, Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
         Assert.False(evidence.ExpansionWasComplete);
         Assert.False(evidence.IsComplete);
         Assert.Contains("did not finish", finding.Detail, StringComparison.OrdinalIgnoreCase);
@@ -586,7 +767,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Equal(broad, evidence.BroadPrincipalSid);
+        Assert.Equal(broad, Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
         Assert.True(evidence.BroadPrincipalFound);
         Assert.Equal(Severity.Critical, finding.Severity);
 
@@ -613,7 +794,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Null(evidence.BroadPrincipalSid);
+        Assert.Empty(evidence.BroadPrincipalRoutes);
         Assert.False(evidence.BroadPrincipalFound);
     }
 
@@ -656,7 +837,9 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(
+            AuthenticatedUsers,
+            Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
         Assert.Equal([Forest, string.Empty], asked);
     }
 
@@ -678,7 +861,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Null(evidence.BroadPrincipalSid);
+        Assert.Empty(evidence.BroadPrincipalRoutes);
     }
 
     /// <summary>
@@ -739,7 +922,9 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Equal(AuthenticatedUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(
+            AuthenticatedUsers,
+            Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
 
         // Both scopes were asked. Stopping at the first would have been the defect.
         Assert.Equal([Forest, string.Empty], asked);
@@ -767,7 +952,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
 
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
-        Assert.Equal(DomainUsers, evidence.BroadPrincipalSid);
+        Assert.Equal(DomainUsers, Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
     }
 
     // -------------------------------------------------------------------------------------------
@@ -823,7 +1008,9 @@ public sealed class LapsDecryptorBroadPrincipalTests
         var evidence = Assert.IsType<LapsDecryptorEvidence>(finding.Evidence);
 
         Assert.Equal(PlantedDecryptorSid, evidence.ConfiguredValue);
-        Assert.Equal(PlantedDomainUsersSid, evidence.BroadPrincipalSid);
+        Assert.Equal(
+            PlantedDomainUsersSid,
+            Assert.Single(evidence.BroadPrincipalRoutes).BroadPrincipalSid);
         Assert.Equal(Severity.Critical, finding.Severity);
     }
 

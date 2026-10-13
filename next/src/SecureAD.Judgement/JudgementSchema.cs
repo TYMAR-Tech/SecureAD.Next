@@ -133,7 +133,8 @@ public static class JudgementSchema
     /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
     // Format 70 binds SEC-002 findings to existing domain-root control proofs and their original occurrences.
-    public const int Version = 70;
+    // Format 71 groups every SEC-093 broad-principal route under its one durable policy finding.
+    public const int Version = 71;
 
     private static readonly string[] TableDdl =
     [
@@ -611,11 +612,11 @@ public static class JudgementSchema
         // CONFIGURED_VALUE IS NOT NULL AND IS THE DISCRIMINATOR, per P-112. It is also what an
         // operator searches the policy for, so it is stored verbatim rather than normalised.
         //
-        // DECRYPTOR_SID AND BROAD_PRINCIPAL_SID ARE BOTH NULLABLE, because this table carries two
-        // findings about different problems. A resolved decryptor containing a broad principal
-        // means the password is protected against too many people. An unresolvable one means
-        // Microsoft's documented failure applies - the password is not backed up at all - and
-        // reporting that as the first would send an operator to fix the wrong thing.
+        // DECRYPTOR_SID IS NULLABLE because this table carries two findings about different
+        // problems. A resolved decryptor containing broad principals means the password is
+        // protected against too many people. An unresolvable one means Microsoft's documented
+        // failure applies - the password is not backed up at all - and reporting that as the first
+        // would send an operator to fix the wrong thing.
         //
         // FORM IS STORED BECAUSE IT DECIDES WHAT UNRESOLVED MEANS. An identifier this capture
         // cannot place is a principal from somewhere unread; a name it cannot place may be the
@@ -631,28 +632,43 @@ public static class JudgementSchema
             form                                TEXT    NOT NULL,
             decryptor_sid                       TEXT        NULL,
             decryptor_name                      TEXT        NULL,
-            broad_principal_sid                 TEXT        NULL,
-            broad_principal_name                TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
-            route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
+            route_count                         INTEGER NOT NULL CHECK (route_count >= 0),
             PRIMARY KEY (finding_id)
         )
         """,
 
-        // The route from the configured decryptor down to the broad principal, one per row.
+        // Every distinct broad principal supporting the policy finding, ordered exactly as shown.
+        // A second principal is support for the same accepted policy problem, not a second durable
+        // finding with an identity the store cannot publish.
+        """
+        CREATE TABLE finding_laps_decryptor_route (
+            finding_id                          INTEGER NOT NULL,
+            route_ordinal                       INTEGER NOT NULL CHECK (route_ordinal >= 0),
+            broad_principal_sid                 TEXT    NOT NULL,
+            broad_principal_name                TEXT        NULL,
+            path_length                         INTEGER NOT NULL CHECK (path_length > 0),
+            PRIMARY KEY (finding_id, route_ordinal),
+            FOREIGN KEY (finding_id) REFERENCES finding_laps_decryptor(finding_id)
+        )
+        """,
+
+        // One route from the configured decryptor down to its broad principal.
         //
-        // THE ROUTE IS THE FINDING, for a reason particular to this rule: Windows LAPS encrypts
-        // against exactly one principal, and Microsoft's documented way to authorize more than one
-        // is a wrapper group. So the supported configuration is a group, and the finding is almost
-        // always about what ended up nested inside it. Naming only the endpoints would not say
-        // which link to cut.
+        // THE ROUTES SUPPORT THE FINDING, for a reason particular to this rule: Windows LAPS
+        // encrypts against exactly one configured principal, and Microsoft's documented way to
+        // authorize more than one is a wrapper group. Naming only the endpoints would not say
+        // which links to cut.
         """
         CREATE TABLE finding_laps_decryptor_path (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
-            ordinal                             INTEGER NOT NULL,
+            finding_id                          INTEGER NOT NULL,
+            route_ordinal                       INTEGER NOT NULL,
+            step_ordinal                        INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
             name                                TEXT        NULL,
-            PRIMARY KEY (finding_id, ordinal)
+            PRIMARY KEY (finding_id, route_ordinal, step_ordinal),
+            FOREIGN KEY (finding_id, route_ordinal)
+                REFERENCES finding_laps_decryptor_route(finding_id, route_ordinal)
         )
         """,
     ];

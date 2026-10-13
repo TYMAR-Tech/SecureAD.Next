@@ -1139,9 +1139,8 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
                     + "configured_value, form, decryptor_sid, decryptor_name, "
-                    + "broad_principal_sid, broad_principal_name, expansion_was_complete, route_length) "
-                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $broad, $broadName, "
-                    + "$complete, $length)",
+                    + "expansion_was_complete, route_count) "
+                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $complete, $count)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -1154,36 +1153,66 @@ public sealed class JudgementWriter : IDisposable
                         command.Parameters.AddWithValue(
                             "$sidName", (object?)decryptor.DecryptorName ?? DBNull.Value);
                         command.Parameters.AddWithValue(
-                            "$broad", (object?)decryptor.BroadPrincipalSid ?? DBNull.Value);
-                        command.Parameters.AddWithValue(
-                            "$broadName", (object?)decryptor.BroadPrincipalName ?? DBNull.Value);
-                        command.Parameters.AddWithValue(
                             "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
-                        command.Parameters.AddWithValue("$length", decryptor.MembershipPath.Count);
+                        command.Parameters.AddWithValue(
+                            "$count", decryptor.BroadPrincipalRoutes.Count);
                     });
 
-                // The route, in order. Microsoft's supported way to authorize more than one
-                // decryptor is a wrapper group, so the finding is usually about what ended up
-                // nested inside one, and the endpoints alone would not say which link to cut.
-                for (var ordinal = 0; ordinal < decryptor.MembershipPath.Count; ordinal++)
+                for (var routeOrdinal = 0;
+                     routeOrdinal < decryptor.BroadPrincipalRoutes.Count;
+                     routeOrdinal++)
                 {
-                    var step = decryptor.MembershipPath[ordinal];
-                    var position = ordinal;
+                    var route = decryptor.BroadPrincipalRoutes[routeOrdinal];
+                    var routePosition = routeOrdinal;
+
+                    if (string.IsNullOrWhiteSpace(route.BroadPrincipalSid)
+                        || route.MembershipPath.Count == 0)
+                    {
+                        throw new InvalidDataException(
+                            "A SEC-093 broad-principal route has no principal or membership path.");
+                    }
 
                     Execute(
                         transaction,
-                        "INSERT INTO finding_laps_decryptor_path "
-                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
+                        "INSERT INTO finding_laps_decryptor_route "
+                        + "(finding_id, route_ordinal, broad_principal_sid, "
+                        + "broad_principal_name, path_length) "
+                        + "VALUES ($id, $route, $sid, $name, $length)",
                         command =>
                         {
                             command.Parameters.AddWithValue("$id", findingId);
-                            command.Parameters.AddWithValue("$ordinal", position);
-                            command.Parameters.AddWithValue("$sid", step.Sid);
+                            command.Parameters.AddWithValue("$route", routePosition);
+                            command.Parameters.AddWithValue("$sid", route.BroadPrincipalSid);
                             command.Parameters.AddWithValue(
-                                "$name", (object?)step.Name ?? DBNull.Value);
+                                "$name", (object?)route.BroadPrincipalName ?? DBNull.Value);
+                            command.Parameters.AddWithValue(
+                                "$length", route.MembershipPath.Count);
                         });
-                }
 
+                    // The route, in order. The endpoints alone would not say which link to cut.
+                    for (var stepOrdinal = 0;
+                         stepOrdinal < route.MembershipPath.Count;
+                         stepOrdinal++)
+                    {
+                        var step = route.MembershipPath[stepOrdinal];
+                        var stepPosition = stepOrdinal;
+
+                        Execute(
+                            transaction,
+                            "INSERT INTO finding_laps_decryptor_path "
+                            + "(finding_id, route_ordinal, step_ordinal, sid, name) "
+                            + "VALUES ($id, $route, $step, $sid, $name)",
+                            command =>
+                            {
+                                command.Parameters.AddWithValue("$id", findingId);
+                                command.Parameters.AddWithValue("$route", routePosition);
+                                command.Parameters.AddWithValue("$step", stepPosition);
+                                command.Parameters.AddWithValue("$sid", step.Sid);
+                                command.Parameters.AddWithValue(
+                                    "$name", (object?)step.Name ?? DBNull.Value);
+                            });
+                    }
+                }
                 return;
 
             default:
