@@ -24,6 +24,16 @@ The owner requested committing the documented audit and providing a new-session 
 The handoff starts with the recommended SCOUT-01 publication correction alone, preserving all retained verification records and obtaining the concrete bounded implementation and displayed wording/grouping approval before application edits.
 This does not approve the remaining batches, unresolved product decisions, live work, discovery, budgets, package replacement or future application commits/publication, and later uncommitted work must remain intact.
 
+**PERF-01 - production saved-run browsing - HIGH, offline feasibility complete; local checkpoint authorized.**
+The permitted production log ties executable `E35478286A2F491074EA4A5014996CE9902FBFE0DC5DF5B273E1702020BE89A5` to commit `a0ab4c8` and records 177.3-second Dashboard plus 96.1-second first Findings navigation, with 246.2 seconds/90.0 percent of their combined time in full-file opening/checking rather than rendering.
+Two byte-identical production-count synthetics confirmed unstable absolute timings but repeated 14.9-15.8-times inventory improvement, a compact container projection, millisecond Findings pages in a compact store and a root-manifest proof that independently hashed segments remain bound and reject changed bytes, without using production data or claiming production or judgement-time acceptance.
+The owner authorized committing this documentation locally without a push and beginning the separately approved PERF-02 implementation in a new session; the feasibility result itself changed no application source, persisted format, UI, live environment or production budget.
+
+**PERF-02 - independently sealed browse segments - HIGH, owner-approved; not started.**
+Publish generation-specific navigation and Findings segments under one atomic root manifest, moving rather than copying tables and retaining exact evidence/resource/generation binding, selected-lifetime verification, explicit refusal and the previous complete root on failure or cancellation.
+Preserve prepared statements and current batching, use incremental counts/digests instead of repeated whole-table validation, hash each published byte once and require same-host equal-input judgement phase/write/checkpoint/validation/sealing comparisons to stay within observed repeat variability before adoption.
+Leave Findings SQL, UI wording/layout, live access, capture scope, production budgets and finding behavior unchanged in this first implementation, with synthetic/lab measurements explicitly not production acceptance and no commit, push, deployment or production export authorized.
+
 ### Verified Scout correction queue
 
 Severity below rates the consequence of an incorrect audit result or advice, not an exploitable

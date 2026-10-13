@@ -143,6 +143,71 @@ mutations passed, the owner requested a local SCOUT-01 commit without a push.
 This authorizes that one validated publication-collision checkpoint only; it does not authorize
 publishing it, beginning SCOUT-02, changing another SEC-093 behavior or performing live work.
 
+**PERF-01 production saved-run browsing - owner-approved offline feasibility, 2026-10-13;
+application implementation not approved.**
+The owner paused SCOUT-02 and supplied a permitted production run-log excerpt, then approved an
+offline feasibility pass using that log plus retained/generated synthetic inputs only.
+The recorded executable identifies commit `a0ab4c804f5100f2aa1104ecf25712452bae4895`; the excerpt's
+SHA-256 is `CC57417E4604558D705399F6E652B2CE5091D469F2A73D74AEFB4A41FB317307`, and no production
+capture, database, profile or trace was requested or accessed.
+
+First Dashboard plus first Findings consumed 273.4 seconds, of which 246.2 seconds/90.0 percent was
+opening/checking the 10.3 GB Evidence, 3.1 GB Derivation and 25.2 GB Judgement files.
+Current code confirms that each selected immutable file is synchronously hashed in full before a
+reader can use it, once per protected selected-run lifetime; skipping that proof or persisting an
+"already verified" cache would break the product's sealed-evidence claim and is rejected.
+The separate measured query costs remain real: Dashboard inventory took 8.3 seconds, first tree
+construction 13.5 seconds and some warm Findings pages approximately 5.2 seconds.
+
+The isolated feasibility work used invented current-format stores with the documented 540,483-object
+and 12,649-finding counts, plus a hash-verified older nine-domain reduced synthetic.
+Two current-format runs produced byte-identical Evidence but materially different absolute timings,
+so only within-run factors and the production log are decision evidence: materialized most-specific
+class reduced the inventory scan by 14.9-15.8 times, and a compact captured-container projection
+reduced its measured selection from seconds to tens of milliseconds in the synthetic model.
+A root manifest successfully bound independently hashed navigation and findings segments and rejected
+a deliberately changed segment; this establishes physical/integrity feasibility, not production
+scale acceptance or a shipping format.
+
+The engineering recommendation is to make screen-specific immutable stores first-class segments
+selected by one small root manifest, verify only the segment a screen reads, and add the class and
+container projection to the navigation segment.
+Every segment must retain exact evidence/resource/generation binding, atomic previous-generation
+preservation, explicit unavailability until verified and zero cross-session verification cache.
+Remeasure the existing Findings reader after it moves out of the 25.2 GB permission-heavy store;
+the production-count compact synthetic read pages in milliseconds, so changing Findings SQL before
+that remeasurement is not justified.
+This redesign is not allowed to buy browsing speed by making the 4 h 38 m production judging slower:
+the class/container projection belongs to capture, and findings/proof tables must be moved rather
+than copied.
+Past storage trials halved a judgement file without a repeatable speed gain because statement,
+transaction and repeated-validation counts dominated bytes, while prepared statements and
+500-object batching later produced the real gain.
+An implementation must retain those batching/preparation gains, avoid concurrent large writer
+caches and repeated whole-table validation, hash each published byte once, and compare equal-input
+judging phase/write/checkpoint/validation/sealing timings before adoption.
+No application source, persisted format, UI wording/layout, live environment, production budget,
+commit or push was changed or approved by PERF-01.
+
+**PERF-02 independently sealed browse segments - owner-approved 2026-10-13; begin in a new
+bounded implementation session.**
+After reviewing both the browse benefit and the risk to the existing 4 h 38 m production judging,
+the owner approved the segmented-store implementation with the judgement non-regression gate above
+as a mandatory acceptance boundary.
+The implementation must move rather than duplicate findings/proof tables, retain prepared statements
+and existing batching, avoid repeated whole-table validation and multiple hashes of the same bytes,
+publish every segment before atomically selecting its root manifest, and preserve the previous
+complete root on failure or cancellation.
+Same-host equal-input before/after judging must record object pass, every post-pass, writes,
+validation, index building, checkpointing, sealing, logical bytes, statement counts and memory;
+synthetic/lab results do not establish production acceptance, and adoption stops on a regression
+outside observed repeat variability.
+The first implementation does not change Findings SQL, UI wording/layout, live access, capture
+scope, production budgets or existing finding behavior, and it has no authorization to commit,
+push, deploy or request a production export.
+The owner separately authorized one local PERF-01 documentation checkpoint without a push before
+the new implementation session.
+
 **SEC-002 checkpoint publication, owner-requested 2026-10-12.**
 The owner requested "commit and push" after the completed SEC-002 handoff.
 This authorizes publication of the validated 32-rule checkpoint, Judgement 70/control engine 10,
