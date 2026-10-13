@@ -49,7 +49,83 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+## What a finding means
+
+**Verification recommendations from captured evidence - owner clarification supplied with the
+Scout audit instructions, recorded at the owner's request on 2026-10-13.**
+SecureAD recommends what an administrator should verify from the evidence it gathered; a finding
+does not establish that an event occurred, that a live operation will succeed or fail, or that an
+environment is safe.
+A captured setting or relationship can justify a useful recommendation even when active use,
+resultant policy or a real-world outcome cannot be established.
+
+Each recommendation must make these separate elements clear:
+
+- **Observed evidence:** what was captured, on which object/holder/source and at what time.
+- **Reason for review:** why that condition merits attention.
+- **Limitations:** what the data does not establish and the alternative explanations.
+- **Verification:** specific additional checks the operator can perform, not automatic live calls
+  made by offline analysis.
+- **Conditional remediation:** what to change if the condition is verified as unintended, including
+  the dependencies that changing it could disrupt.
+
+This does not excuse wrong permission calculations, misidentified principals, invented evidence,
+silent loss of judgeability or failed publication.
+Keep a useful missing-AD-signal, dormant-setting, sensitive-history or per-GPO configuration review
+instead of demanding live exploitability proof, but do not describe it as proven missing management,
+current credential exposure, historical authority or effective device policy.
+Captured ownership findings, named-holder permission proofs, concrete requester authorization,
+successful operations and completed paths to Tier 0 remain distinct.
+
+Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
+schema confidentiality flags and administrative membership cannot universally distinguish them.
+Preserve observed positives and normal optional-attribute behavior while stating the visibility
+assumptions behind negative recommendations and refusing stronger unsupported classification.
+Execution of every offered object or selected saved question is not proof of complete forest
+assessment, and unselected scope, unresolved answers and source incompleteness remain separate.
+
+The rule catalogue, subject scope, severity and threshold defaults remain the accepted policies
+unless a confirmed bug needs a narrowly justified correction; intentional redesign requires the
+owner's decision.
+Capture remains the only component that contacts the directory, and this clarification does not
+authorize live attack/verification tests, endpoint agents or credential-material collection.
+Use shared proof infrastructure and the existing authoritative Tier-0 definition, retaining sealed
+evidence, source/resource/generation binding, stable finding identity and prior completed results
+when publication fails.
+
 ## Fix and feature priority
+
+**Scout audit documentation - owner-requested 2026-10-13; implementation not approved.**
+The owner first requested revalidation of Scout's review and a plan, then asked for the work to be
+documented rather than proceeding directly with fixes.
+The verified correction queue and six proposed batches are recorded in
+[PUNCH-LIST.md](PUNCH-LIST.md), and the complete retained verification ledger reconciles all 67
+report items and all 32 registered rules against clean `main` at
+`72e5578c4156af0c7553beaeb07a66acd4500da9`, already containing SEC-002.
+Its fresh Release build and focused passing baseline establish the inspected executable provenance,
+not that the reproduced defects are correct, a full-suite result or Windows/production acceptance.
+The proposed first correction is SEC-093's publication collision alone; recording that recommendation
+does not make it an owner-selected or approved implementation batch.
+
+Historical LAPS capture/evaluation reference and the dual-product predicate, unresolved decryptor
+name disposition/severity, managed-account rule assignment and exact UI wording still need concrete
+bounded proposals and approval rather than silently changed policy.
+Existing layouts/themes, accepted rule severity/threshold/scope, frozen evidence and the offline
+architecture remain unchanged; live access, discovery, budgets, new packaging, commit and push are
+not authorized.
+Keep useful verification recommendations and existing supported safeguards, while leaving exact
+Windows RBCD, serving-DC owner enforcement, disputed protection propagation/catalogue, historical
+token and resultant-client-policy questions explicitly unresolved until separately approved evidence
+settles them.
+
+**Scout audit documentation commit and new-session handoff - owner-requested 2026-10-13.**
+The owner requested a local commit of the documented audit, then a handoff for a new session to
+begin the correction work; no push was requested.
+This authorizes the documentation checkpoint only, not a future application commit or a silent
+change to the proposed correction sequence, outstanding decisions or exact UI wording.
+The handoff begins with the recommended SCOUT-01 publication correction alone and must obtain
+concrete bounded scope and displayed wording/grouping approval before application edits, preserving
+the committed baseline, later uncommitted work and original verification/evidence artifacts.
 
 **SEC-002 checkpoint publication, owner-requested 2026-10-12.**
 The owner requested "commit and push" after the completed SEC-002 handoff.

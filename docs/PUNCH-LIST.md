@@ -5,13 +5,152 @@ Work still owed, with the next milestone separated from unscheduled findings.
 **Three sentences per entry.** Reasoning belongs in code comments and commit messages; specifications
 and accepted decisions are retained separately, not deleted because an implementation task is closed.
 
-**The order below is owner-approved.** Other open rows are recorded work, not automatic prerequisites
-for the next feature, and this cleanup does not authorize implementing them.
+**Feature priority remains owner-approved.** The Scout audit correction sequence below is proposed,
+not implementation approval; other open rows remain recorded work, not automatic prerequisites
+for the next feature.
 
 Status: `open` · `blocked` (a named input is missing) · `decision` (needs an owner ruling) ·
 `conflict` (sources disagree) · `deferred` (not part of the next bounded pass)
 
 ## Current bounded correction
+
+**Scout rule audit - verification documented; implementation not approved, 2026-10-13.**
+The owner requested verification and a plan, then documentation, against clean `main` at `72e5578c4156af0c7553beaeb07a66acd4500da9`, which already contains SEC-002; Scout's original baseline was `fb527bd` plus that implementation's then-uncommitted work.
+The retained `Scout-Rule-Audit-2026-10-13.txt` and `full-audit-ledger.json` contain all 67 report-item dispositions, all 32 registered-rule dispositions, six proposed correction batches and 15 first-party anchors, with the compact verification artifacts in session `b172d7fa-7fdb-4992-92a5-aeec7a73a4e8` under `files/scout-validation`, without making the repository depend on that local location.
+The fresh Release rebuild has zero errors and 822 warnings, 1,912 focused existing tests and seven smoke checks pass, and 32 offline synthetic counterexample/control observations are verified, but this is not a full-suite result, live Windows proof or production acceptance and no application source, frozen evidence, UI or policy was changed.
+
+**Scout audit documentation commit and new-session handoff - owner-requested, 2026-10-13.**
+The owner requested committing the documented audit and providing a new-session handoff to begin the correction work, authorizing this local documentation checkpoint but not a push.
+The handoff starts with the recommended SCOUT-01 publication correction alone, preserving all retained verification records and obtaining the concrete bounded implementation and displayed wording/grouping approval before application edits.
+This does not approve the remaining batches, unresolved product decisions, live work, discovery, budgets, package replacement or future application commits/publication, and later uncommitted work must remain intact.
+
+### Verified Scout correction queue
+
+Severity below rates the consequence of an incorrect audit result or advice, not an exploitable
+vulnerability in SecureAD; every row remains outstanding unless explicitly marked otherwise.
+The complete retained ledger distinguishes executed counterexamples from source-confirmed defects,
+conditional scenarios, policy questions, existing safeguards and rejected allegations.
+
+**SCOUT-01 - SEC-093 publication collision - HIGH, open.**
+Two broad routes inside one configured decryptor produce the same durable policy finding key, and the actual judgement writer aborts on the uniqueness constraint.
+Publish one finding at the existing policy subject grain while retaining every typed supporting route and independent settings, membership and source limitations rather than silently dropping duplicates.
+Exercise rule output, writer and reader together with two broad routes and rebuilt negative controls, preserving exact source/generation binding and the previous published result on failure, as independently observed in the audit.
+
+**SCOUT-02 - missing durable subject identity - MEDIUM, open.**
+SEC-010/011/022/027/028/029/033 turn an otherwise identified positive into a complete empty verdict when objectGUID is unreadable, and all seven branches were independently reproduced.
+Record explicit inability to identify an applicable subject without inventing a durable finding identity, while retaining correctly identified controls and true nonapplicability.
+Verify malformed/missing identity, positive and negative configurations, actual execution tally and saved output rather than relying only on the returned finding count.
+
+**SCOUT-03 - historical SID classification and guidance - MEDIUM, open.**
+SEC-027 recognizes selected domain roles from a final RID alone, so the reproduced non-domain SID `S-1-5-512` is incorrectly named Domain Admins.
+Reuse the existing complete domain-principal SID predicate and exact absolute-SID matching, preserving the sensitivity selection while distinguishing historical account identifiers and unknown issuing/root/resource scope from established administrative authority.
+Correct finding/readback and class-appropriate verification/remediation together, retaining migration dependency cautions and obtaining approval for the exact displayed wording.
+
+**SCOUT-04 - missing or malformed server build - MEDIUM, open.**
+SEC-094 classifies Windows Server 2022 with `10.0` or `10.0 (oops)` as definitely legacy-only because a missing build defaults to zero, while the valid-build control remains capable.
+Require a usable server build or retain a supported name-fallback/unknown basis, without changing valid client/server behavior or treating platform eligibility as proof of installed Windows LAPS updates.
+Verify the shared classifier through rule and saved inventory consumers with missing, malformed and valid builds, unknown platforms and explicit servicing limitations.
+
+**SCOUT-05 - domain-controller exclusion and disagreement - HIGH, open; taxonomy decision.**
+SEC-010/011 suppress real unconstrained-delegation configurations from OU placement or other writable signals without class-qualified controller proof, and the reproduced disagreement is calculated but never published by those rules.
+Correct the exclusion/presentation mismatch using captured authoritative evidence and explicit uncertainty rather than silently trusting an OU name or inventing a separate controller definition.
+Propose exact disagreement wording before UI edits, and obtain an owner decision before moving managed service accounts between rule identities when their class ancestry currently selects host wording.
+
+**SCOUT-06 - legacy permission calculation - HIGH, open.**
+SEC-060 reports complete takeover for the reproduced ordered Everyone WRITE_DAC deny followed by an Authenticated Users allow, and the shared legacy calculator also credits unsupported callback entries as unconditional rights.
+Reuse the stronger ordered, operation-aware proof machinery for cross-trustee denies, unsupported entries, scope and inheritance, preserving independently established WRITE_DAC rather than importing uncertainty from a hypothetical owner transition.
+Verify deny and independent-grant controls through saved output, and label full control only when the separate stronger assessment establishes it rather than when a whole-object mask summary hides a scoped restriction.
+
+**SCOUT-07 - accepted-owner authorization and target partition - HIGH, open.**
+SEC-031/032 accept distribution/unknown-type nesting as administration, omit primary-group authorization, and can treat a principal's unreadable SID as a genuinely SID-less nonprincipal.
+Derive accepted-owner security authorization separately from distribution-inclusive protection, include supported primary-group routes, and keep potentially protected unreadable principals unresolved rather than assigning the ordinary rule's lower severity.
+Preserve the accepted owner catalogue, schema-only Schema Admins boundary, genuine containers/OUs, independent explicit rights, OWNER RIGHTS distinctions and serving-platform gates, with separate rebuilt positive and negative controls.
+
+**SCOUT-08 - existing group-history deny exclusion - MEDIUM, open; conditional.**
+SEC-071 can exclude an earlier deny to historical SID H when requester U already belongs to security group G carrying H and H also resolves to a different current user or distribution group.
+Close the existing-membership history qualification before a definite trustee nonmatch, retaining Unknown where historical token behavior is unsupported instead of constructing a complete Windows token.
+Verify the complete saved requester/finding path and an ordinary no-history control, preserving the unusual historical/current-identity collision prerequisite rather than describing all migrations as affected.
+
+**SCOUT-09 - LAPS password-attribute permission proof - HIGH, open.**
+SEC-090 omits class/property-set scope, always requires confidentiality control access regardless of captured flags, loses known descriptor incompleteness on positive output and suppresses review when the AD computer account is disabled.
+Use existing scoped read/proof infrastructure and captured confidentiality flags, keep named-holder grants distinct from combined concrete requester authorization, and do not equate directory-account disablement with absence of stored secrets or a local account.
+Preserve encrypted attribute read versus decryption, explicit short/unsupported-descriptor uncertainty and all relevant supporting exposures at the existing finding grain without assuming that removing one representative route closes every path.
+
+**SCOUT-10 - unreturned optional attributes and shared completeness - HIGH, open.**
+Requested-but-unreturned SPNs, SID history, member/memberOf, adminCount, dSHeuristics, LAPS timestamps and delegation settings can become asserted absence, nonmembership, nonprotection or definite unexpected authority despite the evidence contract and Microsoft's LDAP specification.
+Represent observed, unreturned and malformed inputs with their actual limitations, including schema and membership coverage, without treating encrypted transport, schema flags or administrative membership as per-object read proof.
+Preserve independently observed positives and ordinary optional-attribute behavior while correcting affected SEC-002/012/013/014/021/024/025/026/027/030/031/032/052/060/071/090/091/092/093/094/100/101 consumers and never presenting a finished selected batch as whole-forest assurance.
+
+**SCOUT-11 - malformed marker and invented heuristic defaults - MEDIUM, open.**
+SEC-030 treats null/unparseable adminCount as a known non-1 marker, while both membership derivation and forest-heuristic readback turn an unreturned dSHeuristics value into known defaults.
+Keep unusable values and ambiguous absence distinct from a readable nonmatching value or independently established true absence before deriving protection or owner behavior.
+Verify captured zero-valued catalogue entries and malformed inputs, preserve established positive routes, and do not claim that a visible settings object proves its properties were readable.
+
+**SCOUT-12 - membership totals, cycles and invisible routes - MEDIUM, open.**
+SEC-050's nested Known total can lack a source limitation for an empty nested member list, SEC-052 can overstate no-cycle completeness, and SEC-100/requester selection can miss invisible membership without an assessed unknown question.
+Preserve Direct counts and their strict thresholds, qualify captured totals/graphs and separate never-selected scope from unresolved assessed questions and whole-run capture limitations.
+Retain the already present SEC-050/051/061/062 safeguards for empty visited target/group lists and verify hidden forward-plus-backward relationships, independent positive witnesses and saved completeness across inventory and findings.
+
+**SCOUT-13 - historical LAPS time and separate account signals - HIGH, open; scope decision.**
+SEC-092 rejudges old captured expiry against the production hosts' current clock and claims later nonrotation, while one fresh product timestamp suppresses another stale one even though Microsoft supports coexistence on different local accounts.
+Retain both timestamp observations and explicit capture/evaluation times, correct the unsupported no-change/current-outage claim, and recommend capture-relative historical review with the existing 24-hour grace and Medium severity.
+Obtain approval before changing the existing nothing-here-rotated predicate into independent signal/account findings, then verify both hosts, boundary conditions, old evidence, residue and side-by-side controls without inventing local-account mapping.
+
+**SCOUT-14 - timestamp quality and LAPS inventory state - MEDIUM, open.**
+Malformed and zero/reset expiration values can leave SEC-091/092/094 complete and empty, while saved inventory calls raw presence management, both values migration and mere eligibility IsJudged.
+Retain raw observations and usable/malformed/reset distinctions, separate platform eligibility from actual assessment, and keep absent AD signals as verification recommendations with visibility, Entra, third-party, emulation and retired-policy alternatives.
+Obtain exact label/filter/detail wording approval and verify saved counts and readback without inventing epoch-age outages, active deployment, host state or a safe management outcome.
+
+**SCOUT-15 - GPO setting versus active/historical LAPS authority - HIGH, open.**
+SEC-093 describes a captured per-GPO decryptor as active authority for covered machines despite ignored settings, unknown resultant policy, device resolution and historical ciphertext protection.
+Retain the per-GPO recommendation but distinguish captured BackupDirectory/encryption/DSRM observations and unknown policy applicability from proven current or historical protection, without treating settings missing from one GPO as the entire effective policy.
+Keep directory read separate from decryption, retain historical/copied encrypted-material cautions after current-password rotation, and do not add a resultant-policy engine, endpoint collection or credential capture.
+
+**SCOUT-16 - registry operations and positive settings completeness - MEDIUM, open.**
+SEC-093 matches a registry suffix instead of the exact policy root, retains earlier broad values after overwrite/delete operations and omits partially read settings from positive evidence completeness.
+Apply documented Registry.pol operations at the exact root, preserve raw values and unsupported-operation limits, and carry settings, parse and membership completeness independently through typed evidence and the rule result.
+Verify all deletion forms, overwrite/blank/type cases, wrong prefixes and partial positives through storage/readback, leaving exact unsupported Windows blank/type behavior explicitly lab-bound rather than guessing it.
+
+**SCOUT-17 - operator claims and conditional remediation - MEDIUM, open.**
+SEC-010/011/021/022/027/029/030/031/032/033 guidance overstates eligible ticket issuance, current reversible storage, historical privilege, unconditional owner power or a fixed one-hour/two-cause SDProp diagnosis.
+Update affected title, detail, WhyItMatters, About, WhatToDo and typed convenience properties together using observed evidence, review reason, limitations, verification and conditional remediation with dependency risks.
+Preserve setting-based dormant findings, historical-sensitive-identifier review, existing SEC-100/101 association/nonrotation wording and SEC-012/013 configuration-only limits, with explicit approval before displayed wording changes.
+
+**SCOUT-18 - known exclusions causing unrelated unknowns - MEDIUM, open; bounded follow-up.**
+A known nonzero protected-operator exclusion mask makes unrelated negative protection/owner answers globally Unknown, and limited FullControl scope support can also lose coverage without proving any false authority.
+Consider localizing known exclusions to relevant roots as a separately approved coverage correction while retaining disputed catalogue/platform uncertainty and independently established narrower permissions.
+Measure correctness with focused scope controls rather than claiming that every conservative Unknown is a miscalculated permission or changing protected-group propagation from one lab observation.
+
+**SCOUT-19 - unresolved decryptor names and availability disposition - MEDIUM, decision.**
+SEC-093 gives Critical entries to supported qualified names/UPNs that this tool cannot resolve, while a supposedly nonexistent non-broad SID can be silent even though a truly invalid active principal affects backup availability.
+Recommend explicit unresolved verification rather than proven broadness or deployment failure, keeping name-resolution limits, source visibility and broad-exposure review distinct from availability.
+Obtain the owner's severity/disposition decision before lowering, removing or reclassifying existing entries, and do not declare valid names invalid or infer device resolution from missing captured objects.
+
+**SCOUT-20 - remaining Windows assurance questions - MEDIUM, blocked: isolated lab evidence.**
+Exact Windows KDC RBCD mask/object-ACE behavior, serving-DC computer-owner enforcement, disputed protection catalogue/primary-group propagation, historical token contexts and full resultant client policy remain unproved.
+Retain explicit supported-scope and platform limitations, including the distinction between a maintained object's prohibited NULL DACL and an embedded RBCD descriptor, and propose minimal isolated Windows cases only when separately authorized.
+Do not replace first-party ambiguity with a third-party implementation, alter frozen lab outputs, activate discovery, change production budgets, access live forests or request production exports beyond the permitted log/summary boundary.
+
+### Proposed correction sequence and approval boundary
+
+| Batch | Bounded objective |
+|---|---|
+| 1 | SCOUT-01: restore one-policy SEC-093 publication with every typed route and prior-output protection |
+| 2 | SCOUT-02/03/04/05: correct identity and classification in separate small validated slices; taxonomy/display decisions remain explicit |
+| 3 | SCOUT-06/07/08/09: correct permission, owner and conditional requester proofs using shared machinery, not competing authorization engines |
+| 4 | SCOUT-10/11/12 and separately approved SCOUT-18 follow-up: correct ambiguous negatives, completeness and selected-scope presentation |
+| 5 | SCOUT-13/14/15/16/19: align LAPS timestamp, policy, registry and inventory interpretation after the named product decisions |
+| 6 | SCOUT-17 and SCOUT-20: finish consistent approved guidance and the bounded handoff while retaining unresolved lab questions |
+
+**Audit safeguards and non-fixes - retained, 2026-10-13.**
+The scoped local predicates for SEC-002/014/024/025/051/061/062, SEC-100/101 service-association/nonrotation distinctions and the current tally's preservation of independent positives remain usable within their stated limits, not certified whole-forest safety.
+The CLI already judges through the shared production path, raw generic bits already stored in an ACE must not be remapped during access checking, and a separate concrete requester assessment must not be blocked merely because its originating named-holder edge is uncertain.
+Keep the existing authoritative Tier-0 definition, rule identities, approved severity/threshold/scope policy, sealed source/generation binding, historical tests/hashes and offline boundary, adding focused code/outside-authority regressions with isolated rebuilt defects/restorations and an explicit correct-source rebuild rather than document/code comparison tests.
+
+**Audit implementation authorization - not granted by documentation, 2026-10-13.**
+The recommendation is to start SCOUT-01 alone, but the owner's request here records the verified queue and plan rather than approving that implementation or the other proposed batches.
+Before each application batch, present its concrete bounded scope and exact displayed wording/grouping for approval, preserving current layouts/themes and the outstanding LAPS predicate/reference, unresolved-name and account-taxonomy decisions.
+No live capture, automatic verification, secret collection, discovery activation, processing/production-budget change, package replacement, commit or push is authorized, and dependency acquisition if subsequently needed must use the internal Microsoft feed without machine-wide configuration changes.
 
 **SEC-002 checkpoint publication - owner-authorized, 2026-10-12.**
 The owner requested committing and pushing the completed SEC-002 checkpoint after the 8,255 passing full-suite checks, zero-error correct Release rebuild, passing restored controls and governing handoff.
