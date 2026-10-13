@@ -350,6 +350,7 @@ internal sealed class FindingRowViewModel
             DelegationConfigurationEvidence evidence => evidence.IsComplete,
             ServiceAccountFindingEvidence evidence => evidence.IsComplete,
             AttributeWritePermissionEvidence evidence => evidence.IsComplete,
+            ReplicationPermissionEvidence evidence => evidence.IsComplete,
             _ => true,
         });
 

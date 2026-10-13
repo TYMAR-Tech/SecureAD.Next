@@ -935,6 +935,9 @@ public static class JudgingRun
         var attributeWriteRules = rules.Any(rule => rule is UnexpectedResourceBasedDelegationWrite
             or UnexpectedServicePrincipalNameWrite or UnexpectedKeyCredentialLinkWrite);
         var attributeWriteBinding = attributeWriteRules ? inputs.Binding() : null;
+        var replicationRule = rules.Any(rule => rule is UnexpectedDomainSecretReplication);
+        var replicationBinding = replicationRule ? inputs.Binding() : null;
+        var replicationInput = replicationRule ? inputs.ReadMembershipInput() : null;
         progress.BeginOperation("read-object");
         foreach (var subject in descriptors.Objects)
         {
@@ -1024,6 +1027,7 @@ public static class JudgingRun
                         ? permissions : readPermissions(dn),
                 }
                 : context;
+            objectContext = objectContext with { NamingContexts = controlContext.NamingContexts };
             if (attributeWriteRules && AttributeWriteRules.IsAccount(subject))
             {
                 ControlObjectEvaluation attributePermissions;
@@ -1039,6 +1043,25 @@ public static class JudgingRun
                 {
                     AttributeWrites = new AttributeWriteAssessment(subject, attributePermissions, controlContext, attributeWriteBinding!,
                         scope.Value.AllDeclaredDomainsAreComplete, permissions?.Entries.Any(entry =>
+                            EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
+                            && (entry.AccessMask & unchecked((int)0xf0000000)) != 0) == true, writer.GenerationId),
+                };
+            }
+            if (replicationRule && UnexpectedDomainSecretReplication.IsCandidate(subject, controlContext))
+            {
+                var replicationPermissions = edges;
+                if (tier0Discovery is not null)
+                {
+                    progress.BeginOperation("derive-control-edges");
+                    work.ControlDerive.Start();
+                    try { replicationPermissions = ControlEdgeDeriver.Derive(subject, permissions, controlContext, writer.GenerationId, derivationGeneration, domainSids); }
+                    finally { work.ControlDerive.Stop(); }
+                }
+                objectContext = objectContext with
+                {
+                    NamingContexts = controlContext.NamingContexts,
+                    ReplicationPermissions = new ReplicationPermissionAssessment(subject, replicationPermissions, controlContext,
+                        replicationBinding!, replicationInput!, scope.Value.AllDeclaredDomainsAreComplete, permissions?.Entries.Any(entry =>
                             EntryReachReader.FromPropagationFlags(entry.PropagationFlags) == EntryReach.ThisObject
                             && (entry.AccessMask & unchecked((int)0xf0000000)) != 0) == true, writer.GenerationId),
                 };
@@ -1107,9 +1130,13 @@ public static class JudgingRun
         progress.BeginOperation("unobserved-roots");
         work.UnobservedRoots.Start();
         foreach (var root in unobservedRoots.Order(StringComparer.Ordinal))
+        {
             writer.WriteControlEdges(new(root, null, null, "DescriptorNotRead",
                 ControlUncertainty.ReplicationRootNotEstablished | ControlUncertainty.DescriptorUnreadable, []),
                 new Tier0Target(null, root, root, null, null, null));
+            if (replicationRule && namingContexts.Value[root] == NamingContextKind.Domain)
+                foreach (var tally in tallies.Where(tally => tally.RuleId == "SEC-002")) tally.RecordMissingObject();
+        }
         writer.FlushObjects();
         work.UnobservedRoots.Stop();
         work.Pass.Stop();
@@ -1781,8 +1808,22 @@ public static class JudgingRun
             }
         }
 
+        internal void RecordMissingObject()
+        {
+            if (_error is not null) return;
+            _notJudged++;
+            var token = new UnresolvedInput(DerivedFactKind.AdministrativeMembership, UnresolvedReason.ReplicationPermissionIncomplete).Token;
+            _missing[token] = _missing.GetValueOrDefault(token) + 1;
+        }
+
         private void Judge(ObjectAttributes subject, JudgingContext context)
         {
+            var replication = rule is UnexpectedDomainSecretReplication;
+            if (replication && !UnexpectedDomainSecretReplication.IsCandidate(subject, context))
+            {
+                _notApplicable++;
+                return;
+            }
             // Without a class, a class-filtered rule cannot establish that the object is outside its scope.
             if (rule.Definition.SubjectClasses.Count > 0
                 && subject.Find("objectClass")?.Values.Any(value => !string.IsNullOrWhiteSpace(value.Text)) != true)
@@ -1791,7 +1832,7 @@ public static class JudgingRun
                 _missing["objectClass"] = _missing.GetValueOrDefault("objectClass") + 1;
                 return;
             }
-            if (!rule.Definition.IsAbout(subject))
+            if (!replication && !rule.Definition.IsAbout(subject))
             {
                 _notApplicable++;
                 return;

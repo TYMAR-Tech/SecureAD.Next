@@ -22,7 +22,7 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 31 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 32 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
 | Reports, compare and export | — | not built |
@@ -50,6 +50,18 @@ via CLI, so it can run overnight."* So the command line is not capture-only fore
 unattended path, and the GUI is the worked path.
 
 ## Fix and feature priority
+
+**SEC-002 checkpoint publication, owner-requested 2026-10-12.**
+The owner requested "commit and push" after the completed SEC-002 handoff.
+This authorizes publication of the validated 32-rule checkpoint, Judgement 70/control engine 10,
+its tests and governing updates; the earlier local no-commit/no-push boundary is superseded for
+this delivery only.
+Preserve the original evidence and compact verification records, keep layout/themes and deferred
+work unchanged, and do not treat publication as owner-run lab, physical-display or production
+acceptance or authorization for live capture, discovery, budgets or package replacement.
+Publish to the configured Microsoft enterprise remote using the already signed-in enterprise
+credentials for the command only; the active GitHub account and remote configuration stay unchanged,
+and this request does not require restoring access to TYMAR-Tech.
 
 **Initial-demo UI checkpoint and return to rule delivery, owner-approved 2026-10-11.**
 The owner considers the current UI good enough for initial demos, explicitly requested committing
@@ -108,6 +120,73 @@ stale count/version assumptions with exact current capability/header checks, and
 domain/admin-group evidence only to the judging fixtures rather than weakening production refusal.
 The 37 XAML files, frozen layout/classifier anchors and original evidence/historical handoffs
 remain unchanged; publication and the selected SEC-002 new-session handoff can resume.
+
+**SEC-002 domain-secret replication rule, owner-approved 2026-10-12.**
+The owner selected SEC-002 and approved the bounded recommendation with "i approve".
+Use Critical severity for established unexpected domain-secret replication permission: this rates
+the exposure of domain credential material, not evidence that the permission was exercised.
+Publish one finding per unexpected permission-holder/domain-naming-context-root pair, retaining
+both component-right checks and every original permission occurrence in its original order.
+Group members, supporting routes and descendants must not multiply the findings.
+Reuse `CanReplicateSecretDomainData`, the existing scoped expectedness and the authoritative
+Tier-0 definition, with no new domain-controller expectedness exemption.
+Unknown capability or expectedness remains explicitly unassessed, not safe or definitely unexpected.
+Configuration/schema replication, filtered-set-only replication and constrained individual-secret
+replication are separate and do not trigger this domain-secret finding.
+The owner approved the following exact copy in the existing screens, without layout or theme changes:
+- Title: **Unexpected domain-secret replication permission**.
+- Explanation: "The captured permissions establish Get-Changes and Get-Changes-All for this
+  permission holder on the domain naming-context root. These permissions can expose secret domain data."
+- Scope and limitations: "This finding does not establish authorization for an individual group member,
+  that replication occurred, credential extraction or a completed path to Tier 0.
+  Filtered-attribute replication and constrained individual-secret replication are separate assessments."
+- What to review: "Review the recorded permission holder and original granting entries.
+  Confirm whether this replication permission is required before removing an unintended grant;
+  removing legitimate replication permissions can disrupt directory replication or dependent services."
+The owner separately approved the existing Incomplete-status explanation: "Replication permissions
+or scoped expectedness could not be fully assessed from the captured evidence.
+Established findings remain evidence of the permissions shown."
+Preserve the published checkpoint, subsequent uncommitted work, original captures, frozen anchors and
+meaningful verification records; use existing captured lab evidence and synthetic/offline checks only.
+Isolate short TEMP/TMP paths before discovery, rebuild isolated deliberate defects and restored controls,
+and explicitly rebuild the correct solution before handoff.
+Wizard customization, file-opening tracing and further performance work remain deferred; SEC-083 stays
+last, and no live capture, discovery activation, production-budget change, production-data export,
+package replacement, commit or push is authorized.
+The owner also reported switching to the Microsoft enterprise GitHub account and no longer having
+access to TYMAR-Tech; do not treat the remote-access difference as a reason to change account settings
+or the implementation baseline.
+
+The rule is implemented and offline verified in Judgement 70, with control engine 10 unchanged.
+It consumes the existing compound capability, qualifies roots through the shared Tier-0 classifier,
+and references the saved control proof rather than rebuilding authorization or copying its original
+permission occurrences into another table.
+Independent source/context fingerprints retain the originally recorded resource, generation and
+limitations even if a finding body is rehashed; selected readback decodes the saved answer without
+replication, requester-token assessment or permission-analysis replay.
+Known findings survive separately unassessed holders and capture gaps, while unreadable, conflicting
+or absent roots and unknown expectedness cannot become clean or definitely unexpected results.
+All 8,255 full-suite checks pass, all 94 new cases detect 29 explicitly rebuilt isolated defects with
+29 passing restored controls, and the final correct Release solution rebuild has zero errors with
+135 affected checks passing again afterwards.
+The shared evidence-kind paging sample and completeness-voucher inventory are wired without
+changing historical layout hashes; the newly observed format-70 checkpoint is appended.
+The first repointing fixture left an unrelated missing-proof row and was corrected before accepting
+its mutation result, so the intended repointed-only-row defect is now independently detected.
+Earlier compilation, fixture, selector and isolated-build attempts remain compactly recorded.
+The existing offline CLI judges a hash-verified copy of the retained three-domain lab capture:
+SEC-002 assesses three roots and succeeds with zero findings and zero gaps.
+The run still has 12,649 findings and its three earlier incomplete rules; no new all-clear or
+production-scale claim follows from SEC-002 succeeding.
+Comparison preserves every finding, outcome and input gap for the original capture's scheduled rules,
+all 12,606 original property-proof bodies apart from the independently verified judgement generation,
+and all 12,607 original property occurrences.
+The three additional SEC-061 findings belong to the already delivered membership work, not SEC-002;
+their earlier insertion also explains shifted internal finding IDs without changing finding identity.
+All original capture/result/log fingerprints and all 37 published XAML files remain unchanged.
+This is a local, uncommitted checkpoint: owner-run lab-host, physical-display and production acceptance
+remain outstanding, deferred work remains deferred and no account/remote configuration, live capture,
+discovery activation, production budget, package replacement, commit or push was changed.
 
 **SEC-012 and SEC-013 delegation-configuration pair, owner-selected 2026-10-12.**
 The owner selected these two as the next bounded rule batch: constrained delegation to sensitive

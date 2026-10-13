@@ -85,6 +85,7 @@ internal static class UnresolvedWording
                     "The captured schema does not establish the requested attribute's identity; this attribute-write rule cannot report a complete answer.",
                 UnresolvedReason.AttributeWriteIncomplete =>
                     "The attribute-write permission or the holder's administrative expectedness could not be assessed completely. Established findings remain evidence of the permissions shown.",
+                UnresolvedReason.ReplicationPermissionIncomplete => UnexpectedDomainSecretReplication.IncompleteExplanation,
                 _ => $"{token} was undecided, and this version has no plainer way to say why.",
             };
 
@@ -153,6 +154,7 @@ internal static class UnresolvedWording
                 "The captured schema does not establish the requested attribute-write identity.",
             UnresolvedReason.AttributeWriteIncomplete =>
                 "The requested attribute-write permission or its expectedness has unresolved captured or derived inputs.",
+            UnresolvedReason.ReplicationPermissionIncomplete => UnexpectedDomainSecretReplication.IncompleteExplanation,
 
             UnresolvedReason.OwnerServerBehaviorNotRecorded or UnresolvedReason.OwnerHeuristicNotRead or UnresolvedReason.OwnerRightsNotEvaluated =>
                 Ownership.GetString(reason.ToString(), CultureInfo.CurrentUICulture) ?? throw new MissingManifestResourceException(reason.ToString()),

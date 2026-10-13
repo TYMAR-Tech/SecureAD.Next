@@ -132,8 +132,8 @@ public static class JudgementSchema
     /// <para>60 saves distinct structural member totals and separate missing-reference and evidence
     /// limitations, using member links only and excluding the starting group.</para>
     /// </remarks>
-    // Format 69 retains independent original-source hashes beside delegation metadata and resource-scope references.
-    public const int Version = 69;
+    // Format 70 binds SEC-002 findings to existing domain-root control proofs and their original occurrences.
+    public const int Version = 70;
 
     private static readonly string[] TableDdl =
     [
@@ -702,6 +702,7 @@ public static class JudgementSchema
         DelegationConfigurationFindingStorage.CreateTables(connection);
         ServiceAccountFindingStorage.CreateTables(connection);
         AttributeWriteFindingStorage.CreateTables(connection);
+        ReplicationPermissionFindingStorage.CreateTables(connection);
         GroupInventoryStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);

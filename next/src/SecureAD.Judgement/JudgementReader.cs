@@ -960,7 +960,12 @@ public sealed partial class JudgementReader : IDisposable
         dc.fingerprint                      AS dc_fingerprint,
         dc.generation                       AS dc_generation,
         dc.account_source_hash              AS dc_account_source_hash,
-        dc.resource_source_hash             AS dc_resource_source_hash
+        dc.resource_source_hash             AS dc_resource_source_hash,
+        rp.edge_id                          AS rp_edge_id,
+        rp.proof                            AS rp_proof,
+        rp.fingerprint                      AS rp_fingerprint,
+        rp.source_hash                      AS rp_source_hash,
+        rp.generation                       AS rp_generation
         """;
 
     /// <summary>One join per kind of evidence, shared for the same reason the columns are.</summary>
@@ -984,6 +989,7 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_attribute_write aw ON aw.finding_id = f.finding_id
         LEFT JOIN finding_membership_review mr ON mr.finding_id = f.finding_id
         LEFT JOIN finding_delegation_configuration dc ON dc.finding_id = f.finding_id
+        LEFT JOIN finding_replication_permission rp ON rp.finding_id = f.finding_id
         LEFT JOIN tier0_path_calculation zc ON f.rule_id='SEC-071' AND zc.id=1
         """;
 
@@ -1051,7 +1057,20 @@ public sealed partial class JudgementReader : IDisposable
 
         FindingEvidence evidence;
 
-        if (ruleId is "SEC-012" or "SEC-013")
+        if (ruleId == "SEC-002")
+        {
+            if (reader.IsDBNull(reader.GetOrdinal("rp_proof")))
+                throw new InvalidDataException("The replication finding has no saved typed permission evidence.");
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = ReplicationPermissionFindingStorage.Read(_connection, reader.GetInt64(reader.GetOrdinal("rp_edge_id")),
+                reader.GetString(reader.GetOrdinal("rp_proof")), (byte[])reader.GetValue(reader.GetOrdinal("rp_fingerprint")),
+                (byte[])reader.GetValue(reader.GetOrdinal("rp_source_hash")), reader.GetString(reader.GetOrdinal("rp_generation")),
+                Description, _findingDerivationSeal, ruleId, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-012" or "SEC-013")
         {
             if (reader.IsDBNull(reader.GetOrdinal("dc_proof")))
                 throw new InvalidDataException("The delegation-configuration finding has no saved typed evidence.");

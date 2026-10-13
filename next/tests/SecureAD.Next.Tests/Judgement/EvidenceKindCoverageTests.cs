@@ -50,6 +50,17 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        new Sample(new UnexpectedDomainSecretReplication().Definition, "DC=contoso,DC=com",
+            ReplicationPermissionRuleTests.ReadPublishedFindings().Single().Evidence,
+            read =>
+            {
+                var evidence = Assert.IsType<ReplicationPermissionEvidence>(read);
+                Assert.Equal("DC=contoso,DC=com", evidence.NamingContextRoot);
+                Assert.Equal("PartitionRoot", evidence.Tier0Basis);
+                Assert.Equal(new[] { 0, 1 }, evidence.Entries.Select(entry => entry.Ordinal));
+                Assert.Equal("Established", evidence.Checks.Single(check => check.Name == "DS-Replication-Get-Changes-All").State);
+                Assert.True(evidence.IsComplete);
+            }),
         new Sample(new ConstrainedDelegationToRelevantService().Definition, "CN=Delegating account,DC=contoso,DC=com",
             DelegationConfigurationRuleTests.ReadPublishedFindings().Single(finding => finding.RuleId == "SEC-012").Evidence,
             read =>
@@ -494,7 +505,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
             Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
                 or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence or DelegationConfigurationEvidence
-                or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence))
+                or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence or ReplicationPermissionEvidence))
                 .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
             .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1))
             .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings())
@@ -502,6 +513,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
             .Concat(AttributeWriteRuleTests.ReadPublishedFindings()).ToArray();
         findings = findings.Concat(MembershipReviewRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-050")).ToArray();
         findings = findings.Concat(DelegationConfigurationRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-012")).ToArray();
+        findings = findings.Concat(ReplicationPermissionRuleTests.ReadPublishedFindings()).ToArray();
 
         foreach (var sample in Samples)
         {

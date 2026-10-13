@@ -629,6 +629,8 @@ public sealed class JudgementWriter : IDisposable
             _rulesWritten.Contains("SEC-100") ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         AttributeWriteFindingStorage.RequirePublishable(_connection, _rulesWritten.Overlaps(["SEC-014", "SEC-024", "SEC-025"])
             ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        ReplicationPermissionFindingStorage.RequirePublishable(_connection, _rulesWritten.Contains("SEC-002")
+            ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
@@ -836,6 +838,9 @@ public sealed class JudgementWriter : IDisposable
     {
         switch (evidence)
         {
+            case ReplicationPermissionEvidence replication:
+                ReplicationPermissionFindingStorage.Write(_connection, transaction, findingId, GenerationId, replication);
+                break;
             case DelegationConfigurationEvidence delegationConfiguration:
                 DelegationConfigurationFindingStorage.Write(_connection, transaction, findingId, GenerationId, delegationConfiguration);
                 break;

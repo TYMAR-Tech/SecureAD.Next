@@ -27,6 +27,7 @@ public static class RuleCatalogue
     /// </remarks>
     public static IReadOnlyList<IRule> All { get; } =
     [
+        new UnexpectedDomainSecretReplication(),
         new UnconstrainedDelegationOnAccount(),
         new UnconstrainedDelegationOnNonDomainController(),
         new ConstrainedDelegationToRelevantService(),

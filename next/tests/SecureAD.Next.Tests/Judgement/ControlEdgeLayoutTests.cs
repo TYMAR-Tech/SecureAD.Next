@@ -155,6 +155,8 @@ public sealed class ControlEdgeLayoutTests
         [68] = "A8F03CEA1F6E105B12476DF9B7DCC7BD83119C82F3D47314D0516EB0F4CF4C8B",
         // Independent captured-source hashes supplement delegation metadata; prior checkpoints stay unchanged.
         [69] = "89B2069C0F4A99E3CD705F9F9784801B82CEC9CFE96FD0693BCE4473D31C39AA",
+        // Observed SEC-002 source-linked finding table; every earlier checkpoint remains frozen.
+        [70] = "345583820F71D406D52F9E84F05703A692BDE30BD571F334621B82695028BB17",
     };
 
     [Fact]

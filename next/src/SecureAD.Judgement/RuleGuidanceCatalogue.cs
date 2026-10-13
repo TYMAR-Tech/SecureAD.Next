@@ -26,6 +26,11 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-002", "Credentials", MitreTechnique: null,
+            WhyItMatters: UnexpectedDomainSecretReplication.Explanation,
+            WhatToDo: UnexpectedDomainSecretReplication.Guidance,
+            About: UnexpectedDomainSecretReplication.Explanation + "\n\n" + UnexpectedDomainSecretReplication.ScopeNote,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-drsr/15bbda52-7742-4ce3-9327-018647b0fc26"),
         new RuleGuidance("SEC-012", "Delegation configuration", MitreTechnique: null,
             WhyItMatters: ConstrainedDelegationToRelevantService.Explanation,
             WhatToDo: "Review whether this delegation is required.",

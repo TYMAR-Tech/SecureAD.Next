@@ -208,6 +208,7 @@ public sealed record JudgingContext(
     internal CapturedGroupMembershipIndex? AdministrativeMembership { get; init; }
     internal Func<string, string?, SecureAD.Evidence.Findings.MembershipRouteSummary>? MembershipRoutes { get; init; }
     internal AttributeWriteAssessment? AttributeWrites { get; init; }
+    internal ReplicationPermissionAssessment? ReplicationPermissions { get; init; }
 
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only

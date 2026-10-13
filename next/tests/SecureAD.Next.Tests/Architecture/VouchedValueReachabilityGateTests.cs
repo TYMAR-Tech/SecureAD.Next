@@ -517,6 +517,8 @@ public sealed class VouchedValueReachabilityGateTests
     /// separately by captured-input gaps and the saved structural total's limitations.
     /// 80 adds <c>DelegationConfigurationEvidence.IsComplete</c>: captured configuration and
     /// shared resource-scope qualifications remain distinct from concrete requester authorization.
+    /// 81 adds <c>ReplicationPermissionEvidence.IsComplete</c>: an established domain-root
+    /// permission keeps other captured-input and expectedness gaps rather than claiming full coverage.
     /// </para>
     /// </summary>
     [Fact]
@@ -531,7 +533,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -567,6 +569,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "BroadGroupMembershipEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "GroupMembershipReviewEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "DelegationConfigurationEvidence" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "ReplicationPermissionEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ServiceAccountFindingEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ServiceAdministrativeMembership" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "AttributeWritePermissionEvidence" && v.Name == "IsComplete");

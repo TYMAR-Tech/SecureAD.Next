@@ -108,6 +108,8 @@ public enum UnresolvedReason
     AttributeWriteSchemaUnavailable,
     /// <summary>The requested property's permission or expectedness assessment has unresolved inputs.</summary>
     AttributeWriteIncomplete,
+    /// <summary>The domain-root replication permission or scoped expectedness has unresolved inputs.</summary>
+    ReplicationPermissionIncomplete,
 }
 
 /// <summary>

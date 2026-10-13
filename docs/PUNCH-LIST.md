@@ -13,10 +13,25 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**SEC-002 checkpoint publication - owner-authorized, 2026-10-12.**
+The owner requested committing and pushing the completed SEC-002 checkpoint after the 8,255 passing full-suite checks, zero-error correct Release rebuild, passing restored controls and governing handoff.
+Publish the approved source/tests/docs to the configured Microsoft enterprise remote with command-local stored enterprise credentials, leaving the active account, remotes, original evidence, compact verification and published layout/themes unchanged.
+This supersedes the local no-commit/no-push restriction for this delivery only, not outstanding owner-run lab/display/production acceptance or the live, discovery, budget, package and deferred-work boundaries.
+
 **Next batch - SEC-002 selected for a new session; current checkpoint delivery requested, 2026-10-12.**
 The owner requested committing/pushing all current validated membership/delegation work and governing updates, then taking SEC-002 in a new session without starting its implementation here or asking again which rule to select.
 Begin from the accepted secret-domain-data replication compound, naming-context-root/resource binding, existing scoped expectedness and permission proof, then obtain concrete severity/grouping/wording approval rather than importing predecessor policy or conflating filtered-set rights with secret replication.
 Preserve original and historical evidence, this delivered checkpoint and subsequent work, use captured lab/synthetic offline validation with rebuilt isolated negative controls, keep wizard/tracing/performance work deferred and SEC-083 last, and do not start live capture, change budgets/packages or commit/push the future implementation without a new request.
+
+**SEC-002 domain-secret replication - implemented and offline verified, 2026-10-12.**
+The owner-approved Critical rule publishes one finding per established unexpected permission-holder/domain-root pair using the existing compound capability, scoped expectedness and authoritative Tier-0 qualification, without a domain-controller exemption or claims of member authorization, operations, extraction or completed paths.
+Judgement 70 references the existing control-engine-10 permission proof, preserving component checks, ordered original occurrences, exact holder/resource/source/generation binding and explicit unknowns, while all 8,255 tests pass and all 94 new cases detect 29 explicitly rebuilt isolated defects with passing restored controls.
+The correct Release solution rebuild has zero errors and 135 post-rebuild checks pass; the seal-verified lab copy assesses three roots with SEC-002 Succeeded and zero findings/gaps, the 37 published XAML files and originals remain unchanged, and live access, discovery, budgets, packages, commit/push and deferred wizard/tracing/performance work remain unauthorized with SEC-083 last.
+
+**SEC-002 verification controls - complete; original unsuccessful attempts retained, 2026-10-12.**
+The captured positive fixture required the actual forest heuristic and membership inputs, the domain-controller fixture required all three accepted signals, and the descendant fixture now avoids duplicating the domain root's SID rather than weakening production refusals.
+The original page check confused a raw-reader exception with the screen's structured refusal, and the first repointing fixture left an unrelated missing-proof row; both are corrected, the repointed-only-row check detects its rebuilt defect and the complete suite and rebuilt restorations pass.
+Keep compact source/binary fingerprints, all result receipts, earlier failed attempts, source-copy/rebuild recipes and the exact lab comparisons, including the harmless finding-ID shift caused by earlier membership findings, without rewriting historical anchors or claiming owner-run lab, physical-display or production acceptance.
 
 **Prior published-main CI - HIGH; corrected and full-suite verified before publication, 2026-10-12.**
 The [prior main run](https://github.com/TYMAR-Tech/SecureAD.Next/actions/runs/38195507943) for `a0ab4c8` records eight failing tests: the two previously known UI architecture checks plus full-control presentation, Enterprise CA source versions, offline audit journey, key-credential saved workflow and two portable-summary checks.
@@ -213,9 +228,9 @@ An additional whole-judging-subsystem run produced three identifiable failures b
 The new evidence-kind sample and current-format assertion were corrected and verified in the final targeted suite, while the diagnostic source-registration failure was independently reproduced in the preserved pre-rule baseline.
 Retain the unfinished run log and its input paths separately from the 2,177 completed affected checks; this is not a claim that the current full suite has passed.
 
-**Remaining-rule delivery - delegation, membership, service and property batches implemented; SEC-083 last, 2026-10-12.**
-The catalogue ships 31 rules and the reconciled handoff has nine proposed new-rule candidates: replication SEC-002, policy settings SEC-064/065/066, policy control SEC-080/081/082, managed-password access SEC-102 and legacy GPP SEC-083.
-The approved SEC-100/101 pair, SEC-014/024/025 property trio, SEC-050/051/061 membership trio and SEC-012/013 configuration pair are implemented; other unbuilt batches still need their specific finding-policy approval, and inventory, correlation aliases and shared assessments must not become duplicate rules or import predecessor policies by default.
+**Remaining-rule delivery - replication, delegation, membership, service and property batches implemented; SEC-083 last, 2026-10-12.**
+The catalogue ships 32 rules and the reconciled handoff has eight proposed new-rule candidates: policy settings SEC-064/065/066, policy control SEC-080/081/082, managed-password access SEC-102 and legacy GPP SEC-083.
+The approved SEC-002 rule, SEC-100/101 pair, SEC-014/024/025 property trio, SEC-050/051/061 membership trio and SEC-012/013 configuration pair are implemented; other unbuilt batches still need their specific finding-policy approval, and inventory, correlation aliases and shared assessments must not become duplicate rules or import predecessor policies by default.
 SEC-083 remains last with its optional XML scan disabled by default, ordinary GPO/SYSVOL capture stays enabled, and all subsequent work preserves the shared permission/path contracts and explicit incompleteness without unapproved capture extensions or performance campaigns.
 
 **Owner priority - finishing rules/features; further optimization deferred, 2026-10-10.**
