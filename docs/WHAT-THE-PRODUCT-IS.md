@@ -143,6 +143,61 @@ mutations passed, the owner requested a local SCOUT-01 commit without a push.
 This authorizes that one validated publication-collision checkpoint only; it does not authorize
 publishing it, beginning SCOUT-02, changing another SEC-093 behavior or performing live work.
 
+**ARCH-01 production-scale lifecycle review - owner-requested 2026-10-14; implementation
+not approved.**
+The owner requested an architectural review of capture, derivation, judgement, storage/indexing,
+queries and UI rendering together, explicitly permitting recommendations that replace current
+processing boundaries, data models, storage technologies and presentation approaches rather than
+another sequence of millisecond optimizations.
+Use the current documented production shape and retained permitted measurements, distinguish
+production observations, offline measurements, code-confirmed work and hypotheses, and prioritize
+recommendations by usable production impact, effort and architectural trade-offs.
+This is review scope, not approval to implement recommendations, waive the rejected PERF-02 gate,
+change UI or analysis policy, add measurement tooling/runs, access live environments, alter
+production budgets, request production exports, deploy, commit or push.
+
+**ARCH-01 priority clarification - owner-confirmed 2026-10-14.**
+Production-scale saved-run responsiveness remains the immediate objective, starting with the
+complete Dashboard and Findings paths rather than an isolated reader measurement.
+The owner places SYSVOL acquisition/capture assembly redesign and proposals about compatibility,
+previous-generation browsing and revised acceptance rules far down the priority list.
+Faster SYSVOL would be a nice-to-have, not a prerequisite for the responsiveness correction.
+No backward compatibility remains a settled decision; the owner had not supplied that context
+to Scout before its review, so Scout's proposal does not create a new unresolved compatibility
+decision or a requirement for legacy readers.
+Do not expand the immediate work into those deferred proposals; existing integrity, source/resource/
+generation binding, previous-completed-root preservation and the approved acceptance gate remain
+unchanged, and this priority clarification is not new implementation, measurement, UI, live-work,
+deployment, commit or push approval.
+
+**Combined-review checkpoint and next-session queue - owner-requested 2026-10-14.**
+After comparing both architectural reviews and confirming the priorities above, the owner requested
+recording the combined work, committing and pushing the checkpoint, and preparing a new-session
+handoff to begin the responsiveness work.
+When explicitly offered the unfinished application candidate as a separate checkpoint choice,
+the owner selected documentation only.
+Publish the Scout report, governing decisions and concrete combined queue; preserve every
+uncommitted application/test change and retained measurement, without adopting the rejected
+PERF-02 candidate or merging it into main.
+
+The active sequence is ARCH-02's small saved Dashboard overview, ARCH-03's complete Findings
+list/filter/summary and selected-proof boundary, ARCH-04's reliable scope filtering/paging/search
+and selected detail, ARCH-05's aggregate completion reads, then ARCH-06's targeted analysis work
+after browsing acceptance.
+This replaces an isolated reader or millisecond publication operation as the next planning
+objective, not the existing integrity or judging non-regression requirements.
+Begin the new session with a concrete bounded ARCH-02 implementation proposal, reusing sound
+candidate infrastructure but writing native product schemas rather than retaining permanent
+runtime relocation of a monolithic schema.
+Do not ask again whether responsiveness is the priority or whether backward compatibility is
+required; retain the existing Dashboard layout, wording, figures and coverage distinctions.
+Application scope, changes beyond the earlier PERF-02 SQL restrictions, new measurement tooling
+or campaigns and concrete UI changes still need their own bounded approval.
+SYSVOL/capture acceleration, compatibility infrastructure, previous-generation browsing and
+acceptance-rule redesign are not prerequisites; SCOUT-02 remains paused.
+This publication request authorizes this documentation commit/push only, not deployment,
+live access, production exports/budgets or subsequent application commits.
+
 **PERF-01 production saved-run browsing - owner-approved offline feasibility, 2026-10-13;
 application implementation not approved.**
 The owner paused SCOUT-02 and supplied a permitted production run-log excerpt, then approved an
@@ -207,6 +262,93 @@ scope, production budgets or existing finding behavior, and it has no authorizat
 push, deploy or request a production export.
 The owner separately authorized one local PERF-01 documentation checkpoint without a push before
 the new implementation session.
+
+**PERF-02 first implementation gate - candidate rejected, 2026-10-13.**
+Three symmetrically instrumented, same-host before/after pairs consumed a byte-identical sealed
+nine-domain synthetic containing 12,000 objects and 590,000 permission entries; all 32 rule-execution
+answers and 54 finding identities matched, while the overall judging ranges overlapped.
+The candidate nevertheless exceeded observed before-run repeat variability in path-fragment
+validation, saved-answer matching and publication steps, so it did not meet the mandatory gate and
+no segmented application format was adopted.
+The candidate and compact evidence are retained offline, the original application was restored,
+explicitly rebuilt and passed 335 focused checks, and unfinished candidate regression/mutation work,
+display checks and production acceptance remain outstanding without changing the recorded approval
+or authorizing Findings SQL, UI, live work, SCOUT-02, deployment, commit or push.
+
+**PERF-02 responsiveness priority - owner reiterated 2026-10-13.**
+The owner wants saved-run browsing to be responsive like the predecessor and does not want a
+sequence of small fixes if the cause is architectural.
+Dashboard, tree, object listing and Findings responsiveness is the objective; judging comparisons
+remain a mandatory non-regression guard, not a separate judging-speed optimization project.
+This clarification does not waive integrity, exact source/resource/generation binding, complete
+typed evidence, explicit refusals, atomic publication or the recorded scope restrictions, and it
+does not approve a new proof-partition design or a numeric responsiveness target.
+
+**PERF-02 architectural continuation - owner-approved 2026-10-13.**
+After reviewing the revised navigation, Findings and independently verified shared-proof direction,
+the owner requested a new branch and instructed implementation to begin.
+Work starts on `perf02/responsive-browsing` with the captured-navigation and publication foundation;
+the complete correction still requires independently readable Findings without moving all shared
+permission values into that file, actual browse-service measurements, rebuilt mutation controls and
+the unchanged equal-input judging non-regression gate.
+The existing layout/wording, Findings SQL, rule behavior and production budgets remain unchanged;
+this authorizes neither live access nor SCOUT-02, deployment, commit or push.
+
+**PERF-02 navigation foundation - implemented on the new branch, 2026-10-13; full correction
+not adopted.**
+Capture schema 17 writes the captured navigation product before one root selects its sealed bytes
+and Evidence; Dashboard, tree and object listing retain a verified navigation handle only for the
+selected run, and the existing membership warning reads its saved generation-bound Derivation
+counter instead of verifying the large derived-facts file.
+The correct Release build passes 492 affected checks, rebuilt isolated mutations cover the
+navigation integrity/read-path controls, and four same-host equal-input judging pairs preserve the
+32 rule-execution answers, 54 finding identities and statement count while every compared operation
+remains within observed repeat variability.
+Actual saved-run service comparisons use one identical nine-domain synthetic with 12,000 objects
+and 590,000 permission entries; complete Dashboard/tree/listing output records match, but this is
+not a rendered-screen, production-count complexity or production acceptance result.
+The original rejected candidate and all measurement inputs remain retained; Findings and its
+independently verified shared evidence, the remaining publication/failure mutations and ordinary
+display verification still belong to the unfinished PERF-02 correction, with no UI/SQL/policy
+change, live work, deployment, commit or push authorized.
+
+**PERF-02 compact Findings continuation - candidate implemented and offline verified;
+mandatory judging gate rejected, 2026-10-14.**
+The uncommitted navigation work and all retained earlier evidence remain intact on
+`perf02/responsive-browsing`; the completed publication/refusal controls precede a schema-72
+candidate with compact Findings and independently protected permission/group proof, path proof
+and heavy saved-classification/LAPS products.
+Each published byte is sealed once before the root selects the complete generation, previous
+completed roots survive failure/cancellation, and original occurrences, source/resource/generation
+bindings, prepared statements and existing batching remain unchanged.
+Proof-source revisions track their actual attached database, and path preparation preserves the
+temporary cross-product reference guards instead of silently deleting them.
+
+All 6,403 affected Release checks pass, and isolated rebuilt defects exercise publication,
+refusal, selected-file verification, shared-proof bindings, protected lifetimes, unsealed-WAL
+exclusion and the new revision/reference guards without changing an older frozen value.
+Six actual saved-view comparisons retain byte-identical Findings presentation records while
+first selection is 630-727 ms before versus 347-355 ms after on one hash-verified approved
+nine-domain synthetic with 12,000 objects and 590,000 original permission entries.
+Warm pages show no established large gain; these are saved-view service/presentation measurements,
+not WPF rendering, a cold operating-system cache, production-count complexity or production acceptance.
+The combined-review source trace additionally confirms that the retained runner omits the
+unconditional Tier-0 summary request made by the actual Findings screen.
+That request still opens Evidence, Derivation and PathProof, so the recorded service timings do
+not establish complete-screen independence or first-use latency; retain the original measurements
+and their provenance rather than relabelling them as complete-screen acceptance.
+
+Four same-host equal-input judging pairs preserve all 32 rule-execution answers and 54 finding
+identities, with 3,219,130 before and 3,219,833 candidate statement executions; the constant setup
+and proof-revision differences do not replace or undo prepared statements or batching.
+The candidate nevertheless fails the unchanged gate in checkpointing (11 versus 30.5 ms median,
+6 ms before repeat range), database closure (7 versus 16 ms, 2 ms range) and generation-file moves
+(2 versus 6 ms, 2 ms range).
+Those small absolute costs are not an exemption from the owner's acceptance boundary: the
+candidate is not accepted, and the next correction must address publication lifecycle rather than
+alter Findings SQL, UI wording/layout or the gate.
+The branch remains uncommitted; production-count/display verification and full PERF-02 acceptance
+remain outstanding, with no SCOUT-02, live access, capture/budget change, deployment, commit or push.
 
 **SEC-002 checkpoint publication, owner-requested 2026-10-12.**
 The owner requested "commit and push" after the completed SEC-002 handoff.
