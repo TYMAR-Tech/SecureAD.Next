@@ -563,6 +563,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private void ResetTreePresentation()
     {
         _resetting = true;
+        ResetLapsFilters();
         ResetGroupPaging();
         ResetTier0Paging();
         ResetObjectSearch();
@@ -931,6 +932,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         PageNumber = 1;
         _findingsBack.Clear();
         _findingsFrom = null;
+        ResetLapsPaging();
         ClearListing(AssetsPane.Objects);
         ClearListing(AssetsPane.Findings);
         ClearListing(AssetsPane.Laps);
@@ -958,6 +960,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
             return;
         }
         PageNumber = 1;
+        ResetLapsPaging();
         OnPropertyChanged(nameof(ParentIsWorthShowing));
         OnPropertyChanged(nameof(ShowsBase));
         OnPropertyChanged(nameof(ShowsOneLevel));

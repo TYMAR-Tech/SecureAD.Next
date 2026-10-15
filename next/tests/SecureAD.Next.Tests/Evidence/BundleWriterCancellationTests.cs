@@ -93,7 +93,10 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         }).Order(StringComparer.Ordinal).ToArray();
 
         Assert.Equal(new[] { Path.GetFileName(BundleLayout.PartialPath(directory)),
-            Path.GetFileName(BundleLayout.SealPath(directory)), Path.GetFileName(BundleLayout.AnnotationsPath(directory)) }
+            Path.GetFileName(BundleLayout.SealPath(directory)), Path.GetFileName(BundleLayout.AnnotationsPath(directory)),
+            Path.GetFileName(BundleLayout.CaptureManifestPath(directory)) + ".partial",
+            Path.GetFileName(BundleLayout.NavigationPartialPath(directory)),
+            Path.GetFileName(BundleLayout.OverviewPartialPath(directory)) }
             .Order(StringComparer.Ordinal), released);
     }
 

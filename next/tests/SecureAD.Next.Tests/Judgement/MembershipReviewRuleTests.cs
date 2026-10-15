@@ -450,12 +450,12 @@ public sealed class MembershipReviewRuleTests
     {
         var directory = Prepared([Rule(ruleId)], PositiveSources());
         using var reader = Open(directory);
-        var store = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
-        var copy = Path.Combine(directory, "membership-publication-check.db");
-        File.Copy(store, copy);
+        var working = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "membership-publication-check");
+        var copy = BundleLayout.AnalysisGenerationDataPath(working, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = copy, Pooling = false, ForeignKeys = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, working, reader.Description.GenerationId);
         var seal = FindingInputBinding.DerivationSeal(directory, reader.Description.DerivationGenerationId);
         void Require(string? expected)
         {
@@ -666,8 +666,23 @@ public sealed class MembershipReviewRuleTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        using var reader = Published([SizeRule, NestedRule, LegacyRule], PositiveSources());
+        using var reader = Open(FindingsRun());
         return reader.Read().Findings;
+    }
+
+    internal static string FindingsRun() => Prepared([SizeRule, NestedRule, LegacyRule], PositiveSources());
+
+    [Fact]
+    public void Arch03LightweightCompletenessIsSavedAfterFinalMembershipQualifications()
+    {
+        var missing = Enumerable.Range(0, 11).Select(index => "CN=Uncaptured " + index + "," + Root).ToArray();
+        using var reader = Published([SizeRule], [Target("DA", missing)]);
+        var original = Assert.Single(reader.Read().Findings);
+        Assert.False(Assert.IsType<GroupMembershipReviewEvidence>(original.Evidence).IsComplete);
+        var saved = Assert.Single(reader.ReadListPage(FindingsQuery.Everything()).Value.Findings);
+        Assert.False(saved.EvidenceIsComplete);
+        Assert.Equal(original.Detail, saved.Detail);
+        Assert.Equal("May be incomplete", new SecureAD.Shell.ViewModels.FindingRowViewModel(saved).Coverage);
     }
 
     private static Fixtures.Source[] PositiveSources()

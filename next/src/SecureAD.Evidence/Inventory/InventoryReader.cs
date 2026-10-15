@@ -51,12 +51,12 @@ internal static class InventoryReader
     /// <param name="connection">The open evidence database.</param>
     /// <param name="description">What the run recorded about itself.</param>
     public static Result<ForestInventory> Read(
-        SqliteConnection connection, BundleDescription description, Result<RunScope> scope)
+        SqliteConnection connection, BundleDescription description, Result<RunScope> scope, bool navigation = false)
     {
         if (!scope.IsSuccess)
             return Result<ForestInventory>.Failure(scope.Error);
 
-        var counts = CountsByDomain(connection);
+        var counts = CountsByDomain(connection, navigation);
         var withholding = DomainsReadOverAWithholdingConnection(connection);
         var policies = PolicyCoverage(connection);
 
@@ -80,11 +80,14 @@ internal static class InventoryReader
     /// what that means, because this cannot: it is <i>read and empty</i> for one domain and
     /// <i>never read</i> for another, and only the coverage says which.
     /// </remarks>
-    private static Dictionary<string, ObjectCounts> CountsByDomain(SqliteConnection connection)
+    internal static Dictionary<string, ObjectCounts> CountsByDomain(
+        SqliteConnection connection, bool navigation, bool attachedNavigation = false, CancellationToken token = default)
     {
         using var command = connection.CreateCommand();
+        var prefix = attachedNavigation ? "navigation." : "";
 
-        command.CommandText =
+        command.CommandText = navigation
+            ? $"SELECT domain_fqdn,most_specific_class,COUNT(*) FROM {prefix}captured_object GROUP BY domain_fqdn,most_specific_class" :
             """
             SELECT o.domain_fqdn,
                    (SELECT v.value
@@ -102,6 +105,7 @@ internal static class InventoryReader
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
+            token.ThrowIfCancellationRequested();
             var domain = reader.GetString(0);
             var mostSpecific = reader.IsDBNull(1) ? null : reader.GetString(1);
             var howMany = reader.GetInt32(2);
@@ -137,16 +141,17 @@ internal static class InventoryReader
     /// intent, because <c>connection_security</c> is recorded per partition and varies by
     /// controller (<c>F-S24-1</c>).
     /// </remarks>
-    private static HashSet<string> DomainsReadOverAWithholdingConnection(
-        SqliteConnection connection)
+    internal static HashSet<string> DomainsReadOverAWithholdingConnection(
+        SqliteConnection connection, bool attachedNavigation = false, CancellationToken token = default)
     {
         using var command = connection.CreateCommand();
+        var prefix = attachedNavigation ? "navigation." : "";
 
         command.CommandText =
-            """
+            $"""
             SELECT DISTINCT o.domain_fqdn
-            FROM captured_object AS o
-            JOIN partition_coverage AS p ON p.coverage_id = o.coverage_id
+            FROM {prefix}captured_object AS o
+            JOIN {prefix}partition_coverage AS p ON p.coverage_id = o.coverage_id
             WHERE p.connection_security IN ($signed, $unprotected)
             """;
 
@@ -157,7 +162,10 @@ internal static class InventoryReader
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
+        {
+            token.ThrowIfCancellationRequested();
             domains.Add(reader.GetString(0));
+        }
 
         return domains;
     }
@@ -171,14 +179,15 @@ internal static class InventoryReader
     /// SYSVOL, which <c>docs/decisions/0044</c> allows to fail without failing the run. So this is
     /// the one place a sealed bundle can state an exact shortfall.
     /// </remarks>
-    private static (int Declared, int Read) PolicyCoverage(SqliteConnection connection)
+    internal static (int Declared, int Read) PolicyCoverage(SqliteConnection connection, bool attachedNavigation = false)
     {
         using var command = connection.CreateCommand();
+        var prefix = attachedNavigation ? "navigation." : "";
 
         command.CommandText =
-            """
+            $"""
             SELECT COUNT(*), COALESCE(SUM(CASE WHEN outcome = 'Read' THEN 1 ELSE 0 END), 0)
-            FROM sysvol_gpo_coverage
+            FROM {prefix}sysvol_gpo_coverage
             """;
 
         using var reader = command.ExecuteReader();

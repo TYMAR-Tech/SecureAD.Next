@@ -60,6 +60,8 @@ public sealed partial class AnalysisStoreLifecycleTests
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, previous);
         File.WriteAllText(staging, "replacement result");
         var generation = Guid.NewGuid();
+        var manifest = AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement);
+        var previousRoot = File.ReadAllBytes(manifest);
         using var stopping = new CancellationTokenSource();
         var reached = false;
 
@@ -72,9 +74,46 @@ public sealed partial class AnalysisStoreLifecycleTests
             }));
 
         Assert.True(reached);
+        Assert.Equal(previousRoot, File.ReadAllBytes(manifest));
         Assert.Equal(previous, AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
         Assert.True(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, AnalysisStoreKind.Judgement));
         Assert.True(File.Exists(BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Judgement, generation)));
+    }
+
+    [Theory]
+    [InlineData((int)AnalysisPublicationPart.WritePendingManifest)]
+    [InlineData((int)AnalysisPublicationPart.MoveData)]
+    [InlineData((int)AnalysisPublicationPart.SealData)]
+    [InlineData((int)AnalysisPublicationPart.SelectManifest)]
+    public void EveryPublicationFailurePreservesTheExactPreviousSelection(int failingPart)
+    {
+        var directory = NewBundle();
+        var kind = AnalysisStoreKind.Judgement;
+        var staging = AnalysisStoreLifecycle.StagingPath(directory, kind);
+        var previous = Guid.NewGuid();
+        File.WriteAllText(staging, "previous complete result");
+        AnalysisStoreLifecycle.Publish(directory, kind, previous);
+        var manifest = AnalysisStoreLifecycle.ManifestPath(directory, kind);
+        var previousRoot = File.ReadAllBytes(manifest);
+        var data = BundleLayout.AnalysisGenerationDataPath(directory, kind, previous);
+        var previousData = File.ReadAllBytes(data);
+        var previousSeal = File.ReadAllBytes(data + ".seal");
+        File.WriteAllText(staging, "replacement result");
+        var reached = false;
+
+        Assert.Throws<IOException>(() => AnalysisStoreLifecycle.Publish(directory, kind, Guid.NewGuid(),
+            CancellationToken.None, part =>
+            {
+                if (part != (AnalysisPublicationPart)failingPart) return;
+                reached = true;
+                throw new IOException("Injected publication failure.");
+            }));
+
+        Assert.True(reached);
+        Assert.Equal(previousRoot, File.ReadAllBytes(manifest));
+        Assert.Equal(previousData, File.ReadAllBytes(data));
+        Assert.Equal(previousSeal, File.ReadAllBytes(data + ".seal"));
+        Assert.Equal(previous, AnalysisStoreLifecycle.Resolve(directory, kind).Value.GenerationId);
     }
 
     [Fact]

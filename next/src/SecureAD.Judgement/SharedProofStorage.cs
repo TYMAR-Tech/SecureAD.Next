@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -35,14 +36,14 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE shared_proof_value (id INTEGER PRIMARY KEY,
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.shared_proof_value (id INTEGER PRIMARY KEY,
                 kind TEXT NOT NULL CHECK(kind IN ('Meaning','MembershipRoutes')), format_version INTEGER NOT NULL,
                 generation TEXT NOT NULL, derivation_generation TEXT NULL, catalogue_version INTEGER NOT NULL,
                 payload TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
                 lookup_hash BLOB NOT NULL CHECK(length(lookup_hash)=32));
-            CREATE INDEX ix_shared_proof_lookup ON shared_proof_value(lookup_hash);
-            CREATE TABLE control_membership_route (edge_id INTEGER PRIMARY KEY REFERENCES control_edge(id),
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_shared_proof_lookup ON shared_proof_value(lookup_hash);
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_membership_route (edge_id INTEGER PRIMARY KEY REFERENCES control_edge(id),
                 value_id INTEGER NOT NULL REFERENCES shared_proof_value(id),
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
             """;

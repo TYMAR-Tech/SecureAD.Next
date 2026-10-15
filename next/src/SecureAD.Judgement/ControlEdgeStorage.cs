@@ -12,27 +12,27 @@ internal static class ControlEdgeStorage
 
     public static void CreateTables(SqliteConnection connection)
     {
-        Execute(connection, null, """
-            CREATE TABLE control_product (id INTEGER PRIMARY KEY CHECK(id = 1), engine_version INTEGER NOT NULL,
+        Execute(connection, null, $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_product (id INTEGER PRIMARY KEY CHECK(id = 1), engine_version INTEGER NOT NULL,
                 capture_complete INTEGER NOT NULL CHECK(capture_complete IN (0,1)), completed INTEGER NOT NULL CHECK(completed IN (0,1)),
                 discovery_scoped INTEGER NOT NULL DEFAULT 0 CHECK(discovery_scoped IN (0,1)));
-            CREATE TABLE control_object (target TEXT PRIMARY KEY COLLATE NOCASE, principal_sid TEXT NULL, principal_scope TEXT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_object (target TEXT PRIMARY KEY COLLATE NOCASE, principal_sid TEXT NULL, principal_scope TEXT NULL,
                 descriptor_outcome TEXT NOT NULL, uncertainty INTEGER NOT NULL, is_complete INTEGER NOT NULL CHECK(is_complete IN (0,1)));
-            CREATE TABLE control_edge (id INTEGER PRIMARY KEY, target TEXT NOT NULL REFERENCES control_object(target), target_guid TEXT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_edge (id INTEGER PRIMARY KEY, target TEXT NOT NULL REFERENCES control_object(target), target_guid TEXT NULL,
                 target_class TEXT NULL, holder_sid TEXT NOT NULL, holder_name TEXT NULL, holder_scope TEXT NULL,
                 capability TEXT NOT NULL, edge_class TEXT NOT NULL, evaluation TEXT NOT NULL, uncertainty INTEGER NOT NULL,
                 expectedness TEXT NOT NULL, expectedness_reason TEXT NOT NULL, catalogue_version INTEGER NOT NULL,
                 generation TEXT NOT NULL, derivation_generation TEXT NULL, counted INTEGER NOT NULL CHECK(counted IN (0,1)),
                 ace_count INTEGER NOT NULL, precondition_count INTEGER NOT NULL,
                 UNIQUE(target, holder_sid, holder_scope, capability));
-            CREATE TABLE control_ace (edge_id INTEGER NOT NULL REFERENCES control_edge(id), ordinal INTEGER NOT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_ace (edge_id INTEGER NOT NULL REFERENCES control_edge(id), ordinal INTEGER NOT NULL,
                 entry_id INTEGER NOT NULL REFERENCES permission_entry(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
                 PRIMARY KEY(edge_id, ordinal));
-            CREATE TABLE control_precondition (edge_id INTEGER NOT NULL REFERENCES control_edge(id), ordinal INTEGER NOT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_precondition (edge_id INTEGER NOT NULL REFERENCES control_edge(id), ordinal INTEGER NOT NULL,
                 name TEXT NOT NULL, state TEXT NOT NULL, evidence TEXT NOT NULL, PRIMARY KEY(edge_id, ordinal));
-            CREATE INDEX ix_control_target ON control_edge(target, id);
-            CREATE INDEX ix_control_holder ON control_edge(holder_sid, holder_scope, id);
-            CREATE UNIQUE INDEX ux_control_identity ON control_edge(target COLLATE NOCASE, holder_sid COLLATE NOCASE, COALESCE(holder_scope,'') COLLATE NOCASE, capability);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_control_target ON control_edge(target, id);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_control_holder ON control_edge(holder_sid, holder_scope, id);
+            CREATE UNIQUE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ux_control_identity ON control_edge(target COLLATE NOCASE, holder_sid COLLATE NOCASE, COALESCE(holder_scope,'') COLLATE NOCASE, capability);
             """);
         SharedPermissionStorage.CreateTables(connection);
         FullControlStorage.CreateTables(connection);

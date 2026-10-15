@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Findings;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
@@ -121,6 +122,7 @@ public sealed class BundleWriter : IDisposable
     private readonly Dictionary<long, int> _unreadableDescriptors = [];
     private readonly Dictionary<long, Guid> _objectGuids = [];
     private readonly DateTimeOffset _startedUtc;
+    private readonly Guid _captureGeneration = Guid.NewGuid();
 
     private SqliteTransaction? _transaction;
     private long _nextObjectId;
@@ -1543,10 +1545,11 @@ public sealed class BundleWriter : IDisposable
             INSERT INTO bundle (
                 schema_version, captured_attribute_catalog_version,
                 schema_guid_catalog_version, security_descriptor_parser_version,
+                capture_generation_id,
                 forest_fqdn, capture_started_utc, capture_completed_utc,
                 coverage_id, every_declared_unit_recorded_as_read,
                 continuation_reconciliation_outcome)
-            VALUES ($version, $attributes, $schemaGuids, $parser, $forest, $started, $completed,
+            VALUES ($version, $attributes, $schemaGuids, $parser, $generation, $forest, $started, $completed,
                     $coverage, $complete, $reconciliation)
             """,
             command =>
@@ -1555,6 +1558,7 @@ public sealed class BundleWriter : IDisposable
                 command.Parameters.AddWithValue("$attributes", CapturedAttributeCatalog.Version);
                 command.Parameters.AddWithValue("$schemaGuids", SchemaGuidCatalog.Version);
                 command.Parameters.AddWithValue("$parser", SecurityDescriptorParser.Version);
+                command.Parameters.AddWithValue("$generation", _captureGeneration.ToString("D"));
                 command.Parameters.AddWithValue("$forest", coverage.Declared.ForestFqdn);
                 command.Parameters.AddWithValue("$started", _startedUtc.UtcDateTime.ToString("O"));
                 command.Parameters.AddWithValue("$completed", completedUtc.UtcDateTime.ToString("O"));
@@ -1658,12 +1662,16 @@ public sealed class BundleWriter : IDisposable
         ResolveParentGuids();
         cancellationToken.ThrowIfCancellationRequested();
         CountEntriesPerObject();
+        var navigationObjects = NavigationStorage.Write(_connection, _bundleDirectory, _captureGeneration, cancellationToken);
+        DashboardOverviewStorage.Write(_connection, _bundleDirectory, navigationObjects, cancellationToken);
 
         var backfill = clock.Elapsed;
         clock.Restart();
 
         cancellationToken.ThrowIfCancellationRequested();
-        Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        Pragma(_connection, "main.wal_checkpoint(TRUNCATE)");
+        Pragma(_connection, "navigation.wal_checkpoint(TRUNCATE)");
+        Pragma(_connection, "overview.wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
@@ -1671,17 +1679,18 @@ public sealed class BundleWriter : IDisposable
         clock.Restart();
 
         cancellationToken.ThrowIfCancellationRequested();
-        seal(_partialPath, BundleLayout.SealPath(_bundleDirectory), cancellationToken);
         CreateAnnotationsSidecar();
 
         // Preparation has fully returned; nothing is left running that can publish later.
         // The claim is the cancellation boundary. Once claimed, rename errors remain errors,
         // and cancellation cannot relabel a successful rename as a cancelled capture.
         // The token is set before callbacks run; a different callback may still be blocking ours.
-        cancellationToken.ThrowIfCancellationRequested();
-        if (Interlocked.CompareExchange(ref publication, 2, 0) != 0)
-            throw new OperationCanceledException(cancellationToken);
-        File.Move(_partialPath, BundleLayout.EvidencePath(_bundleDirectory));
+        AnalysisStoreLifecycle.PublishCapture(_bundleDirectory, _partialPath, _captureGeneration, navigationObjects, cancellationToken, seal, () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Interlocked.CompareExchange(ref publication, 2, 0) != 0)
+                throw new OperationCanceledException(cancellationToken);
+        });
         _completed = true;
 
         return new BundleSealTimings(commit, indexes, backfill, checkpoint, clock.Elapsed);

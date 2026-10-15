@@ -20,11 +20,18 @@ public sealed class CaptureRunSealingCancellationTests(ITestOutputHelper output)
         var result = await scenario.RunAsync();
 
         Assert.Equal(RunCompletion.Sealed, result.Outcome);
-        var detail = Assert.Single(scenario.SealDetails).ToDictionary(value => value.Name, value => value.Value);
+        var records = scenario.SealDetails.Select(values => values.ToDictionary(value => value.Name, value => value.Value)).ToArray();
+        Assert.Equal(new[] { "Evidence", "Navigation", "Overview" }, records.Select(record => record["artifact"]));
+        var detail = records[0];
         Assert.Equal(("Evidence", "none", "Completed"), (detail["artifact"], detail["generation"], detail["outcome"]));
         Assert.Equal(new FileInfo(BundleLayout.EvidencePath(scenario.Directory)).Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
             detail["bytesHashed"]);
         Assert.Equal(SealState.Intact, BundleSealing.Verify(scenario.Directory).State);
+        var root = AnalysisStoreLifecycle.ResolveCapture(scenario.Directory).Value;
+        Assert.Equal(root.Segment(StoreSegmentRole.Navigation).ByteLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            records[1]["bytesHashed"]);
+        Assert.Equal(root.Segment(StoreSegmentRole.Overview).ByteLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            records[2]["bytesHashed"]);
     }
 
     [Fact]

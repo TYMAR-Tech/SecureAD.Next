@@ -35,6 +35,7 @@ internal static class ControlProofVerification
             Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         using var sources = OpenSources(reader);
         OwnershipAuditValidation.Validate(connection, reader.Description, sources,
             new OwnershipAuditStorage.Snapshot(connection, reader.Description, CancellationToken.None));

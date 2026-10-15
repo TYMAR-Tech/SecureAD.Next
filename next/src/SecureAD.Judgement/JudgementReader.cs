@@ -105,7 +105,7 @@ public sealed record StoredRuleExecutions(
 /// <param name="Description">What the judging recorded about itself.</param>
 /// <param name="RulesRun">Every rule that was scheduled, and what became of it.</param>
 /// <param name="Findings">What was found. Empty is meaningful only beside <paramref name="RulesRun"/>.</param>
-public sealed record StoredJudgement(
+internal sealed record StoredJudgement(
     JudgementDescription Description,
     IReadOnlyList<StoredRuleExecution> RulesRun,
     IReadOnlyList<Finding> Findings)
@@ -151,6 +151,10 @@ public sealed partial class JudgementReader : IDisposable
     private readonly SqliteConnection _connection;
     private string? _findingDerivationSeal;
     private ProtectedStoreFile.Lease? _protection;
+    private ProtectedStoreFile? _ownedStore;
+    private StoreRootManifest? _publicationRoot;
+    private CancellationToken _readCancellation;
+    private readonly HashSet<StoreSegmentRole> _openedParts = [];
     private bool _disposed;
 
     private JudgementReader(
@@ -175,6 +179,8 @@ public sealed partial class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return PathInputStorage.Read(_connection, Description);
     }
 
@@ -188,6 +194,8 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0PathStorage.Read(_connection, Description, subjectDn);
     }
 
@@ -199,6 +207,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(subjectDn);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0PathStorage.ReadWithCoverage(_connection, Description, subjectDn, cancellationToken);
     }
 
@@ -211,6 +221,8 @@ public sealed partial class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0PathStorage.ReadCoverage(_connection, Description);
     }
 
@@ -220,6 +232,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
         return Tier0PathStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
@@ -228,6 +241,7 @@ public sealed partial class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
         return PathRequesterRiskStorage.ReadCoverage(_connection, Description, cancellationToken);
     }
 
@@ -237,6 +251,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
         return PathRequesterRiskStorage.Read(_connection, Description, requesterDn, cancellationToken);
     }
 
@@ -248,6 +263,7 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
         return PathRequesterRiskStorage.ReadPage(_connection, Description, requesterDn, verdict, after, cancellationToken);
     }
 
@@ -266,6 +282,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
         return Tier0DistanceStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
@@ -276,6 +293,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0DistanceStorage.ReadObject(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -286,6 +305,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return BestSupportedRouteStorage.Read(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -297,6 +318,8 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0Browsing.ReadPage(_connection, Description, scope, after, cancellationToken);
     }
 
@@ -306,6 +329,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PathProof);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0Browsing.ReadObject(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -317,13 +342,15 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
+        OpenPart(StoreSegmentRole.PermissionProof);
         return GroupInventoryStorage.Read(_connection, Description, query, after, cancellationToken);
     }
 
     private void RequireCurrentPathGeneration()
     {
-        var judgement = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Judgement);
-        if (!judgement.IsSuccess || judgement.Value.GenerationId != Description.GenerationId) throw OwnershipAuditStorage.InvalidProof();
+        var judgement = AnalysisStoreLifecycle.ResolveRoot(BundleDirectory, AnalysisStoreKind.Judgement);
+        if (!judgement.IsSuccess || judgement.Value.GenerationId != Description.GenerationId
+            || judgement.Value.Hash != _publicationRoot?.Hash) throw OwnershipAuditStorage.InvalidProof();
         if (Description.DerivationGenerationId is not { } generation) return;
         var derivation = AnalysisStoreLifecycle.Resolve(BundleDirectory, AnalysisStoreKind.Derivation);
         if (!derivation.IsSuccess || derivation.Value.GenerationId != generation) throw OwnershipAuditStorage.InvalidProof();
@@ -336,6 +363,7 @@ public sealed partial class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
             with { GenerationId = Description.GenerationId,
                 OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
@@ -350,6 +378,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
     }
 
@@ -357,6 +386,7 @@ public sealed partial class JudgementReader : IDisposable
     public SelfMembershipAssessmentSet ReadSelfMembershipAssessments(string? target, string? requester)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        OpenPart(StoreSegmentRole.PathProof);
         return SelfMembershipStorage.Read(_connection, Description, target, requester);
     }
 
@@ -364,6 +394,7 @@ public sealed partial class JudgementReader : IDisposable
     public SelfMembershipSummary? ReadSelfMembershipSummary()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        OpenPart(StoreSegmentRole.PathProof);
         return SelfMembershipCoverageStorage.Read(_connection, Description);
     }
 
@@ -373,6 +404,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(holderSid);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return MemberAttributionStorage.Read(_connection, Description, holderSid, holderScope, target)
             with { GenerationId = Description.GenerationId };
     }
@@ -383,6 +415,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(memberSid);
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
+        OpenPart(StoreSegmentRole.PermissionProof);
         return MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
     }
 
@@ -394,9 +427,13 @@ public sealed partial class JudgementReader : IDisposable
     /// <returns>
     /// The open reader, or an <see cref="AuditError"/> saying which check refused it.
     /// </returns>
-    public static Result<JudgementReader> Open(string bundleDirectory)
+    public static Result<JudgementReader> Open(string bundleDirectory) => Open(bundleDirectory, CancellationToken.None);
+
+    /// <summary>Opens the selected saved results under cancellable file protection.</summary>
+    public static Result<JudgementReader> Open(string bundleDirectory, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var resolved = AnalysisStoreLifecycle.Resolve(
             bundleDirectory,
@@ -405,40 +442,81 @@ public sealed partial class JudgementReader : IDisposable
             return Result<JudgementReader>.Failure(resolved.Error!);
 
         var generation = resolved.Value!;
-        var verdict = BundleSealing.VerifyAnalysisGeneration(
-            bundleDirectory,
-            generation,
-            "judgement store",
-            "It does not prove every scheduled rule reached a verdict, which is a claim the store makes in its own tables.");
-        if (!verdict.MayBeOpened)
-            return Failure(ReasonFor(verdict.State), verdict.Detail, bundleDirectory);
-
-        var judgementPath = BundleLayout.AnalysisGenerationDataPath(
-            bundleDirectory, generation.Kind, generation.GenerationId);
-        var connection = new SqliteConnection(
-            new SqliteConnectionStringBuilder
+        var file = ProtectedStoreFile.OpenAnalysis(bundleDirectory, generation, cancellationToken);
+        if (!file.IsSuccess)
+        {
+            var reason = file.Error.Code switch
             {
-                DataSource = judgementPath,
-                Mode = SqliteOpenMode.ReadOnly,
-                Pooling = false,
-            }.ToString());
-
-        return OpenConnection(bundleDirectory, generation, connection);
+                "Evidence.ProtectedStoreAbsent" => ReasonFor(SealState.Absent),
+                "Evidence.ProtectedStoreUnreadable" => ReasonFor(SealState.Unreadable),
+                "Evidence.ProtectedStoreMismatch" => ReasonFor(SealState.Mismatch),
+                _ => null,
+            };
+            return reason is null ? Result<JudgementReader>.Failure(file.Error)
+                : Failure(reason, file.Error.Description, bundleDirectory);
+        }
+        try
+        {
+            var opened = Open(file.Value, cancellationToken);
+            if (opened.IsSuccess) opened.Value._ownedStore = file.Value;
+            else file.Value.Dispose();
+            return opened;
+        }
+        catch
+        {
+            file.Value.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Opens an independent stored-result reader under an existing protected generation.</summary>
     public static Result<JudgementReader> Open(ProtectedStoreFile store, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(store);
-        if (store.Generation is not { Kind: AnalysisStoreKind.Judgement } generation) throw new ArgumentException(nameof(store));
+        if (store.Generation is not { Kind: AnalysisStoreKind.Judgement } generation
+            || store.Role != StoreSegmentRole.Judgement) throw new ArgumentException(nameof(store));
+        if (!store.Root.Segments.Select(segment => segment.Role).SequenceEqual(BundleLayout.JudgementParts.Prepend(StoreSegmentRole.Judgement))
+            || store.Root.Segments.Any(segment => segment.SchemaVersion != JudgementSchema.Version))
+            return Failure("JudgementUnreadable", "The judgement does not declare the supported independently sealed products.", store.BundleDirectory);
         ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
             var opened = OpenConnection(store.BundleDirectory, generation, lease.Connection);
-            if (opened.IsSuccess) { opened.Value._protection = lease; lease = null; }
+            if (opened.IsSuccess)
+            {
+                var reader = opened.Value;
+                if (reader.Description.EvidenceSeal != store.Root.EvidenceSeal)
+                {
+                    reader.Dispose();
+                    return Failure("JudgementIsNotForThisEvidence", "The judgement header contradicts its publication root.", store.BundleDirectory);
+                }
+                reader._protection = lease;
+                reader._publicationRoot = store.Root;
+                reader._readCancellation = cancellationToken;
+                JudgementStoreLayout.RegisterReader(reader._connection, reader.OpenPart);
+                lease = null;
+            }
             return opened;
         }
         finally { lease?.Dispose(); }
+    }
+
+    private void OpenPart(StoreSegmentRole role)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _readCancellation.ThrowIfCancellationRequested();
+        if (_openedParts.Contains(role)) return;
+        var protection = _protection ?? throw new InvalidOperationException("The judgement reader has no protected publication.");
+        var schema = protection.Attach(role, _readCancellation);
+        using var query = _connection.CreateCommand();
+        query.CommandText = $"SELECT schema_version,role,generation,evidence_seal,derivation_generation FROM \"{schema}\".judgement_part";
+        using var header = query.ExecuteReader();
+        if (!header.Read() || header.GetInt32(0) != JudgementSchema.Version || header.GetString(1) != role.ToString()
+            || header.GetString(2) != Description.GenerationId.ToString("D") || header.GetString(3) != Description.EvidenceSeal
+            || (header.IsDBNull(4) ? null : header.GetString(4)) != Description.DerivationGenerationId?.ToString("D")
+            || header.Read())
+            throw new InvalidDataException("The saved proof part does not match its role, source or generation.");
+        _openedParts.Add(role);
     }
 
     private static Result<JudgementReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
@@ -505,7 +583,7 @@ public sealed partial class JudgementReader : IDisposable
     }
 
     /// <summary>
-    /// Everything this judging concluded.
+    /// Complete original proof for correctness verification; production reads summaries or bounded pages.
     /// </summary>
     /// <remarks>
     /// <b>One call, because the parts are only meaningful together.</b> Handing back findings on
@@ -516,7 +594,7 @@ public sealed partial class JudgementReader : IDisposable
     /// <exception cref="InvalidOperationException">
     /// A finding is stored with no evidence row, so what it rests on has been lost.
     /// </exception>
-    public StoredJudgement Read()
+    internal StoredJudgement Read()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -557,6 +635,21 @@ public sealed partial class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
+        OpenPart(StoreSegmentRole.PermissionProof);
+        var versions = ReadRuleVersions();
+        var page = ReadPageRows(query, FindingColumns, EvidenceJoins, row => ReadFinding(row, versions));
+        return page.IsSuccess
+            ? Result<FindingsPage>.Success(new(page.Value.Rows, page.Value.Next, page.Value.RulesRan))
+            : Result<FindingsPage>.Failure(page.Error);
+    }
+
+    private sealed record FindingRows<T>(IReadOnlyList<T> Rows, FindingsPageMark? Next, int RulesRan);
+
+    private Result<FindingRows<T>> ReadPageRows<T>(
+        FindingsQuery query, string columns, string joins, Func<SqliteDataReader, T> readRow)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(query);
 
         if (query.PageSize < 1)
         {
@@ -570,7 +663,7 @@ public sealed partial class JudgementReader : IDisposable
 
         if (executions.Count == 0)
         {
-            return Result<FindingsPage>.Failure(AuditError.Create(
+            return Result<FindingRows<T>>.Failure(AuditError.Create(
                 ErrorCategory.Evidence,
                 "JudgementDidNotRun",
                 ErrorSeverity.Failed,
@@ -580,16 +673,15 @@ public sealed partial class JudgementReader : IDisposable
                 BundleDirectory));
         }
 
-        var versions = ReadRuleVersions();
-        var findings = new List<Finding>();
+        var findings = new List<T>();
         FindingsPageMark? next = null;
 
         using var command = _connection.CreateCommand();
         command.CommandText =
             $"""
-            SELECT {FindingColumns}
+            SELECT {columns}
             FROM finding f
-            {EvidenceJoins}
+            {joins}
             WHERE ($severity IS NULL OR f.severity = $severity)
               AND ($rule IS NULL OR f.rule_id = $rule)
               AND (
@@ -632,25 +724,25 @@ public sealed partial class JudgementReader : IDisposable
         // Tracked alongside rather than taken from the finding, which does not carry its own
         // identity. The mark needs the identity of the last row SHOWN, so it is recorded as each
         // row is added rather than read from the extra row that ends the page.
-        var lastId = 0L;
+        FindingsPageMark? lastMark = null;
 
         while (reader.Read())
         {
+            _readCancellation.ThrowIfCancellationRequested();
             if (findings.Count == query.PageSize)
             {
                 // The extra row. Its existence is the whole answer, so it is not read as a finding
                 // and not shown - the mark points at the last row that was.
-                var last = findings[^1];
-                next = new FindingsPageMark((int)last.Severity, last.RuleId, last.DistinguishedName, lastId);
+                next = lastMark;
                 break;
             }
 
-            lastId = reader.GetInt64(0);
-            findings.Add(ReadFinding(reader, versions));
+            lastMark = new((int)Enum.Parse<Severity>(reader.GetString(5)), reader.GetString(1),
+                reader.GetString(6), reader.GetInt64(0)) { GenerationId = Description.GenerationId };
+            findings.Add(readRow(reader));
         }
 
-        return Result<FindingsPage>.Success(
-            new FindingsPage(findings, next, executions.Count));
+        return Result<FindingRows<T>>.Success(new(findings, next, executions.Count));
     }
 
     /// <summary>
@@ -767,8 +859,8 @@ public sealed partial class JudgementReader : IDisposable
     /// <b>Internal, because the caller that wants it is in this assembly and gate 4 is right about
     /// the rest.</b> A dictionary of counts handed outside cannot say whether anyone looked, and
     /// the thing that can - <see cref="ReadRuleExecutions"/> - is a separate call a distant caller
-    /// could forget to make. <c>JudgingRun</c> makes both, together, when it writes the run's
-    /// portable summary.
+    /// could forget to make. <see cref="ReadSummary"/> keeps them together for completion and the
+    /// portable summary, without opening original finding proof.
     /// </para>
     /// </remarks>
     /// <returns>Each severity some finding has, and how many have it.</returns>
@@ -785,14 +877,13 @@ public sealed partial class JudgementReader : IDisposable
 
         while (reader.Read())
         {
-            // A severity this build does not recognise is left out rather than folded into the
-            // nearest one. Counting it as something else would misreport how bad a forest is,
-            // which is the one thing a summary leaving the customer's environment must not do.
             if (Enum.TryParse<Severity>(reader.GetString(0), out var severity)
                 && Enum.IsDefined(severity))
             {
                 counts[severity] = reader.GetInt32(1);
             }
+            else
+                throw new InvalidDataException("A saved finding has an unsupported severity.");
         }
 
         return counts;
@@ -840,7 +931,7 @@ public sealed partial class JudgementReader : IDisposable
     /// </remarks>
     private IReadOnlyList<Finding> ReadFindings()
     {
-
+        OpenPart(StoreSegmentRole.PermissionProof);
         var versions = ReadRuleVersions();
         var findings = new List<Finding>();
 
@@ -1057,6 +1148,7 @@ public sealed partial class JudgementReader : IDisposable
 
         if (ruleId == "SEC-002")
         {
+            OpenPart(StoreSegmentRole.PermissionProof);
             if (reader.IsDBNull(reader.GetOrdinal("rp_proof")))
                 throw new InvalidDataException("The replication finding has no saved typed permission evidence.");
             _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
@@ -1070,6 +1162,7 @@ public sealed partial class JudgementReader : IDisposable
         }
         else if (ruleId is "SEC-012" or "SEC-013")
         {
+            OpenPart(StoreSegmentRole.PermissionProof);
             if (reader.IsDBNull(reader.GetOrdinal("dc_proof")))
                 throw new InvalidDataException("The delegation-configuration finding has no saved typed evidence.");
             _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
@@ -1084,6 +1177,7 @@ public sealed partial class JudgementReader : IDisposable
         }
         else if (ruleId is "SEC-050" or "SEC-051")
         {
+            OpenPart(StoreSegmentRole.PermissionProof);
             if (reader.IsDBNull(reader.GetOrdinal("mr_proof")))
                 throw new InvalidDataException("The membership review has no saved typed evidence.");
             _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
@@ -1096,6 +1190,7 @@ public sealed partial class JudgementReader : IDisposable
         }
         else if (ruleId is "SEC-014" or "SEC-024" or "SEC-025")
         {
+            OpenPart(StoreSegmentRole.PermissionProof);
             if (reader.IsDBNull(reader.GetOrdinal("aw_finding_id")))
                 throw new InvalidDataException("The attribute-write finding has no saved typed evidence.");
             _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
@@ -1197,7 +1292,7 @@ public sealed partial class JudgementReader : IDisposable
             var findingId = reader.GetInt64(sidHistory);
             var objectSidColumn = reader.GetOrdinal("h_object_sid");
 
-            var values = SidHistoryValues.TryGetValue(findingId, out var stored) ? stored : [];
+            var values = ReadChildValues("finding_privileged_sid_history_value", "sid", findingId);
 
             evidence = new PrivilegedSidHistoryEvidence(
                 reader.IsDBNull(objectSidColumn) ? null : reader.GetString(objectSidColumn),
@@ -1211,7 +1306,7 @@ public sealed partial class JudgementReader : IDisposable
 
             evidence = new KerberoastableAccountEvidence(
                 reader.GetString(reader.GetOrdinal("k_object_sid")),
-                ServicePrincipalNames.TryGetValue(findingId, out var spns) ? spns : [],
+                ReadChildValues("finding_kerberoastable_account_spn", "service_principal_name", findingId),
                 (uint)reader.GetInt64(reader.GetOrdinal("k_user_account_control")),
                 (int)reader.GetInt64(reader.GetOrdinal("k_unreadable_service_names")))
             {
@@ -1221,8 +1316,7 @@ public sealed partial class JudgementReader : IDisposable
                     ? null : reader.GetInt32(reader.GetOrdinal("k_direct_protection_entry_id")),
                 DirectProtectionName = reader.IsDBNull(reader.GetOrdinal("k_direct_protection_name"))
                     ? null : reader.GetString(reader.GetOrdinal("k_direct_protection_name")),
-                MembershipRoutes = MembershipRoutes.TryGetValue(findingId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var routes)
-                    ? routes : throw new InvalidOperationException("A finding has no membership-route completeness record."),
+                MembershipRoutes = ReadMembershipRoutes(findingId),
             };
         }
         else if (!reader.IsDBNull(lapsCapability))
@@ -1274,7 +1368,7 @@ public sealed partial class JudgementReader : IDisposable
                 reader.IsDBNull(trusteeName) ? null : reader.GetString(trusteeName),
                 reader.GetString(reader.GetOrdinal("t_broad_principal_sid")),
                 reader.IsDBNull(broadName) ? null : reader.GetString(broadName),
-                TakeoverPaths.TryGetValue(findingId, out var takeoverPath) ? takeoverPath : [],
+                ReadPathSteps("finding_object_takeover_path", findingId),
                 Enum.Parse<ObjectTakeoverRight>(
                     reader.GetString(reader.GetOrdinal("t_takeover_right"))),
                 reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
@@ -1333,48 +1427,12 @@ public sealed partial class JudgementReader : IDisposable
             evidence) { PrincipalName = reader.GetString(reader.GetOrdinal("principal_name")) };
     }
 
-    /// <summary>
-    /// Every stored SID history value, by the finding it belongs to.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Read once for the store rather than once per finding.</b> SEC-027 is the first evidence
-    /// kind with more than one row per finding, and joining it into the finding query would
-    /// multiply every finding by its number of history values - so a single account with four of
-    /// them would appear four times in the grid. A page of fifty findings must also not become
-    /// fifty-one queries.
-    /// </para>
-    /// <para>
-    /// <b>Ordinal is what preserves the order the directory gave.</b> Without the sort this comes
-    /// back in whatever order the table yields, and evidence that reorders itself between two reads
-    /// of one store is evidence a reader cannot compare.
-    /// </para>
-    /// </remarks>
-    private Dictionary<long, List<string>> SidHistoryValues =>
-        _sidHistoryValues ??= ReadChildValues("SELECT finding_id, sid FROM finding_privileged_sid_history_value ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<string>>? _sidHistoryValues;
-
-    /// <summary>
-    /// Every stored service name, by the finding it belongs to.
-    /// </summary>
-    /// <remarks>
-    /// Read once for the store and sorted by ordinal, for the reasons
-    /// <see cref="SidHistoryValues"/> gives: joining a child table into the finding query would
-    /// multiply a finding by its number of service names, so one account with four of them would
-    /// appear four times in the grid.
-    /// </remarks>
-    private Dictionary<long, List<string>> ServicePrincipalNames =>
-        _servicePrincipalNames ??= ReadChildValues(
-            "SELECT finding_id, service_principal_name FROM finding_kerberoastable_account_spn "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<string>>? _servicePrincipalNames;
-
-    private Dictionary<string, MembershipRouteSummary> MembershipRoutes =>
-        _membershipRoutes ??= MembershipRouteStorage.Read(_connection, subjectId: null);
-
-    private Dictionary<string, MembershipRouteSummary>? _membershipRoutes;
+    private MembershipRouteSummary ReadMembershipRoutes(long findingId)
+    {
+        var subject = findingId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return MembershipRouteStorage.Read(_connection, subject).TryGetValue(subject, out var routes)
+            ? routes : throw new InvalidDataException("A finding has no membership-route completeness record.");
+    }
 
     private IReadOnlyList<PathStep> ReadLapsRoute(string table, long findingId, long expectedLength)
     {
@@ -1472,60 +1530,39 @@ public sealed partial class JudgementReader : IDisposable
         return route;
     }
 
-    /// <summary>
-    /// Every stored takeover route, by the finding it belongs to, in path order.
-    /// </summary>
-    /// <remarks>
-    /// Kept apart from the other two for the reason given above: a finding identifier is only
-    /// unique within one table, so unioning them would attach one rule's path to another's finding.
-    /// </remarks>
-    private Dictionary<long, List<PathStep>> TakeoverPaths =>
-        _takeoverPaths ??= ReadPathSteps(
-            "SELECT finding_id, sid, name FROM finding_object_takeover_path "
-            + "ORDER BY finding_id, ordinal");
-
-    private Dictionary<long, List<PathStep>>? _takeoverPaths;
-
-    private Dictionary<long, List<PathStep>> ReadPathSteps(string sql)
+    private List<PathStep> ReadPathSteps(string table, long findingId)
     {
-        var values = new Dictionary<long, List<PathStep>>();
+        var values = new List<PathStep>();
 
         using var command = _connection.CreateCommand();
-        command.CommandText = sql;
+        command.CommandText = $"SELECT sid,name FROM {table} WHERE finding_id=$id ORDER BY ordinal";
+        command.Parameters.AddWithValue("$id", findingId);
 
         using var reader = command.ExecuteReader();
 
         while (reader.Read())
         {
-            var findingId = reader.GetInt64(0);
-
-            if (!values.TryGetValue(findingId, out var stored))
-                values[findingId] = stored = [];
-
-            stored.Add(new PathStep(
-                reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
+            _readCancellation.ThrowIfCancellationRequested();
+            values.Add(new PathStep(reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1)));
         }
 
         return values;
     }
 
-    private Dictionary<long, List<string>> ReadChildValues(string sql)
+    private List<string> ReadChildValues(string table, string column, long findingId)
     {
-        var values = new Dictionary<long, List<string>>();
+        var values = new List<string>();
 
         using var command = _connection.CreateCommand();
-        command.CommandText = sql;
+        command.CommandText = $"SELECT {column} FROM {table} WHERE finding_id=$id ORDER BY ordinal";
+        command.Parameters.AddWithValue("$id", findingId);
 
         using var reader = command.ExecuteReader();
 
         while (reader.Read())
         {
-            var findingId = reader.GetInt64(0);
-
-            if (!values.TryGetValue(findingId, out var stored))
-                values[findingId] = stored = [];
-
-            stored.Add(reader.GetString(1));
+            _readCancellation.ThrowIfCancellationRequested();
+            values.Add(reader.GetString(0));
         }
 
         return values;
@@ -1561,6 +1598,7 @@ public sealed partial class JudgementReader : IDisposable
 
         _connection.Dispose();
         _protection?.Dispose();
+        _ownedStore?.Dispose();
         _disposed = true;
     }
 

@@ -25,6 +25,7 @@ public sealed partial class SameForestRequesterTests
             Mode = SqliteOpenMode.ReadOnly, Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         using var sources = ControlProofVerification.OpenSources(reader);
         var inputs = reader.ReadPathInputs();
         var identities = OwnershipAuditStorage.Targets(connection).ToDictionary(row => row.Identity.DistinguishedName,

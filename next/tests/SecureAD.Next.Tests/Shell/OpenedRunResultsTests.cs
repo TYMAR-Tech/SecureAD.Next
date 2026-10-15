@@ -41,7 +41,8 @@ public sealed partial class OpenedRunResultsTests
         source.ReadRuleExecutions(directory);
         source.ReadFindings(directory, FindingsQuery.About(FirstDn));
 
-        Assert.Equal((1L, 1L, 1L), (counts.EvidenceVerifications, counts.JudgementVerifications, counts.EvidenceFormatChecks));
+        Assert.Equal((0L, 1L, 1L, 1L),
+            (counts.EvidenceVerifications, counts.JudgementVerifications, counts.EvidenceFormatChecks, counts.NavigationVerifications));
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public sealed partial class OpenedRunResultsTests
         source.SelectRun(directory);
         source.ReadFindings(directory, FindingsQuery.Everything());
 
-        Assert.Equal((2L, 2L), (counts.EvidenceVerifications, counts.JudgementVerifications));
+        Assert.Equal((0L, 2L), (counts.EvidenceVerifications, counts.JudgementVerifications));
     }
 
     [Fact]
@@ -380,7 +381,7 @@ public sealed partial class OpenedRunResultsTests
         File.AppendAllText(BundleLayout.EvidencePath(directory), "corruption");
         using var source = new BundleAssetSource();
 
-        var read = source.ReadFindings(directory, FindingsQuery.Everything());
+        var read = source.ReadControlEdges(directory, FirstDn, null, null, true, 0);
 
         Assert.Equal("Evidence.ProtectedStoreMismatch", read.Error?.Code);
     }
@@ -433,7 +434,7 @@ public sealed partial class OpenedRunResultsTests
         source.ReadFindings(directory, FindingsQuery.Everything());
         source.ReadRuleExecutions(directory);
 
-        Assert.Equal((1L, 1L, 1L), (counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
+        Assert.Equal((0L, 0L, 1L), (counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
     }
 
     [Fact]
@@ -458,7 +459,7 @@ public sealed partial class OpenedRunResultsTests
         File.AppendAllText(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Derivation, generation), "corruption");
         using var source = new BundleAssetSource();
 
-        var read = source.ReadFindings(directory, FindingsQuery.Everything());
+        var read = source.ReadControlEdges(directory, FirstDn, null, null, true, 0);
 
         Assert.Equal("Evidence.ProtectedStoreMismatch", read.Error?.Code);
     }
@@ -486,7 +487,7 @@ public sealed partial class OpenedRunResultsTests
             command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
             command.ExecuteNonQuery();
         }
-        BundleSealing.Seal(path, BundleLayout.AnalysisGenerationSealPath(directory, generation.Kind, generation.GenerationId));
+        TestSealing.ResealAnalysis(directory, generation);
     }
 
     private sealed class ReadbackCounts : IDisposable
@@ -509,6 +510,10 @@ public sealed partial class OpenedRunResultsTests
                     var key = instrument.Name == "judgement.analytical_reads" ? "analysis"
                         : instrument.Name == "evidence.format_checks" ? "format"
                         : Path.GetFileName(path).StartsWith("evidence.", StringComparison.Ordinal) ? "evidence"
+                        : Path.GetFileName(path).StartsWith("navigation.", StringComparison.Ordinal) ? "navigation"
+                        : Path.GetFileName(path).Contains(".permission-proof.", StringComparison.Ordinal) ? "permission-proof"
+                        : Path.GetFileName(path).Contains(".path-proof.", StringComparison.Ordinal) ? "path-proof"
+                        : Path.GetFileName(path).Contains(".facts.", StringComparison.Ordinal) ? "facts"
                         : Path.GetFileName(path).StartsWith("derivation.", StringComparison.Ordinal) ? "derivation" : "judgement";
                     _counts.AddOrUpdate(key, value, (_, count) => count + value);
                 }
@@ -517,9 +522,13 @@ public sealed partial class OpenedRunResultsTests
         }
 
         internal long EvidenceVerifications => _counts.GetValueOrDefault("evidence");
+        internal long NavigationVerifications => _counts.GetValueOrDefault("navigation");
         internal long EvidenceFormatChecks => _counts.GetValueOrDefault("format");
         internal long DerivationVerifications => _counts.GetValueOrDefault("derivation");
         internal long JudgementVerifications => _counts.GetValueOrDefault("judgement");
+        internal long PermissionProofVerifications => _counts.GetValueOrDefault("permission-proof");
+        internal long PathProofVerifications => _counts.GetValueOrDefault("path-proof");
+        internal long FactsVerifications => _counts.GetValueOrDefault("facts");
         internal long AnalyticalReads => _counts.GetValueOrDefault("analysis");
         public void Dispose() => _listener.Dispose();
     }

@@ -42,6 +42,7 @@ public sealed partial class OwnAccountMembershipPathTests
                 DataSource = path, Mode = SqliteOpenMode.ReadWrite, Pooling = false,
             }.ToString());
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             using var command = connection.CreateCommand();
             command.CommandText = "DELETE FROM path_proof_chunk WHERE rowid=(SELECT MIN(rowid) FROM path_proof_chunk)";
             Assert.Equal(1, command.ExecuteNonQuery());

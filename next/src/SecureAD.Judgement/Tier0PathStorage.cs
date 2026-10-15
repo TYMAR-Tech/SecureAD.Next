@@ -24,10 +24,10 @@ internal static class Tier0PathStorage
         PathSharedProofStorage.CreateTables(connection);
         Tier0DistanceStorage.CreateTables(connection);
         BestSupportedRouteStorage.CreateTables(connection);
-        Execute(connection, null, """
-        CREATE TABLE tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof INTEGER NOT NULL REFERENCES path_proof(id),
+        Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.tier0_path_calculation (id INTEGER PRIMARY KEY CHECK(id=1), proof INTEGER NOT NULL,
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE tier0_path_node (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_path_node (target TEXT PRIMARY KEY COLLATE NOCASE,
             outcome TEXT NOT NULL, proof INTEGER NOT NULL REFERENCES path_proof(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         """);
         PathCalculationStorage.CreateTables(connection);

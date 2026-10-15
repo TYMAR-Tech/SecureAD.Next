@@ -9,8 +9,8 @@ internal static class BestSupportedRouteStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE tier0_best_route (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_best_route (target TEXT PRIMARY KEY COLLATE NOCASE,
                 proof INTEGER NOT NULL REFERENCES path_proof(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
             """;
         command.ExecuteNonQuery();

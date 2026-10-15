@@ -191,6 +191,7 @@ public sealed class PostPassLookupTests
             writer.CompleteControlEdges();
             Connection = new SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False");
             Connection.Open();
+            TestSealing.AttachJudgementParts(Connection, directory, writer.GenerationId, staged: true);
             Execute(Connection, "PRAGMA foreign_keys=ON");
             Execute(Connection, "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<512) INSERT INTO control_object SELECT 'CN=Filler'||x||',DC=contoso,DC=com',NULL,NULL,'DescriptorNotRead',0,0 FROM n");
             using var command = Connection.CreateCommand();

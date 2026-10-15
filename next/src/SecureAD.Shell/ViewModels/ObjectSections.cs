@@ -826,7 +826,7 @@ internal sealed class FindingsSectionViewModel : ObjectSectionViewModel
     /// </param>
     public FindingsSectionViewModel(
         ObjectSectionDefinition definition,
-        FindingsPage? findings,
+        FindingListPage? findings,
         string? refusal)
         : base(definition)
     {

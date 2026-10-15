@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 
@@ -21,15 +22,15 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE path_requester_work (
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_requester_work (
                 id INTEGER PRIMARY KEY CHECK(id>0),
-                calculation INTEGER NOT NULL DEFAULT 1 REFERENCES tier0_path_calculation(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+                calculation INTEGER NOT NULL DEFAULT 1 CHECK(calculation=1),
                 family TEXT NOT NULL CHECK(family IN ('RequesterDacl','OwnAccountMembership','MembershipDacl')),
                 requester TEXT NOT NULL, target TEXT NOT NULL, group_dn TEXT NULL, permission_kind TEXT NULL,
                 question_key TEXT NOT NULL UNIQUE, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE INDEX ix_path_requester_work_target ON path_requester_work(target,family,id);
-            CREATE INDEX ix_path_requester_work_membership ON path_requester_work(group_dn,requester,permission_kind);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_requester_work_target ON path_requester_work(target,family,id);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_requester_work_membership ON path_requester_work(group_dn,requester,permission_kind);
             """;
         command.ExecuteNonQuery();
     }

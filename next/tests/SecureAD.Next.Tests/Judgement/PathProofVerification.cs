@@ -433,6 +433,7 @@ internal static class PathProofVerification
             Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         return connection;
     }
 }

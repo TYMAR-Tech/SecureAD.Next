@@ -22,16 +22,20 @@ public sealed class PublicationDiagnosticsTests
         Assert.True(Judge(directory, log).IsSuccess);
         var reports = log.Lines.Where(line => line.Message == "file sealing").ToArray();
 
-        Assert.Equal(2, reports.Length);
+        Assert.Equal(1 + BundleLayout.JudgementParts.Count + 1, reports.Length);
         foreach (var kind in new[] { AnalysisStoreKind.Derivation, AnalysisStoreKind.Judgement })
         {
-            var generation = AnalysisStoreLifecycle.Resolve(directory, kind).Value.GenerationId;
-            var report = Assert.Single(reports, line => line.Value("artifact") == kind.ToString());
-            var length = new FileInfo(BundleLayout.AnalysisGenerationDataPath(directory, kind, generation)).Length;
-            Assert.Equal(generation.ToString("D"), report.Value("generation"));
-            Assert.Equal("Completed", report.Value("outcome"));
-            Assert.Equal(length.ToString(CultureInfo.InvariantCulture), report.Value("bytesRead"));
-            Assert.Equal(report.Value("bytesRead"), report.Value("bytesHashed"));
+            var root = AnalysisStoreLifecycle.ResolveRoot(directory, kind).Value;
+            var selected = reports.Where(line => line.Value("artifact") == kind.ToString()).ToArray();
+            Assert.Equal(root.Segments.Count, selected.Length);
+            foreach (var (segment, report) in root.Segments.Zip(selected))
+            {
+                var length = new FileInfo(Path.Combine(directory, segment.FileName)).Length;
+                Assert.Equal(root.GenerationId.ToString("D"), report.Value("generation"));
+                Assert.Equal("Completed", report.Value("outcome"));
+                Assert.Equal(length.ToString(CultureInfo.InvariantCulture), report.Value("bytesRead"));
+                Assert.Equal(report.Value("bytesRead"), report.Value("bytesHashed"));
+            }
         }
     }
 

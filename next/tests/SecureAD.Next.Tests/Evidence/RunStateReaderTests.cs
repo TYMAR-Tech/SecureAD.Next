@@ -309,9 +309,11 @@ public sealed class RunStateReaderTests : IDisposable
 
     private void WriteEvidenceAndSeal()
     {
-        File.WriteAllText(BundleLayout.EvidencePath(_directory), "not really a database");
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory),
-            BundleLayout.SealPath(_directory));
+        using var writer = BundleWriter.Create(_directory, DateTimeOffset.UnixEpoch);
+        writer.Complete(RunCoverage.Of(CoverageId.ForDomains("contoso.com", ["contoso.com"]),
+            [DomainCoverage.Read("contoso.com")],
+            [ForestPartitionCoverage.Read("CN=Configuration,DC=contoso,DC=com", NamingContextKind.Configuration),
+                ForestPartitionCoverage.Read("CN=Schema,CN=Configuration,DC=contoso,DC=com", NamingContextKind.Schema)],
+            SysvolCoverage.Of([])), DateTimeOffset.UnixEpoch.AddMinutes(1));
     }
 }

@@ -448,6 +448,8 @@ internal static class Program
     private static int Derive(
         string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
     {
+        var previousDerivation = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+        var previousGeneration = previousDerivation.IsSuccess ? previousDerivation.Value.GenerationId : (Guid?)null;
         Result<DerivationRunState> derived;
 
         // Named by an operator rather than produced by a capture, so it is worth checking before
@@ -484,10 +486,12 @@ internal static class Program
             // that produced no bundle, which was true while this command only captured and is not
             // true now: by this point the evidence is sealed. An operator told his bundle does not
             // exist would capture the forest a second time for nothing.
+            var completed = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
+            var published = completed.IsSuccess && completed.Value.GenerationId != previousGeneration;
             Console.Error.WriteLine(
                 "Stopped while deriving. The evidence is sealed and safe at "
                 + bundleDirectory
-                + ". Nothing was derived from it.");
+                + (published ? "." : ". Nothing was derived from it."));
 
             return Cancelled;
         }
@@ -558,8 +562,11 @@ internal static class Program
 
         IRunLog log = file ?? RunLog.Discarded;
 
+        var previousJudgement = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+        var previousGeneration = previousJudgement.IsSuccess ? previousJudgement.Value.GenerationId : (Guid?)null;
         Result<JudgementRunState> judged;
         var started = DateTimeOffset.UtcNow;
+        var generation = new JudgementCompletionGeneration();
 
         try
         {
@@ -571,43 +578,45 @@ internal static class Program
                 requesterPolicy,
                 started,
                 started,
-                JudgingRun.NobodyIsWatching,
+                generation,
                 log,
                 cancellationToken,
                 discoveryBudget);
+
+            if (!judged.IsSuccess)
+            {
+                Console.Error.WriteLine(
+                    "The evidence is sealed and safe. Nothing could be judged from it: "
+                    + judged.Error!.Description);
+                return afterCapture && requesterPolicy == PathRequesterPolicy.Disabled ? Success : Failed;
+            }
+
+            var summary = Summarise(bundleDirectory, generation.GenerationId.GetValueOrDefault(), requesterPolicy, cancellationToken);
+            if (!summary.IsSuccess)
+            {
+                Console.Error.WriteLine(summary.Error.Description);
+                return Failed;
+            }
+            Console.Out.WriteLine(summary.Value);
+            return Success;
         }
         catch (OperationCanceledException)
         {
+            var completed = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
+            var published = completed.IsSuccess && completed.Value.GenerationId != previousGeneration;
             Console.Error.WriteLine(
                 "Stopped while judging. The evidence is sealed and safe at "
                 + bundleDirectory
-                + ". Nothing was judged from it.");
+                + (published ? "." : ". Nothing was judged from it."));
 
             return Cancelled;
         }
+    }
 
-        if (!judged.IsSuccess)
-        {
-            Console.Error.WriteLine(
-                "The evidence is sealed and safe. Nothing could be judged from it: "
-                + judged.Error!.Description);
-
-            // After a capture this is still a success: the run was asked to read a forest and it
-            // did. Asked only to judge, it is a failure - the operator wanted findings and has none.
-            return afterCapture && requesterPolicy == PathRequesterPolicy.Disabled ? Success : Failed;
-        }
-
-        if (requesterPolicy == PathRequesterPolicy.SupportedCapturedQuestions)
-        {
-            var openedCoverage = JudgementReader.Open(bundleDirectory);
-            if (!openedCoverage.IsSuccess) return Failed;
-            using var coverageReader = openedCoverage.Value;
-            if (coverageReader.ReadPathRequesterSummary().Verdict != PathRequesterCoverageState.EvaluatedSupportedQuestions)
-                return Failed;
-        }
-
-        Console.Out.WriteLine(Summarise(bundleDirectory));
-        return Success;
+    private sealed class JudgementCompletionGeneration : IProgress<JudgingRun.JudgingProgress>
+    {
+        internal Guid? GenerationId { get; private set; }
+        public void Report(JudgingRun.JudgingProgress value) => GenerationId = value.JudgementGenerationId ?? GenerationId;
     }
 
     /// <summary>
@@ -635,15 +644,25 @@ internal static class Program
     /// Naming it costs one line and would have caught all three.
     /// </para>
     /// </remarks>
-    private static string Summarise(string bundleDirectory)
+    internal static Result<string> Summarise(string bundleDirectory, Guid generationId,
+        PathRequesterPolicy requesterPolicy, CancellationToken cancellationToken)
     {
-        var opened = JudgementReader.Open(bundleDirectory);
+        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
 
         if (!opened.IsSuccess)
-            return "Judged: " + bundleDirectory;
+            return Result<string>.Failure(opened.Error);
 
         using var reader = opened.Value!;
-        var stored = reader.Read();
+        if (reader.Description.GenerationId != generationId)
+            return Result<string>.Failure(AuditError.Create(ErrorCategory.Evidence, "JudgementGenerationChanged",
+                ErrorSeverity.Failed, "The selected judgement is not the generation this attempt published.", bundleDirectory));
+        var read = reader.ReadSummary(includeRequesters: true,
+            includePathRequesters: requesterPolicy == PathRequesterPolicy.SupportedCapturedQuestions);
+        if (!read.IsSuccess) return Result<string>.Failure(read.Error);
+        var stored = read.Value;
+        if (stored.PathRequesters is { Verdict: not PathRequesterCoverageState.EvaluatedSupportedQuestions })
+            return Result<string>.Failure(AuditError.Create(ErrorCategory.Evidence, "PathRequesterCoverageIncomplete",
+                ErrorSeverity.Failed, "The saved requester questions did not all complete.", bundleDirectory));
 
         var failed = stored.RulesRun
             .Count(r => r.Outcome is not RuleExecutionOutcome.Succeeded);
@@ -653,7 +672,7 @@ internal static class Program
             : $", {failed} did not complete";
 
         var summary = $"Judged: {stored.RulesRun.Count} rules ran{faults}, "
-            + $"{stored.Findings.Count} findings." + Requesters(reader);
+            + $"{stored.Findings} findings." + Requesters(stored.Requesters);
 
         var examinedNothing = stored.RulesRun
             .Where(r => r.ObjectsJudged == 0)
@@ -662,13 +681,13 @@ internal static class Program
             .ToList();
 
         if (examinedNothing.Count == 0)
-            return summary;
+            return Result<string>.Success(summary);
 
-        return summary
+        return Result<string>.Success(summary
             + Environment.NewLine
             + $"  WARNING: {string.Join(", ", examinedNothing)} examined no objects at all. "
             + "A rule offered the whole forest that finds nothing it is even about is usually "
-            + "broken rather than satisfied - check its subject classes before trusting a zero.";
+            + "broken rather than satisfied - check its subject classes before trusting a zero.");
     }
 
     /// <summary>
@@ -679,9 +698,9 @@ internal static class Program
     /// nobody can add themselves to a group. The wording is this host's; the facts come from the
     /// store, so an unattended run and the window cannot disagree about what was covered.
     /// </remarks>
-    private static string Requesters(JudgementReader reader)
+    private static string Requesters(SelfMembershipSummary? requesters)
     {
-        if (reader.ReadSelfMembershipSummary() is not { } requesters)
+        if (requesters is null)
             return string.Empty;
 
         var limits = requesters.Discovery.Limitations.Count;

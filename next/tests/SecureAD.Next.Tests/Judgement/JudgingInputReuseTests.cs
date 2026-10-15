@@ -54,7 +54,7 @@ public sealed partial class JudgingInputReuseTests
             Execute(database, "DELETE FROM membership_route_summary");
             Execute(database, "PRAGMA wal_checkpoint(TRUNCATE)");
         }
-        BundleSealing.Seal(path, SourceFile(directory, "derivation-seal"));
+        TestSealing.ResealAnalysis(directory, AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value);
         using var sources = JudgingInputs.Open(directory, CancellationToken.None).Value;
         var opened = sources.OpenDerivation();
         Assert.False(opened.IsSuccess);
@@ -75,7 +75,7 @@ public sealed partial class JudgingInputReuseTests
                 : "UPDATE membership_input_manifest SET source_hash=printf('%064d',0)");
             Execute(database, "PRAGMA wal_checkpoint(TRUNCATE)");
         }
-        BundleSealing.Seal(path, SourceFile(directory, "derivation-seal"));
+        TestSealing.ResealAnalysis(directory, AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Derivation).Value);
         using var sources = Sources(directory);
         Assert.Throws<InvalidOperationException>(() => sources.ReadMembershipInput());
     }
@@ -424,8 +424,8 @@ public sealed partial class JudgingInputReuseTests
             Run(directory, []);
             using var reader = JudgementReader.Open(directory).Value;
             Description = reader.Description;
-            Path = System.IO.Path.Combine(directory, "ownership-verification.db");
-            File.Copy(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, Description.GenerationId), Path);
+            var working = TestSealing.CopyJudgement(directory, Description.GenerationId, "ownership-verification");
+            Path = BundleLayout.AnalysisGenerationDataPath(working, AnalysisStoreKind.Judgement, Description.GenerationId);
             Database = OpenDatabase(Path);
             Sources = JudgingInputReuseTests.Sources(directory);
             NodeCount = Scalar(Database, "SELECT COUNT(*) FROM tier0_path_node");
@@ -442,6 +442,12 @@ public sealed partial class JudgingInputReuseTests
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
         connection.Open();
+        if (Path.GetFileName(path).StartsWith("judgement.", StringComparison.Ordinal))
+        {
+            var directory = Path.GetDirectoryName(path)!;
+            TestSealing.AttachJudgementParts(connection, directory,
+                AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
+        }
         return connection;
     }
 

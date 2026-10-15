@@ -13,9 +13,9 @@ internal static class ReplicationPermissionFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_replication_permission (
-                finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_replication_permission (
+                finding_id INTEGER PRIMARY KEY,
                 edge_id INTEGER NOT NULL UNIQUE REFERENCES control_edge(id),
                 generation TEXT NOT NULL, proof TEXT NOT NULL,
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),

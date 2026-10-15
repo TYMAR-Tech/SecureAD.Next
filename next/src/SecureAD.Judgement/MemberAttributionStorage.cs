@@ -24,23 +24,23 @@ internal static class MemberAttributionStorage
 
     internal static void CreateTables(SqliteConnection connection)
     {
-        Execute(connection, """
-            CREATE TABLE member_attribution_product (id INTEGER PRIMARY KEY CHECK(id=1), configuration TEXT NULL, configuration_hash TEXT NULL,
+        Execute(connection, $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.member_attribution_product (id INTEGER PRIMARY KEY CHECK(id=1), configuration TEXT NULL, configuration_hash TEXT NULL,
                 root_count INTEGER NOT NULL, permission_count INTEGER NOT NULL);
             INSERT INTO member_attribution_product VALUES (1,NULL,NULL,0,0);
-            CREATE TABLE member_attribution_root (id INTEGER PRIMARY KEY, holder_sid TEXT NOT NULL COLLATE NOCASE,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.member_attribution_root (id INTEGER PRIMARY KEY, holder_sid TEXT NOT NULL COLLATE NOCASE,
                 holder_scope TEXT NOT NULL COLLATE NOCASE, proof TEXT NOT NULL, proof_hash TEXT NOT NULL,
                 UNIQUE(holder_sid,holder_scope));
-            CREATE TABLE member_attribution_member (root_id INTEGER NOT NULL REFERENCES member_attribution_root(id),
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.member_attribution_member (root_id INTEGER NOT NULL REFERENCES member_attribution_root(id),
                 identity TEXT NOT NULL COLLATE NOCASE, sid TEXT NULL COLLATE NOCASE, scope TEXT NOT NULL COLLATE NOCASE,
                 PRIMARY KEY(root_id,identity));
-            CREATE INDEX ix_member_attribution_reverse ON member_attribution_member(sid,scope,root_id);
-            CREATE TABLE member_attribution_context (root_id INTEGER NOT NULL REFERENCES member_attribution_root(id),
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_member_attribution_reverse ON member_attribution_member(sid,scope,root_id);
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.member_attribution_context (root_id INTEGER NOT NULL REFERENCES member_attribution_root(id),
                 context TEXT NOT NULL, proof TEXT NOT NULL, proof_hash TEXT NOT NULL, PRIMARY KEY(root_id,context));
-            CREATE TABLE member_attribution_permission (display_id INTEGER PRIMARY KEY, root_id INTEGER NOT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.member_attribution_permission (display_id INTEGER PRIMARY KEY, root_id INTEGER NOT NULL,
                 context TEXT NOT NULL, target TEXT NOT NULL COLLATE NOCASE REFERENCES control_object(target),
                 FOREIGN KEY(root_id,context) REFERENCES member_attribution_context(root_id,context));
-            CREATE INDEX ix_member_attribution_permission_root ON member_attribution_permission(root_id,target,display_id);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_member_attribution_permission_root ON member_attribution_permission(root_id,target,display_id);
             """);
     }
 

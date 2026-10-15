@@ -377,7 +377,7 @@ public sealed class NestedDelegationTests
                         }
                         Assert.Equal(1, command.ExecuteNonQuery());
                     }
-                    BundleSealing.Seal(path, BundleLayout.AnalysisGenerationSealPath(_directory, AnalysisStoreKind.Derivation, generation.GenerationId));
+                    TestSealing.ResealAnalysis(_directory, generation);
                 }
             }
             _source.SelectRun(_directory);

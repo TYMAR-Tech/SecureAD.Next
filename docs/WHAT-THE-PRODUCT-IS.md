@@ -198,6 +198,173 @@ acceptance-rule redesign are not prerequisites; SCOUT-02 remains paused.
 This publication request authorizes this documentation commit/push only, not deployment,
 live access, production exports/budgets or subsequent application commits.
 
+**ARCH-02 saved Dashboard overview - owner-approved 2026-10-14.**
+The owner approved one native, independently sealed capture overview containing the existing
+per-domain/class counts, coverage outcomes/reasons, recorded exclusions, confidential-attribute
+caveats and exact Group Policy counts, computed once at capture completion and selected by the
+existing atomic root with exact capture binding.
+Route the complete Dashboard inventory and existing generation-bound membership warning through
+that overview and the saved derivation summary, preserving layout, wording, figures, missing-versus-
+zero behavior, protected selected-run lifetimes and explicit refusal without opening Navigation,
+Evidence, large Derivation or Judgement/proof stores or recounting the catalogue on first show or
+revisit; no compatibility reader, migration or persisted verification verdict is authorized.
+Approval includes focused offline synthetic regressions and explicitly rebuilt isolated mutations,
+not a new measurement campaign, PERF-02 acceptance or gate change, Findings/SYSVOL/previous-generation
+work, live access, production exports/budgets, deployment, commit or push; preserve all 85 starting
+application/test paths and historical evidence.
+
+The approved overview slice is implemented and focused offline verified in capture-root format 3
+and overview format 1, without changing the captured Evidence schema or the Dashboard presentation.
+The complete first-show, revisit and reopened-selection checks use real sealed synthetic inputs,
+keep heavyweight files locked and observe overview-only verification; saved scope, counts, Group
+Policy coverage and missing/zero/failed/foreign membership states retain their existing answers.
+The final explicit correct-source Release rebuild has zero errors and 839 warnings, and all 644
+affected checks pass; all 30 new behavior cases detect 22 explicitly rebuilt isolated defects,
+with 22 passing explicitly rebuilt restored controls.
+All 85 starting application/test paths remain present: 71 are byte-identical and 14 were extended
+for the approved slice, with unchanged XAML and historical evidence.
+The compact source/binary fingerprints, exact case results, mutation mappings and retained failed
+setup/fixture attempts are in this session's `files/arch02-validation`, without making the repository
+depend on that local location.
+These are behavior and read-boundary results, not a new timing campaign, production-sized
+responsiveness, owner physical-display acceptance or satisfaction of the unchanged judging gate.
+PERF-02 remains unaccepted; ARCH-03's separately approved Findings boundary is recorded below,
+without accepting the judging gate or authorizing live access, deployment, commit or push.
+
+**ARCH-03 complete Findings serving boundary - owner-approved 2026-10-14.**
+The owner approved a native lightweight saved Findings product containing the typed values required
+by the existing list, filters, rule outcomes and SEC-071 summary, with page/selection-local supporting
+collections and detailed original proof read only when requested.
+Create product-owned schemas directly rather than retaining monolithic schema relocation, preserve
+all original proof occurrences and source/resource/Evidence/Derivation/Judgement binding, and record
+row completeness after existing final qualifications have been attached.
+Wire the main Findings pane, object Findings section, filter/page/revisit/return and route actions
+without changing columns, wording, layout, figures, membership evidence or guidance, ordering,
+circular-group scope matches, empty-result refusals or generation-bound continuation.
+Approval includes focused offline synthetic checks of the complete screen and selected details,
+heavy-store isolation, corrupt/foreign/missing products, cancellation/publication preservation and
+explicitly rebuilt isolated mutations/restored controls followed by a correct-source rebuild.
+Preserve all 92 starting pending paths, historical evidence, prepared statements, batching and
+previous-completed-root protection; PERF-02 remains unaccepted and its judging gate unchanged.
+The Tier 0 results-only visual simplification remains a separate mockup/approval task, and no new
+measurement campaign, live access, production budgets, SYSVOL work, deployment, commit or push is
+authorized.
+
+The approved boundary is implemented in Judgement format 73, without changing captured Evidence,
+capture-root format 3, overview format 1 or the Findings presentation.
+Native product-owned table creation replaces runtime relocation; the independently sealed Findings
+product holds the saved display values, rule outcomes, membership support and small SEC-071 summary,
+while original typed proof remains separate and page/selection-local reads retain every occurrence.
+Final membership qualifications update saved completeness before publication, and prepared proof
+statements, batching, atomic selection and previous-completed-result protection remain intact.
+All 4,106 affected storage/view-model/architecture checks pass, and every one of the 29 new cases
+detects an explicitly rebuilt isolated defect: 22 defects and 22 passing rebuilt restored controls.
+The complete first-show/revisit/reopen checks render native saved rows of all 19 finding-evidence
+kinds in the real Findings template while heavyweight files are locked; object Findings, return,
+saved-route actions, selected original proof, corruption/missing/foreign-generation refusal,
+continuation binding, cancellation and failed publication are also verified offline.
+The final explicit correct-live-source Release rebuild has zero errors and 860 warnings, followed
+by 79 passing final checks; all historical layout hashes remain frozen, with a new format-73
+checkpoint, and all 92 starting paths remain present: 73 byte-identical and 19 extended.
+The compact fingerprints, case results, mutation mappings and retained failed setup/verification
+attempts are in the continuation session's `files/arch03-validation`, without making the repository
+depend on that local location.
+The wider parallel rendered-host attempt was stopped after repeated WPF timeouts; targeted Findings
+render/control checks pass, but this is not full rendered-suite, physical-display or production-scale
+acceptance, and PERF-02 remains unaccepted under its unchanged judging gate.
+The separately approved Tier 0 visual mockup remains outside this implementation; no new measurement
+campaign, live access, production exports/budgets, SYSVOL work, deployment, commit or push occurred.
+
+**ARCH-04/05 combined core - owner-approved 2026-10-14.**
+To reduce repeated setup and verification without weakening safeguards, the owner approved
+complete-scope LAPS search/state filtering and saved-query paging, directly related bounded
+object/search/supporting-data reads and authoritative aggregate completion/summary reads across
+the application, CLI and portable summary as one combined implementation batch.
+Keep existing answers, full-scope totals, evidence/completeness distinctions, source/resource/
+generation binding, ordering, wording and pending work; do not broaden this into optional tree or
+proof redesign without evidence.
+LAPS needs a way to reach later pages: prepare one focused visual mockup using the existing
+Previous/Next pattern, and obtain explicit application presentation approval before UI edits.
+Use focused checks during implementation and one combined affected checkpoint, retaining explicitly
+rebuilt isolated defects/restored controls and a final correct-live-source rebuild.
+The owner also approved a bounded repeat of the existing offline judging/browsing comparison using
+retained approved inputs and existing tooling, with no new measurement harness and no change to
+the mandatory judging gate; actual production-scale acceptance remains separate.
+All 133 starting paths are hash-preserved in the continuation session's `files/arch0405-baseline`;
+no production data/budgets, live access, SYSVOL work, Tier 0 visual redesign, deployment, commit
+or push is authorized.
+
+**LAPS paging presentation - owner-approved 2026-10-14.**
+The owner approved the focused mockup's existing-style `Page N`, `Previous` and `Next` strip
+below the grid and above the selected-computer card, with the current theme, headings, columns,
+state cards, selected-object action and whole-scope total retained.
+Change only the misleading search tooltip to "Filter computers in the selected scope by computer
+or domain."; changing a filter or scope returns to Page 1, and search/state filters apply to
+the complete selected saved scope before paging.
+The dashed mockup outline and explanatory annotations are not application UI, and its synthetic
+sample figures are not changed application figures.
+
+**ARCH-04/05 combined core - implemented and offline verified 2026-10-14; acceptance remains open.**
+The approved LAPS correction applies computer/domain substring and state filters to the complete
+saved selected scope before bounded paging, with generation/question-bound continuation and the
+approved pager/tooltip; full-scope totals and captured-evidence incompleteness remain independent
+of the loaded page.
+Judgement format 74 adds the native saved domain value without changing captured Evidence,
+capture-root format 3 or overview format 1.
+GUI, CLI and portable-summary completion use authoritative saved aggregates rather than
+reconstructing all Findings or Derivation rows, preserving saved outcomes, missing inputs,
+generation binding, cancellation and explicit failed/degraded publication results.
+The required Derivation file still receives its seal check, and requested requester coverage
+still verifies PathProof; these summaries neither verify every original proof nor establish
+whole-forest requester authorization.
+
+The wider affected checkpoint passed 5,658 checks and exposed one obsolete private-method test
+invocation, corrected to exercise the actual CLI summary; the existing theme check was also
+updated for the approved whole-scope tooltip.
+The final explicit correct-live-source Release rebuild has zero errors and 861 warnings,
+followed by 441 passing focused checks, including the native LAPS template at 900/1300 widths,
+theme switching, completion cancellation and the public-result qualification gates.
+All 52 new cases and that corrected CLI completion case detect explicitly rebuilt isolated
+defects: 41 variants, each followed by a passing explicitly rebuilt restored control.
+All 133 starting paths remain present, with 115 byte-identical and 18 extended; compact case,
+mutation, source/binary provenance and failed-attempt records are retained in the continuation
+session's `files/arch0405-validation` and `files/arch0405-aggregate-validation`.
+
+The approved bounded comparison reuses the unchanged retained generator, runner, SQL counter and
+gate, with only path changes and one native-format synthetic input whose hashes remain unchanged;
+the original format-2 input was not migrated or edited.
+Four alternating format-73/74 judging pairs retain all 32 execution answers, 54 finding identities,
+3,219,649 SQL statements per run, memory records and one successful seal for every published byte.
+Median total judging is 54.192 versus 53.538 seconds, but permission-classification validation
+increases from a 1 ms baseline median with zero observed repeat range to a 2 ms candidate median,
+so the unchanged gate rejects this incremental comparison.
+Six repeated Findings-service comparisons retain byte-identical presentation records, but the
+retained runner omits the pane's Tier 0 summary and is not a complete-screen or rendering timing.
+This small synthetic does not model the production forest's size or accumulated complexity, and
+the format-73 reference is not the original pre-segmentation baseline.
+PERF-02 remains unaccepted under its unchanged gate; conditional broader ARCH-04 read redesign,
+production-scale and physical-display acceptance remain outstanding, and ARCH-06 is not started.
+No new measurement logic, optional tree/proof redesign, live access, production exports/budgets,
+SYSVOL work, Tier 0 visual redesign, deployment, commit or push occurred.
+
+**Local checkpoint and next acceptance job - owner-requested 2026-10-15.**
+The owner requested moving to the shared saved-run acceptance/fix job, a new-session handoff and
+committing the work needed for that checkpoint.
+Keep the validated 152-path candidate together on `perf02/responsive-browsing`, including its
+required pre-existing storage foundation; this is a local preservation checkpoint, not acceptance
+of PERF-02, adoption into main, deployment or permission to push.
+The next bounded job covers Dashboard, main/object Findings, LAPS and completion together, using
+existing offline checks and retained records rather than another broad architectural review.
+Do not ask again for the implemented ARCH-02/03/04/05 scopes or approved LAPS presentation.
+Retain both rejected comparisons and first establish which original-baseline comparisons the
+existing evidence actually supports; the incremental 1-to-2-ms result is not the only acceptance
+blocker, and the old Findings runner is not a complete-pane measurement.
+New optimization, measurement tooling/campaigns, UI changes or acceptance-rule changes still need
+their concrete bounded approval; physical-display checks remain ordinary verification, not a
+separate prerequisite project.
+Preserve original evidence and all subsequent work, with no live access, production exports/budgets,
+SYSVOL work, compatibility, previous-generation browsing, ARCH-06 redesign, deployment or push.
+
 **PERF-01 production saved-run browsing - owner-approved offline feasibility, 2026-10-13;
 application implementation not approved.**
 The owner paused SCOUT-02 and supplied a permitted production run-log excerpt, then approved an
@@ -1938,6 +2105,33 @@ Implement the connected presentation without replacing existing assessed-result 
 finding qualification; offline verification precedes lab acceptance, and the approval is not itself
 physical-display or lab acceptance.
 No live access, package replacement, commit or push is authorized by this implementation approval.
+
+**Tier 0 overview clarity - owner feedback, 2026-10-14.**
+The owner supplied the current screen and said that including all identities and the meaning of
+`Unresolved` are not intuitive, requesting an explanation before continuing the responsiveness work.
+The existing supported-results list and optional whole-analysis view must not be confused with
+Tier 0 classification: `Unresolved` means no complete supported route was saved, not an unresolved
+account name/SID, a failed capture or a proved safe object, and zero `Not assessed` does not mean
+every account received every possible requester check.
+Record this as outstanding presentation clarity, not approval for revised wording/layout, removal
+of coverage, changed classification/path semantics, application edits, new measurements or live work.
+
+**Tier 0 overview is results-focused - owner-confirmed 2026-10-14.**
+After the explanation, the owner rejected displaying the population for which no supported route
+was established: SecureAD is a risk tool, and showing thousands of non-results over-provides
+information and is not useful to the operator.
+The Tier 0 overview should show classified Tier 0 objects and other objects with supported routes,
+not offer a whole-analysis identity list or emphasize unresolved/unassessed population counts.
+A concise general warning should state that the analysis cannot guarantee identification of every
+path to Tier 0; absence from this results view must not become a proved-safe or no-possible-path claim.
+Keep original saved answers/evidence and exact generation binding, with actual captured-evidence,
+unsupported-analysis or processing gaps and unavailable results still explicit rather than hidden
+by the general warning.
+This supersedes the earlier All identities preview direction, not the authoritative Tier 0
+definition, permission/path semantics or preservation of verification evidence.
+Prepare the concrete reduced presentation and warning wording as a visual mockup before
+application implementation; no new measurement campaign, live access, commit or push is authorized.
+
 The [connected-presentation checkpoint](../.v-tier0-presentation-20261007-b683/handoff.json) records
 684 passing affected-area tests with coverage after a final correct-source rebuild, 1,023 matching
 code/configuration inputs and all 18 new/adapted checks detecting rebuilt defects across 17 variants

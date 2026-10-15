@@ -56,37 +56,37 @@ internal static class PermissionClassificationStorage
     //
     // WITHOUT ROWID on (descriptor_id, ordinal), so the primary-key b-tree is the table: one stored
     // copy of the key and no separate index, against three copies and two indexes before.
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE permission_classification_product (
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_product (
             singleton INTEGER PRIMARY KEY CHECK(singleton=1), generation TEXT NOT NULL,
             state TEXT NOT NULL CHECK(state IN ('Writing','Complete')),
             producer_version INTEGER NOT NULL, schema_version INTEGER NOT NULL,
             has_captured_schema INTEGER NOT NULL CHECK(has_captured_schema IN (0,1)),
             object_count INTEGER NULL CHECK(object_count>=0));
-        CREATE TABLE permission_classification_schema (guid TEXT PRIMARY KEY COLLATE BINARY, payload TEXT NOT NULL);
-        CREATE TABLE permission_classification_descriptor (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_schema (guid TEXT PRIMARY KEY COLLATE BINARY, payload TEXT NOT NULL);
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_descriptor (
             descriptor_id INTEGER PRIMARY KEY,
             descriptor TEXT NOT NULL, entry_count INTEGER NOT NULL CHECK(entry_count>=0),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE permission_classification_object (
-            target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_object (
+            target TEXT PRIMARY KEY COLLATE NOCASE,
             descriptor_id INTEGER NULL REFERENCES permission_classification_descriptor(descriptor_id),
             availability TEXT NOT NULL, unreadable_reason TEXT NULL);
-        CREATE TABLE permission_classification_reading (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_reading (
             id INTEGER PRIMARY KEY,
             fingerprint BLOB NOT NULL UNIQUE CHECK(length(fingerprint)=32),
             payload TEXT NOT NULL);
-        CREATE TABLE permission_classification_value (
-            entry_id INTEGER PRIMARY KEY REFERENCES permission_entry(id),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_value (
+            entry_id INTEGER PRIMARY KEY,
             right_count INTEGER NOT NULL CHECK(right_count>=0),
             reading_id INTEGER NOT NULL REFERENCES permission_classification_reading(id),
             object_schema TEXT NULL REFERENCES permission_classification_schema(guid),
             inherited_schema TEXT NULL REFERENCES permission_classification_schema(guid),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE permission_classification_entry (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_entry (
             descriptor_id INTEGER NOT NULL REFERENCES permission_classification_descriptor(descriptor_id),
             ordinal INTEGER NOT NULL CHECK(ordinal>=0),
-            entry_id INTEGER NOT NULL REFERENCES permission_entry(id),
+            entry_id INTEGER NOT NULL,
             PRIMARY KEY(descriptor_id,ordinal)) WITHOUT ROWID;
         """);
 

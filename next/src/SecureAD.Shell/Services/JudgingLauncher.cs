@@ -55,7 +55,7 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
     /// completion screen reports is then what an operator will find when he opens the findings, and
     /// cannot drift from it. A count assembled in flight would be a second account of the same
     /// judging, and the two would disagree on the day one of them had a defect. The unique-object
-    /// count comes from the coordinator's stream progress; summing rule counts would count each
+    /// count comes from the bound capture's saved total; summing rule counts would count each
     /// object once per applicable rule.
     /// </remarks>
     private Result<JudgingOutcome> Judge(
@@ -69,9 +69,11 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
             : null;
 
         long objectsRead = 0;
+        Guid? generationId = null;
         var watched = new Watching(value =>
         {
             objectsRead = Math.Max(objectsRead, value.ObjectsRead);
+            generationId = value.JudgementGenerationId ?? generationId;
             progress.Report(value);
         });
         // TIER-0 DISCOVERY DECIDES WHAT IS ASSESSED IN DETAIL, per decision 0116. Detailed control,
@@ -98,17 +100,21 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
             return Result<JudgingOutcome>.Failure(judged.Error!);
 
         progress.Report(new JudgingRun.JudgingProgress(objectsRead) { Phase = JudgingPhase.ReadingResults });
-        var opened = JudgementReader.Open(bundleDirectory);
+        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
         if (!opened.IsSuccess)
             return Result<JudgingOutcome>.Failure(opened.Error!);
 
         using var reader = opened.Value!;
-        var stored = reader.Read();
-        var pathRequesters = requesterPolicy == PathRequesterPolicy.Disabled ? null : reader.ReadPathRequesterSummary(cancellationToken);
-
-        var bySeverity = stored.Findings
-            .GroupBy(f => f.Severity)
-            .ToDictionary(g => g.Key, g => g.Count());
+        if (reader.Description.GenerationId != generationId)
+            return Result<JudgingOutcome>.Failure(AuditError.Create(ErrorCategory.Evidence, "JudgementGenerationChanged",
+                ErrorSeverity.Failed, "The selected judgement is not the generation this attempt published.", bundleDirectory));
+        var summary = reader.ReadSummary(includeRequesters: true,
+            includePathRequesters: requesterPolicy != PathRequesterPolicy.Disabled);
+        if (!summary.IsSuccess)
+            return Result<JudgingOutcome>.Failure(summary.Error);
+        var stored = summary.Value;
+        var pathRequesters = stored.PathRequesters;
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Gathered across rules rather than per rule. An operator reading a completion screen is
         // asking what stopped the audit seeing everything, not which rule stopped first, and two
@@ -125,12 +131,12 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
         return Result<JudgingOutcome>.Success(
             new JudgingOutcome(
                 pathRequesters is { Verdict: not PathRequesterCoverageState.EvaluatedSupportedQuestions }
-                    ? JudgementRunState.CompletedDegraded : judged.Value,
-                objectsRead,
-                bySeverity,
+                    ? JudgementRunState.CompletedDegraded : stored.Description.State,
+                stored.ObjectsJudged,
+                stored.FindingsBySeverity,
                 couldNotDecide)
             {
-                Requesters = reader.ReadSelfMembershipSummary(),
+                Requesters = stored.Requesters,
                 PathRequesters = pathRequesters,
             });
     }

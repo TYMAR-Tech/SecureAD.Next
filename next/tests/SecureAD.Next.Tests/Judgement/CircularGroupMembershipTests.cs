@@ -128,11 +128,11 @@ public sealed class CircularGroupMembershipTests
     {
         var directory = Prepared("pair");
         using var reader = Open(directory);
-        var source = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
-        var copy = Path.Combine(directory, "cycle-filter-check.db");
-        File.Copy(source, copy);
+        var copyDirectory = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "cycle-filter-check");
+        var copy = BundleLayout.AnalysisGenerationDataPath(copyDirectory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, copyDirectory, reader.Description.GenerationId);
         CircularMembershipStorage.RequirePublishable(connection);
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM finding_circular_group WHERE distinguished_name=$dn";
@@ -435,6 +435,33 @@ public sealed class CircularGroupMembershipTests
         var result = Judge(directory);
         Assert.True(result.IsSuccess, result.Error?.Description);
         return directory;
+    }
+
+    [Theory]
+    [InlineData("pair")]
+    [InlineData("cross-domain")]
+    public void Arch03LightweightCycleFiltersKeepTheSameInvolvedGroupWithoutProof(string variant)
+    {
+        var directory = Prepared(variant);
+        var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
+        using var locked = new FileStream(Path.Combine(directory, root.Segment(StoreSegmentRole.PermissionProof).FileName),
+            FileMode.Open, FileAccess.Read, FileShare.None);
+        using var reader = Open(directory);
+        var all = reader.ReadListPage(FindingsQuery.Everything()).Value;
+        var subject = Assert.Single(all.Findings).Subject;
+        if (variant == "pair")
+            foreach (var dn in new[] { A, B })
+            {
+                Assert.Equal(subject, Assert.Single(reader.ReadListPage(FindingsQuery.About(dn)).Value.Findings).Subject);
+                Assert.Equal(subject, Assert.Single(reader.ReadListPage(FindingsQuery.Everything() with { Container = dn }).Value.Findings).Subject);
+            }
+        else
+        {
+            foreach (var domain in new[] { "contoso.com", "child.contoso.com" })
+                Assert.Equal(subject, Assert.Single(reader.ReadListPage(FindingsQuery.Everything() with { DomainFqdn = domain }).Value.Findings).Subject);
+            Assert.Empty(reader.ReadListPage(FindingsQuery.About(A) with { DomainFqdn = "child.contoso.com" }).Value.Findings);
+        }
+        Assert.Empty(reader.ReadListPage(FindingsQuery.About(C)).Value.Findings);
     }
 
     private static Result<JudgementRunState> Judge(string directory) => JudgingRun.Judge(directory, [Rule],

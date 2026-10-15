@@ -15,11 +15,12 @@ internal static class Tier0RouteFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_tier0_route (finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_tier0_route (finding_id INTEGER PRIMARY KEY,
                 proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE TABLE tier0_finding_product (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
-                fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.tier0_finding_product (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
+                fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32), availability TEXT NOT NULL,
+                unresolved_checks INTEGER NOT NULL CHECK(unresolved_checks>=0));
             """;
         command.ExecuteNonQuery();
     }
@@ -29,7 +30,12 @@ internal static class Tier0RouteFindingStorage
         Write(connection, transaction, "INSERT INTO finding_tier0_route VALUES ($id,$proof,$hash)", findingId, evidence);
 
     internal static void WriteSummary(SqliteConnection connection, SqliteTransaction transaction, Tier0FindingSummary summary) =>
-        Write(connection, transaction, "INSERT INTO tier0_finding_product VALUES ($id,$proof,$hash)", 1, summary);
+        Write(connection, transaction, """
+            INSERT INTO tier0_finding_product
+            SELECT $id,$proof,$hash,json_extract(r.proof,'$.Availability'),
+                (SELECT SUM(json_extract(value,'$.Unknown')) FROM json_each(r.proof,'$.Families'))
+            FROM path_risk_product r WHERE r.id=1
+            """, 1, summary);
 
     private static void Write<T>(SqliteConnection connection, SqliteTransaction transaction, string sql, long id, T value)
     {
@@ -62,30 +68,30 @@ internal static class Tier0RouteFindingStorage
         cancellationToken.ThrowIfCancellationRequested();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT p.proof,p.fingerprint,r.rule_version,r.outcome
+            SELECT p.proof,p.fingerprint,r.rule_version,r.outcome,p.availability,p.unresolved_checks,c.fingerprint
             FROM (SELECT 1 AS id) root
             LEFT JOIN rule_execution r ON r.rule_id='SEC-071'
             LEFT JOIN tier0_finding_product p ON p.id=root.id
+            LEFT JOIN tier0_path_calculation c ON c.id=root.id
             """;
         Tier0FindingSummary result;
         using (var read = command.ExecuteReader())
         {
             if (!read.Read()) throw Tier0PathStorage.InvalidProof();
             if (read.IsDBNull(0) && read.IsDBNull(2)) return null;
-            if (read.IsDBNull(0) || read.IsDBNull(2)) throw Tier0PathStorage.InvalidProof();
+            if (read.IsDBNull(0) || read.IsDBNull(2) || read.IsDBNull(4) || read.IsDBNull(5) || read.IsDBNull(6))
+                throw Tier0PathStorage.InvalidProof();
             result = Decode<Tier0FindingSummary>(read.GetString(0), (byte[])read.GetValue(1));
             if (result.Version != 1 || result.GenerationId != description.GenerationId
                 || result.DerivationGenerationId != description.DerivationGenerationId || result.EvidenceSeal != description.EvidenceSeal
                 || result.RuleVersion != read.GetInt32(2) || result.Outcome.ToString() != read.GetString(3)
                 || !Enum.IsDefined(result.Outcome) || !Enum.IsDefined(result.Availability)
                 || result.AssessedAccounts < 0 || result.AccountsWithFindings < 0 || result.UnresolvedAccessChecks < 0
-                || result.AccountsWithFindings > result.AssessedAccounts)
+                || result.AccountsWithFindings > result.AssessedAccounts
+                || result.CalculationFingerprint != Convert.ToHexString((byte[])read.GetValue(6))
+                || result.Availability.ToString() != read.GetString(4) || result.UnresolvedAccessChecks != read.GetInt64(5))
                 throw Tier0PathStorage.InvalidProof();
         }
-        var coverage = PathRequesterRiskStorage.ReadCoverage(connection, description, cancellationToken);
-        if (result.CalculationFingerprint != coverage.CalculationFingerprint || result.Availability != coverage.Availability
-            || result.UnresolvedAccessChecks != coverage.Families.Sum(family => family.Unknown))
-            throw Tier0PathStorage.InvalidProof();
         cancellationToken.ThrowIfCancellationRequested();
         return result;
     }

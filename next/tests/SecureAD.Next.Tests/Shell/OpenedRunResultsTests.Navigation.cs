@@ -32,7 +32,7 @@ public sealed partial class OpenedRunResultsTests
         await source.ReadAsync(directory, (reader, _) => reader.ReadFindings(directory, FindingsQuery.Everything()), CancellationToken.None);
         await source.ReadAsync(directory, (reader, _) => reader.ReadRuleExecutions(directory), CancellationToken.None);
 
-        Assert.Equal((1L, 1L, 1L, 0L),
+        Assert.Equal((0L, 1L, 0L, 0L),
             (counts.EvidenceVerifications, counts.JudgementVerifications, counts.EvidenceFormatChecks, counts.AnalyticalReads));
     }
 

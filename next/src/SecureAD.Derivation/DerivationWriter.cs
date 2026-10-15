@@ -34,6 +34,9 @@ internal sealed class DerivationWriter : IDisposable
     private readonly string _bundleDirectory;
     private readonly string _partialPath;
     private readonly SqliteConnection _connection;
+    private readonly string _evidenceSeal;
+    private readonly HashSet<int> _groupsWithUnidentifiedMembers = [];
+    private DerivationPhaseOutcome? _nestingOutcome;
     private readonly List<DerivationPhaseOutcome> _outcomes = [];
     private readonly HashSet<string> _phasesRecorded = new(StringComparer.Ordinal);
 
@@ -45,11 +48,12 @@ internal sealed class DerivationWriter : IDisposable
     private bool _finished;
     private bool _disposed;
 
-    private DerivationWriter(string bundleDirectory, string partialPath, SqliteConnection connection)
+    private DerivationWriter(string bundleDirectory, string partialPath, SqliteConnection connection, string evidenceSeal)
     {
         _bundleDirectory = bundleDirectory;
         _partialPath = partialPath;
         _connection = connection;
+        _evidenceSeal = evidenceSeal;
         GenerationId = Guid.NewGuid();
     }
 
@@ -125,7 +129,7 @@ internal sealed class DerivationWriter : IDisposable
 
         DerivationSchema.CreateTables(connection);
 
-        var writer = new DerivationWriter(bundleDirectory, partialPath, connection);
+        var writer = new DerivationWriter(bundleDirectory, partialPath, connection, evidenceSeal);
         writer.WriteHeader(evidenceSeal, startedUtc);
         return writer;
     }
@@ -541,6 +545,7 @@ internal sealed class DerivationWriter : IDisposable
         var sid = command.Parameters.Add("$sid", SqliteType.Integer);
         var direction = command.Parameters.Add("$direction", SqliteType.Text);
         var name = command.Parameters.Add("$name", SqliteType.Text);
+        var memberGroups = new HashSet<int>();
 
         foreach (var link in links)
         {
@@ -548,9 +553,11 @@ internal sealed class DerivationWriter : IDisposable
             direction.Value = link.Direction.ToString();
             name.Value = link.DistinguishedName;
             command.ExecuteNonQuery();
+            if (link.Direction == NestingLinkDirection.Member) memberGroups.Add(link.SidId);
         }
 
         transaction.Commit();
+        _groupsWithUnidentifiedMembers.UnionWith(memberGroups);
     }
 
     /// <summary>
@@ -814,6 +821,7 @@ internal sealed class DerivationWriter : IDisposable
         transaction.Commit();
 
         _outcomes.Add(outcome);
+        if (phase == MembershipNestingPass.PhaseName) _nestingOutcome = outcome;
         if (phase == ProtectedPrincipalDeriver.PhaseName
             && outcome is DerivationPhaseOutcome.Succeeded or DerivationPhaseOutcome.Degraded)
         {
@@ -865,10 +873,11 @@ internal sealed class DerivationWriter : IDisposable
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
-        if (log is null)
-            AnalysisStoreLifecycle.Publish(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId);
-        else
-            AnalysisStoreLifecycle.PublishWithDiagnostics(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId, CancellationToken.None, log);
+        var nestingWasDerived = _nestingOutcome is DerivationPhaseOutcome.Succeeded or DerivationPhaseOutcome.Degraded;
+        var summary = new DerivationBrowseSummary(1, _evidenceSeal, GenerationId, nestingWasDerived,
+            nestingWasDerived ? _groupsWithUnidentifiedMembers.Count : null);
+        AnalysisStoreLifecycle.PublishBound(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId,
+            DerivationSchema.Version, _evidenceSeal, summary, CancellationToken.None, log);
         _finished = true;
         return state;
     }

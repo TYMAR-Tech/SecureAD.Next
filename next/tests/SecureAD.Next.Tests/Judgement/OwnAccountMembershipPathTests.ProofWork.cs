@@ -66,9 +66,11 @@ public sealed partial class OwnAccountMembershipPathTests
         var existing = Assert.IsType<long>(command.ExecuteScalar());
         var written = 0;
         fixture.Connection.CreateFunction("interrupt_node", () => { written++; stopping.Cancel(); return 1; });
+        command.CommandText = "PRAGMA temp_store=FILE";
+        command.ExecuteNonQuery();
         command.CommandText = cancel
-            ? "CREATE TRIGGER interrupt_node_write AFTER INSERT ON tier0_path_node BEGIN SELECT interrupt_node(); END"
-            : "CREATE TRIGGER ignore_node_write BEFORE INSERT ON tier0_path_node BEGIN SELECT RAISE(IGNORE); END";
+            ? "CREATE TEMP TRIGGER interrupt_node_write AFTER INSERT ON PathProof.tier0_path_node BEGIN SELECT interrupt_node(); END"
+            : "CREATE TEMP TRIGGER ignore_node_write BEFORE INSERT ON PathProof.tier0_path_node BEGIN SELECT RAISE(IGNORE); END";
         command.ExecuteNonQuery();
 
         var error = Record.Exception(() => Tier0PathStorage.Write(fixture.Connection, fixture.Description, fixture.Sources,

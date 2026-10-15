@@ -16,11 +16,11 @@ internal static class PathInputStorage
         PathInputAvailability Availability, Tier0InputBinding? Input, Tier0Coverage Coverage,
         int DiscoveryVersion, int ControlEngineVersion, int AnchorCount, int RegionCount);
 
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE path_input (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_input (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE path_anchor (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_seed(target));
-        CREATE TABLE path_uncertainty (id INTEGER PRIMARY KEY, proof TEXT NOT NULL,
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_anchor (target TEXT PRIMARY KEY COLLATE NOCASE);
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_uncertainty (id INTEGER PRIMARY KEY, proof TEXT NOT NULL,
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         """);
 

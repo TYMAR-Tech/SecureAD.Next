@@ -59,8 +59,8 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     {
         SharedProofStorage.CreateTables(connection);
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE permission_entry (id INTEGER PRIMARY KEY,
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.permission_entry (id INTEGER PRIMARY KEY,
                 generation TEXT NOT NULL, entry_hash TEXT NOT NULL UNIQUE,
                 ace_type TEXT NOT NULL, sid TEXT NOT NULL,
                 name TEXT NULL, dn TEXT NULL, domain TEXT NULL, unresolved_reason TEXT NULL, role TEXT NULL,
@@ -221,6 +221,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     internal static PermissionEntry ReadReference(SqliteConnection connection, string target, Guid generation,
         long id, int ordinal, byte[] fingerprint)
     {
+        JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PermissionProof);
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT {Projection},$ordinal,$fingerprint FROM permission_entry p {MeaningJoin} WHERE p.id=$id";
         command.Parameters.AddWithValue("$id", id);

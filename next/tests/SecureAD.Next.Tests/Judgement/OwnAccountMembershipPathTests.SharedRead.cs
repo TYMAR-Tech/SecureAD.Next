@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SecureAD.Evidence;
 using SecureAD.Judgement;
 using Xunit;
 using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
@@ -39,8 +40,12 @@ public sealed partial class OwnAccountMembershipPathTests
         var directory = Prepared();
         using var reader = Open(directory);
         reader.ReadTier0PathWithCoverage(UserDn);
-        Mutate(directory, "DELETE FROM tier0_path_calculation");
-        Assert.Throws<InvalidDataException>(() => reader.ReadTier0PathWithCoverage(UserDn));
+        var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
+        root = root with { Segments = root.Segments.Select(segment => segment.Role == StoreSegmentRole.Judgement
+            ? segment with { Hash = new string('0', 64) } : segment).ToArray() };
+        File.WriteAllText(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement),
+            JsonSerializer.Serialize(root with { Hash = root.ComputeHash() }));
+        Assert.Throws<InvalidOperationException>(() => reader.ReadTier0PathWithCoverage(UserDn));
     }
 
     [Fact]

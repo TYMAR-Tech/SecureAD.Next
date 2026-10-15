@@ -32,10 +32,10 @@ internal static class Tier0DistanceStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE tier0_distance_product (id INTEGER PRIMARY KEY CHECK(id=1),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_distance_product (id INTEGER PRIMARY KEY CHECK(id=1),
                 proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE TABLE tier0_distance (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_distance (target TEXT PRIMARY KEY COLLATE NOCASE,
                 verdict TEXT NOT NULL, classification TEXT NOT NULL, supported_distance INTEGER NULL,
                 minimum_established INTEGER NOT NULL CHECK(minimum_established IN (0,1)),
                 requester_checked INTEGER NOT NULL CHECK(requester_checked IN (0,1)),

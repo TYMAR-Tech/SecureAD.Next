@@ -10,16 +10,17 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed partial class AssetsViewModel
 {
     private sealed record ListingQuestion(AssetsPane Pane, string Bundle, string? Container,
-        ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search, GroupInventoryQuery? Groups);
+        ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search, GroupInventoryQuery? Groups, LapsQuery? Laps);
 
     private readonly Dictionary<AssetsPane, (ListingQuestion Question, Func<bool> IsCurrent)> _pages = [];
 
     private ListingQuestion Question() => new(Pane, BundlePath!,
         Pane is AssetsPane.Delegations or AssetsPane.Tier0 || IsObjectSearch ? null : Selected?.DistinguishedName,
         Pane is AssetsPane.Objects or AssetsPane.Laps && !IsObjectSearch ? Scope : null,
-        Pane == AssetsPane.Objects ? IsObjectSearch ? _objectSearchBack.Count + 1 : PageNumber : Pane == AssetsPane.Groups ? _groupBack.Count + 1 : Pane == AssetsPane.Tier0 ? _tier0Back.Count + 1 : 1,
+        Pane == AssetsPane.Objects ? IsObjectSearch ? _objectSearchBack.Count + 1 : PageNumber : Pane == AssetsPane.Groups ? _groupBack.Count + 1 : Pane == AssetsPane.Tier0 ? _tier0Back.Count + 1 : Pane == AssetsPane.Laps ? LapsPageNumber : 1,
         Pane == AssetsPane.Findings ? FindingsAsked() : null,
-        IsObjectSearch ? _objectSearchQuery : null, Pane == AssetsPane.Groups ? GroupQuestion() : null);
+        IsObjectSearch ? _objectSearchQuery : null, Pane == AssetsPane.Groups ? GroupQuestion() : null,
+        Pane == AssetsPane.Laps && Selected is not null ? LapsQuestion(Selected.DistinguishedName) : null);
 
     private void LoadVisible()
     {
@@ -69,18 +70,20 @@ internal sealed partial class AssetsViewModel
                     }, saved: false);
                 break;
             case AssetsPane.Laps:
+                var lapsAfter = _lapsBack.TryPeek(out var previous) ? previous : null;
                 await ReadViewAsync(question.Bundle,
-                    reader => reader.ListLapsComputers(question.Bundle, question.Container!, question.Scope!.Value, 1),
+                    reader => reader.ListLapsComputers(question.Bundle, question.Laps!, lapsAfter),
                     (page, current) =>
                     {
                         foreach (var row in page.Computers) LapsComputers.Add(new LapsComputerViewModel(row));
                         foreach (var state in Enum.GetValues<LapsManagement>())
                             LapsCounts.Add(new LapsCountViewModel(state, page.CountOf(state)));
-                        ApplyLapsFilters();
                         SelectedLapsComputer = LapsComputers.FirstOrDefault();
+                        _lapsNext = page.Next;
                         LapsTotal = page.Total;
                         LapsShortfall = page.ComputersAreComplete ? null : page.Shortfall;
                         RememberPage(question, current);
+                        AnnounceLaps();
                     }, saved: true);
                 break;
             case AssetsPane.Findings:
@@ -100,16 +103,16 @@ internal sealed partial class AssetsViewModel
                     {
                         var choices = reader.ReadFindingsFilterValues(question.Bundle);
                         if (!choices.IsSuccess)
-                            return Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(choices.Error);
+                            return Result<(FindingListPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(choices.Error);
                         filters = choices.Value;
                     }
-                    var page = reader.ReadFindings(question.Bundle, question.Findings!);
+                    var page = reader.ReadFindingsList(question.Bundle, question.Findings!);
                     if (!page.IsSuccess)
-                        return Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(page.Error);
+                        return Result<(FindingListPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(page.Error);
                     var summary = reader.ReadTier0FindingSummary(question.Bundle);
                     return summary.IsSuccess
-                        ? Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Success((page.Value, filters, summary.Value))
-                        : Result<(FindingsPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(summary.Error);
+                        ? Result<(FindingListPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Success((page.Value, filters, summary.Value))
+                        : Result<(FindingListPage Page, FindingsFilterValues? Filters, Tier0FindingSummary? Summary)>.Failure(summary.Error);
                 }, (read, current) =>
                 {
                     if (read.Filters is { } filters)
@@ -279,11 +282,12 @@ internal sealed partial class AssetsViewModel
             case AssetsPane.Laps:
                 LapsComputers.Clear();
                 LapsCounts.Clear();
-                ResetLapsFilters();
+                _lapsNext = null;
                 SelectedLapsComputer = null;
                 LapsRefusal = null;
                 LapsTotal = 0;
                 LapsShortfall = null;
+                AnnounceLaps();
                 break;
         }
     }

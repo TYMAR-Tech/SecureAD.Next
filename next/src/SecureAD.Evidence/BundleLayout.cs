@@ -286,6 +286,50 @@ public static class BundleLayout
     public static string SealPath(string bundleDirectory) =>
         Combine(bundleDirectory, SealFileName);
 
+    /// <summary>The one publication boundary for captured Evidence, navigation and Dashboard overview.</summary>
+    public static string CaptureManifestPath(string bundleDirectory) => Combine(bundleDirectory, "evidence.current.json");
+
+    /// <summary>The private navigation staging file, never opened for browsing.</summary>
+    public static string NavigationPartialPath(string bundleDirectory) => Combine(bundleDirectory, "navigation.db.partial");
+
+    /// <summary>The immutable navigation product for one captured generation.</summary>
+    public static string NavigationPath(string bundleDirectory, Guid generationId) =>
+        Combine(bundleDirectory, $"navigation.{generationId:N}.db");
+
+    /// <summary>The private Dashboard overview staging file, never opened for browsing.</summary>
+    public static string OverviewPartialPath(string bundleDirectory) => Combine(bundleDirectory, "overview.db.partial");
+
+    /// <summary>The independently sealed Dashboard overview for one captured generation.</summary>
+    public static string OverviewPath(string bundleDirectory, Guid generationId) =>
+        Combine(bundleDirectory, $"overview.{generationId:N}.db");
+
+    /// <summary>The independently sealed proof and inventory products belonging to one judgement.</summary>
+    internal static IReadOnlyList<StoreSegmentRole> JudgementParts { get; } = Array.AsReadOnly(
+        new[] { StoreSegmentRole.PermissionProof, StoreSegmentRole.PathProof, StoreSegmentRole.JudgementFacts });
+
+    /// <summary>The private staging file for a judgement product other than compact Findings.</summary>
+    public static string JudgementPartStagingPath(string bundleDirectory, StoreSegmentRole role) =>
+        Combine(bundleDirectory, $"judgement.{PartName(role)}.db.partial");
+
+    /// <summary>The exact immutable file declared for an analysis product.</summary>
+    public static string AnalysisSegmentDataPath(string bundleDirectory, AnalysisStoreGeneration generation, StoreSegmentRole role)
+    {
+        ArgumentNullException.ThrowIfNull(generation);
+        if (role == StoreSegmentRole.Derivation && generation.Kind == AnalysisStoreKind.Derivation
+            || role == StoreSegmentRole.Judgement && generation.Kind == AnalysisStoreKind.Judgement)
+            return AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        if (generation.Kind != AnalysisStoreKind.Judgement) throw new ArgumentException("The product is not part of this analysis.");
+        return Combine(bundleDirectory, $"judgement.{generation.GenerationId:N}.{PartName(role)}.db");
+    }
+
+    private static string PartName(StoreSegmentRole role) => role switch
+    {
+        StoreSegmentRole.PermissionProof => "permission-proof",
+        StoreSegmentRole.PathProof => "path-proof",
+        StoreSegmentRole.JudgementFacts => "facts",
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unknown judgement part."),
+    };
+
     /// <summary>The annotations database in <paramref name="bundleDirectory"/>.</summary>
     /// <param name="bundleDirectory">The bundle's directory.</param>
     public static string AnnotationsPath(string bundleDirectory) =>

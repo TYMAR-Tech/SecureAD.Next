@@ -534,14 +534,17 @@ public sealed class SavedPermissionClassificationTests
     /// <summary>How many rows a table holds, read out of the finished store.</summary>
     private static long Rows(string directory, string table)
     {
-        long count = 0;
-        SelfMembershipCoverageTests.Mutate(directory, connection =>
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value;
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM " + table;
-            count = Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
-        });
-        return count;
+            DataSource = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId),
+            Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, generation.GenerationId);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM " + table;
+        return Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static Dictionary<string, IReadOnlyList<string>> PropertySetMembers(string guid, string? member) =>

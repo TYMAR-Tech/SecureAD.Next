@@ -189,7 +189,7 @@ internal static class DirectoryTreeReader
     /// of an unusual class is missing, and never that a branch of the directory disappears.
     /// </para>
     /// </remarks>
-    private static readonly string[] ContainerClasses =
+    internal static readonly string[] ContainerClasses =
     [
         "domainDNS", "builtinDomain", "organizationalUnit", "container", "lostAndFound",
         "msDS-QuotaContainer", "configuration", "dMD", "rpcContainer",
@@ -200,7 +200,7 @@ internal static class DirectoryTreeReader
     /// Reads the tree from an open bundle.
     /// </summary>
     /// <param name="connection">The open evidence database.</param>
-    public static DirectoryTree Read(SqliteConnection connection)
+    public static DirectoryTree Read(SqliteConnection connection, bool navigation = false)
     {
         var nodes = new Dictionary<string, Node>(StringComparer.OrdinalIgnoreCase);
         var gaps = new List<TreeGap>();
@@ -210,13 +210,13 @@ internal static class DirectoryTreeReader
         foreach (var root in roots)
             nodes[root] = new Node(root, TreeNodeOrigin.Partition) { PartitionKind = partitions[root] };
 
-        foreach (var parentDn in ReadObservedParents(connection))
+        foreach (var parentDn in ReadObservedParents(connection, navigation))
             AddWithItsAncestors(nodes, roots, parentDn);
 
-        foreach (var containerDn in ReadContainersByClass(connection))
+        foreach (var containerDn in ReadContainersByClass(connection, navigation))
             AddWithItsAncestors(nodes, roots, containerDn);
 
-        FillInIdentities(connection, nodes);
+        FillInIdentities(connection, nodes, navigation);
         CollectGaps(connection, nodes, gaps);
 
         Attach(nodes, roots);
@@ -254,11 +254,11 @@ internal static class DirectoryTreeReader
     /// <summary>
     /// Every container something was actually captured under.
     /// </summary>
-    private static List<string> ReadObservedParents(SqliteConnection connection)
+    private static List<string> ReadObservedParents(SqliteConnection connection, bool navigation)
     {
         var parents = new List<string>();
         using var command = connection.CreateCommand();
-        command.CommandText =
+        command.CommandText = navigation ? "SELECT parent_dn FROM observed_parent ORDER BY ordinal" :
             "SELECT DISTINCT parent_dn FROM captured_object WHERE parent_dn IS NOT NULL";
 
         using var reader = command.ExecuteReader();
@@ -272,13 +272,13 @@ internal static class DirectoryTreeReader
     /// Every captured object whose class makes it a container, whether or not anything was
     /// captured inside it.
     /// </summary>
-    private static List<string> ReadContainersByClass(SqliteConnection connection)
+    private static List<string> ReadContainersByClass(SqliteConnection connection, bool navigation)
     {
         var names = new List<string>();
         var placeholders = string.Join(", ", ContainerClasses.Select((_, i) => "$c" + i));
 
         using var command = connection.CreateCommand();
-        command.CommandText =
+        command.CommandText = navigation ? "SELECT distinguished_name FROM captured_container WHERE is_container=1" :
             $"""
             SELECT o.distinguished_name
             FROM captured_object AS o
@@ -361,11 +361,16 @@ internal static class DirectoryTreeReader
     /// root that hold no object directly.
     /// </remarks>
     private static void FillInIdentities(
-        SqliteConnection connection, Dictionary<string, Node> nodes)
+        SqliteConnection connection, Dictionary<string, Node> nodes, bool navigation)
     {
         using (var command = connection.CreateCommand())
         {
-            command.CommandText =
+            command.CommandText = navigation
+                ? """
+                  SELECT c.distinguished_name,c.object_guid,c.most_specific_class,
+                      EXISTS(SELECT 1 FROM observed_parent p WHERE p.parent_dn=c.distinguished_name)
+                  FROM captured_container c
+                  """ :
                 """
                 SELECT o.distinguished_name, o.object_guid,
                        (SELECT c.value FROM objectclass_value c WHERE c.object_id=o.object_id ORDER BY c.ordinal DESC LIMIT 1)
@@ -376,10 +381,15 @@ internal static class DirectoryTreeReader
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
+            {
+                if (navigation && nodes.TryGetValue(reader.GetString(0), out var node)
+                    && node.Origin == TreeNodeOrigin.Partition && !reader.GetBoolean(3)) continue;
                 Capture(nodes, reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1),
                     reader.IsDBNull(2) ? null : reader.GetString(2));
+            }
         }
 
+        if (navigation) return;
         var remaining = nodes.Values
             .Where(n => n.Origin == TreeNodeOrigin.NeverCaptured)
             .Select(n => n.DistinguishedName)

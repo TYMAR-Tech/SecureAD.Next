@@ -291,6 +291,7 @@ public sealed class SelfMembershipStorageTests
         {
             using var connection = new SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False");
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
             mutate(connection);
         }
         writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));

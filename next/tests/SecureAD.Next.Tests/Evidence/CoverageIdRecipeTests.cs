@@ -117,6 +117,8 @@ public sealed class CoverageIdRecipeTests
         [15] = "57cf8ba5a9e7fb10",
         // Version 16 adds account metadata to class scope; the domain identity is unchanged.
         [16] = "57cf8ba5a9e7fb10",
+        // Navigation publication does not change which domains the capture declared.
+        [17] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>

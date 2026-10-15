@@ -13,12 +13,12 @@ internal static class AttributeWriteFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_attribute_write (
-                finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_attribute_write (
+                finding_id INTEGER PRIMARY KEY,
                 generation TEXT NOT NULL, proof TEXT NOT NULL,
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE TABLE finding_attribute_write_entry (
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_attribute_write_entry (
                 finding_id INTEGER NOT NULL REFERENCES finding_attribute_write(finding_id),
                 ordinal INTEGER NOT NULL, entry_id INTEGER NOT NULL REFERENCES permission_entry(id),
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),

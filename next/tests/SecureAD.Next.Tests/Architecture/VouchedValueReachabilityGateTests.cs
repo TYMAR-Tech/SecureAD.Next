@@ -519,6 +519,11 @@ public sealed class VouchedValueReachabilityGateTests
     /// shared resource-scope qualifications remain distinct from concrete requester authorization.
     /// 81 adds <c>ReplicationPermissionEvidence.IsComplete</c>: an established domain-root
     /// permission keeps other captured-input and expectedness gaps rather than claiming full coverage.
+    /// 82 replaces the now-internal whole-judgement verification container's <c>DidNotRun</c>
+    /// with <c>StoredJudgementSummary.DidNotRun</c> and <c>StoredDerivationSummary.DidNotRun</c>.
+    /// Empty versus nonempty saved execution/phase lists drive both values without hydrating proof.
+    /// 83 adds <c>FindingListPage.DidNotRun</c>: zero versus nonzero saved executions qualify
+    /// the lightweight collection independently of whether any finding matched.
     /// </para>
     /// </summary>
     [Fact]
@@ -533,7 +538,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1;
 
         Assert.True(
             found.Count == accountedFor,

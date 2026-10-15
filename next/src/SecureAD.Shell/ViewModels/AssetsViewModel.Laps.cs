@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecureAD.Judgement;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -8,20 +9,42 @@ internal sealed partial class AssetsViewModel
     [ObservableProperty] private LapsComputerViewModel? _selectedLapsComputer;
     [ObservableProperty] private string _lapsSearchText = "";
     [ObservableProperty] private string _lapsStateFilter = "All states";
+    private readonly Stack<LapsPageMark> _lapsBack = [];
+    private LapsPageMark? _lapsNext;
 
     public bool HasSelectedLapsComputer => SelectedLapsComputer is not null;
     public IReadOnlyList<string> LapsStateChoices { get; } =
         ["All states", "Not managed", "Windows LAPS", "Legacy LAPS", "Migrated", "Unexpected"];
-    public IReadOnlyList<LapsComputerViewModel> VisibleLapsComputers
+    public IReadOnlyList<LapsComputerViewModel> VisibleLapsComputers => LapsComputers;
+    public int LapsPageNumber => _lapsBack.Count + 1;
+    public bool HasMoreLaps => HasListingResult && _lapsNext is not null;
+    public bool HasEarlierLaps => HasListingResult && _lapsBack.Count > 0;
+
+    private LapsQuery LapsQuestion(string container) => new(container, Scope, LapsSearchText.Trim(), LapsStateFilter switch
     {
-        get
-        {
-            var search = LapsSearchText.Trim();
-            return LapsComputers.Where(row =>
-                (search.Length == 0 || row.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                    || row.Domain.Contains(search, StringComparison.OrdinalIgnoreCase))
-                && (LapsStateFilter == "All states" || row.Management == LapsStateFilter)).ToArray();
-        }
+        "All states" => null,
+        "Not managed" => LapsManagement.NotManaged,
+        "Windows LAPS" => LapsManagement.WindowsLaps,
+        "Legacy LAPS" => LapsManagement.LegacyLaps,
+        "Migrated" => LapsManagement.Migrated,
+        "Unexpected" => LapsManagement.Unexpected,
+        _ => throw new InvalidOperationException("The selected LAPS state is not recognized."),
+    });
+
+    [RelayCommand(CanExecute = nameof(HasMoreLaps))]
+    private void NextLaps()
+    {
+        if (_lapsNext is not { } next) return;
+        _lapsBack.Push(next);
+        LoadVisible();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasEarlierLaps))]
+    private void PreviousLaps()
+    {
+        if (_lapsBack.Count == 0) return;
+        _lapsBack.Pop();
+        LoadVisible();
     }
 
     private bool CanOpenLapsComputer(LapsComputerViewModel? row) =>
@@ -38,14 +61,31 @@ internal sealed partial class AssetsViewModel
         OpenLapsComputerCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnLapsSearchTextChanged(string value) => ApplyLapsFilters();
-    partial void OnLapsStateFilterChanged(string value) => ApplyLapsFilters();
+    partial void OnLapsSearchTextChanged(string value) => RefilterLaps();
+    partial void OnLapsStateFilterChanged(string value) => RefilterLaps();
 
-    private void ApplyLapsFilters()
+    private void RefilterLaps()
+    {
+        if (_resetting) return;
+        ResetLapsPaging();
+        if (ShowsLaps) LoadVisible();
+    }
+
+    private void ResetLapsPaging()
+    {
+        _lapsBack.Clear();
+        _lapsNext = null;
+        AnnounceLaps();
+    }
+
+    private void AnnounceLaps()
     {
         OnPropertyChanged(nameof(VisibleLapsComputers));
-        if (SelectedLapsComputer is null || !VisibleLapsComputers.Contains(SelectedLapsComputer))
-            SelectedLapsComputer = VisibleLapsComputers.FirstOrDefault();
+        OnPropertyChanged(nameof(LapsPageNumber));
+        OnPropertyChanged(nameof(HasMoreLaps));
+        OnPropertyChanged(nameof(HasEarlierLaps));
+        NextLapsCommand.NotifyCanExecuteChanged();
+        PreviousLapsCommand.NotifyCanExecuteChanged();
     }
 
     private void ResetLapsFilters()
@@ -54,6 +94,6 @@ internal sealed partial class AssetsViewModel
         _lapsStateFilter = "All states";
         OnPropertyChanged(nameof(LapsSearchText));
         OnPropertyChanged(nameof(LapsStateFilter));
-        ApplyLapsFilters();
+        ResetLapsPaging();
     }
 }

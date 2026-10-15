@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using Microsoft.Data.Sqlite;
 
 namespace SecureAD.Judgement;
@@ -134,9 +135,12 @@ public static class JudgementSchema
     /// </remarks>
     // Format 70 binds SEC-002 findings to existing domain-root control proofs and their original occurrences.
     // Format 71 groups every SEC-093 broad-principal route under its one durable policy finding.
-    public const int Version = 71;
+    // Format 72 places Findings, permission proofs, path proofs and inventory in separate immutable products.
+    // Format 73 creates product-owned schemas directly and saves the final Findings display answers.
+    // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
+    public const int Version = 74;
 
-    private static readonly string[] TableDdl =
+    private static string[] TableDdl(SqliteConnection connection) =>
     [
         // One row, written when judging starts and completed when it finishes. The judgement's own
         // account of itself.
@@ -161,8 +165,8 @@ public static class JudgementSchema
         // rather than taken from the clock at read time. Without it a rule about stale accounts
         // gives a different answer every time the same sealed evidence is opened, and nothing says
         // why.
-        """
-        CREATE TABLE judgement (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.judgement (
             schema_version           INTEGER NOT NULL,
             evidence_seal            TEXT    NOT NULL,
             judgement_generation_id  TEXT    NOT NULL,
@@ -203,8 +207,8 @@ public static class JudgementSchema
         //
         // error is set only when outcome is Error. A throwing rule does not stop the others, per
         // the write contract, so its message has to be kept somewhere a reader can reach.
-        """
-        CREATE TABLE rule_execution (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.rule_execution (
             rule_id                  TEXT    NOT NULL,
             rule_version             INTEGER NOT NULL,
             outcome                  TEXT    NOT NULL,
@@ -225,8 +229,8 @@ public static class JudgementSchema
         //
         // NO ROWS BESIDE A NON-ZERO objects_not_judged IS A DEFECT, not an absence with a meaning.
         // Every object a rule could not judge was refused for a named attribute.
-        """
-        CREATE TABLE rule_execution_missing_input (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.rule_execution_missing_input (
             rule_id                  TEXT    NOT NULL REFERENCES rule_execution(rule_id),
             attribute                TEXT    NOT NULL,
             objects_affected         INTEGER NOT NULL,
@@ -264,8 +268,8 @@ public static class JudgementSchema
         // grid shows is written when the finding is made, from the object already in hand.
         //
         // They are a record of what was true when the judging ran, which is what a judgement is.
-        """
-        CREATE TABLE finding (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.finding (
             finding_id               INTEGER PRIMARY KEY,
             rule_id                  TEXT    NOT NULL REFERENCES rule_execution(rule_id),
             subject_kind             TEXT    NOT NULL,
@@ -279,6 +283,11 @@ public static class JudgementSchema
             object_class             TEXT    NOT NULL,
             detail                   TEXT    NOT NULL,
             coverage                 TEXT    NOT NULL,
+            list_kind                TEXT    NOT NULL CHECK(list_kind IN ('Standard','Membership','Tier0Routes')),
+            evidence_complete        INTEGER NOT NULL CHECK(evidence_complete IN (0,1)),
+            protection_catalogue_version INTEGER NULL,
+            direct_protection_entry_id INTEGER NULL,
+            direct_protection_name   TEXT NULL,
             UNIQUE (rule_id, subject_kind, subject_key, object_guid)
         )
         """,
@@ -298,9 +307,9 @@ public static class JudgementSchema
         // SignalsDisagree are computed from these three columns, so storing them as well would
         // create a second copy that can disagree with the first. A reader re-derives them; that
         // cannot drift.
-        """
-        CREATE TABLE finding_unconstrained_delegation (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_unconstrained_delegation (
+            finding_id                          INTEGER NOT NULL,
             user_account_control                INTEGER NOT NULL,
             is_computer                         INTEGER NOT NULL,
             server_trust_account_bit            INTEGER NOT NULL,
@@ -321,9 +330,9 @@ public static class JudgementSchema
         // bundle carries is live, and a column recording that would be false on every row forever -
         // which is the fault that had the flag removed from the evidence schema in the first place.
         // docs/decisions/0091 puts tombstones outside this rule; P-108 tracks capturing them.
-        """
-        CREATE TABLE finding_admincount_without_protection (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_admincount_without_protection (
+            finding_id                          INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
             PRIMARY KEY (finding_id)
         )
@@ -340,9 +349,9 @@ public static class JudgementSchema
         // NO DISABLED COLUMN. ADS_UF_ACCOUNTDISABLE is 0x2 of the value already here, so a column
         // would be a second account of one fact and the two could disagree. The reader re-derives
         // it, exactly as the delegation table leaves its two computed answers out.
-        """
-        CREATE TABLE finding_user_account_control (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_user_account_control (
+            finding_id                          INTEGER NOT NULL,
             user_account_control                INTEGER NOT NULL,
             PRIMARY KEY (finding_id)
         )
@@ -356,9 +365,9 @@ public static class JudgementSchema
         // storing an empty string as though it were a SID, would either suppress a true escalation
         // or invent a principal - and the second is worse, because S-1-5-21-... prefixes are
         // compared against this column to say the privilege came from another domain.
-        """
-        CREATE TABLE finding_privileged_sid_history (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_privileged_sid_history (
+            finding_id                          INTEGER NOT NULL,
             object_sid                          TEXT    NULL,
             unreadable_values                   INTEGER NOT NULL,
             PRIMARY KEY (finding_id)
@@ -379,9 +388,9 @@ public static class JudgementSchema
         // recomputed by the reader, none of them able to disagree with the value they came from.
         // The delegation and pre-authentication tables leave their computed answers out for exactly
         // this reason.
-        """
-        CREATE TABLE finding_privileged_sid_history_value (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_privileged_sid_history_value (
+            finding_id                          INTEGER NOT NULL,
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
             PRIMARY KEY (finding_id, ordinal)
@@ -396,9 +405,9 @@ public static class JudgementSchema
         // ticket for one. The value is here so the finding can say the account is disabled and so a
         // reader can see its other flags without a second finding in front of him. IsDisabled is
         // recomputed from it rather than stored beside it.
-        """
-        CREATE TABLE finding_kerberoastable_account (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_kerberoastable_account (
+            finding_id                          INTEGER NOT NULL,
             object_sid                          TEXT    NOT NULL,
             user_account_control                INTEGER NOT NULL,
             unreadable_service_names            INTEGER NOT NULL,
@@ -414,9 +423,9 @@ public static class JudgementSchema
         // ALL OF THEM, BECAUSE THE OPERATOR'S QUESTION IS WHETHER THE ACCOUNT REALLY RUNS A SERVICE.
         // The commonest real case is a stale name left over from a test, and that is the only case
         // whose remedy is simply to remove it - which he cannot judge from one name out of four.
-        """
-        CREATE TABLE finding_kerberoastable_account_spn (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_kerberoastable_account_spn (
+            finding_id                          INTEGER NOT NULL,
             ordinal                             INTEGER NOT NULL,
             service_principal_name              TEXT    NOT NULL,
             PRIMARY KEY (finding_id, ordinal)
@@ -450,9 +459,9 @@ public static class JudgementSchema
         // build number and the same answer guessed from an operating system name are not equally
         // good, and a bundle sealed before operatingSystemVersion was captured can only be judged
         // the second way. The finding records which it was.
-        """
-        CREATE TABLE finding_laps_deployment (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_deployment (
+            finding_id                          INTEGER NOT NULL,
             windows_laps_expiration             TEXT        NULL,
             legacy_laps_expiration              TEXT        NULL,
             capability_kind                     TEXT    NOT NULL,
@@ -489,9 +498,9 @@ public static class JudgementSchema
         //
         // TRUSTEE_SID IS NOT NULL AND IS THE DISCRIMINATOR, per P-112: a row that exists always has
         // one, so the reader never keys this evidence kind off a legitimately null column.
-        """
-        CREATE TABLE finding_laps_password_reader (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader (
+            finding_id                          INTEGER NOT NULL,
             trustee_sid                         TEXT    NOT NULL,
             trustee_name                        TEXT        NULL,
             broad_principal_sid                 TEXT    NOT NULL,
@@ -520,9 +529,9 @@ public static class JudgementSchema
         // time would be one lookup per row per page, which is the thing the finding table's own
         // remarks refused - measured at about three seconds a page on a million objects. It is
         // nullable because a principal from a trusted forest has no name in this bundle.
-        """
-        CREATE TABLE finding_laps_password_reader_path (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader_path (
+            finding_id                          INTEGER NOT NULL,
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
             name                                TEXT        NULL,
@@ -541,9 +550,9 @@ public static class JudgementSchema
         // rights - so an operator reading a stored finding has to be able to tell which one this
         // was. Flattening them to "takeover" would lose the distinction that decides whether the
         // finding is even true on a hardened forest.
-        """
-        CREATE TABLE finding_object_takeover (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_object_takeover (
+            finding_id                          INTEGER NOT NULL,
             trustee_sid                         TEXT    NOT NULL,
             trustee_name                        TEXT        NULL,
             broad_principal_sid                 TEXT    NOT NULL,
@@ -558,9 +567,9 @@ public static class JudgementSchema
         // The membership path for SEC-060, one principal per row, for the reason the LAPS path
         // table gives in full: the path is the finding, and the nesting lives in the derivation so
         // it cannot be recomputed from the judgement store alone.
-        """
-        CREATE TABLE finding_object_takeover_path (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_object_takeover_path (
+            finding_id                          INTEGER NOT NULL,
             ordinal                             INTEGER NOT NULL,
             sid                                 TEXT    NOT NULL,
             name                                TEXT        NULL,
@@ -588,9 +597,9 @@ public static class JudgementSchema
         // OBJECT_CLASS IS STORED RATHER THAN LOOKED UP. It decides whether the forest's
         // owner-rights hardening could have applied at all, and a stored finding has to stay
         // readable without re-opening the evidence it came from.
-        """
-        CREATE TABLE finding_object_ownership (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_object_ownership (
+            finding_id                          INTEGER NOT NULL,
             owner_sid                           TEXT    NOT NULL,
             owner_name                          TEXT        NULL,
             standing                            TEXT    NOT NULL,
@@ -624,9 +633,9 @@ public static class JudgementSchema
         //
         // EXPANSION_WAS_COMPLETE IS WHY AN EMPTY RESULT IS NOT REASSURANCE, for the reason the
         // SEC-090 table gives.
-        """
-        CREATE TABLE finding_laps_decryptor (
-            finding_id                          INTEGER NOT NULL REFERENCES finding(finding_id),
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_decryptor (
+            finding_id                          INTEGER NOT NULL,
             policy_display_name                 TEXT        NULL,
             configured_value                    TEXT    NOT NULL,
             form                                TEXT    NOT NULL,
@@ -641,8 +650,8 @@ public static class JudgementSchema
         // Every distinct broad principal supporting the policy finding, ordered exactly as shown.
         // A second principal is support for the same accepted policy problem, not a second durable
         // finding with an identity the store cannot publish.
-        """
-        CREATE TABLE finding_laps_decryptor_route (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_decryptor_route (
             finding_id                          INTEGER NOT NULL,
             route_ordinal                       INTEGER NOT NULL CHECK (route_ordinal >= 0),
             broad_principal_sid                 TEXT    NOT NULL,
@@ -659,8 +668,8 @@ public static class JudgementSchema
         // encrypts against exactly one configured principal, and Microsoft's documented way to
         // authorize more than one is a wrapper group. Naming only the endpoints would not say
         // which links to cut.
-        """
-        CREATE TABLE finding_laps_decryptor_path (
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_decryptor_path (
             finding_id                          INTEGER NOT NULL,
             route_ordinal                       INTEGER NOT NULL,
             step_ordinal                        INTEGER NOT NULL,
@@ -683,19 +692,19 @@ public static class JudgementSchema
     // leaves the database sorting the remainder on every page. The tie-breaker is not decoration:
     // rows that sort equal can straddle a page boundary and be shown twice or not at all, which is
     // silent and close to unreproducible. Learned from the predecessor's KeysetQueryBuilder.
-    private static readonly string[] DeferredIndexDdl =
+    private static string[] DeferredIndexDdl(SqliteConnection connection) =>
     [
-        "CREATE INDEX ix_finding_grid ON finding(severity_rank DESC, rule_id, distinguished_name)",
-        "CREATE INDEX ix_finding_rule ON finding(rule_id)",
-        "CREATE INDEX ix_finding_object ON finding(object_guid)",
-        "CREATE INDEX ix_finding_domain ON finding(domain_fqdn)",
+        $"CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_grid ON finding(severity_rank DESC, rule_id, distinguished_name)",
+        $"CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_rule ON finding(rule_id)",
+        $"CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_object ON finding(object_guid)",
+        $"CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_domain ON finding(domain_fqdn)",
 
         // Asked once for every object an operator opens, to fill the findings section of the object
         // view. Without it that is a scan of every finding in the forest per object opened, which is
         // the shape of a screen that feels fine in a lab and stalls on a real directory.
         //
         // The grid index above leads on severity_rank, so it cannot serve an exact name lookup.
-        "CREATE INDEX ix_finding_name ON finding(distinguished_name)",
+        $"CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_name ON finding(distinguished_name)",
     ];
 
     /// <summary>
@@ -705,7 +714,7 @@ public static class JudgementSchema
     public static void CreateTables(SqliteConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        Execute(connection, TableDdl);
+        Execute(connection, TableDdl(connection));
         SecureAD.Storage.MembershipRouteStorage.CreateTables(connection);
         ControlEdgeStorage.CreateTables(connection);
         SelfMembershipStorage.CreateTables(connection);
@@ -724,6 +733,7 @@ public static class JudgementSchema
         Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
+        JudgementStoreLayout.CreateReferences(connection);
     }
 
     /// <summary>
@@ -733,7 +743,7 @@ public static class JudgementSchema
     public static void CreateDeferredIndexes(SqliteConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        Execute(connection, DeferredIndexDdl);
+        Execute(connection, DeferredIndexDdl(connection));
         LapsInventoryStorage.CreateIndexes(connection);
     }
 

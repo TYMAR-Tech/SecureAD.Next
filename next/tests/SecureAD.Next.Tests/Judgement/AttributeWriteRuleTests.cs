@@ -595,11 +595,11 @@ public sealed class AttributeWriteRuleTests
         var directory = Published(AllPropertyDescriptor());
         using var reader = Open(directory);
         var seal = Evidence(reader.Read().Findings[0]).DerivationSeal;
-        var path = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
-        var copy = Path.Combine(directory, "attribute-write-publication.db");
-        File.Copy(path, copy);
+        var working = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "attribute-write-publication");
+        var copy = BundleLayout.AnalysisGenerationDataPath(working, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, working, reader.Description.GenerationId);
         AttributeWriteFindingStorage.RequirePublishable(connection, seal, CancellationToken.None);
         using var command = connection.CreateCommand();
         command.CommandText = "UPDATE finding_attribute_write SET fingerprint=zeroblob(32)";
@@ -663,9 +663,11 @@ public sealed class AttributeWriteRuleTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        using var reader = Open(Published(AllPropertyDescriptor()));
+        using var reader = Open(FindingsRun());
         return reader.ReadPage(FindingsQuery.About(TargetDn)).Value.Findings;
     }
+
+    internal static string FindingsRun() => Published(AllPropertyDescriptor());
 
     private static RuleVerdict Assess(string rule, IReadOnlyList<PermissionEntry> entries, ObjectAttributes? subject = null,
         SchemaGuidCatalog? catalogue = null, IReadOnlyList<ObjectAttributes>? additional = null, bool incompleteDescriptor = false,
@@ -763,7 +765,7 @@ public sealed class AttributeWriteRuleTests
             SchemaGuidKind.Attribute, SchemaGuidSource.Captured)), SchemaGuidCatalog.Embedded,
             sets ?? new Dictionary<string, IReadOnlyList<string>>());
     private static string AllPropertyDescriptor() => $"O:SYG:SYD:(A;;WP;;;{HolderSid})";
-    private static string Published(string descriptor)
+    internal static string Published(string descriptor)
     {
         var directory = Capture(descriptor);
         Derive(directory);
@@ -833,6 +835,7 @@ public sealed class AttributeWriteRuleTests
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = BundleLayout.AnalysisGenerationDataPath(directory,
             AnalysisStoreKind.Judgement, reader.Description.GenerationId), Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, reader.Description.GenerationId);
         return connection;
     }
     private static void Rehash(SqliteConnection connection)

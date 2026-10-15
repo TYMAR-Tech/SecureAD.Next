@@ -25,6 +25,8 @@ public sealed partial class JudgementReader
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (Description.State is not (JudgementRunState.Completed or JudgementRunState.CompletedDegraded))
             throw new InvalidOperationException(PermissionClassificationStorage.Message("Unavailable"));
+        OpenPart(Evidence.StoreSegmentRole.JudgementFacts);
+        OpenPart(Evidence.StoreSegmentRole.PermissionProof);
         return PermissionClassificationStorage.Read(_connection, Description, distinguishedName, carriedDescriptor, cancellationToken);
     }
 }

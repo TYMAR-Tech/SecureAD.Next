@@ -285,6 +285,8 @@ public sealed class DuplicateSpnTests
         return reader.Read().Findings;
     }
 
+    internal static string FindingsRun() => Prepared();
+
     private static string Prepared()
     {
         var directory = Capture();

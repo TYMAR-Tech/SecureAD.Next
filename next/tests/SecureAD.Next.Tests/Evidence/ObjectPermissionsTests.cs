@@ -934,8 +934,7 @@ public sealed class ObjectPermissionsTests : IDisposable
             SqliteConnection.ClearPool(connection);
         }
 
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
     }
 
     private void WriteBundle(Action<BundleWriter> write)

@@ -401,7 +401,7 @@ public sealed class PortableSummaryContentTests
 
         // Only this test's synthetic bundle is resealed, so rejection must come from the intended
         // read failure rather than an unrelated hash mismatch before the read is even attempted.
-        BundleSealing.Seal(BundleLayout.EvidencePath(bundle), BundleLayout.SealPath(bundle));
+        TestSealing.ResealCapture(bundle);
     }
 
     /// <summary>Objects captured under a partition the forest calls a domain.</summary>

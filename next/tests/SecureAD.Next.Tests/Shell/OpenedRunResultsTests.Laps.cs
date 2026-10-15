@@ -25,7 +25,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun(account: null, rawAccount: rawAccount);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
         Assert.Equal(LapsAttributes.AccountState.Unknown, Assert.Single(page.Value.Computers).AccountState);
     }
@@ -40,7 +40,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun(modern: raw);
         using var source = new BundleAssetSource();
 
-        var row = Assert.Single(source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1).Value.Computers);
+        var row = Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers);
 
         Assert.Equal((raw, expected), (row.WindowsLaps.Raw, row.WindowsLaps.Reading));
     }
@@ -59,7 +59,7 @@ public sealed partial class OpenedRunResultsTests
             """);
         using var source = new BundleAssetSource();
 
-        var row = Assert.Single(source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1).Value.Computers);
+        var row = Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers);
 
         Assert.Equal((LapsManagement.LegacyLaps, LapsCapabilityKind.Unknown, LapsCapabilityBasis.OperatingSystemName,
             LapsAttributes.AccountState.Unknown, true, LapsTimestampReading.Unreadable, (DateTimeOffset?)null),
@@ -73,7 +73,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun(legacy: "unreadable");
         using var source = new BundleAssetSource();
 
-        var row = Assert.Single(source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1).Value.Computers);
+        var row = Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers);
 
         Assert.Equal((LapsDn, "ad.lab", "Windows Server 2022 Datacenter", "10.0 (20348)", "4096", "133700000000000000", "unreadable"),
             (row.DistinguishedName, row.DomainFqdn, row.OperatingSystem, row.OperatingSystemVersion,
@@ -92,7 +92,7 @@ public sealed partial class OpenedRunResultsTests
         SavedLapsTestRun.Judge(directory);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, dn, scope, 1).Value;
+        var page = source.ListLapsComputers(directory, new(dn, scope, "", null), null).Value;
 
         Assert.Equal((expected, expected), (page.Total, page.Computers.Count));
     }
@@ -106,7 +106,7 @@ public sealed partial class OpenedRunResultsTests
         SavedLapsTestRun.Judge(directory);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, "OU=_%!," + LapsRoot, ListingScope.Subtree, 1).Value;
+        var page = source.ListLapsComputers(directory, new("OU=_%!," + LapsRoot, ListingScope.Subtree, "", null), null).Value;
 
         Assert.Equal("A", Assert.Single(page.Computers).Name);
     }
@@ -120,8 +120,9 @@ public sealed partial class OpenedRunResultsTests
         SavedLapsTestRun.Judge(directory);
         using var source = new BundleAssetSource();
 
-        var first = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1).Value;
-        var second = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 2).Value;
+        var query = new LapsQuery(LapsRoot, ListingScope.Subtree, "", null);
+        var first = source.ListLapsComputers(directory, query, null).Value;
+        var second = source.ListLapsComputers(directory, query, Assert.IsType<LapsPageMark>(first.Next)).Value;
 
         Assert.Equal((100, 3, 103, 103, 103),
             (first.Computers.Count, second.Computers.Count, first.Total, second.Total, second.CountOf(LapsManagement.WindowsLaps)));
@@ -132,12 +133,12 @@ public sealed partial class OpenedRunResultsTests
     {
         var directory = CreateLapsRun();
         MutateControlRun(directory, """
-            INSERT INTO laps_inventory VALUES ('CN=Other,DC=ad,DC=lab','Other','DC=ad,DC=lab','lab,ad,Other','NotManaged','not json');
+            INSERT INTO laps_inventory VALUES ('CN=Other,DC=ad,DC=lab','Other','DC=ad,DC=lab','lab,ad,Other','NotManaged','ad.lab','not json');
             UPDATE laps_inventory_product SET computer_count=2
             """);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsDn, ListingScope.Base, 1).Value;
+        var page = source.ListLapsComputers(directory, new(LapsDn, ListingScope.Base, "", null), null).Value;
 
         Assert.Equal(LapsDn, Assert.Single(page.Computers).DistinguishedName);
     }
@@ -148,7 +149,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsEvidence();
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
         Assert.Equal("This run has no saved LAPS inventory.", page.Error?.Description);
     }
@@ -160,7 +161,7 @@ public sealed partial class OpenedRunResultsTests
         SavedLapsTestRun.Judge(directory);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
         Assert.Equal((true, 0, 0), (page.IsSuccess, page.Value.Total, page.Value.Computers.Count));
     }
@@ -176,7 +177,7 @@ public sealed partial class OpenedRunResultsTests
         MutateControlRun(directory, sql);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
         Assert.Contains(message, page.Error?.Description ?? "", StringComparison.Ordinal);
     }
@@ -190,7 +191,7 @@ public sealed partial class OpenedRunResultsTests
         MutateControlRun(directory, "UPDATE laps_inventory SET " + assignment);
         using var source = new BundleAssetSource();
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
         Assert.Equal("Shell.SavedResultsInvalidEvidence", page.Error?.Code);
     }
@@ -201,13 +202,14 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun();
         using var counts = new ReadbackCounts(directory);
         using var source = new BundleAssetSource();
-        source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
-        var second = source.ListLapsComputers(directory, LapsDn, ListingScope.Base, 1);
+        var second = source.ListLapsComputers(directory, new(LapsDn, ListingScope.Base, "", null), null);
         source.ReadObjectAttributes(directory, LapsDn);
 
         Assert.Equal((1, 1L, 1L, 0L),
             (second.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications, counts.AnalyticalReads));
+        Assert.Equal((1L, 0L, 0L), (counts.FactsVerifications, counts.PermissionProofVerifications, counts.PathProofVerifications));
     }
 
     [Fact]
@@ -216,13 +218,15 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun();
         using var counts = new ReadbackCounts(directory);
         using var source = new BundleAssetSource();
-        source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
         source.CloseRun();
         source.SelectRun(directory);
 
-        var page = source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1);
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
 
-        Assert.Equal((1, 2L, 2L), (page.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications));
+        Assert.Equal((1, 0L, 2L), (page.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications));
+        Assert.Equal(2L, counts.NavigationVerifications);
+        Assert.Equal(2L, counts.FactsVerifications);
     }
 
     [Fact]
@@ -233,7 +237,7 @@ public sealed partial class OpenedRunResultsTests
         using var stopping = new CancellationTokenSource();
         stopping.Cancel();
 
-        Assert.Throws<OperationCanceledException>(() => session.ReadLapsComputers(LapsRoot, ListingScope.Subtree, 1, stopping.Token));
+        Assert.Throws<OperationCanceledException>(() => session.ReadLapsComputers(new(LapsRoot, ListingScope.Subtree, "", null), null, stopping.Token));
     }
 
     [Fact]
@@ -245,6 +249,7 @@ public sealed partial class OpenedRunResultsTests
         using (var connection = new SqliteConnection($"Data Source={BundleLayout.JudgementPartialPath(directory)};Pooling=False"))
         {
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
             using var command = connection.CreateCommand();
             command.CommandText = "INSERT INTO laps_inventory_product VALUES (1, $generation, 'Writing', NULL)";
             command.Parameters.AddWithValue("$generation", writer.GenerationId.ToString("D"));
@@ -262,7 +267,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRun(account: null, primaryGroup: group);
         using var source = new BundleAssetSource();
 
-        var row = new LapsComputerViewModel(Assert.Single(source.ListLapsComputers(directory, LapsRoot, ListingScope.Subtree, 1).Value.Computers));
+        var row = new LapsComputerViewModel(Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers));
 
         Assert.Equal(expected, row.NotJudgedBecause);
     }

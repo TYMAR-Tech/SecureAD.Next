@@ -146,14 +146,14 @@ internal static class ObjectListingReader
     /// <param name="scope">How much of what is beneath it to include.</param>
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public static ObjectPage Read(
-        SqliteConnection connection, string containerDn, ListingScope scope, int pageNumber)
+        SqliteConnection connection, string containerDn, ListingScope scope, int pageNumber, bool navigation = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
         ArgumentOutOfRangeException.ThrowIfLessThan(pageNumber, 1);
 
         var where = WhereFor(scope);
         var total = CountOf(connection, where, containerDn);
-        var objects = PageOf(connection, where, containerDn, pageNumber);
+        var objects = PageOf(connection, where, containerDn, pageNumber, navigation);
         var (complete, shortfall) = CoverageOf(connection, containerDn, scope);
 
         return new ObjectPage(objects, total, complete, shortfall);
@@ -203,7 +203,7 @@ internal static class ObjectListingReader
     }
 
     private static List<ListedObject> PageOf(
-        SqliteConnection connection, string where, string containerDn, int pageNumber)
+        SqliteConnection connection, string where, string containerDn, int pageNumber, bool navigation)
     {
         var objects = new List<ListedObject>();
 
@@ -213,14 +213,12 @@ internal static class ObjectListingReader
         // least specific first - top, person, organizationalPerson, user - and the values are
         // stored in that order. Taking the highest ordinal is therefore 'user' rather than 'top',
         // which is the word an administrator recognises the object by.
+        var objectClass = navigation ? "o.most_specific_class"
+            : "(SELECT v.value FROM objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1)";
         command.CommandText =
             $"""
             SELECT o.distinguished_name, o.object_guid, o.parent_dn,
-                   (SELECT v.value
-                    FROM objectclass_value AS v
-                    WHERE v.object_id = o.object_id
-                    ORDER BY v.ordinal DESC
-                    LIMIT 1)
+                   {objectClass}
             FROM captured_object AS o
             WHERE {where}
             ORDER BY {NameOrder} COLLATE NOCASE

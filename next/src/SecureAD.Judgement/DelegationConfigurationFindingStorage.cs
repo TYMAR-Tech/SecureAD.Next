@@ -11,9 +11,9 @@ internal static class DelegationConfigurationFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_delegation_configuration (
-                finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id), generation TEXT NOT NULL,
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_delegation_configuration (
+                finding_id INTEGER PRIMARY KEY, generation TEXT NOT NULL,
                 proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
                 account_source_hash BLOB NOT NULL CHECK(length(account_source_hash)=32),
                 resource_source_hash BLOB NOT NULL CHECK(length(resource_source_hash)=32));

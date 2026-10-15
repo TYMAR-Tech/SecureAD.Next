@@ -154,6 +154,7 @@ public sealed partial class NestedRequesterPathTests
             Mode = SqliteOpenMode.ReadOnly, Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         return connection;
     }
 

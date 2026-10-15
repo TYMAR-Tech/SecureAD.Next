@@ -42,6 +42,8 @@ public sealed partial class OpenedRunResultsTests
 
         Assert.Equal((1L, 1L, 1L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
             counts.JudgementVerifications, counts.AnalyticalReads));
+        Assert.Equal((list == 1 ? 0L : 1L, list == 1 ? 1L : 0L, 0L),
+            (counts.PermissionProofVerifications, counts.PathProofVerifications, counts.FactsVerifications));
     }
 
     [Theory]

@@ -64,6 +64,7 @@ public sealed partial class PathInputTests
                 Mode = SqliteOpenMode.ReadOnly, Pooling = false,
             }.ToString());
             _connection.Open();
+            TestSealing.AttachJudgementParts(_connection, directory, _reader.Description.GenerationId);
             _sources = ControlProofVerification.OpenSources(_reader);
             Inputs = PathInputStorage.Read(_connection, _reader.Description, out _ownership, CancellationToken.None);
         }

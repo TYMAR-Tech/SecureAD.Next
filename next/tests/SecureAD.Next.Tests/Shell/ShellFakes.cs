@@ -405,16 +405,22 @@ internal sealed class FakeAssetSource : IAssetSource
     public int LapsListings { get; private set; }
 
     public Result<LapsPage> ListLapsComputers(
-        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
+        string bundleDirectory, LapsQuery query, LapsPageMark? after)
     {
-        LapsListedContainer = containerDn;
-        LapsListedPage = pageNumber;
-        LapsListedScope = scope;
+        LapsListedContainer = query.Container;
+        LapsListedPage = after is null ? 1 : LapsListedPage + 1;
+        LapsListedScope = query.Scope;
         LapsListings++;
 
         return LapsListingFails is { } error
             ? Result<LapsPage>.Failure(error)
-            : Result<LapsPage>.Success(LapsPage);
+            : Result<LapsPage>.Success(LapsPage with
+            {
+                Computers = LapsPage.Computers.Where(row =>
+                    (query.Search.Length == 0 || row.Name.Contains(query.Search, StringComparison.OrdinalIgnoreCase)
+                        || (row.DomainFqdn ?? "").Contains(query.Search, StringComparison.OrdinalIgnoreCase))
+                    && (query.State is null || row.Management == query.State)).ToArray(),
+            });
     }
 
     public Result<ObjectPermissions?> ReadPermissions(
@@ -481,6 +487,15 @@ internal sealed class FakeAssetSource : IAssetSource
         return FindingsFail is { } error
             ? Result<FindingsPage>.Failure(error)
             : Result<FindingsPage>.Success(FindingsPage);
+    }
+
+    public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query)
+    {
+        var original = ReadFindings(bundleDirectory, query);
+        return original.IsSuccess
+            ? Result<FindingListPage>.Success(new(original.Value.Findings.Select(FindingListItem.FromFinding).ToArray(),
+                original.Value.Next, original.Value.RulesRan))
+            : Result<FindingListPage>.Failure(original.Error);
     }
 
     /// <summary>What the filters may offer. Nothing, unless a test says otherwise.</summary>

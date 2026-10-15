@@ -289,7 +289,9 @@ public sealed partial class OwnAccountMembershipPathTests
         using var stopping = new CancellationTokenSource();
         var inserted = 0;
         connection.CreateFunction("stop_risk_test", () => { inserted++; stopping.Cancel(); return 1; });
-        command.CommandText = "CREATE TRIGGER stop_after_risk AFTER INSERT ON path_requester_risk BEGIN SELECT stop_risk_test(); END";
+        command.CommandText = "PRAGMA temp_store=FILE";
+        command.ExecuteNonQuery();
+        command.CommandText = "CREATE TEMP TRIGGER stop_after_risk AFTER INSERT ON PathProof.path_requester_risk BEGIN SELECT stop_risk_test(); END";
         command.ExecuteNonQuery();
         using var sources = ControlProofVerification.OpenSources(reader);
 
@@ -372,18 +374,18 @@ public sealed partial class OwnAccountMembershipPathTests
 
     private static SqliteConnection RiskDatabase(JudgementReader reader, bool writableCopy)
     {
-        var path = BundleLayout.AnalysisGenerationDataPath(reader.BundleDirectory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
+        var directory = reader.BundleDirectory;
         if (writableCopy)
         {
-            var copy = Path.Combine(reader.BundleDirectory, "risk-working-" + Guid.NewGuid().ToString("N") + ".db");
-            File.Copy(path, copy);
-            path = copy;
+            directory = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "risk-working");
         }
+        var path = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = path, Pooling = false, Mode = writableCopy ? SqliteOpenMode.ReadWrite : SqliteOpenMode.ReadOnly,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, reader.Description.GenerationId);
         PathProofVerification.EnableJsonReads(connection);
         return connection;
     }

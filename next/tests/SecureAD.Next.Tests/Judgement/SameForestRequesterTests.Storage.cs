@@ -85,6 +85,7 @@ public sealed partial class SameForestRequesterTests
             Mode = SqliteOpenMode.ReadOnly, Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         using var sources = ControlProofVerification.OpenSources(reader);
         var identities = OwnershipAuditStorage.Targets(connection).ToDictionary(value => value.Identity.DistinguishedName,
             value => value.Identity, StringComparer.OrdinalIgnoreCase);
@@ -107,6 +108,7 @@ public sealed partial class SameForestRequesterTests
             Mode = SqliteOpenMode.ReadOnly, Pooling = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, reader.BundleDirectory, reader.Description.GenerationId);
         using var sources = ControlProofVerification.OpenSources(reader);
         var identities = OwnershipAuditStorage.Targets(connection).ToDictionary(value => value.Identity.DistinguishedName,
             value => value.Identity, StringComparer.OrdinalIgnoreCase);

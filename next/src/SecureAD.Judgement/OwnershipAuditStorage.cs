@@ -29,7 +29,7 @@ internal static class OwnershipAuditStorage
     {
         private readonly SqliteConnection _connection;
         private readonly JudgementDescription _description;
-        private readonly (long Changes, long Version) _revision;
+        private readonly (long Changes, long MainVersion, long ProofVersion) _revision;
 
         internal Snapshot(SqliteConnection connection, JudgementDescription description, CancellationToken cancellationToken)
         {
@@ -62,24 +62,18 @@ internal static class OwnershipAuditStorage
                 || Revision(connection) != _revision) throw InvalidProof();
         }
 
-        private static (long Changes, long Version) Revision(SqliteConnection connection)
-        {
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT total_changes()";
-            var changes = (long)command.ExecuteScalar()!;
-            command.CommandText = "PRAGMA data_version";
-            return (changes, (long)command.ExecuteScalar()!);
-        }
+        private static (long Changes, long MainVersion, long ProofVersion) Revision(SqliteConnection connection) =>
+            JudgementStoreLayout.Revision(connection);
     }
 
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE ownership_audit (id INTEGER PRIMARY KEY CHECK(id=1), header TEXT NOT NULL,
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ownership_audit (id INTEGER PRIMARY KEY CHECK(id=1), header TEXT NOT NULL,
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32), completed INTEGER NOT NULL CHECK(completed IN (0,1)));
-        CREATE TABLE ownership_target (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ownership_target (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
             identity_json TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32), selection TEXT NOT NULL,
             execution TEXT NOT NULL, candidate_count INTEGER NOT NULL CHECK(candidate_count>=0),
             transition_count INTEGER NOT NULL CHECK(transition_count>=0));
-        CREATE TABLE ownership_seed (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ownership_seed (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES ownership_target(target),
             routes TEXT NOT NULL, classification_fingerprint BLOB NOT NULL CHECK(length(classification_fingerprint)=32),
             classification TEXT NOT NULL);
 
@@ -90,7 +84,7 @@ internal static class OwnershipAuditStorage
         -- DACL and the trustee - which capture already holds. edge_id survives for routes that did
         -- come from a stored edge; exactly one of the two sources is present, and a row carrying
         -- neither would be a route with no provenance at all.
-        CREATE TABLE ownership_relation (id INTEGER PRIMARY KEY, edge_id INTEGER NULL REFERENCES control_edge(id),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ownership_relation (id INTEGER PRIMARY KEY, edge_id INTEGER NULL REFERENCES control_edge(id),
             controller_target TEXT NOT NULL COLLATE NOCASE REFERENCES ownership_target(target),
             affected_target TEXT NOT NULL COLLATE NOCASE REFERENCES ownership_target(target),
             witness_target TEXT NULL COLLATE NOCASE, witness_ordinal INTEGER NULL CHECK(witness_ordinal IS NULL OR witness_ordinal>=0),
@@ -100,8 +94,8 @@ internal static class OwnershipAuditStorage
             CHECK(witness_target IS NULL OR (witness_trustee IS NOT NULL AND witness_capability IS NOT NULL)),
             CHECK(witness_membership IS NULL OR (edge_id IS NULL AND witness_is_owner=0)),
             CHECK(witness_is_owner = 0 OR witness_ordinal IS NULL));
-        CREATE UNIQUE INDEX ux_ownership_relation_edge ON ownership_relation(edge_id) WHERE edge_id IS NOT NULL;
-        CREATE UNIQUE INDEX ux_ownership_relation_witness ON ownership_relation(
+        CREATE UNIQUE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ux_ownership_relation_edge ON ownership_relation(edge_id) WHERE edge_id IS NOT NULL;
+        CREATE UNIQUE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ux_ownership_relation_witness ON ownership_relation(
             controller_target, affected_target, witness_target, COALESCE(witness_ordinal,-1), witness_trustee)
             WHERE witness_target IS NOT NULL;
         """);

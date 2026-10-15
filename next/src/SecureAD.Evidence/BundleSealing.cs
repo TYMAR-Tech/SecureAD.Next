@@ -221,7 +221,14 @@ public static class BundleSealing
             outcome = "Cancelled";
             throw;
         }
-        finally { work.Report(log, kind, generation, outcome); }
+        finally
+        {
+            var name = Path.GetFileName(evidenceFilePath);
+            var artifact = kind is not null ? null
+                : name.StartsWith("navigation.", StringComparison.Ordinal) ? "Navigation"
+                : name.StartsWith("overview.", StringComparison.Ordinal) ? "Overview" : null;
+            work.Report(log, kind, generation, outcome, artifact);
+        }
     }
 
     internal static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken, FileSealWork? work)
@@ -272,6 +279,10 @@ public static class BundleSealing
             "It does not prove the capture was complete, which is a claim the bundle makes in its "
             + "own tables.", cancellationToken);
     }
+
+    internal static SealVerdict VerifySegment(string dataPath, string sealPath, string artifact, CancellationToken token) =>
+        Verify(dataPath, sealPath, artifact, "A selected immutable product must have its matching seal.",
+            "The seal does not establish capture or analysis completeness.", token);
 
     /// <summary>
     /// Verifies the seal on a bundle's judgement store.
@@ -344,6 +355,38 @@ public static class BundleSealing
         ArgumentNullException.ThrowIfNull(generation);
         ArgumentException.ThrowIfNullOrWhiteSpace(artefact);
         ArgumentException.ThrowIfNullOrWhiteSpace(intactCaveat);
+
+        if (generation.Kind == AnalysisStoreKind.Judgement)
+        {
+            var selected = AnalysisStoreLifecycle.ResolveRoot(bundleDirectory, generation.Kind);
+            if (!selected.IsSuccess) return new(SealState.Unreadable, selected.Error.Description);
+            if (selected.Value.GenerationId != generation.GenerationId)
+                return new(SealState.Mismatch, "The judgement generation changed before its complete verification.");
+            var files = new List<ProtectedStoreFile>();
+            try
+            {
+                foreach (var segment in selected.Value.Segments)
+                {
+                    var opened = ProtectedStoreFile.OpenAnalysisSegment(bundleDirectory, generation, segment.Role, cancellationToken);
+                    if (!opened.IsSuccess)
+                    {
+                        var state = opened.Error.Code switch
+                        {
+                            "Evidence.ProtectedStoreAbsent" => SealState.Absent,
+                            "Evidence.ProtectedStoreMismatch" => SealState.Mismatch,
+                            _ => SealState.Unreadable,
+                        };
+                        return new(state, opened.Error.Description);
+                    }
+                    files.Add(opened.Value);
+                    if (opened.Value.Root.Hash != selected.Value.Hash)
+                        return new(SealState.Mismatch, "The judgement root changed during its complete verification.");
+                }
+                return new(SealState.Intact, $"The {artefact} matches its seal ({Algorithm}). This proves the bytes are "
+                    + "unchanged since it was written. " + intactCaveat);
+            }
+            finally { foreach (var file in files) file.Dispose(); }
+        }
 
         return Verify(
             BundleLayout.AnalysisGenerationDataPath(

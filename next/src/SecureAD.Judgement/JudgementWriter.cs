@@ -44,6 +44,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly IDisposable _writeLock;
     private readonly PreparedStatements _statements;
     private readonly Guid? _derivationGenerationId;
+    private string _evidenceSeal = "";
     private readonly PermissionWriteSession _session = new();
     private SqliteTransaction? _batch;
     private int _batchObjects;
@@ -453,9 +454,9 @@ public sealed class JudgementWriter : IDisposable
             connection.Open();
             Pragma(connection, "journal_mode = WAL");
             Pragma(connection, "synchronous = NORMAL");
-            JudgementSchema.CreateTables(connection);
-
             writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock, derivationGenerationId);
+            JudgementStoreLayout.Create(connection, bundleDirectory, writer.GenerationId, evidenceSeal, derivationGenerationId);
+            JudgementSchema.CreateTables(connection);
             writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
             transferred = true;
             return writer;
@@ -634,6 +635,7 @@ public sealed class JudgementWriter : IDisposable
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
+        JudgementStoreLayout.RequirePublishable(_connection);
 
         var state = _evidenceIsComplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
@@ -647,7 +649,7 @@ public sealed class JudgementWriter : IDisposable
         JudgementSchema.CreateDeferredIndexes(_connection);
         cancellationToken.ThrowIfCancellationRequested();
         diagnostic?.Part("checkpoint-database");
-        Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        JudgementStoreLayout.Checkpoint(_connection);
         diagnostic?.Part("close-database");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
@@ -664,7 +666,7 @@ public sealed class JudgementWriter : IDisposable
                 AnalysisPublicationPart.SealData => "seal-generation",
                 AnalysisPublicationPart.SelectManifest => "select-generation",
                 _ => throw new ArgumentOutOfRangeException(nameof(part)),
-            }), sealingLog);
+            }), sealingLog, JudgementSchema.Version, _evidenceSeal, null, BundleLayout.JudgementParts);
         _finished = true;
         diagnostic?.Part("release-write-lock");
         _writeLock.Dispose();
@@ -692,7 +694,7 @@ public sealed class JudgementWriter : IDisposable
 
         FinishWithState(JudgementRunState.Failed, failedUtc);
 
-        Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        JudgementStoreLayout.Checkpoint(_connection);
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
         _finished = true;
@@ -747,6 +749,7 @@ public sealed class JudgementWriter : IDisposable
         DateTimeOffset startedUtc,
         DateTimeOffset evaluationAsOf)
     {
+        _evidenceSeal = evidenceSeal;
         using var transaction = _connection.BeginTransaction();
 
         Execute(
@@ -792,14 +795,16 @@ public sealed class JudgementWriter : IDisposable
     private void WriteFinding(SqliteTransaction transaction, Finding finding)
     {
         var findingId = _nextFindingId++;
+        var list = FindingListItem.FromFinding(finding);
 
         Execute(
             transaction,
             "INSERT INTO finding (finding_id, rule_id, subject_kind, subject_key, object_guid, "
             + "severity, severity_rank, distinguished_name, principal_name, domain_fqdn, "
-            + "object_class, detail, coverage) "
+            + "object_class, detail, coverage, list_kind, evidence_complete, protection_catalogue_version, "
+            + "direct_protection_entry_id, direct_protection_name) "
             + "VALUES ($id, $rule, $kind, $key, $guid, $severity, $rank, $dn, $principal, "
-            + "$domain, $class, $detail, $coverage)",
+            + "$domain, $class, $detail, $coverage, $listKind, $complete, $catalogue, $entry, $protection)",
             command =>
             {
                 command.Parameters.AddWithValue("$id", findingId);
@@ -820,6 +825,11 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$class", finding.ObjectClass);
                 command.Parameters.AddWithValue("$detail", finding.Detail);
                 command.Parameters.AddWithValue("$coverage", finding.Coverage.ToString());
+                command.Parameters.AddWithValue("$listKind", list.Kind.ToString());
+                command.Parameters.AddWithValue("$complete", list.EvidenceIsComplete ? 1 : 0);
+                command.Parameters.AddWithValue("$catalogue", (object?)list.Membership?.ProtectionCatalogueVersion ?? DBNull.Value);
+                command.Parameters.AddWithValue("$entry", (object?)list.Membership?.DirectProtectionCatalogueEntryId ?? DBNull.Value);
+                command.Parameters.AddWithValue("$protection", (object?)list.Membership?.DirectProtectionName ?? DBNull.Value);
             });
 
         WriteFindingEvidence(transaction, findingId, finding.Evidence);

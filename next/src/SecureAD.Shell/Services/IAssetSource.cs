@@ -121,11 +121,10 @@ internal interface IAssetReader
     /// management rather than its class and parent.
     /// </remarks>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
-    /// <param name="containerDn">The container the operator selected.</param>
-    /// <param name="scope">How much of what is beneath it to include.</param>
-    /// <param name="pageNumber">The page to fetch, counting from one.</param>
+    /// <param name="query">The complete selected scope and its saved-value filters.</param>
+    /// <param name="after">The previous page's generation-bound position, or null for the first page.</param>
     Result<LapsPage> ListLapsComputers(
-        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber);
+        string bundleDirectory, LapsQuery query, LapsPageMark? after);
 
     /// <summary>Reads the permissions on one object.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
@@ -179,7 +178,7 @@ internal interface IAssetReader
     /// </remarks>
     Result<int?> ReadGroupsWithUnidentifiedMembers(string bundleDirectory);
 
-    /// <summary>Reads one page of the findings a judging produced.</summary>
+    /// <summary>Reads original typed proof for a requested page of saved findings.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <param name="query">Which findings, and where to carry on from.</param>
     /// <remarks>
@@ -189,6 +188,9 @@ internal interface IAssetReader
     /// empty grid.
     /// </remarks>
     Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query);
+
+    /// <summary>Reads the existing Findings display without opening original proof stores.</summary>
+    Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query);
 
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>

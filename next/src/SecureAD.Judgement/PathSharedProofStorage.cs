@@ -92,14 +92,14 @@ internal sealed class PathSharedProofStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE path_shared_proof (
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_shared_proof (
                 proof INTEGER PRIMARY KEY REFERENCES path_proof(id),
                 kind TEXT NOT NULL, generation TEXT NOT NULL, derivation_generation TEXT NULL,
                 evidence_seal TEXT NOT NULL, resource TEXT NULL,
                 lookup_hash BLOB NOT NULL CHECK(length(lookup_hash)=32),
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE INDEX ix_path_shared_lookup ON path_shared_proof(kind,lookup_hash);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_shared_lookup ON path_shared_proof(kind,lookup_hash);
             """;
         command.ExecuteNonQuery();
     }

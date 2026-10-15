@@ -12,7 +12,11 @@ namespace SecureAD.Derivation;
 /// </summary>
 /// <param name="Phase">The phase that has just started.</param>
 /// <param name="ObjectsRead">How many objects the pass over the bundle has read.</param>
-public sealed record DerivationProgress(string Phase, long ObjectsRead);
+public sealed record DerivationProgress(string Phase, long ObjectsRead)
+{
+    /// <summary>The generation being published, not a completion verdict.</summary>
+    public Guid? DerivationGenerationId { get; init; }
+}
 
 /// <summary>
 /// Runs stage 2a over one sealed bundle: reads the nesting, derives the three products, and writes
@@ -80,7 +84,7 @@ public static class Stage2aRun
         // writer inside DeriveIntoStore holds it open until that method returns - which is the
         // whole reason this wrapper exists rather than a few lines at the end of the body.
         if (derived.IsSuccess)
-            AppendPortableSummary(bundleDirectory, Stopwatch.GetElapsedTime(began), clock.Phases);
+            AppendPortableSummary(bundleDirectory, clock.GenerationId, Stopwatch.GetElapsedTime(began), clock.Phases, log, cancellationToken);
 
         return derived;
     }
@@ -105,20 +109,30 @@ public static class Stage2aRun
     /// </para>
     /// </remarks>
     /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="generationId">The generation this attempt actually published.</param>
     /// <param name="elapsed">How long deriving took.</param>
     /// <param name="phases">Where that time went.</param>
-    private static void AppendPortableSummary(
-        string bundleDirectory, TimeSpan elapsed, IReadOnlyList<StageTiming> phases)
+    /// <param name="log">Where a failed summary is reported without replacing the completed result.</param>
+    /// <param name="cancellationToken">Stops readback.</param>
+    internal static void AppendPortableSummary(
+        string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases,
+        IRunLog log, CancellationToken cancellationToken)
     {
-        var opened = DerivationReader.Open(bundleDirectory);
-
-        if (!opened.IsSuccess)
+        var summary = DerivationReader.ReadSummary(bundleDirectory, cancellationToken);
+        if (!summary.IsSuccess)
+        {
+            log.Record("Derive", summary.Error, []);
             return;
+        }
+        var stored = summary.Value;
+        if (stored.Description.GenerationId != generationId)
+        {
+            log.Record("Derive", AuditError.Create(ErrorCategory.Evidence, "DerivationGenerationChanged",
+                ErrorSeverity.Failed, "The selected derivation is not the generation this attempt published.", bundleDirectory), []);
+            return;
+        }
 
-        using var reader = opened.Value!;
-        var stored = reader.Read();
-
-        PortableSummaryFile.AppendDerivation(
+        var written = PortableSummaryFile.AppendDerivation(
             bundleDirectory,
             PortableSummaryReading.OfDerivation(
                 stored.Description.State.ToString(),
@@ -127,6 +141,7 @@ public static class Stage2aRun
                 stored.Size.NestingEdges,
                 phases,
                 Problems(stored)));
+        if (!written.IsSuccess) log.Record("Derive", written.Error, []);
     }
 
     /// <summary>
@@ -140,7 +155,7 @@ public static class Stage2aRun
     /// </remarks>
     /// <param name="stored">The derivation, read back.</param>
     /// <returns>One error per phase that failed or was degraded.</returns>
-    private static IEnumerable<AuditError> Problems(StoredDerivation stored) =>
+    private static IEnumerable<AuditError> Problems(StoredDerivationSummary stored) =>
         stored.Phases
             .Where(phase => phase.Outcome
                 is DerivationPhaseOutcome.Failed or DerivationPhaseOutcome.Degraded)
@@ -167,6 +182,7 @@ public static class Stage2aRun
     private sealed class PhaseClock
     {
         private readonly List<StageTiming> _phases = [];
+        internal Guid GenerationId { get; set; }
 
         /// <summary>Each phase and how long it took, in the order they ran.</summary>
         public IReadOnlyList<StageTiming> Phases => _phases;
@@ -220,6 +236,7 @@ public static class Stage2aRun
             return Result<DerivationRunState>.Failure(scope.Error!);
 
         using var writer = DerivationWriter.Create(bundleDirectory, seal.Hash, startedUtc);
+        clock.GenerationId = writer.GenerationId;
 
         // Run first, and independently of everything below it. It reads the schema partition out of
         // the seal and needs no graph, no closure and no budget, so a nesting pass that produces
@@ -254,7 +271,7 @@ public static class Stage2aRun
             writer.RecordCompleteness(
                 DerivationCompleteness.NothingWasRead(scope.Value!, writer.GenerationId));
 
-            progress.Report(new DerivationProgress("PublishingDerivation", 0));
+            progress.Report(new DerivationProgress("PublishingDerivation", 0) { DerivationGenerationId = writer.GenerationId });
             writer.Complete(DateTimeOffset.UtcNow, log);
             return DerivationRunState.CompletedDegraded;
         }
@@ -327,7 +344,7 @@ public static class Stage2aRun
         // dictionary ids, and the dictionary is written by WriteFacts.
         writer.RecordCompleteness(completeness);
 
-        progress.Report(new DerivationProgress("PublishingDerivation", 0));
+        progress.Report(new DerivationProgress("PublishingDerivation", 0) { DerivationGenerationId = writer.GenerationId });
         var state = writer.Complete(DateTimeOffset.UtcNow, log);
 
         log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);

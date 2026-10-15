@@ -15,10 +15,10 @@ internal static class PathProofStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE path_proof (id INTEGER PRIMARY KEY, byte_length INTEGER NOT NULL CHECK(byte_length>0),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_proof (id INTEGER PRIMARY KEY, byte_length INTEGER NOT NULL CHECK(byte_length>0),
                 chunk_count INTEGER NOT NULL CHECK(chunk_count>0));
-            CREATE TABLE path_proof_chunk (
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_proof_chunk (
                 proof_id INTEGER NOT NULL REFERENCES path_proof(id) DEFERRABLE INITIALLY DEFERRED,
                 ordinal INTEGER NOT NULL CHECK(ordinal>=0),
                 data BLOB NOT NULL CHECK(length(data) BETWEEN 1 AND 65536),
@@ -209,6 +209,7 @@ internal static class PathProofStorage
     private static ChunkStream Open(SqliteConnection connection, long id, string fingerprint, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PathProof);
         var query = connection.CreateCommand();
         try
         {
@@ -286,7 +287,8 @@ internal static class PathProofStorage
             _available = checked((int)expectedLength);
             // GetBytes materializes a provider-owned byte array. Incremental BLOB I/O
             // fills our reusable fragment buffer without that extra copy.
-            using (var blob = new SqliteBlob(connection, "path_proof_chunk", "data", rows.GetInt64(2), readOnly: true))
+            using (var blob = new SqliteBlob(connection, JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof),
+                "path_proof_chunk", "data", rows.GetInt64(2), readOnly: true))
                 blob.ReadExactly(_current, 0, _available);
             _offset = 0;
             _hash.AppendData(_current.AsSpan(0, _available));

@@ -496,9 +496,12 @@ public sealed class DescriptorPreparationTests
     }
     private static SqliteConnection OpenJudgement(string directory)
     {
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value;
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        { DataSource = Directory.GetFiles(directory, "judgement.*.db").Single(), Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+        { DataSource = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId),
+            Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, generation.GenerationId);
         return connection;
     }
 

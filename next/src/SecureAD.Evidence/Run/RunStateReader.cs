@@ -72,8 +72,11 @@ public static class RunStateReader
             return NotARun(bundleDirectory, "There is no such directory.");
         }
 
-        if (File.Exists(BundleLayout.EvidencePath(bundleDirectory)))
+        if (File.Exists(BundleLayout.EvidencePath(bundleDirectory))
+            && !File.Exists(BundleLayout.CaptureManifestPath(bundleDirectory) + ".partial"))
         {
+            var root = AnalysisStoreLifecycle.ResolveCapture(bundleDirectory);
+            if (!root.IsSuccess) return Observed(RunState.Damaged, root.Error.Description, recordedUtc: null);
             // The seal is READ but not CHECKED, and the difference is the whole of this change.
             // Reading it parses a few hundred bytes and catches the two faults that need no
             // evidence at all: no seal, or a seal this build cannot understand. Checking it means
@@ -127,6 +130,8 @@ public static class RunStateReader
         }
 
         var partial = BundleLayout.PartialPath(bundleDirectory);
+        if (!File.Exists(partial) && File.Exists(BundleLayout.CaptureManifestPath(bundleDirectory) + ".partial"))
+            partial = BundleLayout.EvidencePath(bundleDirectory);
         if (!File.Exists(partial))
         {
             return NotARun(

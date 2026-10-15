@@ -159,6 +159,12 @@ public sealed class ControlEdgeLayoutTests
         [70] = "345583820F71D406D52F9E84F05703A692BDE30BD571F334621B82695028BB17",
         // Observed SEC-093 policy-level route grouping; every earlier checkpoint remains frozen.
         [71] = "65F0B81CCA824DAF1B777110821B946389799590DBAA42AB4C97F9F79AD3C87F",
+        // 72 preserves these logical definitions; segment placement has its own actual-file checks.
+        [72] = "65F0B81CCA824DAF1B777110821B946389799590DBAA42AB4C97F9F79AD3C87F",
+        // Observed native serving columns and explicit cross-product references; earlier checkpoints stay frozen.
+        [73] = "76E349329750AC10D516D3CAAA35D6FD34071EB1319CEF380404E3A618EEBBF1",
+        // Observed native LAPS domain-filter metadata; every earlier checkpoint remains frozen.
+        [74] = "0D70D8708CE5EEF272B5D9BF69481DED2F458D2A7A15FCD3B48011646695438B",
     };
 
     [Fact]

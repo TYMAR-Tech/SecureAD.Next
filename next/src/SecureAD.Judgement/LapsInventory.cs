@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
@@ -56,6 +57,15 @@ public sealed record LapsPage(
     bool ComputersAreComplete,
     string? Shortfall)
 {
+    /// <summary>The next saved-question position, or null when this filtered scope has no further rows.</summary>
+    public LapsPageMark? Next { get; init; }
+
     /// <summary>Counts a state across the selected scope, including zero when it has no recorded computers.</summary>
     public int CountOf(LapsManagement state) => CountsByState.GetValueOrDefault(state);
 }
+
+/// <summary>Filters the complete selected saved scope before taking a bounded page.</summary>
+public sealed record LapsQuery(string Container, ListingScope Scope, string Search, LapsManagement? State);
+
+/// <summary>A stable sort position bound to the saved generation and complete submitted question.</summary>
+public sealed record LapsPageMark(Guid GenerationId, string Question, string Name, string DistinguishedName);

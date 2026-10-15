@@ -47,7 +47,7 @@ public sealed class ProductionViewThemeTests
 
         var heading = Assert.Single(Descendants<TextBlock>(view), item => item.Text == "LAPS coverage");
         var search = Assert.Single(Descendants<TextBox>(view), item =>
-            Equals(item.ToolTip, "Filter the displayed page by computer or domain"));
+            Equals(item.ToolTip, "Filter computers in the selected scope by computer or domain."));
         var grid = Assert.Single(Descendants<DataGrid>(view));
         AssertThemeElements(view, heading, search, grid, DarkSurface, DarkText);
         AssertCards(view, DarkSurface);

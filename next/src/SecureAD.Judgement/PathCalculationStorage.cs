@@ -21,16 +21,16 @@ internal static class PathCalculationStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE path_calculation_record (
-                calculation INTEGER NOT NULL DEFAULT 1 REFERENCES tier0_path_calculation(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_calculation_record (
+                calculation INTEGER NOT NULL DEFAULT 1 CHECK(calculation=1),
                 kind TEXT NOT NULL CHECK(kind IN ('Candidates','Sources','Limitations','FixedTargets')),
                 ordinal INTEGER NOT NULL CHECK(ordinal>=0),
                 proof INTEGER NOT NULL REFERENCES path_proof(id),
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
                 question_key TEXT NULL, requester TEXT NULL COLLATE NOCASE,
                 PRIMARY KEY(kind,ordinal), UNIQUE(kind,question_key));
-            CREATE INDEX ix_path_calculation_requester ON path_calculation_record(kind,requester,ordinal);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_calculation_requester ON path_calculation_record(kind,requester,ordinal);
             """;
         command.ExecuteNonQuery();
     }

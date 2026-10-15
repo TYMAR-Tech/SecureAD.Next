@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SecureAD.Evidence.Inventory;
 using SecureAD.Kernel;
 
 namespace SecureAD.Evidence;
@@ -37,10 +38,6 @@ internal enum AnalysisPublicationPart
 /// </remarks>
 public static class AnalysisStoreLifecycle
 {
-    private sealed record Manifest(int Version, string GenerationId);
-
-    private const int ManifestVersion = 1;
-
     /// <summary>Excludes another judgement writer or an explicitly requested discard in this bundle.</summary>
     public static IDisposable LockJudgementWrites(string bundleDirectory) =>
         new FileStream(BundleLayout.JudgementWriteLockPath(bundleDirectory), FileMode.OpenOrCreate,
@@ -92,20 +89,24 @@ public static class AnalysisStoreLifecycle
             || name.Length < prefix.Length + 32
             || !Guid.TryParseExact(name.AsSpan(prefix.Length, 32), "N", out var generation))
             return false;
-        var dataName = Path.GetFileName(BundleLayout.AnalysisGenerationDataPath(
-            ".", AnalysisStoreKind.Judgement, generation));
-        return name.Equals(dataName, StringComparison.OrdinalIgnoreCase)
-            || name.Equals(dataName + ".seal", StringComparison.OrdinalIgnoreCase)
-            || name.Equals(dataName + "-wal", StringComparison.OrdinalIgnoreCase)
-            || name.Equals(dataName + "-shm", StringComparison.OrdinalIgnoreCase)
-            || name.Equals(dataName + "-journal", StringComparison.OrdinalIgnoreCase);
+        var selected = new AnalysisStoreGeneration(AnalysisStoreKind.Judgement, generation);
+        return BundleLayout.JudgementParts.Prepend(StoreSegmentRole.Judgement).Any(role =>
+        {
+            var dataName = Path.GetFileName(BundleLayout.AnalysisSegmentDataPath(".", selected, role));
+            return name.Equals(dataName, StringComparison.OrdinalIgnoreCase)
+                || name.Equals(dataName + ".seal", StringComparison.OrdinalIgnoreCase)
+                || name.Equals(dataName + "-wal", StringComparison.OrdinalIgnoreCase)
+                || name.Equals(dataName + "-shm", StringComparison.OrdinalIgnoreCase)
+                || name.Equals(dataName + "-journal", StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     /// <summary>Marks a new attempt before replacing its staging file; failure leaves the attempt visible.</summary>
     public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
-        WritePendingManifest(ManifestPath(bundleDirectory, kind) + ".partial", new(ManifestVersion, ""));
+        WritePendingManifest(ManifestPath(bundleDirectory, kind) + ".partial",
+            new StoreRootManifest(StoreRootManifest.CurrentVersion, Guid.Empty, "", [], null, ""));
     }
 
     /// <summary>Whether a newer attempt is unfinished, including the interval after its database was renamed.</summary>
@@ -174,6 +175,18 @@ public static class AnalysisStoreLifecycle
 
     internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
         Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart, IRunLog? log)
+        => Publish(bundleDirectory, kind, generationId, cancellationToken, beginPart, log, 1, "", null, null);
+
+    /// <summary>Publishes one analysis product and its small, generation-bound browse summary.</summary>
+    public static AnalysisStoreGeneration PublishBound(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, int schemaVersion, string evidenceSeal, DerivationBrowseSummary? summary,
+        CancellationToken cancellationToken, IRunLog? log) =>
+        Publish(bundleDirectory, kind, generationId, cancellationToken, null, log, schemaVersion, evidenceSeal, summary, null);
+
+    internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
+        Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart,
+        IRunLog? log, int schemaVersion, string evidenceSeal, DerivationBrowseSummary? summary,
+        IReadOnlyList<StoreSegmentRole>? additionalParts)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -186,35 +199,62 @@ public static class AnalysisStoreLifecycle
         }
 
         var generation = Generation(bundleDirectory, kind, generationId);
-        var dataPath = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, kind, generationId);
-        var sealPath = BundleLayout.AnalysisGenerationSealPath(bundleDirectory, kind, generationId);
-        if (File.Exists(dataPath) || File.Exists(sealPath))
+        var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
+        if (additionalParts is not null && (kind != AnalysisStoreKind.Judgement
+            || !additionalParts.SequenceEqual(BundleLayout.JudgementParts)))
+            throw new ArgumentException("A judgement must publish all of its declared parts together.", nameof(additionalParts));
+        var roles = (additionalParts ?? []).Prepend(role).ToArray();
+        var products = roles.Select(product => (
+            Role: product,
+            Staging: product == role ? stagingPath : BundleLayout.JudgementPartStagingPath(bundleDirectory, product),
+            Data: BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product))).ToArray();
+        if (products.Any(product => File.Exists(product.Data) || File.Exists(product.Data + ".seal")))
         {
             throw new InvalidOperationException(
                 $"Analysis generation '{generationId:D}' already exists. Generation identifiers "
                 + "are immutable and cannot be published twice.");
         }
+        foreach (var product in products)
+            if (!File.Exists(product.Staging))
+                throw new FileNotFoundException("A staged analysis product is missing.", product.Staging);
 
         var manifestPath = ManifestPath(bundleDirectory, kind);
         var stagedManifestPath = manifestPath + ".partial";
         // The staging database disappears during sealing. Keep the unfinished attempt visible
         // until the single atomic operation that makes its sealed generation current.
         beginPart?.Invoke(AnalysisPublicationPart.WritePendingManifest);
-        WritePendingManifest(stagedManifestPath, new(ManifestVersion, generationId.ToString("D")));
+        WritePendingManifest(stagedManifestPath,
+            new StoreRootManifest(StoreRootManifest.CurrentVersion, generationId, evidenceSeal, [], summary, ""));
 
         beginPart?.Invoke(AnalysisPublicationPart.MoveData);
-        File.Move(stagingPath, dataPath);
-        beginPart?.Invoke(AnalysisPublicationPart.SealData);
-        // Analysis has always checked cancellation after sealing, immediately before selecting the manifest.
-        if (log is null) BundleSealing.Seal(dataPath, sealPath);
-        else BundleSealing.SealWithDiagnostics(dataPath, sealPath, CancellationToken.None, log, kind, generationId);
-        beginPart?.Invoke(AnalysisPublicationPart.SelectManifest);
-        cancellationToken.ThrowIfCancellationRequested();
-        File.Move(stagedManifestPath, manifestPath, overwrite: true);
-        return generation;
+        var protection = new List<FileStream>();
+        try
+        {
+            foreach (var product in products)
+            {
+                File.Move(product.Staging, product.Data);
+                protection.Add(new FileStream(product.Data, FileMode.Open, FileAccess.Read, FileShare.Read));
+            }
+            beginPart?.Invoke(AnalysisPublicationPart.SealData);
+            var segments = new List<SealedStoreSegment>();
+            foreach (var product in products)
+            {
+                // Only the final root selects these files; a failed seal must leave the previous selection intact.
+                if (log is null) BundleSealing.Seal(product.Data, product.Data + ".seal");
+                else BundleSealing.SealWithDiagnostics(product.Data, product.Data + ".seal", CancellationToken.None, log, kind, generationId);
+                segments.Add(SealedSegment(product.Data, product.Data + ".seal", product.Role, schemaVersion, generationId));
+            }
+            var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generationId, evidenceSeal, segments, summary, "");
+            WritePendingManifest(stagedManifestPath, root with { Hash = root.ComputeHash() });
+            beginPart?.Invoke(AnalysisPublicationPart.SelectManifest);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(stagedManifestPath, manifestPath, overwrite: true);
+            return generation;
+        }
+        finally { foreach (var file in protection) file.Dispose(); }
     }
 
-    private static void WritePendingManifest(string path, Manifest manifest)
+    private static void WritePendingManifest(string path, StoreRootManifest manifest)
     {
         using (var stream = new FileStream(
             path,
@@ -236,12 +276,20 @@ public static class AnalysisStoreLifecycle
         string bundleDirectory,
         AnalysisStoreKind kind)
     {
+        var root = ResolveRoot(bundleDirectory, kind);
+        return root.IsSuccess ? Generation(bundleDirectory, kind, root.Value.GenerationId)
+            : Result<AnalysisStoreGeneration>.Failure(root.Error);
+    }
+
+    /// <summary>Reads the small, self-fingerprinted root without verifying unselected database bytes.</summary>
+    public static Result<StoreRootManifest> ResolveRoot(string bundleDirectory, AnalysisStoreKind kind)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
 
         var manifestPath = ManifestPath(bundleDirectory, kind);
         if (!File.Exists(manifestPath))
         {
-            return Failure(
+            return RootFailure(
                 kind,
                 "ManifestAbsent",
                 $"There is no current {Prefix(kind)} generation manifest at '{manifestPath}'.",
@@ -253,11 +301,13 @@ public static class AnalysisStoreLifecycle
             // Publication replaces this name atomically. A short metadata read must not block
             // that replacement; its handle still describes the complete old or new manifest.
             using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            var manifest = JsonSerializer.Deserialize<Manifest>(stream);
-            if (manifest is null || manifest.Version != ManifestVersion
-                || !Guid.TryParse(manifest.GenerationId, out var generationId))
+            var manifest = JsonSerializer.Deserialize<StoreRootManifest>(stream);
+            var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
+            var roles = kind == AnalysisStoreKind.Judgement && manifest?.Segments is { Count: > 1 }
+                ? BundleLayout.JudgementParts.Prepend(role).ToArray() : new[] { role };
+            if (!ValidRoot(manifest, roles))
             {
-                return Failure(
+                return RootFailure(
                     kind,
                     "ManifestUnreadable",
                     $"The current {Prefix(kind)} generation manifest at '{manifestPath}' does not "
@@ -265,27 +315,28 @@ public static class AnalysisStoreLifecycle
                     manifestPath);
             }
 
-            var generation = Generation(bundleDirectory, kind, generationId);
-            var dataPath = BundleLayout.AnalysisGenerationDataPath(
-                bundleDirectory, kind, generationId);
-            var sealPath = BundleLayout.AnalysisGenerationSealPath(
-                bundleDirectory, kind, generationId);
-            if (!File.Exists(dataPath) || !File.Exists(sealPath))
+            var generationId = manifest!.GenerationId;
+            var generation = new AnalysisStoreGeneration(kind, generationId);
+            foreach (var product in roles)
             {
-                return Failure(
-                    kind,
-                    "GenerationIncomplete",
-                    $"The current {Prefix(kind)} manifest names generation '{generationId:D}', but "
-                    + "its database and seal are not both present.",
-                    manifestPath);
+                var dataPath = BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product);
+                if (!File.Exists(dataPath) || !File.Exists(dataPath + ".seal"))
+                {
+                    return RootFailure(
+                        kind,
+                        "GenerationIncomplete",
+                        $"The current {Prefix(kind)} manifest names generation '{generationId:D}', but "
+                        + "its database and seal are not both present.",
+                        manifestPath);
+                }
+                RequireDeclaration(manifest.Segment(product), dataPath);
             }
-
-            return generation;
+            return manifest with { Segments = Array.AsReadOnly(manifest.Segments.ToArray()) };
         }
         catch (Exception error) when (
-            error is JsonException or IOException or UnauthorizedAccessException)
+            error is JsonException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            return Failure(
+            return RootFailure(
                 kind,
                 "ManifestUnreadable",
                 $"The current {Prefix(kind)} generation manifest at '{manifestPath}' could not be "
@@ -301,16 +352,116 @@ public static class AnalysisStoreLifecycle
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown analysis store kind."),
     };
 
-    private static Result<AnalysisStoreGeneration> Failure(
+    private static Result<StoreRootManifest> RootFailure(
         AnalysisStoreKind kind,
         string reason,
         string description,
         string context) =>
-        Result<AnalysisStoreGeneration>.Failure(
+        Result<StoreRootManifest>.Failure(
             AuditError.Create(
                 ErrorCategory.Evidence,
                 Prefix(kind) + reason,
                 ErrorSeverity.Failed,
                 description,
                 context));
+
+    internal static StoreRootManifest PublishCapture(string directory, string stagedEvidence, Guid generation, long objects, CancellationToken token,
+        Action<string, string, CancellationToken> seal, Action claimPublication)
+    {
+        var manifestPath = BundleLayout.CaptureManifestPath(directory);
+        if (File.Exists(manifestPath)) throw new InvalidOperationException("Captured generations are never replaced.");
+        WritePendingManifest(manifestPath + ".partial",
+            new(StoreRootManifest.CurrentVersion, generation, "", [], null, ""));
+        var navigation = BundleLayout.NavigationPath(directory, generation);
+        var overview = BundleLayout.OverviewPath(directory, generation);
+        if (File.Exists(navigation) || File.Exists(navigation + ".seal")
+            || File.Exists(overview) || File.Exists(overview + ".seal"))
+            throw new InvalidOperationException("A captured browse generation already exists.");
+        var evidence = BundleLayout.EvidencePath(directory);
+        var stagedNavigation = BundleLayout.NavigationPartialPath(directory);
+        var stagedOverview = BundleLayout.OverviewPartialPath(directory);
+        using var protectedEvidence = new FileStream(stagedEvidence, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        using var protectedNavigation = new FileStream(stagedNavigation, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        using var protectedOverview = new FileStream(stagedOverview, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        token.ThrowIfCancellationRequested();
+        seal(stagedEvidence, BundleLayout.SealPath(directory), token);
+        token.ThrowIfCancellationRequested();
+        seal(stagedNavigation, navigation + ".seal", token);
+        token.ThrowIfCancellationRequested();
+        seal(stagedOverview, overview + ".seal", token);
+        var captured = SealedSegment(stagedEvidence, BundleLayout.SealPath(directory),
+            StoreSegmentRole.Evidence, BundleSchema.Version, generation) with { FileName = Path.GetFileName(evidence) };
+        var browse = SealedSegment(stagedNavigation, navigation + ".seal",
+            StoreSegmentRole.Navigation, NavigationStorage.Version, generation) with { FileName = Path.GetFileName(navigation) };
+        var dashboard = SealedSegment(stagedOverview, overview + ".seal",
+            StoreSegmentRole.Overview, DashboardOverviewStorage.Version, generation) with { FileName = Path.GetFileName(overview) };
+        var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generation, captured.Hash,
+            [captured, browse, dashboard], null, "") { CapturedObjects = objects };
+        root = root with { Hash = root.ComputeHash() };
+        WritePendingManifest(manifestPath + ".partial", root);
+        token.ThrowIfCancellationRequested();
+        claimPublication();
+        File.Move(stagedNavigation, navigation);
+        File.Move(stagedOverview, overview);
+        File.Move(stagedEvidence, evidence);
+        File.Move(manifestPath + ".partial", manifestPath);
+        return root;
+    }
+
+    /// <summary>Resolves a complete capture without hashing unselected products.</summary>
+    public static Result<StoreRootManifest> ResolveCapture(string directory)
+    {
+        var path = BundleLayout.CaptureManifestPath(directory);
+        try
+        {
+            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("The capture root is a link.");
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            var root = JsonSerializer.Deserialize<StoreRootManifest>(stream);
+            if (!ValidRoot(root, [StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview])
+                || root!.EvidenceSeal != root.Segment(StoreSegmentRole.Evidence).Hash || root.DerivationSummary is not null
+                || root.CapturedObjects is not >= 0)
+                throw new InvalidDataException("The capture root has unsupported or contradictory declarations.");
+            RequireDeclaration(root.Segment(StoreSegmentRole.Evidence), BundleLayout.EvidencePath(directory));
+            RequireDeclaration(root.Segment(StoreSegmentRole.Navigation), BundleLayout.NavigationPath(directory, root.GenerationId));
+            RequireDeclaration(root.Segment(StoreSegmentRole.Overview), BundleLayout.OverviewPath(directory, root.GenerationId));
+            foreach (var segment in root.Segments)
+            {
+                var dataPath = Path.Combine(directory, segment.FileName);
+                if (!File.Exists(dataPath) || !File.Exists(dataPath + ".seal"))
+                    throw new FileNotFoundException("A selected capture segment or its seal is missing.", dataPath);
+            }
+            return root with { Segments = Array.AsReadOnly(root.Segments.ToArray()) };
+        }
+        catch (Exception error) when (error is JsonException or InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return Result<StoreRootManifest>.Failure(AuditError.Create(ErrorCategory.Evidence, "CaptureManifestUnreadable",
+                ErrorSeverity.Failed, $"The captured generation could not be selected: {error.Message}", path));
+        }
+    }
+
+    private static bool ValidRoot(StoreRootManifest? root, StoreSegmentRole[] roles) =>
+        root is { Version: StoreRootManifest.CurrentVersion } && root.GenerationId != Guid.Empty
+        && root.EvidenceSeal is not null && root.Segments is not null && root.Segments.All(segment => segment is not null)
+        && root.Segments.Select(segment => segment.Role).SequenceEqual(roles)
+        && IsHash(root.Hash) && root.Hash == root.ComputeHash()
+        && root.Segments.All(segment => segment.GenerationId == root.GenerationId && segment.SchemaVersion > 0
+            && segment.ByteLength >= 0 && IsHash(segment.Hash));
+
+    private static void RequireDeclaration(SealedStoreSegment segment, string expectedPath)
+    {
+        if (segment.FileName != Path.GetFileName(expectedPath))
+            throw new InvalidDataException("A segment role has an invalid file name.");
+    }
+
+    private static SealedStoreSegment SealedSegment(string dataPath, string sealPath, StoreSegmentRole role,
+        int version, Guid generation)
+    {
+        var seal = BundleSealing.ReadSeal(sealPath);
+        if (seal?.Algorithm != BundleSealing.Algorithm || !IsHash(seal.Hash))
+            throw new InvalidDataException("A newly published segment has an unreadable seal.");
+        return new(role, version, generation, Path.GetFileName(dataPath), new FileInfo(dataPath).Length, seal.Hash);
+    }
+
+    private static bool IsHash(string? value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigit);
 }

@@ -8,7 +8,7 @@ internal sealed class ControlEvidenceReadScope : IDisposable
     private readonly SqliteConnection _connection;
     private readonly JudgementDescription _description;
     private readonly string _target;
-    private readonly (long Changes, long Version) _revision;
+    private readonly (long Changes, long MainVersion, long ProofVersion) _revision;
     private readonly Dictionary<long, PermissionEntry> _values = [];
     private readonly Dictionary<(long Id, int Ordinal), (byte[] Fingerprint, PermissionEntry Entry)> _occurrences = [];
     private readonly Dictionary<(long Id, int Catalogue), SharedProofStorage.PreparedRoutes> _routes = [];
@@ -71,14 +71,8 @@ internal sealed class ControlEvidenceReadScope : IDisposable
         return routes;
     }
 
-    private static (long Changes, long Version) Revision(SqliteConnection connection)
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT total_changes()";
-        var changes = (long)command.ExecuteScalar()!;
-        command.CommandText = "PRAGMA data_version";
-        return (changes, (long)command.ExecuteScalar()!);
-    }
+    private static (long Changes, long MainVersion, long ProofVersion) Revision(SqliteConnection connection) =>
+        JudgementStoreLayout.Revision(connection);
 
     public void Dispose()
     {

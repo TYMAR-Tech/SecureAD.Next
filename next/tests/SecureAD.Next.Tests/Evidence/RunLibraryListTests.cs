@@ -134,7 +134,8 @@ public sealed class RunLibraryListTests : IDisposable
 
         using var verifications = new SealVerificationCount(_root);
 
-        BundleReader.Open(directory);
+        var opened = BundleReader.Open(directory);
+        Assert.False(opened.IsSuccess);
 
         Assert.Equal(1, verifications.Count);
     }
@@ -355,10 +356,11 @@ public sealed class RunLibraryListTests : IDisposable
         var directory = Path.Combine(_root, identifier);
         Directory.CreateDirectory(directory);
 
-        File.WriteAllText(BundleLayout.EvidencePath(directory), "not really a database");
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(directory),
-            BundleLayout.SealPath(directory));
+        File.WriteAllText(BundleLayout.PartialPath(directory), "not really a database");
+        File.WriteAllText(BundleLayout.NavigationPartialPath(directory), "not really navigation");
+        File.WriteAllText(BundleLayout.OverviewPartialPath(directory), "not really an overview");
+        AnalysisStoreLifecycle.PublishCapture(directory, BundleLayout.PartialPath(directory), Guid.NewGuid(), 0,
+            CancellationToken.None, BundleSealing.Seal, () => { });
 
         return directory;
     }

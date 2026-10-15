@@ -163,7 +163,7 @@ internal sealed partial class AssetReadRequest
     }
 
     public Result<Tier0FindingSummary?> ReadTier0FindingSummary(string bundleDirectory) =>
-        WithRun(bundleDirectory, run => run.ReadJudgement((reader, token) => reader.ReadTier0FindingSummary(token), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadTier0FindingSummary(_readCancellation), _readCancellation));
 
     private static Result<SavedTier0Path?> PathFailure(string reason, string directory, string? detail) =>
         Result<SavedTier0Path?>.Failure(AuditError.Create(ErrorCategory.Shell, "SavedPath" + reason,

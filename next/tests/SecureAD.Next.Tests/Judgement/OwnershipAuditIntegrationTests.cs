@@ -212,6 +212,8 @@ public sealed partial class OwnershipAuditIntegrationTests(ITestOutputHelper out
     {
         var connection = new SqliteConnection("Data Source=" + JudgementPath(directory) + ";Mode=ReadOnly;Pooling=False");
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory,
+            AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
         return connection;
     }
 
@@ -245,6 +247,7 @@ public sealed partial class OwnershipAuditIntegrationTests(ITestOutputHelper out
             if (value.Phase != JudgingPhase.SelectingOwnershipScope || Rows is not null) return;
             using var connection = new SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Mode=ReadOnly;Pooling=False");
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             Rows = PrimitiveRows(connection);
         }
     }

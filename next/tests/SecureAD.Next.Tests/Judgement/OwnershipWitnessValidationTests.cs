@@ -131,10 +131,11 @@ public sealed class OwnershipWitnessValidationTests
                 }), RunLog.Discarded, cancellation.Token, selfMembershipDiscoveryBudget: null));
             Assert.True(cancellation.IsCancellationRequested);
             Assert.NotNull(generation);
-            var database = Path.Combine(directory, "witness-verification.db");
-            File.Copy(AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), database);
+            var working = TestSealing.CopyStagedJudgement(directory, "witness-verification");
+            var database = BundleLayout.JudgementPartialPath(working);
             Database = new(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
             Database.Open();
+            TestSealing.AttachJudgementParts(Database, working, generation.Value, staged: true);
             var sources = JudgingInputs.Open(directory, CancellationToken.None);
             Assert.True(sources.IsSuccess, sources.Error?.Description);
             Sources = sources.Value;

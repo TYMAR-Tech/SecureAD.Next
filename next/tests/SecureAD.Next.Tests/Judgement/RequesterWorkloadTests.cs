@@ -116,6 +116,7 @@ public sealed class RequesterWorkloadTests(RequesterWorkloadTests.Workloads work
             connection.Open();
             using var command = connection.CreateCommand();
             PathProofVerification.EnableJsonReads(connection);
+            TestSealing.AttachJudgementParts(connection, bundle, generation);
             using var judgement = JudgementReader.Open(bundle).Value;
             command.CommandText = "SELECT json_extract(path_json(proof),'$.Family'),source_proof,hex(source_fingerprint) FROM path_requester_risk ORDER BY id";
             using var read = command.ExecuteReader();

@@ -12,9 +12,9 @@ internal static class GroupMembershipReviewFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_membership_review (
-                finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_membership_review (
+                finding_id INTEGER PRIMARY KEY,
                 generation TEXT NOT NULL, proof TEXT NOT NULL,
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
             """;
@@ -182,8 +182,9 @@ internal static class GroupMembershipReviewFindingStorage
             command.Parameters.AddWithValue("$generation", generation.ToString("D"));
             if (command.ExecuteNonQuery() != 1) throw Invalid();
             command.Parameters.Clear();
-            command.CommandText = "UPDATE finding SET detail=$detail WHERE finding_id=$id AND rule_id='SEC-050'";
+            command.CommandText = "UPDATE finding SET detail=$detail,evidence_complete=$complete WHERE finding_id=$id AND rule_id='SEC-050'";
             command.Parameters.AddWithValue("$detail", GroupMembershipReviewRules.Detail(evidence));
+            command.Parameters.AddWithValue("$complete", FindingListItem.Complete(evidence) ? 1 : 0);
             command.Parameters.AddWithValue("$id", id);
             if (command.ExecuteNonQuery() != 1) throw Invalid();
         }

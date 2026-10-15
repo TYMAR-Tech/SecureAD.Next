@@ -19,6 +19,49 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class FindingsViewTests
 {
+    internal static void VerifySavedLapsRowsRender(AssetsViewModel model) => OnSta(() =>
+    {
+        var view = View(model, "LapsInventoryView.xaml");
+        foreach (var width in new[] { 900, 1300 })
+        {
+            Layout(view, width, 700);
+            var grid = Assert.Single(Descendants<DataGrid>(view));
+            Assert.Equal(model.LapsComputers.Count, grid.Items.Count);
+            Assert.True(grid.ActualHeight >= 50);
+            var previous = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "Previous"));
+            var next = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "Next"));
+            Assert.Same(model.PreviousLapsCommand, previous.Command);
+            Assert.Same(model.NextLapsCommand, next.Command);
+            Assert.Equal(model.HasEarlierLaps, previous.IsEnabled);
+            Assert.Equal(model.HasMoreLaps, next.IsEnabled);
+            Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "Page " + model.LapsPageNumber);
+            Assert.Contains(Descendants<TextBox>(view), text =>
+                Equals(text.ToolTip, "Filter computers in the selected scope by computer or domain."));
+        }
+        model.Suspend();
+    });
+
+    internal static void VerifySavedRowsRender(AssetsViewModel model) => OnSta(() =>
+    {
+        var view = View(model);
+        Layout(view, 900, 430);
+        var grid = Assert.Single(Descendants<DataGrid>(view));
+        Assert.Equal(model.Findings.Count, grid.Items.Count);
+        Assert.True(grid.ActualHeight >= 50);
+        if (model.Findings.Count == 0) return;
+        var row = model.Findings[0];
+        model.SelectedFinding = row;
+        Layout(view, 900, 430);
+        Assert.Same(row, grid.SelectedItem);
+        Assert.Equal(Visibility.Visible, ((Border)view.FindName("FindingDetails")).Visibility);
+        Assert.True(((ScrollViewer)view.FindName("FindingDetailsScroll")).ActualHeight >= 30);
+        model.CloseFindingDetails();
+        Layout(view, 900, 430);
+        Assert.Null(grid.SelectedItem);
+        Assert.Equal(Visibility.Collapsed, ((Border)view.FindName("FindingDetails")).Visibility);
+        model.Suspend();
+    });
+
     [Theory]
     [InlineData(900, 430)]
     [InlineData(1300, 650)]
@@ -220,17 +263,17 @@ public sealed class FindingsViewTests
         return (model, source);
     }
 
-    private static FrameworkElement View(AssetsViewModel model)
+    private static FrameworkElement View(AssetsViewModel model, string file = "FindingsView.xaml")
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
         var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
-        var root = XDocument.Load(Path.Combine(shell, "Views", "FindingsView.xaml")).Root!;
+        var root = XDocument.Load(Path.Combine(shell, "Views", file)).Root!;
         root.Attribute(xaml + "Class")!.Remove();
         root.Attribute(xaml + "ClassModifier")!.Remove();
         // Only the unused internal column proxy is omitted. Controls and bindings are the actual
         // production view, with its compiled application theme rather than test-specific styles.
-        root.Element(wpf + "UserControl.Resources")!.Remove();
+        root.Element(wpf + "UserControl.Resources")?.Remove();
         var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));

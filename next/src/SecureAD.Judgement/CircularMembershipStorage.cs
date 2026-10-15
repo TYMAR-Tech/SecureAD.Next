@@ -10,13 +10,13 @@ internal static class CircularMembershipStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_circular_membership (finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_circular_membership (finding_id INTEGER PRIMARY KEY,
                 generation TEXT NOT NULL, proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE TABLE finding_circular_group (finding_id INTEGER NOT NULL REFERENCES finding(finding_id),
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.finding_circular_group (finding_id INTEGER NOT NULL REFERENCES finding(finding_id),
                 object_guid TEXT NOT NULL, distinguished_name TEXT NOT NULL, domain_fqdn TEXT NOT NULL,
                 PRIMARY KEY(finding_id,object_guid));
-            CREATE INDEX ix_finding_circular_group_object ON finding_circular_group(distinguished_name,finding_id);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_circular_group_object ON finding_circular_group(distinguished_name,finding_id);
             """;
         command.ExecuteNonQuery();
     }

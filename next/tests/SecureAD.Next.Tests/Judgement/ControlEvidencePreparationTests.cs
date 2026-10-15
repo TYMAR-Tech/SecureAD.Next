@@ -27,7 +27,7 @@ public sealed class ControlEvidencePreparationTests
         Assert.Equal((128L, 1L, 1L), (counts.For("control.permission_preparations", generation),
             counts.For("control.sequence_preparations", generation), counts.For("control.route_preparations", generation)));
         using var reader = FullControlStorageTests.Open(directory);
-        using var connection = Database(directory, reader.Description);
+        using var connection = Database(directory, reader.Description, SqliteOpenMode.ReadOnly);
         Assert.Equal((128L, 256L, 128L, 256L), (Count(connection, "full_control_assessment"), Count(connection, "control_edge"),
             Count(connection, "full_control_source_entry"), Count(connection, "full_control_support")));
         Assert.Equal(128L, reader.ReadControlEdges(evaluation.Target, null, null, true, 0).UnknownCount);
@@ -369,12 +369,17 @@ public sealed class ControlEvidencePreparationTests
     }
 
     private static SqliteConnection PartialDatabase(string directory) => Connect(BundleLayout.JudgementPartialPath(directory));
-    private static SqliteConnection Database(string directory, JudgementDescription description) =>
-        Connect(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, description.GenerationId));
-    private static SqliteConnection Connect(string path)
+    private static SqliteConnection Database(string directory, JudgementDescription description,
+        SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate) =>
+        Connect(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, description.GenerationId), mode);
+    private static SqliteConnection Connect(string path, SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate)
     {
-        var connection = new SqliteConnection("Data Source=" + path + ";Pooling=False");
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false, Mode = mode }.ToString());
         connection.Open();
+        var directory = Path.GetDirectoryName(path)!;
+        var staged = Path.GetFileName(path) == BundleLayout.JudgementPartialFileName;
+        TestSealing.AttachJudgementParts(connection, directory, staged ? Guid.Empty
+            : AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId, staged);
         return connection;
     }
 

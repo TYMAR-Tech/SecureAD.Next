@@ -14,9 +14,9 @@ internal static class ServiceAccountFindingStorage
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE finding_service_account (
-                finding_id INTEGER PRIMARY KEY REFERENCES finding(finding_id),
+        command.CommandText = $"""
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_service_account (
+                finding_id INTEGER PRIMARY KEY,
                 generation TEXT NOT NULL, proof TEXT NOT NULL,
                 fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
             """;

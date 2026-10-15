@@ -12,21 +12,21 @@ internal static class SelfMembershipStorage
 {
     private const int EvaluatorVersion = 1;
 
-    public static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE self_membership_product (id INTEGER PRIMARY KEY CHECK(id=1), evaluator_version INTEGER NOT NULL,
+    public static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.self_membership_product (id INTEGER PRIMARY KEY CHECK(id=1), evaluator_version INTEGER NOT NULL,
             completed INTEGER NOT NULL CHECK(completed IN (0,1)));
-        CREATE TABLE self_membership_discovery (id INTEGER PRIMARY KEY CHECK(id=1), coverage_json TEXT NOT NULL);
-        CREATE TABLE self_membership_assessment (id INTEGER PRIMARY KEY, requester_dn TEXT NOT NULL, target_dn TEXT NOT NULL,
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.self_membership_discovery (id INTEGER PRIMARY KEY CHECK(id=1), coverage_json TEXT NOT NULL);
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.self_membership_assessment (id INTEGER PRIMARY KEY, requester_dn TEXT NOT NULL, target_dn TEXT NOT NULL,
             operation TEXT NOT NULL, member_dn TEXT NULL, generation TEXT NOT NULL, derivation_generation TEXT NULL,
             evidence_seal TEXT NOT NULL, requester_guid TEXT NULL, requester_sid TEXT NULL, target_guid TEXT NULL,
             target_sid TEXT NULL, member_guid TEXT NULL, member_sid TEXT NULL, authorization TEXT NOT NULL,
             own_account TEXT NOT NULL, readiness TEXT NOT NULL, descriptor_outcome TEXT NOT NULL,
             requester_captured_utc TEXT NULL, user_account_control INTEGER NULL, member_present INTEGER NULL,
             issues_json TEXT NOT NULL, evidence_json TEXT NOT NULL, holder_edges_json TEXT NOT NULL);
-        CREATE UNIQUE INDEX ux_self_membership_identity ON self_membership_assessment(
+        CREATE UNIQUE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ux_self_membership_identity ON self_membership_assessment(
             requester_dn COLLATE NOCASE,target_dn COLLATE NOCASE,operation,COALESCE(member_dn,'') COLLATE NOCASE);
-        CREATE INDEX ix_self_membership_target ON self_membership_assessment(target_dn,id);
-        CREATE INDEX ix_self_membership_requester ON self_membership_assessment(requester_dn,id);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_self_membership_target ON self_membership_assessment(target_dn,id);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_self_membership_requester ON self_membership_assessment(requester_dn,id);
         """);
 
     public static void Start(SqliteConnection connection) => Execute(connection, null,
@@ -139,6 +139,7 @@ internal static class SelfMembershipStorage
     private static bool ValidateReferences(SqliteConnection connection, SelfMembershipAssessment assessment)
     {
         if (assessment.HolderEdgeIds.Count == 0) return true;
+        JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PermissionProof);
         using var product = connection.CreateCommand();
         product.CommandText = "SELECT engine_version,completed FROM control_product WHERE id=1";
         using (var status = product.ExecuteReader())

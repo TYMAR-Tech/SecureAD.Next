@@ -150,8 +150,7 @@ public sealed class BundleReaderTests : IDisposable
     {
         WriteABundle();
         WithTheEvidenceOpen($"UPDATE bundle SET {column} = 0");
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
 
         using var opening = Open();
 
@@ -779,8 +778,7 @@ public sealed class BundleReaderTests : IDisposable
         WithTheEvidenceOpen(
             "UPDATE domain_coverage SET outcome = 'NotRead', reason = 'No controller answered.' "
             + "WHERE domain_fqdn = 'us.contoso.com'");
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
 
         using var opening = Open();
         var scope = opening.Value.ReadScope();
@@ -845,8 +843,7 @@ public sealed class BundleReaderTests : IDisposable
     {
         WriteABundle(OneDomainRead());
         WithTheEvidenceOpen("UPDATE domain_coverage SET outcome = 'ReadOverATrust'");
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
 
         using var opening = Open();
         var scope = opening.Value.ReadScope();
@@ -907,8 +904,7 @@ public sealed class BundleReaderTests : IDisposable
         WithTheEvidenceOpen(
             $"UPDATE security_descriptor SET canonicalization_version = {version}");
 
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
     }
 
     /// <summary>
@@ -921,8 +917,7 @@ public sealed class BundleReaderTests : IDisposable
 
         WithTheEvidenceOpen($"UPDATE bundle SET schema_version = {version}");
 
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
     }
 
     /// <summary>
@@ -981,8 +976,7 @@ public sealed class BundleReaderTests : IDisposable
         WithTheEvidenceOpen(
             $"UPDATE bundle SET schema_version = {BundleSchema.Version - 1}");
 
-        BundleSealing.Seal(
-            BundleLayout.EvidencePath(_directory), BundleLayout.SealPath(_directory));
+        TestSealing.ResealCapture(_directory);
     }
 
     /// <summary>The one captured object the stale descriptor hangs off.</summary>

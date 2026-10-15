@@ -118,11 +118,11 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 
     /// <inheritdoc/>
     public Result<LapsPage> ListLapsComputers(
-        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
+        string bundleDirectory, LapsQuery query, LapsPageMark? after)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+        ArgumentNullException.ThrowIfNull(query);
 
-        return WithRun(bundleDirectory, reader => reader.ListLapsComputers(bundleDirectory, containerDn, scope, pageNumber));
+        return WithRun(bundleDirectory, reader => reader.ListLapsComputers(bundleDirectory, query, after));
     }
 
     /// <inheritdoc/>
@@ -145,9 +145,8 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Not cached, unlike <see cref="ReadSchemaGuids"/>. The schema is read once because walking
-    /// every definition in the forest is expensive; counting is one grouped scan, and a cache here
-    /// would buy little while adding a second place the dashboard's numbers could come from.
+    /// Reads authoritative saved overview rows rather than recounting the captured object catalogue.
+    /// Its verified file is shared for the selected lifetime, not its returned presentation values.
     /// </remarks>
     public Result<ForestInventory> ReadInventory(string bundleDirectory)
     {
@@ -167,6 +166,9 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     }
 
     /// <inheritdoc/>
+    public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query) =>
+        WithRun(bundleDirectory, reader => reader.ReadFindingsList(bundleDirectory, query));
+
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

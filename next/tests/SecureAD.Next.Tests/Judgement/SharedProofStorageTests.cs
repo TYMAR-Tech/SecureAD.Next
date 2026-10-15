@@ -332,7 +332,9 @@ public sealed class SharedProofStorageTests
     {
         var connection = new SqliteConnection("Data Source=" + BundleLayout.AnalysisGenerationDataPath(directory,
             AnalysisStoreKind.Judgement, reader.Description.GenerationId) + ";Mode=ReadOnly;Pooling=False");
-        connection.Open(); return connection;
+        connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, reader.Description.GenerationId);
+        return connection;
     }
 
     private static long Count(SqliteConnection connection, string sql)

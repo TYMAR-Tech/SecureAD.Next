@@ -44,24 +44,21 @@ internal sealed class DerivationLauncher : IDerivationLauncher
     }
 
     /// <summary>
-    /// Derives, watching the progress go past so the outcome can say how far the pass read.
+    /// Derives, then reads the saved size and phase outcomes without reconstructing derived products.
     /// </summary>
-    /// <remarks>
-    /// <b>The count is taken from the progress rather than from the store.</b> Judging reads its
-    /// counts back, and this would too if there were anything to read <c>derivation.db</c> with.
-    /// Until there is, the last thing the run reported is the only honest number available - and it
-    /// is one the run itself produced, not one this class assembled from its own traversal.
-    /// </remarks>
     private static Result<DerivingOutcome> Derive(
         string bundleDirectory,
         IProgress<DerivationProgress> progress,
         CancellationToken cancellationToken)
     {
-        // Progress is forwarded and nothing is remembered from it. It says how far the pass has
-        // read, which is what an operator watching wants; what a finished derivation produced is
-        // read back from the store below, so the screen cannot report a different answer from the
-        // one the bundle holds.
-        var watched = new Watching(progress.Report);
+        // Only the attempt's generation is retained from progress. Completed counts come from the
+        // saved store, and another attempt cannot supply them under this attempt's completion.
+        Guid? generationId = null;
+        var watched = new Watching(value =>
+        {
+            generationId = value.DerivationGenerationId ?? generationId;
+            progress.Report(value);
+        });
 
         // The capture wrote the first stretch of this file and the judging will write the last. A
         // log that could not be opened does not stop the derivation: the facts are worth more than
@@ -85,16 +82,17 @@ internal sealed class DerivationLauncher : IDerivationLauncher
             return Result<DerivingOutcome>.Failure(derived.Error!);
 
         progress.Report(new DerivationProgress("ReadingDerivedResults", 0));
-        var reopened = DerivationReader.Open(bundleDirectory);
-        if (!reopened.IsSuccess)
-            return Result<DerivingOutcome>.Failure(reopened.Error!);
-
-        using var reader = reopened.Value!;
-        var stored = reader.Read();
+        var summary = DerivationReader.ReadSummary(bundleDirectory, cancellationToken);
+        if (!summary.IsSuccess)
+            return Result<DerivingOutcome>.Failure(summary.Error);
+        var stored = summary.Value;
+        if (stored.Description.GenerationId != generationId)
+            return Result<DerivingOutcome>.Failure(AuditError.Create(ErrorCategory.Evidence, "DerivationGenerationChanged",
+                ErrorSeverity.Failed, "The selected derivation is not the generation this attempt published.", bundleDirectory));
 
         return Result<DerivingOutcome>.Success(
             new DerivingOutcome(
-                derived.Value,
+                stored.Description.State,
                 stored.Size.Principals,
                 stored.Size.NestingEdges,
                 stored.EveryPhaseThatRanSucceeded));

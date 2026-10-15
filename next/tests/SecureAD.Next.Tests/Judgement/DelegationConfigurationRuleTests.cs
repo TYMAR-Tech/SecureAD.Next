@@ -550,10 +550,11 @@ public sealed class DelegationConfigurationRuleTests
         var directory = Prepared([id == "SEC-012" ? Constrained : Rbcd], Front(["LDAP/service.contoso.com"]),
             Back(["LDAP/service.contoso.com"], Descriptor((false, 0x100, SidValue, AceFlags.None))));
         using var reader = Open(directory);
-        var copy = Path.Combine(directory, "delegation-publication-check.db");
-        File.Copy(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId), copy);
+        var working = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "delegation-publication-check");
+        var copy = BundleLayout.AnalysisGenerationDataPath(working, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false, ForeignKeys = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, working, reader.Description.GenerationId);
         var seal = FindingInputBinding.DerivationSeal(directory, reader.Description.DerivationGenerationId);
         DelegationConfigurationFindingStorage.RequirePublishable(connection, reader.Description, seal, CancellationToken.None);
         Assert.Throws<InvalidDataException>(() => DelegationConfigurationFindingStorage.RequirePublishable(connection, reader.Description, new('f', 64), CancellationToken.None));
@@ -611,10 +612,12 @@ public sealed class DelegationConfigurationRuleTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        using var reader = Published([Constrained, Rbcd], Front(["LDAP/service.contoso.com"]),
-            Back(["LDAP/service.contoso.com"], Descriptor((false, 0x100, SidValue, AceFlags.None))));
+        using var reader = Open(FindingsRun());
         return reader.Read().Findings;
     }
+
+    internal static string FindingsRun() => Prepared([Constrained, Rbcd], Front(["LDAP/service.contoso.com"]),
+        Back(["LDAP/service.contoso.com"], Descriptor((false, 0x100, SidValue, AceFlags.None))));
 
     private static Fixture.Source Front(string[] names) => Fixture.With(Fixture.Account(dn: Account, sid: "S-1-5-21-1-2-3-1100", spns: []),
         DelegationConfigurationRules.ConstrainedAttribute, names.Select(EvidenceValue.OfText).ToArray());

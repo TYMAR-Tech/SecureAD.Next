@@ -92,7 +92,8 @@ public static class BundleSchema
     // that scan and cannot state whether a later capture deliberately omitted it.
     // 15 records the corrected Enatel storage-class scope; old V3-name scopes are not relabelled.
     // 16 adds the owner-approved account-class exclusion without relabelling storage-only captures.
-    public const int Version = 16;
+    // 17 binds the first-class captured navigation product to its atomic capture root.
+    public const int Version = 17;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -275,6 +276,7 @@ public static class BundleSchema
             captured_attribute_catalog_version INTEGER NOT NULL,
             schema_guid_catalog_version INTEGER NOT NULL,
             security_descriptor_parser_version INTEGER NOT NULL,
+            capture_generation_id    TEXT    NOT NULL,
             forest_fqdn              TEXT    NOT NULL,
             capture_started_utc      TEXT    NOT NULL,
             capture_completed_utc    TEXT    NOT NULL,

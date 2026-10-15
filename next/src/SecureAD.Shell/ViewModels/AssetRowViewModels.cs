@@ -249,11 +249,15 @@ internal sealed class ListedObjectViewModel
 /// </remarks>
 internal sealed class FindingRowViewModel
 {
-    private readonly Finding _finding;
+    private readonly FindingListItem _finding;
 
     /// <summary>Creates a screen's view of one finding.</summary>
     /// <param name="finding">The finding as the judgement holds it.</param>
-    public FindingRowViewModel(Finding finding)
+    public FindingRowViewModel(Finding finding) : this(FindingListItem.FromFinding(finding))
+    {
+    }
+
+    public FindingRowViewModel(FindingListItem finding)
     {
         ArgumentNullException.ThrowIfNull(finding);
 
@@ -280,7 +284,7 @@ internal sealed class FindingRowViewModel
     /// <summary>Who or what the finding is about.</summary>
     public string Principal => _finding.PrincipalName;
 
-    public bool HasTier0Routes => _finding.Evidence is Tier0RouteFindingEvidence;
+    public bool HasTier0Routes => _finding.Kind == FindingListKind.Tier0Routes;
 
     /// <summary>The object it is about, named as an operator would say it.</summary>
     public string Target => DnHelper.ExtractNameFromDn(_finding.DistinguishedName);
@@ -294,16 +298,16 @@ internal sealed class FindingRowViewModel
     /// <summary>What was found, said plainly enough to act on.</summary>
     public string Detail => _finding.Detail;
 
-    public bool HasMembershipEvidence => _finding.Evidence is KerberoastableAccountEvidence;
+    public bool HasMembershipEvidence => _finding.Membership is not null;
 
-    public string MembershipCompleteness => _finding.Evidence is KerberoastableAccountEvidence evidence
+    public string MembershipCompleteness => _finding.Membership is { } evidence
         ? evidence.MembershipRoutes.CompletenessDescription : string.Empty;
 
     public string MembershipDetails
     {
         get
         {
-            if (_finding.Evidence is not KerberoastableAccountEvidence evidence)
+            if (_finding.Membership is not { } evidence)
                 return string.Empty;
             var blocks = new List<string>();
             if (evidence.DirectProtectionName is { } direct)
@@ -342,17 +346,7 @@ internal sealed class FindingRowViewModel
         + (principal.Scope is { } scope ? " (" + scope + ")" : string.Empty);
 
     private bool EvidenceIsComplete => _finding.Coverage == EvidenceCompleteness.Complete
-        && (_finding.Evidence switch
-        {
-            KerberoastableAccountEvidence evidence => evidence.MembershipRoutes.IsComplete,
-            BroadGroupMembershipEvidence evidence => evidence.IsComplete,
-            GroupMembershipReviewEvidence evidence => evidence.IsComplete,
-            DelegationConfigurationEvidence evidence => evidence.IsComplete,
-            ServiceAccountFindingEvidence evidence => evidence.IsComplete,
-            AttributeWritePermissionEvidence evidence => evidence.IsComplete,
-            ReplicationPermissionEvidence evidence => evidence.IsComplete,
-            _ => true,
-        });
+        && _finding.EvidenceIsComplete;
 
     /// <summary>
     /// Whether the evidence this rests on was complete, in words.

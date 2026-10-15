@@ -382,7 +382,8 @@ public static class JudgingRun
             if (judged.IsSuccess)
             {
                 AppendPortableSummary(
-                    bundleDirectory, System.Diagnostics.Stopwatch.GetElapsedTime(began), account);
+                    bundleDirectory, account.GenerationId, System.Diagnostics.Stopwatch.GetElapsedTime(began),
+                    account.Phases, account.Rules, log, cancellationToken);
             }
             else
             {
@@ -406,14 +407,14 @@ public static class JudgingRun
     /// </remarks>
     private sealed class JudgingAccount
     {
+        internal Guid GenerationId { get; set; }
+
         /// <summary>Where the object pass spent its time, which is what P-257 turns on.</summary>
         public IReadOnlyList<StageTiming> Phases { get; set; } = [];
 
         /// <summary>One row per scheduled rule, and what became of it.</summary>
         public IReadOnlyList<RuleTiming> Rules { get; set; } = [];
 
-        /// <summary>How many captured objects were streamed through the pass.</summary>
-        public long ObjectsJudged { get; set; }
     }
 
     /// <summary>
@@ -425,29 +426,66 @@ public static class JudgingRun
     /// of each kind is the part that may travel.
     /// </remarks>
     /// <param name="bundleDirectory">The run's directory.</param>
+    /// <param name="generationId">The generation this attempt actually published.</param>
     /// <param name="elapsed">How long judging took.</param>
-    /// <param name="account">What the run measured while it was happening.</param>
-    private static void AppendPortableSummary(
-        string bundleDirectory, TimeSpan elapsed, JudgingAccount account)
+    /// <param name="phases">Where the run measured its time.</param>
+    /// <param name="timings">Per-rule durations; saved executions supply their outcomes and counts.</param>
+    /// <param name="log">Where a failed summary is reported without replacing the completed result.</param>
+    /// <param name="cancellationToken">Stops readback.</param>
+    internal static void AppendPortableSummary(
+        string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases, IReadOnlyList<RuleTiming> timings,
+        IRunLog log, CancellationToken cancellationToken)
     {
-        var opened = JudgementReader.Open(bundleDirectory);
+        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
 
         if (!opened.IsSuccess)
+        {
+            log.Record(JudgePhase, opened.Error, []);
             return;
+        }
 
         using var reader = opened.Value!;
-        var executions = reader.ReadRuleExecutions();
+        if (reader.Description.GenerationId != generationId)
+        {
+            log.Record(JudgePhase, AuditError.Create(ErrorCategory.Evidence, "JudgementGenerationChanged",
+                ErrorSeverity.Failed, "The selected judgement is not the generation this attempt published.", bundleDirectory), []);
+            return;
+        }
+        var read = reader.ReadSummary();
+        if (!read.IsSuccess)
+        {
+            log.Record(JudgePhase, read.Error, []);
+            return;
+        }
+        var stored = read.Value;
+        var executions = new StoredRuleExecutions(stored.RulesRun, stored.Description.State);
+        var byRule = stored.RulesRun.ToDictionary(rule => rule.RuleId, StringComparer.Ordinal);
+        if (timings.Count != byRule.Count
+            || timings.Select(timing => timing.Rule).Distinct(StringComparer.Ordinal).Count() != timings.Count
+            || timings.Any(timing => !byRule.ContainsKey(timing.Rule)))
+        {
+            log.Record(JudgePhase, AuditError.Create(ErrorCategory.Evidence, "JudgementSummaryTimingsMismatch",
+                ErrorSeverity.Failed, "The measured rule durations do not match the saved executions.", bundleDirectory), []);
+            return;
+        }
+        var rules = timings.Select(timing =>
+        {
+            var execution = byRule[timing.Rule];
+            return new RuleTiming(execution.RuleId, execution.Outcome.ToString(), execution.ObjectsJudged,
+                execution.ObjectsNotApplicable, timing.Milliseconds);
+        }).ToArray();
 
-        PortableSummaryFile.AppendJudging(
+        var written = PortableSummaryFile.AppendJudging(
             bundleDirectory,
             PortableSummaryReading.OfJudging(
                 executions.State.ToString(),
                 (long)elapsed.TotalMilliseconds,
-                account.ObjectsJudged,
-                account.Phases,
-                account.Rules,
-                reader.ReadFindingCountsBySeverity(),
+                stored.ObjectsJudged,
+                phases,
+                rules,
+                stored.FindingsBySeverity,
                 Problems(executions)));
+        if (!written.IsSuccess) log.Record(JudgePhase, written.Error, []);
     }
 
     /// <summary>
@@ -854,6 +892,7 @@ public static class JudgingRun
             startedUtc,
             evaluationAsOf);
         progress.RecordGeneration(writer.GenerationId, seal.Hash, derivationGeneration);
+        account.GenerationId = writer.GenerationId;
         writer.RecordEvidenceScope(scope.Value!);
         writer.StartGroupInventory(bundle.Description.EveryDeclaredUnitRecordedAsRead);
 
@@ -1418,7 +1457,6 @@ public static class JudgingRun
         // HANDED OUT BECAUSE NOTHING PERSISTS IT. The judgement records what each rule concluded;
         // how long each took, and where the object pass spent its time, are known here and nowhere
         // afterwards - and the per-phase breakdown is the thing P-257 was found with.
-        account.ObjectsJudged = objectsRead;
         account.Phases = work.Timings();
         account.Rules =
         [

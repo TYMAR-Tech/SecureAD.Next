@@ -657,12 +657,12 @@ public sealed class BroadAdministrativeGroupMembershipTests
     {
         var directory = Prepared(Group(Da, DomainSid + "-512", -2147483646, [Wide]), Broad());
         using var reader = Open(directory);
-        var store = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
-        var copy = Path.Combine(directory, "sec062-publish-check.db");
-        File.Copy(store, copy);
+        var copyDirectory = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "sec062-publish-check");
+        var copy = BundleLayout.AnalysisGenerationDataPath(copyDirectory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = copy, Pooling = false, ForeignKeys = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, copyDirectory, reader.Description.GenerationId);
         var derivationSeal = FindingInputBinding.DerivationSeal(directory, reader.Description.DerivationGenerationId);
         GroupMembershipFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None);
         using var command = connection.CreateCommand();
@@ -824,11 +824,13 @@ public sealed class BroadAdministrativeGroupMembershipTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        using var reader = Open(Prepared(Group(Da, DomainSid + "-512", -2147483646, [Wide]), Broad()));
+        using var reader = Open(FindingsRun());
         var page = reader.ReadPage(FindingsQuery.About(Da));
         Assert.True(page.IsSuccess, page.Error?.Description);
         return page.Value.Findings;
     }
+
+    internal static string FindingsRun() => Prepared(Group(Da, DomainSid + "-512", -2147483646, [Wide]), Broad());
 
     private static RuleVerdict Assess(string directory, Func<CapturedMembershipInput, CapturedMembershipInput> change)
     {

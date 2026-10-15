@@ -543,7 +543,7 @@ public sealed class ObjectViewModelTests
     {
         var section = new FindingsSectionViewModel(
             new ObjectSectionDefinition("Findings", "Findings", []),
-            new FindingsPage([], null, RulesRan: 0),
+            new FindingListPage([], null, RulesRan: 0),
             "The judgement would not open.");
 
         Assert.Equal("The judgement would not open.", section.Verdict);

@@ -311,7 +311,7 @@ public sealed class AdminCountWithoutProtectionTests
             command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
             command.ExecuteNonQuery();
         }
-        BundleSealing.Seal(path, BundleLayout.AnalysisGenerationSealPath(directory, generation.Kind, generation.GenerationId));
+        TestSealing.ResealAnalysis(directory, generation);
     }
 
     private static string Build(Subject subject, Action<BundleWriter>? alsoWrite)

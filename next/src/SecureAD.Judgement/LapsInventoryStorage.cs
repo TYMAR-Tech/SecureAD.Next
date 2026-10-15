@@ -14,27 +14,28 @@ internal static class LapsInventoryStorage
     internal static string Message(string key) => Messages.GetString(key, CultureInfo.CurrentUICulture)
         ?? throw new MissingManifestResourceException(key);
 
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, """
-        CREATE TABLE laps_inventory_product (
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.laps_inventory_product (
             singleton INTEGER NOT NULL PRIMARY KEY CHECK (singleton = 1),
             generation_id TEXT NOT NULL,
             state TEXT NOT NULL CHECK (state IN ('Writing', 'Complete')),
             computer_count INTEGER NULL CHECK (computer_count >= 0)
         );
-        CREATE TABLE laps_inventory (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.laps_inventory (
             distinguished_name TEXT COLLATE NOCASE NOT NULL PRIMARY KEY,
             name TEXT COLLATE NOCASE NOT NULL,
             parent_dn TEXT COLLATE NOCASE NULL,
             dn_reversed TEXT COLLATE NOCASE NOT NULL,
             management TEXT NOT NULL,
+            domain_fqdn TEXT NULL,
             result TEXT NOT NULL
         );
         """);
 
-    internal static void CreateIndexes(SqliteConnection connection) => Execute(connection, """
-        CREATE INDEX ix_laps_inventory_parent ON laps_inventory(parent_dn, name, distinguished_name);
-        CREATE INDEX ix_laps_inventory_subtree ON laps_inventory(dn_reversed, management);
-        CREATE INDEX ix_laps_inventory_name ON laps_inventory(name, distinguished_name);
+    internal static void CreateIndexes(SqliteConnection connection) => Execute(connection, $"""
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_parent ON laps_inventory(parent_dn, name, distinguished_name);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_subtree ON laps_inventory(dn_reversed, management);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_name ON laps_inventory(name, distinguished_name);
         """);
 
     internal static void Start(SqliteConnection connection, Guid generation)
@@ -73,13 +74,14 @@ internal static class LapsInventoryStorage
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO laps_inventory VALUES ($dn, $name, $parent, $reversed, $management, $result)
+            INSERT INTO laps_inventory VALUES ($dn, $name, $parent, $reversed, $management, $domain, $result)
             """;
         command.Parameters.AddWithValue("$dn", computer.DistinguishedName);
         command.Parameters.AddWithValue("$name", computer.Name);
         command.Parameters.AddWithValue("$parent", (object?)DnHelper.GetParentDn(computer.DistinguishedName) ?? DBNull.Value);
         command.Parameters.AddWithValue("$reversed", DnHelper.ReverseDn(computer.DistinguishedName));
         command.Parameters.AddWithValue("$management", computer.Management.ToString());
+        command.Parameters.AddWithValue("$domain", (object?)computer.DomainFqdn ?? DBNull.Value);
         command.Parameters.AddWithValue("$result", JsonSerializer.Serialize(computer, ProofSerialization.Options));
         command.ExecuteNonQuery();
     }
@@ -108,12 +110,19 @@ internal static class LapsInventoryStorage
     }
 
     internal static LapsPage Read(SqliteConnection connection, JudgementDescription description,
-        string containerDn, ListingScope scope, int pageNumber, ListingCoverage coverage, CancellationToken cancellationToken)
+        LapsQuery query, LapsPageMark? after, ListingCoverage coverage, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
-        ArgumentOutOfRangeException.ThrowIfLessThan(pageNumber, 1);
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentException.ThrowIfNullOrWhiteSpace(query.Container);
+        ArgumentNullException.ThrowIfNull(query.Search);
+        if (query.State is { } requestedState && !Enum.IsDefined(requestedState))
+            throw new ArgumentOutOfRangeException(nameof(query));
         ArgumentNullException.ThrowIfNull(coverage);
         cancellationToken.ThrowIfCancellationRequested();
+        var question = JsonSerializer.Serialize(query, ProofSerialization.Options);
+        if (after is not null && (after.GenerationId != description.GenerationId || after.Question != question
+            || string.IsNullOrWhiteSpace(after.Name) || string.IsNullOrWhiteSpace(after.DistinguishedName)))
+            throw new InvalidDataException("The LAPS continuation does not belong to this saved generation and question.");
         using (var header = connection.CreateCommand())
         {
             header.CommandText = "SELECT generation_id, state, computer_count FROM laps_inventory_product WHERE singleton=1";
@@ -123,15 +132,15 @@ internal static class LapsInventoryStorage
                 || reader.IsDBNull(2) || reader.GetInt64(2) < 0) throw Invalid();
         }
 
-        var where = scope switch
+        var where = query.Scope switch
         {
             ListingScope.Base => "distinguished_name = $dn",
             ListingScope.OneLevel => "(distinguished_name = $dn OR parent_dn = $dn)",
             ListingScope.Subtree => "(dn_reversed = $reversed OR dn_reversed LIKE $prefix ESCAPE '\\')",
-            _ => throw new ArgumentOutOfRangeException(nameof(scope)),
+            _ => throw new ArgumentOutOfRangeException(nameof(query)),
         };
         var counts = new Dictionary<LapsManagement, int>();
-        using (var command = ScopedCommand(connection, $"SELECT management, COUNT(*) FROM laps_inventory WHERE {where} GROUP BY management", containerDn))
+        using (var command = ScopedCommand(connection, $"SELECT management, COUNT(*) FROM laps_inventory WHERE {where} GROUP BY management", query.Container))
         using (var reader = command.ExecuteReader())
         {
             while (reader.Read())
@@ -142,25 +151,43 @@ internal static class LapsInventoryStorage
             }
         }
 
+        connection.CreateFunction<string?, string, bool>("laps_contains",
+            static (value, search) => value?.Contains(search, StringComparison.OrdinalIgnoreCase) == true, isDeterministic: true);
         var computers = new List<LapsComputer>();
+        LapsPageMark? next = null;
         using (var command = ScopedCommand(connection, $"""
-            SELECT distinguished_name, management, result FROM laps_inventory WHERE {where}
-            ORDER BY name, distinguished_name LIMIT 100 OFFSET $skip
-            """, containerDn))
+            SELECT distinguished_name, management, result, name, domain_fqdn FROM laps_inventory WHERE {where}
+              AND ($search='' OR laps_contains(name,$search) OR laps_contains(domain_fqdn,$search))
+              AND ($state IS NULL OR management=$state)
+              AND ($afterName IS NULL OR name>$afterName COLLATE NOCASE
+                   OR (name=$afterName COLLATE NOCASE AND distinguished_name>$afterDn COLLATE NOCASE))
+            ORDER BY name, distinguished_name LIMIT 101
+            """, query.Container))
         {
-            command.Parameters.AddWithValue("$skip", ((long)pageNumber - 1) * 100);
+            command.Parameters.AddWithValue("$search", query.Search.Trim());
+            command.Parameters.AddWithValue("$state", (object?)query.State?.ToString() ?? DBNull.Value);
+            command.Parameters.AddWithValue("$afterName", (object?)after?.Name ?? DBNull.Value);
+            command.Parameters.AddWithValue("$afterDn", (object?)after?.DistinguishedName ?? DBNull.Value);
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (computers.Count == 100)
+                {
+                    var last = computers[^1];
+                    next = new(description.GenerationId, question, last.Name, last.DistinguishedName);
+                    break;
+                }
                 var computer = JsonSerializer.Deserialize<LapsComputer>(reader.GetString(2), ProofSerialization.Options) ?? throw Invalid();
                 Validate(computer);
                 if (!string.Equals(computer.DistinguishedName, reader.GetString(0), StringComparison.Ordinal)
-                    || computer.Management.ToString() != reader.GetString(1)) throw Invalid();
+                    || computer.Management.ToString() != reader.GetString(1)
+                    || computer.Name != reader.GetString(3)
+                    || computer.DomainFqdn != (reader.IsDBNull(4) ? null : reader.GetString(4))) throw Invalid();
                 computers.Add(computer);
             }
         }
-        return new(computers, counts.Values.Sum(), counts, coverage.IsComplete, coverage.Shortfall);
+        return new(computers, counts.Values.Sum(), counts, coverage.IsComplete, coverage.Shortfall) { Next = next };
     }
 
     private static SqliteCommand ScopedCommand(SqliteConnection connection, string sql, string dn)

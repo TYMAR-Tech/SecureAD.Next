@@ -534,6 +534,41 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task EveryEvidenceKindPreservesTheCompleteLightweightFindingsScreen()
+    {
+        var sampleRules = Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence
+            or DuplicateSpnEvidence or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence
+            or DelegationConfigurationEvidence or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence
+            or ReplicationPermissionEvidence)).Select(sample => (IRule)new SampleRule(sample)).ToArray();
+        var directories = new[]
+        {
+            OwnAccountMembershipPathTests.CreateMixedEvidenceRun(sampleRules, output),
+            DuplicateSpnTests.FindingsRun(),
+            BroadAdministrativeGroupMembershipTests.FindingsRun(),
+            ServiceAccountRuleTests.FindingsRun(),
+            AttributeWriteRuleTests.FindingsRun(),
+            MembershipReviewRuleTests.FindingsRun(),
+            DelegationConfigurationRuleTests.FindingsRun(),
+            ReplicationPermissionRuleTests.FindingsRun(),
+        };
+        var seen = new HashSet<Type>();
+        foreach (var directory in directories)
+        {
+            using (var original = JudgementReader.Open(directory).Value)
+                foreach (var finding in original.Read().Findings) seen.Add(finding.Evidence.GetType());
+            await SecureAD.Next.Tests.Shell.OpenedRunResultsTests.VerifyLightweightFindingsScreen(directory);
+        }
+        Assert.Equal(EvidenceKinds().OrderBy(type => type.Name), seen.OrderBy(type => type.Name));
+    }
+
+    [Fact]
+    public async Task Arch03SavedRouteActionRetainsOriginalBindingAndReturnsToTheSameFindings()
+    {
+        var directory = OwnAccountMembershipPathTests.CreateMixedEvidenceRun([], output);
+        await SecureAD.Next.Tests.Shell.OpenedRunResultsTests.VerifySavedRouteAction(directory);
+    }
+
     /// <summary>Every sealed kind of evidence the production assembly declares.</summary>
     private static IReadOnlyList<Type> EvidenceKinds() =>
     [

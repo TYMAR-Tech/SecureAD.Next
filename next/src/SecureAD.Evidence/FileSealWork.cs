@@ -46,7 +46,10 @@ internal sealed class FileSealWork(TimeProvider time)
     internal void Read(int count) => BytesRead = checked(BytesRead + count);
     internal void Hashed(int count) => BytesHashed = checked(BytesHashed + count);
 
-    internal void Report(IRunLog log, AnalysisStoreKind? kind, Guid? generation, string outcome)
+    internal void Report(IRunLog log, AnalysisStoreKind? kind, Guid? generation, string outcome) =>
+        Report(log, kind, generation, outcome, null);
+
+    internal void Report(IRunLog log, AnalysisStoreKind? kind, Guid? generation, string outcome, string? artifact)
     {
         var total = time.GetElapsedTime(_started);
         var phase = kind switch
@@ -59,7 +62,7 @@ internal sealed class FileSealWork(TimeProvider time)
         {
             log.Note(phase, "file sealing",
             [
-                new("artifact", kind?.ToString() ?? "Evidence"),
+                new("artifact", artifact ?? kind?.ToString() ?? "Evidence"),
                 new("generation", generation?.ToString("D") ?? "none"),
                 new("outcome", outcome), new("failedPart", _failed?.ToString() ?? "none"),
                 new("totalMs", Number(total.TotalMilliseconds)),

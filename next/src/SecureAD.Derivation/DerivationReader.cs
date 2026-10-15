@@ -281,8 +281,10 @@ public sealed record StoredDerivation(
 /// <c>GetPrecomputedClosure</c> came to have none.
 /// </para>
 /// </remarks>
-public sealed class DerivationReader : IDisposable
+public sealed partial class DerivationReader : IDisposable
 {
+    /// <summary>The saved format understood by this reader and its root-bound browse summary.</summary>
+    public static int StorageVersion => DerivationSchema.Version;
     private readonly SqliteConnection _connection;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;

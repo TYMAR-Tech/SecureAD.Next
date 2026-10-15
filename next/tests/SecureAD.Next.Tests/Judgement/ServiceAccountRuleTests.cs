@@ -667,11 +667,11 @@ public sealed class ServiceAccountRuleTests
         var directory = Judge(Prepared(Group(Da, DomainSid + "-512", -2147483646, AccountDn), Account(uac: 66048)));
         using var reader = Open(directory);
         var derivationSeal = Evidence(reader.Read().Findings.Single(finding => finding.RuleId == "SEC-100")).AdministrativeMembership!.DerivationSeal;
-        var store = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
-        var copy = Path.Combine(directory, "service-publication-check.db");
-        File.Copy(store, copy);
+        var copyDirectory = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "service-publication-check");
+        var copy = BundleLayout.AnalysisGenerationDataPath(copyDirectory, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, copyDirectory, reader.Description.GenerationId);
         ServiceAccountFindingStorage.RequirePublishable(connection, derivationSeal, CancellationToken.None);
         using var command = connection.CreateCommand();
         command.CommandText = "UPDATE finding_service_account SET fingerprint=zeroblob(32)";
@@ -824,9 +824,12 @@ public sealed class ServiceAccountRuleTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        using var reader = Published(Group(Da, DomainSid + "-512", -2147483646, AccountDn), Account(uac: 66048));
+        using var reader = Open(FindingsRun());
         return reader.ReadPage(FindingsQuery.About(AccountDn)).Value.Findings;
     }
+
+    internal static string FindingsRun() =>
+        Judge(Prepared(Group(Da, DomainSid + "-512", -2147483646, AccountDn), Account(uac: 66048)));
 
     private static ServiceAccountFindingEvidence Evidence(Finding finding) => Assert.IsType<ServiceAccountFindingEvidence>(finding.Evidence);
     internal sealed record Source(string Dn, Guid? Guid, IReadOnlyList<EvidenceAttribute> Attributes);

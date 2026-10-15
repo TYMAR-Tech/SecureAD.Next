@@ -192,7 +192,7 @@ internal sealed partial class AssetsViewModel
         {
             if (definition.Key == ObjectSectionCatalog.Findings)
             {
-                var findings = reader.ReadFindings(bundle, FindingsQuery.About(dn));
+                var findings = reader.ReadFindingsList(bundle, FindingsQuery.About(dn));
                 return findings.IsSuccess
                     ? Result<ObjectSectionViewModel>.Success(new FindingsSectionViewModel(definition, findings.Value, null))
                     : Result<ObjectSectionViewModel>.Failure(findings.Error);

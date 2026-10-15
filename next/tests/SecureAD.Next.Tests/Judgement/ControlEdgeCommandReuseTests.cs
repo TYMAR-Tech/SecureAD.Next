@@ -100,7 +100,8 @@ public sealed class ControlEdgeCommandReuseTests
         var first = JudgingRun.Judge(directory, [], DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch,
             JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
         Assert.True(first.IsSuccess, first.Error?.Description);
-        var database = Directory.GetFiles(directory, "judgement.*.db").Single();
+        var generation = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value;
+        var database = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId);
         var hash = FileHash(database);
         var seal = File.ReadAllBytes(database + ".seal");
         var manifest = File.ReadAllBytes(Path.Combine(directory, "judgement.current.json"));
@@ -115,6 +116,7 @@ public sealed class ControlEdgeCommandReuseTests
                 DataSource = BundleLayout.JudgementPartialPath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
             }.ToString());
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             Assert.True(Count(connection, "SELECT COUNT(*) FROM control_object") >= 1000);
             Assert.True(Count(connection, "SELECT COUNT(*) FROM control_ace") >= 1000);
             sawWrittenProof = true;

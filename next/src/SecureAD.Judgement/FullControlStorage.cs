@@ -8,23 +8,23 @@ namespace SecureAD.Judgement;
 
 internal static class FullControlStorage
 {
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE full_control_manifest (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.full_control_manifest (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
             assessment_count INTEGER NOT NULL CHECK(assessment_count >= 0));
-        CREATE TABLE full_control_source (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.full_control_source (target TEXT PRIMARY KEY COLLATE NOCASE REFERENCES control_object(target),
             ace_count INTEGER NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE full_control_source_entry (target TEXT NOT NULL COLLATE NOCASE REFERENCES full_control_source(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.full_control_source_entry (target TEXT NOT NULL COLLATE NOCASE REFERENCES full_control_source(target),
             position INTEGER NOT NULL, ordinal INTEGER NOT NULL, entry_id INTEGER NOT NULL REFERENCES permission_entry(id),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32), PRIMARY KEY(target, position));
-        CREATE TABLE full_control_assessment (id INTEGER PRIMARY KEY, target TEXT NOT NULL COLLATE NOCASE REFERENCES full_control_source(target),
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.full_control_assessment (id INTEGER PRIMARY KEY, target TEXT NOT NULL COLLATE NOCASE REFERENCES full_control_source(target),
             holder_sid TEXT NOT NULL COLLATE NOCASE, holder_scope TEXT NULL COLLATE NOCASE,
             evaluation TEXT NOT NULL, expectedness TEXT NOT NULL, generation TEXT NOT NULL,
             derivation_generation TEXT NULL, support_count INTEGER NOT NULL, proof TEXT NOT NULL,
             route_value_id INTEGER NOT NULL REFERENCES shared_proof_value(id),
             route_fingerprint BLOB NOT NULL CHECK(length(route_fingerprint)=32));
-        CREATE UNIQUE INDEX ux_full_control_identity ON full_control_assessment(target, holder_sid, COALESCE(holder_scope,''));
-        CREATE INDEX ix_full_control_holder ON full_control_assessment(holder_sid, holder_scope, id);
-        CREATE TABLE full_control_support (assessment_id INTEGER NOT NULL REFERENCES full_control_assessment(id),
+        CREATE UNIQUE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ux_full_control_identity ON full_control_assessment(target, holder_sid, COALESCE(holder_scope,''));
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_full_control_holder ON full_control_assessment(holder_sid, holder_scope, id);
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.full_control_support (assessment_id INTEGER NOT NULL REFERENCES full_control_assessment(id),
             edge_id INTEGER NOT NULL UNIQUE REFERENCES control_edge(id), PRIMARY KEY(assessment_id, edge_id));
         """);
 

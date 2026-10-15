@@ -32,7 +32,7 @@ public sealed class CaptureObjectScopeStorageTests(ITestOutputHelper output)
 
         Assert.Equal("dnsNode,dnsZone,enatelSSOAccount,enatelSSOAccountParameter,enatelSSOStorage,enatelUserManagedAuth",
             string.Join(",", reader.Description.ExcludedObjectClasses));
-        Assert.Equal(16, reader.Description.SchemaVersion);
+        Assert.Equal(BundleSchema.Version, reader.Description.SchemaVersion);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class CaptureObjectScopeStorageTests(ITestOutputHelper output)
             command.CommandText = sql;
             command.ExecuteNonQuery();
         }
-        BundleSealing.Seal(BundleLayout.EvidencePath(directory), BundleLayout.SealPath(directory));
+        TestSealing.ResealCapture(directory);
     }
 
     private static string? OpenError(string directory)

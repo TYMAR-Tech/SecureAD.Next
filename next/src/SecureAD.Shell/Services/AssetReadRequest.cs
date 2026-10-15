@@ -72,7 +72,7 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<DirectoryTree> ReadTree(string bundleDirectory) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadTree(), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ReadTree(), _readCancellation));
 
     public Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after) =>
         WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadGroupInventory(query, after, _readCancellation), _readCancellation));
@@ -82,11 +82,11 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, int pageNumber) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ListObjects(containerDn, scope, pageNumber), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ListObjects(containerDn, scope, pageNumber), _readCancellation));
 
     /// <inheritdoc/>
-    public Result<LapsPage> ListLapsComputers(string bundleDirectory, string containerDn, ListingScope scope, int pageNumber) =>
-        WithRun(bundleDirectory, run => run.ReadLapsComputers(containerDn, scope, pageNumber, _readCancellation));
+    public Result<LapsPage> ListLapsComputers(string bundleDirectory, LapsQuery query, LapsPageMark? after) =>
+        WithRun(bundleDirectory, run => run.ReadLapsComputers(query, after, _readCancellation));
 
     /// <inheritdoc/>
     public Result<ObjectPermissions?> ReadPermissions(string bundleDirectory, string distinguishedName) =>
@@ -98,11 +98,11 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<ForestInventory> ReadInventory(string bundleDirectory) =>
-        Flatten(WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadInventory(), _readCancellation)));
+        WithRun(bundleDirectory, run => run.ReadOverview(reader => reader.ReadInventory(), _readCancellation));
 
     /// <inheritdoc/>
     public Result<int?> ReadGroupsWithUnidentifiedMembers(string bundleDirectory) =>
-        WithRun(bundleDirectory, run => run.ReadDerivation(reader => reader.GroupsWithUnidentifiedMembers(), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadGroupsWithUnidentifiedMembers(_readCancellation));
 
     /// <inheritdoc/>
     public Result<SchemaGuidCatalog> ReadSchemaGuids(string bundleDirectory) =>
@@ -112,7 +112,7 @@ internal sealed partial class AssetReadRequest(
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentNullException.ThrowIfNull(query);
-        return Flatten(WithRun(bundleDirectory, run => run.ReadJudgement(reader =>
+        return Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader =>
         {
             if (query.After is { } mark && mark.GenerationId != reader.Description.GenerationId)
                 return Changed<FindingsPage>(bundleDirectory);
@@ -124,13 +124,24 @@ internal sealed partial class AssetReadRequest(
         }, _readCancellation)));
     }
 
+    public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        return Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader =>
+        {
+            if (query.After is { } mark && mark.GenerationId != reader.Description.GenerationId)
+                return Changed<FindingListPage>(bundleDirectory);
+            return reader.ReadListPage(query);
+        }, _readCancellation)));
+    }
+
     /// <inheritdoc/>
     public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory) =>
-        WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadRuleExecutions(), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadRuleExecutions(), _readCancellation));
 
     /// <inheritdoc/>
     public Result<FindingsFilterValues> ReadFindingsFilterValues(string bundleDirectory) =>
-        WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadFilterValues(), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadFilterValues(), _readCancellation));
 
     private Result<T> WithRun<T>(string bundleDirectory, Func<OpenedRunResults, Result<T>> read)
     {

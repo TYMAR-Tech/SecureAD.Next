@@ -219,6 +219,7 @@ public sealed partial class OwnAccountMembershipPathTests
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = BundleLayout.JudgementPartialPath(directory), Mode = SqliteOpenMode.ReadWrite, Pooling = false }.ToString());
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM finding WHERE rule_id='SEC-071'";
             observed = (long)command.ExecuteScalar()!;
@@ -252,6 +253,15 @@ public sealed partial class OwnAccountMembershipPathTests
 
     internal static IReadOnlyList<Finding> ReadMixedEvidenceSample(IReadOnlyList<IRule> sampleRules, Xunit.Abstractions.ITestOutputHelper output)
     {
+        using var reader = Open(CreateMixedEvidenceRun(sampleRules, output));
+        var page = reader.ReadPage(FindingsQuery.Everything());
+        Assert.True(page.IsSuccess, page.Error?.Description);
+        Assert.False(page.Value.HasMore);
+        return page.Value.Findings;
+    }
+
+    internal static string CreateMixedEvidenceRun(IReadOnlyList<IRule> sampleRules, Xunit.Abstractions.ITestOutputHelper output)
+    {
         var fixture = new OwnAccountMembershipPathTests(output);
         var directory = fixture.RiskCapture(extra: (writer, domain) =>
         {
@@ -267,11 +277,7 @@ public sealed partial class OwnAccountMembershipPathTests
             PathRequesterPolicy.SupportedCapturedQuestions, Started, Started, JudgingRun.NobodyIsWatching,
             RunLog.Discarded, CancellationToken.None, null);
         Assert.True(result.IsSuccess, result.Error?.Description);
-        using var reader = Open(directory);
-        var page = reader.ReadPage(FindingsQuery.Everything());
-        Assert.True(page.IsSuccess, page.Error?.Description);
-        Assert.False(page.Value.HasMore);
-        return page.Value.Findings;
+        return directory;
     }
 
     [Fact]

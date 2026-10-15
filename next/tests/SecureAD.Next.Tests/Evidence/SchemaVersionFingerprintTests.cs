@@ -64,6 +64,8 @@ public sealed class SchemaVersionFingerprintTests
         [15] = "e28bca65d6c77353",
         // 16 - account metadata exclusion; the tables and indexes are unchanged.
         [16] = "e28bca65d6c77353",
+        // 17 - capture generation binds Evidence to its independently sealed navigation.
+        [17] = "a9759094142ec4de",
     };
 
     [Fact]

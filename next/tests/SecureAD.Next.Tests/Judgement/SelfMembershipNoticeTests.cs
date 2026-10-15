@@ -1,4 +1,3 @@
-using System.Reflection;
 using SecureAD.Cli;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -41,9 +40,10 @@ public sealed class SelfMembershipNoticeTests
         Assert.True(judged.IsSuccess, judged.Error?.Description);
         using var reader = JudgementReader.Open(directory).Value;
         Assert.Equal(PathRequesterCoverageState.EvaluatedSupportedQuestions, reader.ReadPathRequesterCoverage().Verdict);
-        var method = typeof(Program).GetMethod("Requesters", BindingFlags.NonPublic | BindingFlags.Static)!;
-
-        var report = Assert.IsType<string>(method.Invoke(null, [reader]));
+        var summary = Program.Summarise(directory, reader.Description.GenerationId,
+            PathRequesterPolicy.SupportedCapturedQuestions, CancellationToken.None);
+        Assert.True(summary.IsSuccess, summary.Error?.Description);
+        var report = summary.Value;
 
         Assert.Contains("The separate Self-Membership scan was not run", report, StringComparison.Ordinal);
         Assert.Contains("Tier 0 requester checks have their own saved coverage", report, StringComparison.Ordinal);

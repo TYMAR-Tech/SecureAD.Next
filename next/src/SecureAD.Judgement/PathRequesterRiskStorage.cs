@@ -10,16 +10,16 @@ internal static class PathRequesterRiskStorage
 {
     internal const int Version = 1;
 
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, """
-        CREATE TABLE path_risk_product (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
+    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_risk_product (id INTEGER PRIMARY KEY CHECK(id=1), proof TEXT NOT NULL,
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE TABLE path_requester_risk (id INTEGER PRIMARY KEY, requester TEXT NOT NULL COLLATE NOCASE,
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.path_requester_risk (id INTEGER PRIMARY KEY, requester TEXT NOT NULL COLLATE NOCASE,
             question_key TEXT NOT NULL UNIQUE, verdict TEXT NOT NULL,
             source_proof INTEGER NOT NULL REFERENCES path_proof(id), proof INTEGER NOT NULL REFERENCES path_proof(id),
             source_fingerprint BLOB NOT NULL CHECK(length(source_fingerprint)=32),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-        CREATE INDEX ix_path_risk_requester ON path_requester_risk(requester,id);
-        CREATE INDEX ix_path_risk_group ON path_requester_risk(requester,verdict,id);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_risk_requester ON path_requester_risk(requester,id);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.ix_path_risk_group ON path_requester_risk(requester,verdict,id);
         """);
 
     private sealed record Question(PathRequesterFamily Family, string RequesterDn, string TargetDn,

@@ -181,6 +181,8 @@ public sealed class Tier0GatedJudgingTests(ITestOutputHelper output)
             AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
         var connection = new SqliteConnection("Data Source=" + path + ";Mode=ReadOnly;Pooling=False");
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory,
+            AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);
         return connection;
     }
 

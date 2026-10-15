@@ -24,6 +24,7 @@ public sealed class ControlEdgeStorageTests
             using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False"))
             {
                 connection.Open();
+                TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
                 using var command = connection.CreateCommand();
                 command.CommandText = "UPDATE judgement SET schema_version=$version";
                 command.Parameters.AddWithValue("$version", version);
@@ -86,6 +87,7 @@ public sealed class ControlEdgeStorageTests
             using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False"))
             {
                 connection.Open();
+                TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
                 using var command = connection.CreateCommand();
                 command.CommandText = "UPDATE control_product SET engine_version=1";
                 command.ExecuteNonQuery();

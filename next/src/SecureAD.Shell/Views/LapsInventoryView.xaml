@@ -49,7 +49,7 @@
                 <ComboBox DockPanel.Dock="Right" Width="155" ItemsSource="{Binding LapsStateChoices}"
                           SelectedItem="{Binding LapsStateFilter}" Margin="10,0,0,0" />
                 <TextBox Text="{Binding LapsSearchText,UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="Filter the displayed page by computer or domain" />
+                         ToolTip="Filter computers in the selected scope by computer or domain." />
             </DockPanel>
         </Border>
 
@@ -107,6 +107,16 @@
                 </StackPanel>
             </DockPanel>
         </Border>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+            <TextBlock Text="{Binding LapsPageNumber,StringFormat=Page {0}}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       VerticalAlignment="Center" Margin="0,0,12,0" />
+            <Button Content="Previous" Command="{Binding PreviousLapsCommand}"
+                    IsEnabled="{Binding HasEarlierLaps}" Margin="0,0,8,0" />
+            <Button Content="Next" Command="{Binding NextLapsCommand}"
+                    IsEnabled="{Binding HasMoreLaps}" />
+        </StackPanel>
 
         <DataGrid ItemsSource="{Binding VisibleLapsComputers}" SelectedItem="{Binding SelectedLapsComputer,Mode=TwoWay}"
                   AutoGenerateColumns="False"

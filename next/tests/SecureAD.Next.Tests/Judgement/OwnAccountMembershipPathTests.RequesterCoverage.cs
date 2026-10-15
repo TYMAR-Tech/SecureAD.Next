@@ -120,10 +120,11 @@ public sealed partial class OwnAccountMembershipPathTests
         using var reader = Open(directory);
         Assert.Equal(new[] { 1, 1, 1 }, reader.ReadPathRequesterCoverage().Families.Select(value => value.StoredAssessments));
         Assert.Equal(ControlEvaluationState.Established, Assert.Single(reader.ReadTier0Path(UserDn).MembershipDaclAssessments).Authorization);
-        var copy = Path.Combine(directory, "requester-reuse.db");
-        File.Copy(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, reader.Description.GenerationId), copy);
+        var working = TestSealing.CopyJudgement(directory, reader.Description.GenerationId, "requester-reuse");
+        var copy = BundleLayout.AnalysisGenerationDataPath(working, AnalysisStoreKind.Judgement, reader.Description.GenerationId);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, working, reader.Description.GenerationId);
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM tier0_best_route; DELETE FROM tier0_distance; DELETE FROM tier0_distance_product; DELETE FROM path_requester_risk; DELETE FROM path_risk_product; DELETE FROM tier0_path_node; DELETE FROM tier0_path_calculation";
         command.ExecuteNonQuery();

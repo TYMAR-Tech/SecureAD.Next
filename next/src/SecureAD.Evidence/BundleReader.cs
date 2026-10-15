@@ -53,7 +53,11 @@ public sealed record BundleDescription(
     string CoverageId,
     bool EveryDeclaredUnitRecordedAsRead,
     ContinuationReconciliationOutcome ContinuationReconciliationOutcome,
-    IReadOnlyList<string> ExcludedObjectClasses);
+    IReadOnlyList<string> ExcludedObjectClasses)
+{
+    /// <summary>The immutable capture generation shared by Evidence and its navigation product.</summary>
+    public Guid CaptureGenerationId { get; init; }
+}
 
 /// <summary>
 /// The one way a bundle gets read.
@@ -107,6 +111,7 @@ public sealed class BundleReader : IDisposable
     private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
     private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
     private readonly SqliteConnection _connection;
+    private readonly bool _navigation;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
     private (long ObjectId, string Dn)? _streamedIdentity;
@@ -116,11 +121,12 @@ public sealed class BundleReader : IDisposable
     private (SchemaGuidCatalog Schema, DelegationCoverage Coverage)? _delegationPreparation;
 
     private BundleReader(
-        string bundleDirectory, SqliteConnection connection, BundleDescription description)
+        string bundleDirectory, SqliteConnection connection, BundleDescription description, bool navigation = false)
     {
         BundleDirectory = bundleDirectory;
         _connection = connection;
         Description = description;
+        _navigation = navigation;
     }
 
     /// <summary>The directory this bundle was opened from.</summary>
@@ -160,21 +166,32 @@ public sealed class BundleReader : IDisposable
     public static Result<BundleReader> Open(string bundleDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
-
-        var verdict = BundleSealing.Verify(bundleDirectory);
-        if (!verdict.MayBeOpened)
-            return Refused(verdict, bundleDirectory);
-
-        var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
-        var connection = new SqliteConnection(
-            new SqliteConnectionStringBuilder
+        if (!File.Exists(BundleLayout.SealPath(bundleDirectory)))
+            return Refused(new(SealState.Absent, "This captured Evidence has no seal."), bundleDirectory);
+        var file = ProtectedStoreFile.OpenEvidence(bundleDirectory);
+        if (!file.IsSuccess)
+        {
+            var reason = file.Error.Code switch
             {
-                DataSource = ImmutableDataSource(evidencePath),
-                Mode = SqliteOpenMode.ReadOnly,
-                Pooling = false,
-            }.ToString());
+                "Evidence.ProtectedStoreMismatch" => "SealMismatch",
+                "Evidence.ProtectedStoreUnreadable" => "SealUnreadable",
+                "Evidence.ProtectedStoreAbsent" => "SealAbsent",
+                _ => null,
+            };
+            return reason is null ? Result<BundleReader>.Failure(file.Error)
+                : Failure(reason, file.Error.Description, bundleDirectory);
+        }
+        using var store = file.Value;
+        return Open(store);
+    }
 
-        return OpenConnection(bundleDirectory, connection);
+    /// <summary>Reads only the captured navigation product under its own verified file lifetime.</summary>
+    public static Result<BundleReader> OpenNavigation(string bundleDirectory)
+    {
+        var file = ProtectedStoreFile.OpenNavigation(bundleDirectory);
+        if (!file.IsSuccess) return Result<BundleReader>.Failure(file.Error);
+        using var store = file.Value;
+        return Open(store);
     }
 
     /// <summary>
@@ -222,6 +239,7 @@ public sealed class BundleReader : IDisposable
     {
         ArgumentNullException.ThrowIfNull(store);
         if (store.Generation is not null) throw new ArgumentException(nameof(store));
+        if (store.Role is not (StoreSegmentRole.Evidence or StoreSegmentRole.Navigation)) throw new ArgumentException(nameof(store));
         ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
@@ -231,22 +249,32 @@ public sealed class BundleReader : IDisposable
                 // Format validation includes a descriptor-version scan. Its verdict, like the
                 // seal's, is reusable only under this same protected file lifetime.
                 opened = store.EvidenceDescription is { } description
-                    ? new BundleReader(store.BundleDirectory, lease.Connection, description)
-                    : OpenConnection(store.BundleDirectory, lease.Connection);
+                    ? new BundleReader(store.BundleDirectory, lease.Connection, description, store.Role == StoreSegmentRole.Navigation)
+                    : OpenConnection(store.BundleDirectory, lease.Connection, store.Role == StoreSegmentRole.Navigation);
+                if (opened.IsSuccess && opened.Value.Description.CaptureGenerationId != store.Root.GenerationId)
+                    throw new InvalidDataException("The captured product does not identify the generation selected by its root.");
+                if (opened.IsSuccess && store.Role == StoreSegmentRole.Navigation)
+                    NavigationStorage.RequireBinding(lease.Connection, store.Root);
+                if (opened.IsSuccess && store.Root.Segment(StoreSegmentRole.Evidence).SchemaVersion != BundleSchema.Version)
+                    throw new InvalidDataException("The root declares an unsupported captured Evidence schema.");
                 if (opened.IsSuccess) store.EvidenceDescription = opened.Value.Description;
             }
             if (opened.IsSuccess)
             {
-                opened.Value._verifiedFingerprint = store.Fingerprint;
+                opened.Value._verifiedFingerprint = store.Root.EvidenceSeal;
                 opened.Value._protection = lease;
                 lease = null;
             }
             return opened;
         }
+        catch (Exception error) when (error is InvalidDataException or SqliteException)
+        {
+            return Failure("EvidenceUnreadable", error.Message, store.BundleDirectory);
+        }
         finally { lease?.Dispose(); }
     }
 
-    private static Result<BundleReader> OpenConnection(string bundleDirectory, SqliteConnection connection)
+    private static Result<BundleReader> OpenConnection(string bundleDirectory, SqliteConnection connection, bool navigation = false)
     {
         var evidencePath = BundleLayout.EvidencePath(bundleDirectory);
         FormatChecks.Add(1, new KeyValuePair<string, object?>("file", Path.GetFullPath(evidencePath)));
@@ -318,7 +346,7 @@ public sealed class BundleReader : IDisposable
                     evidencePath);
             }
 
-            var canonicalizations = CanonicalizationVersionsIn(connection);
+            var canonicalizations = navigation ? [] : CanonicalizationVersionsIn(connection);
             if (canonicalizations.Any(version => version != AceCanonicalization.Version))
             {
                 connection.Dispose();
@@ -335,7 +363,7 @@ public sealed class BundleReader : IDisposable
                     evidencePath);
             }
 
-            return new BundleReader(bundleDirectory, connection, description);
+            return new BundleReader(bundleDirectory, connection, description, navigation);
         }
         catch (SqliteException error)
         {
@@ -352,6 +380,11 @@ public sealed class BundleReader : IDisposable
             connection.Dispose();
             return Failure("EvidenceUnreadable", error.Message, evidencePath);
         }
+        catch (FormatException error)
+        {
+            connection.Dispose();
+            return Failure("EvidenceUnreadable", error.Message, evidencePath);
+        }
     }
 
     /// <summary>
@@ -364,7 +397,7 @@ public sealed class BundleReader : IDisposable
     /// </remarks>
     public DirectoryTree ReadTree()
     {
-        var tree = DirectoryTreeReader.Read(Connection);
+        var tree = DirectoryTreeReader.Read(Connection, _navigation);
         var labels = Description.ForestFqdn.Split(
             '.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (labels.Length == 0)
@@ -520,7 +553,7 @@ public sealed class BundleReader : IDisposable
             var outcome = reader.GetString(1);
             var reason = reader.IsDBNull(2) ? null : reader.GetString(2);
 
-            var covered = AsCoverage(domain, outcome, reason);
+            var covered = DomainCoverageReading.Read(domain, outcome, reason, BundleDirectory);
             if (!covered.IsSuccess)
                 return Result<RunScope>.Failure(covered.Error);
 
@@ -556,78 +589,7 @@ public sealed class BundleReader : IDisposable
     /// </remarks>
     /// <returns>What the forest held, or why that could not be established.</returns>
     public Result<ForestInventory> ReadInventory() =>
-        InventoryReader.Read(Connection, Description, ReadScope());
-
-    /// <summary>
-    /// Turns one stored coverage row back into the type the rest of the product reads.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>A sealed bundle cannot honestly say a domain was not read</b>, and one that does is
-    /// refused rather than reported. Capture is fail-fast per
-    /// <c>docs/decisions/0003</c>: a unit that could not be read returns before the seal, so the
-    /// row cannot arise from a run this product completed. <c>UnreadOutcomeIsUnreachableTests</c>
-    /// holds that invariant over the whole product, and reconstructing the state here would be the
-    /// first thing to break it.
-    /// </para>
-    /// <para>
-    /// A partially read domain is a different matter and is read back: the run reached it, said so,
-    /// and <see cref="RunScope.ShortfallCount"/> carries it.
-    /// </para>
-    /// </remarks>
-    private Result<DomainCoverage> AsCoverage(string domain, string outcome, string? reason)
-    {
-        switch (outcome)
-        {
-            case "Read":
-                return Result<DomainCoverage>.Success(DomainCoverage.Read(domain));
-
-            case "PartiallyRead":
-                return Stated(domain, outcome, reason, r =>
-                    DomainCoverage.PartiallyRead(domain, r));
-
-            case "ExcludedByChoice":
-                return Stated(domain, outcome, reason, r =>
-                    DomainCoverage.Excluded(domain, ExclusionKind.ByChoice, r));
-
-            case "ExcludedForWantOfCandidates":
-                return Stated(domain, outcome, reason, r =>
-                    DomainCoverage.Excluded(domain, ExclusionKind.ForWantOfCandidates, r));
-
-            case "NotRead":
-                return Result<DomainCoverage>.Failure(ScopeError(
-                    "CoverageImpossible",
-                    $"This run records {domain} as not read, which a sealed bundle cannot honestly "
-                    + "say: a domain that could not be read ends the run before its evidence is "
-                    + "sealed. The bundle was written by something other than this product, or it "
-                    + "has been altered, so what the run covered cannot be established."));
-
-            default:
-                return Result<DomainCoverage>.Failure(ScopeError(
-                    "CoverageUnrecognised",
-                    $"This run records '{outcome}' for {domain}, which this build does not "
-                    + "recognise. The bundle was written by a version that knew an outcome this "
-                    + "one does not, so what the run covered cannot be established here."));
-        }
-    }
-
-    /// <summary>
-    /// Applies <paramref name="build"/> to a stated reason, refusing a row that has none.
-    /// </summary>
-    /// <remarks>
-    /// The writer requires a reason for every outcome that is not <c>Read</c>, so its absence means
-    /// the row was not written by this product. Supplying the missing half here would present a
-    /// reader's guess as the run's own statement.
-    /// </remarks>
-    private Result<DomainCoverage> Stated(
-        string domain, string outcome, string? reason, Func<string, DomainCoverage> build) =>
-        string.IsNullOrWhiteSpace(reason)
-            ? Result<DomainCoverage>.Failure(ScopeError(
-                "CoverageUnexplained",
-                $"This run records '{outcome}' for {domain} without saying why, and the writer "
-                + "requires a reason. Supplying one here would present a guess as the run's own "
-                + "statement."))
-            : Result<DomainCoverage>.Success(build(reason));
+        InventoryReader.Read(Connection, Description, ReadScope(), _navigation);
 
     /// <summary>Builds a refusal naming this bundle, so a screen can say which run it means.</summary>
     private AuditError ScopeError(string reason, string description) =>
@@ -641,7 +603,7 @@ public sealed class BundleReader : IDisposable
     /// <param name="scope">How much of what is beneath it to include.</param>
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
-        ObjectListingReader.Read(Connection, containerDn, scope, pageNumber);
+        ObjectListingReader.Read(Connection, containerDn, scope, pageNumber, _navigation);
 
     /// <summary>Resolves only a displayed page of original membership names to captured object identities.</summary>
     public CapturedMemberReferences ResolveMembershipReferences(IReadOnlyList<string> names, CancellationToken cancellationToken = default)
@@ -1191,7 +1153,7 @@ public sealed class BundleReader : IDisposable
             SELECT schema_version, forest_fqdn, capture_started_utc, capture_completed_utc,
                    coverage_id, every_declared_unit_recorded_as_read,
                    captured_attribute_catalog_version, schema_guid_catalog_version,
-                   security_descriptor_parser_version, continuation_reconciliation_outcome
+                   security_descriptor_parser_version, continuation_reconciliation_outcome, capture_generation_id
             FROM bundle
             """;
 
@@ -1217,7 +1179,7 @@ public sealed class BundleReader : IDisposable
             reader.GetString(4),
             reader.GetInt64(5) != 0,
             Enum.Parse<ContinuationReconciliationOutcome>(reader.GetString(9)),
-            excludedClasses);
+            excludedClasses) { CaptureGenerationId = Guid.Parse(reader.GetString(10)) };
     }
 
     private static IReadOnlyList<string> ReadExcludedObjectClasses(SqliteConnection connection)

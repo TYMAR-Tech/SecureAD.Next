@@ -569,12 +569,14 @@ public sealed class ReplicationPermissionRuleTests
 
     internal static IReadOnlyList<Finding> ReadPublishedFindings()
     {
-        var directory = Published(Grants(Holder));
+        var directory = FindingsRun();
         using var reader = Open(directory);
         var page = reader.ReadPage(FindingsQuery.About(Root));
         Assert.True(page.IsSuccess, page.Error?.Description);
         return page.Value.Findings;
     }
+
+    internal static string FindingsRun() => Published(Grants(Holder));
 
     private static RuleVerdict Assess(IReadOnlyList<PermissionEntry> entries, ObjectAttributes? subject = null,
         IReadOnlyDictionary<string, NamingContextKind>? roots = null, bool missingRoots = false, bool missingMembership = false,
@@ -706,6 +708,7 @@ public sealed class ReplicationPermissionRuleTests
             Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWrite, Pooling = false, ForeignKeys = false,
         }.ToString());
         connection.Open();
+        TestSealing.AttachJudgementParts(connection, directory, reader.Description.GenerationId);
         return connection;
     }
     private static void AssertRefused(string directory)

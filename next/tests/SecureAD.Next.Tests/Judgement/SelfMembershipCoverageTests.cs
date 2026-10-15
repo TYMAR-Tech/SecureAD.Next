@@ -99,8 +99,9 @@ public sealed class SelfMembershipCoverageTests
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString()))
         {
             connection.Open();
+            TestSealing.AttachJudgementParts(connection, directory, generation.GenerationId);
             mutate(connection);
         }
-        BundleSealing.Seal(path, BundleLayout.AnalysisGenerationSealPath(directory, generation.Kind, generation.GenerationId));
+        TestSealing.ResealAnalysis(directory, generation);
     }
 }

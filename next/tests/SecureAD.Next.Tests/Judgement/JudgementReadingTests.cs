@@ -351,10 +351,7 @@ public sealed class JudgementReadingTests
             command.ExecuteNonQuery();
         }
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-        BundleSealing.Seal(
-            path,
-            BundleLayout.AnalysisGenerationSealPath(
-                directory, generation.Kind, generation.GenerationId));
+        TestSealing.ResealAnalysis(directory, generation);
 
         var opened = JudgementReader.Open(directory);
 

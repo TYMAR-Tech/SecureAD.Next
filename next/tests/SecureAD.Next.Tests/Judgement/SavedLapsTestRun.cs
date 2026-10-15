@@ -19,6 +19,11 @@ internal static class SavedLapsTestRun
     {
         using var evidence = BundleReader.Open(directory).Value;
         using var judgement = JudgementReader.Open(directory).Value;
-        return judgement.ListLapsComputers(dn, scope, pageNumber, evidence.ReadListingCoverage(dn, scope));
+        var query = new LapsQuery(dn, scope, "", null);
+        var coverage = evidence.ReadListingCoverage(dn, scope);
+        var page = judgement.ListLapsComputers(query, null, coverage);
+        for (var index = 1; index < pageNumber; index++)
+            page = judgement.ListLapsComputers(query, Assert.IsType<LapsPageMark>(page.Next), coverage);
+        return page;
     }
 }
