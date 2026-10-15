@@ -246,7 +246,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsEvidence();
         using var writer = JudgementWriter.Create(directory, BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash,
             null, LapsStarted, LapsStarted);
-        using (var connection = new SqliteConnection($"Data Source={BundleLayout.JudgementPartialPath(directory)};Pooling=False"))
+        using (var connection = new SqliteConnection($"Data Source={TestSealing.PendingJudgementPath(directory)};Pooling=False"))
         {
             connection.Open();
             TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);

@@ -93,9 +93,10 @@ public sealed class RunProductsReaderTests : IDisposable
     [Fact]
     public void AnUnpublishedAttemptIsNotAProduct()
     {
-        AnalysisStoreLifecycle.BeginAttempt(_directory, AnalysisStoreKind.Judgement);
+        var generation = Guid.NewGuid();
+        AnalysisStoreLifecycle.BeginAttempt(_directory, AnalysisStoreKind.Judgement, generation);
         File.WriteAllText(
-            AnalysisStoreLifecycle.StagingPath(_directory, AnalysisStoreKind.Judgement),
+            TestSealing.AnalysisInputPath(_directory, AnalysisStoreKind.Judgement, generation),
             "half a result");
 
         var products = RunProductsReader.Observe(_directory);
@@ -119,8 +120,9 @@ public sealed class RunProductsReaderTests : IDisposable
 
     private void Publish(AnalysisStoreKind kind)
     {
-        AnalysisStoreLifecycle.BeginAttempt(_directory, kind);
-        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(_directory, kind), "result");
-        AnalysisStoreLifecycle.Publish(_directory, kind, Guid.NewGuid());
+        var generation = Guid.NewGuid();
+        AnalysisStoreLifecycle.BeginAttempt(_directory, kind, generation);
+        File.WriteAllText(TestSealing.AnalysisInputPath(_directory, kind, generation), "result");
+        AnalysisStoreLifecycle.Publish(_directory, kind, generation);
     }
 }

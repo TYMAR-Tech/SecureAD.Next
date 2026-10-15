@@ -5,7 +5,7 @@ namespace SecureAD.Evidence;
 
 internal static class NavigationStorage
 {
-    internal const int Version = 1;
+    internal const int Version = 2;
     private static readonly string[] Metadata =
     [
         "bundle", "capture_object_class_exclusion", "partition_coverage", "domain_coverage",
@@ -37,6 +37,7 @@ internal static class NavigationStorage
                 object_id INTEGER PRIMARY KEY, coverage_id INTEGER NOT NULL, object_guid TEXT NULL,
                 distinguished_name TEXT NOT NULL, dn_reversed TEXT NOT NULL, parent_dn TEXT NULL,
                 parent_guid TEXT NULL, domain_fqdn TEXT NOT NULL, most_specific_class TEXT NULL,
+                samaccountname TEXT NULL, objectsid BLOB NULL, name_sort TEXT NOT NULL,
                 is_container INTEGER NOT NULL CHECK(is_container IN (0,1)));
             """;
         command.ExecuteNonQuery();
@@ -46,6 +47,7 @@ internal static class NavigationStorage
             SELECT o.object_id,o.coverage_id,o.object_guid,o.distinguished_name,o.dn_reversed,o.parent_dn,
                 o.parent_guid,o.domain_fqdn,
                 (SELECT v.value FROM main.objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1),
+                o.samaccountname,o.objectsid,SUBSTR(o.distinguished_name,INSTR(o.distinguished_name,'=')+1),
                 EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id AND v.value COLLATE NOCASE IN ({classes}))
             FROM main.captured_object o;
             """;
@@ -57,6 +59,9 @@ internal static class NavigationStorage
             CREATE INDEX navigation.ix_navigation_parent ON captured_object(parent_dn);
             CREATE INDEX navigation.ix_navigation_parent_nocase ON captured_object(parent_dn COLLATE NOCASE);
             CREATE INDEX navigation.ix_navigation_reversed ON captured_object(dn_reversed);
+            CREATE INDEX navigation.ix_navigation_reversed_nocase ON captured_object(dn_reversed COLLATE NOCASE);
+            CREATE INDEX navigation.ix_navigation_name_order ON captured_object(name_sort COLLATE NOCASE,object_id);
+            CREATE INDEX navigation.ix_navigation_parent_order ON captured_object(parent_dn COLLATE NOCASE,name_sort COLLATE NOCASE,object_id);
             CREATE TABLE navigation.observed_parent (ordinal INTEGER PRIMARY KEY,parent_dn TEXT UNIQUE);
             INSERT INTO navigation.observed_parent(parent_dn)
                 SELECT DISTINCT parent_dn FROM main.captured_object WHERE parent_dn IS NOT NULL;

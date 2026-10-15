@@ -19,9 +19,9 @@ namespace SecureAD.Judgement;
 /// </para>
 /// <para>
 /// <b>The previous judgement survives until this one is finished.</b> Writing goes to
-/// <c>judgement.db.partial</c> and only <see cref="Complete"/> renames it over
-/// <c>judgement.db</c>, so a judging that dies half way leaves yesterday's answer intact rather
-/// than replacing it with a partial one.
+/// unique, unselected generation files. Only <see cref="Complete"/> selects their sealed root,
+/// so a judging that dies half way leaves yesterday's answer intact rather than replacing it
+/// with a partial one.
 /// </para>
 /// <para>
 /// <b>Every method here is synchronous, deliberately</b>, for the reason <see cref="BundleWriter"/>
@@ -39,7 +39,6 @@ namespace SecureAD.Judgement;
 public sealed class JudgementWriter : IDisposable
 {
     private readonly string _bundleDirectory;
-    private readonly string _partialPath;
     private readonly SqliteConnection _connection;
     private readonly IDisposable _writeLock;
     private readonly PreparedStatements _statements;
@@ -59,13 +58,13 @@ public sealed class JudgementWriter : IDisposable
     private bool _disposed;
 
     /// <summary>The immutable generation this writer will publish.</summary>
-    public Guid GenerationId { get; } = Guid.NewGuid();
+    public Guid GenerationId { get; }
 
-    private JudgementWriter(string bundleDirectory, string partialPath, SqliteConnection connection, IDisposable writeLock,
+    private JudgementWriter(string bundleDirectory, Guid generationId, SqliteConnection connection, IDisposable writeLock,
         Guid? derivationGenerationId)
     {
         _bundleDirectory = bundleDirectory;
-        _partialPath = partialPath;
+        GenerationId = generationId;
         _connection = connection;
         _writeLock = writeLock;
         _derivationGenerationId = derivationGenerationId;
@@ -438,23 +437,23 @@ public sealed class JudgementWriter : IDisposable
         var transferred = false;
         try
         {
-            AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement);
-            var partialPath = BundleLayout.JudgementPartialPath(bundleDirectory);
-            if (File.Exists(partialPath))
-                File.Delete(partialPath);
+            var generationId = Guid.NewGuid();
+            AnalysisStoreLifecycle.BeginAttempt(bundleDirectory, AnalysisStoreKind.Judgement, generationId);
+            var dataPath = BundleLayout.AnalysisGenerationDataPath(bundleDirectory, AnalysisStoreKind.Judgement, generationId);
+            using (File.Open(dataPath, FileMode.CreateNew, FileAccess.Write)) { }
 
             connection = new SqliteConnection(
                 new SqliteConnectionStringBuilder
                 {
-                    DataSource = partialPath,
-                    Mode = SqliteOpenMode.ReadWriteCreate,
+                    DataSource = dataPath,
+                    Mode = SqliteOpenMode.ReadWrite,
                     Pooling = false,
                     ForeignKeys = true,
                 }.ToString());
             connection.Open();
             Pragma(connection, "journal_mode = WAL");
             Pragma(connection, "synchronous = NORMAL");
-            writer = new JudgementWriter(bundleDirectory, partialPath, connection, writeLock, derivationGenerationId);
+            writer = new JudgementWriter(bundleDirectory, generationId, connection, writeLock, derivationGenerationId);
             JudgementStoreLayout.Create(connection, bundleDirectory, writer.GenerationId, evidenceSeal, derivationGenerationId);
             JudgementSchema.CreateTables(connection);
             writer.WriteHeader(evidenceSeal, derivationGenerationId, startedUtc, evaluationAsOf);
@@ -652,8 +651,8 @@ public sealed class JudgementWriter : IDisposable
         JudgementStoreLayout.Checkpoint(_connection);
         diagnostic?.Part("close-database");
         _connection.Close();
-        SqliteConnection.ClearPool(_connection);
 
+        diagnostic?.Counter("generationFileMoves", 0);
         AnalysisStoreLifecycle.Publish(
             _bundleDirectory,
             AnalysisStoreKind.Judgement,
@@ -662,7 +661,8 @@ public sealed class JudgementWriter : IDisposable
             diagnostic is null ? null : part => diagnostic.Part(part switch
             {
                 AnalysisPublicationPart.WritePendingManifest => "write-pending-manifest",
-                AnalysisPublicationPart.MoveData => "move-generation-file",
+                // Keep the fixed metric's historical name; it now measures protection only, with zero data moves.
+                AnalysisPublicationPart.PrepareData => "move-generation-file",
                 AnalysisPublicationPart.SealData => "seal-generation",
                 AnalysisPublicationPart.SelectManifest => "select-generation",
                 _ => throw new ArgumentOutOfRangeException(nameof(part)),
@@ -673,12 +673,12 @@ public sealed class JudgementWriter : IDisposable
     }
 
     /// <summary>
-    /// Abandons the judgement because the coordinator itself failed, leaving the partial file
+    /// Abandons the judgement because the coordinator itself failed, leaving the unselected generation
     /// saying so.
     /// </summary>
     /// <remarks>
-    /// <b>It does not rename and does not seal.</b> A judging whose coordinator failed has no
-    /// answer to offer, so nothing should be able to open it - but the partial file is left behind
+    /// <b>It does not select and does not seal.</b> A judging whose coordinator failed has no
+    /// answer to offer, so nothing should be able to open it - but its generation is left behind
     /// carrying <see cref="JudgementRunState.Failed"/>, because a scheduling or sealing failure is
     /// a defect in this product and deleting the evidence of it would help nobody diagnose it.
     /// </remarks>
@@ -696,7 +696,6 @@ public sealed class JudgementWriter : IDisposable
 
         JudgementStoreLayout.Checkpoint(_connection);
         _connection.Close();
-        SqliteConnection.ClearPool(_connection);
         _finished = true;
         _writeLock.Dispose();
     }
@@ -739,7 +738,7 @@ public sealed class JudgementWriter : IDisposable
     /// Writes the single row describing this judging, in the state it starts in.
     /// </summary>
     /// <remarks>
-    /// Written at the start rather than the end so that a partial file left by a killed process
+    /// Written at the start rather than the end so that an unselected generation left by a killed process
     /// still says what it was, which is <see cref="JudgementRunState.Running"/> - the one state
     /// whose meaning is *this never finished*.
     /// </remarks>

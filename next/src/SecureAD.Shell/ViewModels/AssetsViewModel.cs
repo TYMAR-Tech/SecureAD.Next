@@ -572,7 +572,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Gaps.Clear();
         ClearListings();
         Selected = null;
-        PageNumber = 1;
+        ResetObjectPaging();
         _findingsBack.Clear();
         _findingsFrom = null;
         Severities.Clear();
@@ -599,9 +599,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
 
     private void DisplayTree(DirectoryTree tree)
     {
-        foreach (var root in tree.Roots) Roots.Add(new TreeNodeViewModel(root));
-        foreach (var node in Roots.SelectMany(root => root.ThisAndBelow()))
-            node.PropertyChanged += OnNodeChanged;
+        foreach (var root in tree.Roots)
+            Roots.Add(new TreeNodeViewModel(root, node => node.PropertyChanged += OnNodeChanged));
         foreach (var gap in tree.Gaps) Gaps.Add(new TreeGapViewModel(gap));
 
         var automaticSelection = tree.ForestRootDistinguishedName is null
@@ -635,6 +634,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
             ReadCompletion = ReadObjectSearchPageAsync(_objectSearchBack.Peek(), -1);
             return;
         }
+        _objectPages.Pop();
         PageNumber--;
         LoadVisible();
     }
@@ -651,6 +651,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
             ReadCompletion = ReadObjectSearchPageAsync(_objectSearchNext, 1);
             return;
         }
+        _objectPages.Push(_objectNext);
         PageNumber++;
         LoadVisible();
     }
@@ -712,19 +713,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         Opened = null;
         ReadCompletion = ObjectReadCompletion = OpenAsync(BundlePath, distinguishedName, section);
     }
-
-    /// <summary>
-    /// The object's most specific class, or null when it did not arrive.
-    /// </summary>
-    /// <remarks>
-    /// <b>The last value, which is the most derived one.</b> A computer's <c>objectClass</c> is
-    /// <c>top, person, organizationalPerson, user, computer</c>, and an operator calling it a user
-    /// would be reading the fourth of five. The rules take the same value the same way.
-    /// </remarks>
-    private static string? ClassOf(ObjectAttributes? attributes) =>
-        attributes?.Find("objectClass")?.Values is { Count: > 0 } values
-            ? values[^1].Text
-            : null;
 
     /// <summary>Goes back to the listing the object was opened from.</summary>
     /// <remarks>
@@ -916,6 +904,28 @@ internal sealed partial class AssetsViewModel : ObservableObject
         }
     }
 
+    partial void OnSelectedChanging(TreeNodeViewModel? oldValue, TreeNodeViewModel? newValue)
+    {
+        if (oldValue is not null && !ReferenceEquals(oldValue, newValue)) oldValue.IsSelected = false;
+    }
+
+    private TreeNodeViewModel? FindContainer(string distinguishedName)
+    {
+        var path = new List<string>();
+        for (string? current = distinguishedName; current is not null; current = SecureAD.Kernel.Naming.DnHelper.GetParentDn(current))
+            path.Add(current);
+        foreach (var root in Roots)
+        {
+            var level = path.FindIndex(name => root.DistinguishedName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (level < 0) continue;
+            TreeNodeViewModel? node = root;
+            while (--level >= 0 && node is not null)
+                node = node.Children.FirstOrDefault(child => child.DistinguishedName.Equals(path[level], StringComparison.OrdinalIgnoreCase));
+            return node;
+        }
+        return null;
+    }
+
     /// <summary>
     /// A different container is a different listing, and it starts at its first page. Keeping the
     /// page number would open a container at page seven of a listing that has two.
@@ -929,7 +939,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (_resetting) return;
         UseSelectedGroupLocation();
         ResetObjectSearch();
-        PageNumber = 1;
+        ResetObjectPaging();
         _findingsBack.Clear();
         _findingsFrom = null;
         ResetLapsPaging();
@@ -954,12 +964,13 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (_resetting) return;
         if (IsObjectSearch)
         {
+            ResetObjectPaging();
             OnPropertyChanged(nameof(ShowsBase));
             OnPropertyChanged(nameof(ShowsOneLevel));
             OnPropertyChanged(nameof(ShowsSubtree));
             return;
         }
-        PageNumber = 1;
+        ResetObjectPaging();
         ResetLapsPaging();
         OnPropertyChanged(nameof(ParentIsWorthShowing));
         OnPropertyChanged(nameof(ShowsBase));

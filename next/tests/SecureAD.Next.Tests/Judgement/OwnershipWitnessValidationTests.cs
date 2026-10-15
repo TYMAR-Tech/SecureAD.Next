@@ -132,7 +132,7 @@ public sealed class OwnershipWitnessValidationTests
             Assert.True(cancellation.IsCancellationRequested);
             Assert.NotNull(generation);
             var working = TestSealing.CopyStagedJudgement(directory, "witness-verification");
-            var database = BundleLayout.JudgementPartialPath(working);
+            var database = TestSealing.PendingJudgementPath(working);
             Database = new(new SqliteConnectionStringBuilder { DataSource = database, Pooling = false }.ToString());
             Database.Open();
             TestSealing.AttachJudgementParts(Database, working, generation.Value, staged: true);

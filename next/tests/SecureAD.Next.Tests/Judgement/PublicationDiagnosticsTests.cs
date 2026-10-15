@@ -62,6 +62,7 @@ public sealed class PublicationDiagnosticsTests
         Assert.Equal(generation.ToString("D"), summary.Value("generation"));
         Assert.Equal("execution-only", summary.Value("kind"));
         Assert.Equal("none", summary.Value("activePart"));
+        Assert.Equal("0", summary.Value("generationFileMoves"));
         var parts = log.Lines.Where(line => IsPublication(line) && line.Message == "post-pass part" && line.Value("outcome") == "completed").ToArray();
         Assert.Equal(Parts, parts.Select(line => line.Value("part")));
         Assert.All(parts, line =>
@@ -166,7 +167,7 @@ public sealed class PublicationDiagnosticsTests
             if (cancel) { stopping.Cancel(); return; }
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             {
-                DataSource = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement),
+                DataSource = TestSealing.PendingJudgementPath(directory),
                 Mode = SqliteOpenMode.ReadWrite, Pooling = false,
             }.ToString());
             connection.Open();

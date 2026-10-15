@@ -79,7 +79,7 @@ public sealed class JudgementDiscardTests
     public void AFailedWriterCreationDoesNotStrandItsExclusion()
     {
         var directory = TempDirectories.Create("judgement-write-failed");
-        Directory.CreateDirectory(BundleLayout.JudgementPartialPath(directory));
+        Directory.CreateDirectory(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement) + ".partial");
 
         var error = Record.Exception(() =>
         {
@@ -158,8 +158,9 @@ public sealed class JudgementDiscardTests
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Derivation, Guid.NewGuid());
         for (var index = 0; index < 2; index++)
         {
-            File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), "saved judgement " + index);
-            var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, Guid.NewGuid());
+            var generationId = Guid.NewGuid();
+            File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generationId), "saved judgement " + index);
+            var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generationId);
             var data = BundleLayout.AnalysisGenerationDataPath(directory, generation.Kind, generation.GenerationId);
             foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
                 File.WriteAllText(data + suffix, "saved working file");

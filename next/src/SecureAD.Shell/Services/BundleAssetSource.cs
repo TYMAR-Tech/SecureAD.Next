@@ -107,14 +107,19 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names) =>
         WithRun(bundleDirectory, reader => reader.ResolveMembershipReferences(bundleDirectory, names));
 
-    /// <inheritdoc/>
-    public Result<ObjectPage> ListObjects(
-        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+    public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, ObjectPageMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ListObjects(bundleDirectory, containerDn, scope, after));
 
-        return WithRun(bundleDirectory, reader => reader.ListObjects(bundleDirectory, containerDn, scope, pageNumber));
-    }
+    public Result<CapturedObjectIdentity?> ReadObjectIdentity(string bundleDirectory, string distinguishedName) =>
+        WithRun(bundleDirectory, reader => reader.ReadObjectIdentity(bundleDirectory, distinguishedName));
+
+    public Result<CapturedMembershipPage?> ReadCapturedMembership(string bundleDirectory, string distinguishedName,
+        bool parents, CapturedMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCapturedMembership(bundleDirectory, distinguishedName, parents, after));
+
+    public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
+        IReadOnlyCollection<string> attributes) =>
+        WithRun(bundleDirectory, reader => reader.ReadObjectAttributes(bundleDirectory, distinguishedName, attributes));
 
     /// <inheritdoc/>
     public Result<LapsPage> ListLapsComputers(

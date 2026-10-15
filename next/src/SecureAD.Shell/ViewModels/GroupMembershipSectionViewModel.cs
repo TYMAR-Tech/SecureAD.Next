@@ -18,12 +18,16 @@ internal sealed class GroupMemberRowViewModel(CapturedMemberReference value)
 
 internal sealed partial class GroupMembershipSectionViewModel : ObjectSectionViewModel
 {
-    private readonly ObjectAttributes _attributes;
-    private readonly Func<IReadOnlyList<string>, CancellationToken, Task<Result<CapturedMemberReferences>>> _read;
+    private readonly Func<bool, CapturedMembershipMark?, CancellationToken,
+        Task<Result<(CapturedMembershipPage Page, CapturedMemberReferences Members)>>> _read;
     private readonly Action<string> _open;
     private readonly Func<bool> _current;
     private CancellationTokenSource? _pending;
-    private int _page;
+    private readonly Stack<CapturedMembershipMark?> _back = [];
+    private CapturedMembershipMark? _position;
+    private CapturedMembershipMark? _next;
+    private int? _total;
+    private string? _primaryGroupId;
     private bool _parents;
     private bool _active = true;
     [ObservableProperty] private bool _isLoading;
@@ -35,21 +39,21 @@ internal sealed partial class GroupMembershipSectionViewModel : ObjectSectionVie
     public string SelectedView
     {
         get => _parents ? Views[1] : Views[0];
-        set { _parents = value == Views[1]; _page = 0; Start(); OnPropertyChanged(); }
+        set { _parents = value == Views[1]; _back.Clear(); _position = _next = null; _total = null; Start(); OnPropertyChanged(); }
     }
-    private IReadOnlyList<AttributeValue> Values => _attributes.Find(_parents ? "memberOf" : "member")?.Values ?? [];
-    public string PageDescription => $"{Values.Count:N0} recorded values - page {_page + 1}";
+    public string PageDescription => _total is { } total ? $"{total:N0} recorded values - page {_back.Count + 1}" : "";
     public string Qualification => "Original member/memberOf values only; no nested total or effective permission is inferred. "
         + "Unresolved references cannot be opened. Primary-group relationships remain separate.";
-    public string PrimaryGroup => _attributes.Find("primaryGroupID")?.OnlyValue?.Text is { } primary
+    public string PrimaryGroup => _total is null ? "" : _primaryGroupId is { } primary
         ? "Captured primaryGroupID: " + primary : "No primary-group identifier was recorded for this object.";
     public bool HasError => Error is not null;
 
-    public GroupMembershipSectionViewModel(ObjectSectionDefinition definition, ObjectAttributes attributes,
-        Func<IReadOnlyList<string>, CancellationToken, Task<Result<CapturedMemberReferences>>> read,
+    public GroupMembershipSectionViewModel(ObjectSectionDefinition definition,
+        Func<bool, CapturedMembershipMark?, CancellationToken,
+            Task<Result<(CapturedMembershipPage Page, CapturedMemberReferences Members)>>> read,
         Action<string> open, Func<bool> current) : base(definition)
     {
-        (_attributes, _read, _open, _current) = (attributes, read, open, current);
+        (_read, _open, _current) = (read, open, current);
         Start();
     }
 
@@ -63,16 +67,26 @@ internal sealed partial class GroupMembershipSectionViewModel : ObjectSectionVie
         Error = null;
         Members.Clear();
         SelectedMember = null;
+        _next = null;
         Announce();
         try
         {
             if (!_active || !_current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-            var values = Values.Skip(_page * 50).Take(50).Select(value => value.Stored).ToArray();
-            var answer = await _read(values, pending.Token);
+            var answer = await _read(_parents, _position, pending.Token);
             if (!_active || pending.IsCancellationRequested || !ReferenceEquals(_pending, pending)) return;
             if (!_current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
             if (!answer.IsSuccess) Error = answer.Error.Description;
-            else foreach (var member in answer.Value.References) Members.Add(new(member));
+            else
+            {
+                var (page, members) = answer.Value;
+                if (page.Values.Count > 50 || page.Total < page.Values.Count
+                    || !page.Values.Select(value => value.Stored).SequenceEqual(members.References.Select(member => member.RecordedName)))
+                    throw new InvalidOperationException("The requested membership page contradicts its captured values.");
+                _total = page.Total;
+                _primaryGroupId = page.PrimaryGroupId;
+                _next = page.Next;
+                foreach (var member in members.References) Members.Add(new(member));
+            }
         }
         catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
         catch (InvalidOperationException failure) { if (_active && ReferenceEquals(_pending, pending)) Error = failure.Message; }
@@ -83,11 +97,11 @@ internal sealed partial class GroupMembershipSectionViewModel : ObjectSectionVie
     }
 
     internal void Suspend() { _active = false; _pending?.Cancel(); Announce(); }
-    private bool CanPrevious() => _active && !IsLoading && _page > 0;
-    private bool CanNext() => _active && !IsLoading && (_page + 1) * 50 < Values.Count;
+    private bool CanPrevious() => _active && !IsLoading && _back.Count > 0;
+    private bool CanNext() => _active && !IsLoading && _next is not null;
     private bool CanOpen(GroupMemberRowViewModel? row) => _active && !IsLoading && row is { CanOpen: true } && Members.Contains(row);
-    [RelayCommand(CanExecute = nameof(CanPrevious))] private void Previous() { _page--; Start(); }
-    [RelayCommand(CanExecute = nameof(CanNext))] private void Next() { _page++; Start(); }
+    [RelayCommand(CanExecute = nameof(CanPrevious))] private void Previous() { _position = _back.Pop(); Start(); }
+    [RelayCommand(CanExecute = nameof(CanNext))] private void Next() { _back.Push(_position); _position = _next; Start(); }
     [RelayCommand(CanExecute = nameof(CanOpen))]
     private void OpenMember(GroupMemberRowViewModel? row)
     {
@@ -99,6 +113,7 @@ internal sealed partial class GroupMembershipSectionViewModel : ObjectSectionVie
     private void Announce()
     {
         OnPropertyChanged(nameof(PageDescription));
+        OnPropertyChanged(nameof(PrimaryGroup));
         PreviousCommand.NotifyCanExecuteChanged();
         NextCommand.NotifyCanExecuteChanged();
         OpenMemberCommand.NotifyCanExecuteChanged();

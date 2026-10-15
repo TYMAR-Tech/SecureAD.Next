@@ -113,7 +113,7 @@ public sealed class ControlEdgeCommandReuseTests
             if (value.ObjectsRead < 1000 || sawWrittenProof) return;
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             {
-                DataSource = BundleLayout.JudgementPartialPath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+                DataSource = TestSealing.PendingJudgementPath(directory), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
             }.ToString());
             connection.Open();
             TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);

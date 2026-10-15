@@ -36,7 +36,7 @@ public sealed partial class OwnAccountMembershipPathTests
         public void Report(JudgingRun.JudgingProgress value)
         {
             if (value.Phase != JudgingPhase.PublishingJudgement || Removed) return;
-            var path = Assert.Single(Directory.EnumerateFiles(directory, BundleLayout.JudgementPartialFileName, SearchOption.AllDirectories));
+            var path = TestSealing.PendingJudgementPath(directory);
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             {
                 DataSource = path, Mode = SqliteOpenMode.ReadWrite, Pooling = false,

@@ -10,11 +10,10 @@ public sealed partial class AnalysisStoreLifecycleTests
     {
         var directory = NewBundle();
         var generation = Guid.NewGuid();
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
         var manifest = AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement);
         var data = BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, generation);
         var seal = BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Judgement, generation);
-        File.WriteAllText(staging, "complete synthetic result");
+        File.WriteAllText(data, "complete synthetic result");
         var stages = new List<AnalysisPublicationPart>();
 
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generation, CancellationToken.None, part =>
@@ -24,16 +23,14 @@ public sealed partial class AnalysisStoreLifecycleTests
             switch (part)
             {
                 case AnalysisPublicationPart.WritePendingManifest:
-                    Assert.True(File.Exists(staging));
+                    Assert.True(File.Exists(data));
                     Assert.False(File.Exists(manifest + ".partial"));
                     break;
-                case AnalysisPublicationPart.MoveData:
+                case AnalysisPublicationPart.PrepareData:
                     Assert.True(File.Exists(manifest + ".partial"));
-                    Assert.True(File.Exists(staging));
-                    Assert.False(File.Exists(data));
+                    Assert.True(File.Exists(data));
                     break;
                 case AnalysisPublicationPart.SealData:
-                    Assert.False(File.Exists(staging));
                     Assert.Equal("complete synthetic result", File.ReadAllText(data));
                     Assert.False(File.Exists(seal));
                     break;
@@ -54,12 +51,11 @@ public sealed partial class AnalysisStoreLifecycleTests
     public void PublicationCancelledAtManifestSelectionLeavesThePreviousGenerationSelected()
     {
         var directory = NewBundle();
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
         var previous = Guid.NewGuid();
-        File.WriteAllText(staging, "previous result");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, previous), "previous result");
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, previous);
-        File.WriteAllText(staging, "replacement result");
         var generation = Guid.NewGuid();
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation), "replacement result");
         var manifest = AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement);
         var previousRoot = File.ReadAllBytes(manifest);
         using var stopping = new CancellationTokenSource();
@@ -82,26 +78,26 @@ public sealed partial class AnalysisStoreLifecycleTests
 
     [Theory]
     [InlineData((int)AnalysisPublicationPart.WritePendingManifest)]
-    [InlineData((int)AnalysisPublicationPart.MoveData)]
+    [InlineData((int)AnalysisPublicationPart.PrepareData)]
     [InlineData((int)AnalysisPublicationPart.SealData)]
     [InlineData((int)AnalysisPublicationPart.SelectManifest)]
     public void EveryPublicationFailurePreservesTheExactPreviousSelection(int failingPart)
     {
         var directory = NewBundle();
         var kind = AnalysisStoreKind.Judgement;
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, kind);
         var previous = Guid.NewGuid();
-        File.WriteAllText(staging, "previous complete result");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, kind, previous), "previous complete result");
         AnalysisStoreLifecycle.Publish(directory, kind, previous);
         var manifest = AnalysisStoreLifecycle.ManifestPath(directory, kind);
         var previousRoot = File.ReadAllBytes(manifest);
         var data = BundleLayout.AnalysisGenerationDataPath(directory, kind, previous);
         var previousData = File.ReadAllBytes(data);
         var previousSeal = File.ReadAllBytes(data + ".seal");
-        File.WriteAllText(staging, "replacement result");
+        var replacement = Guid.NewGuid();
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, kind, replacement), "replacement result");
         var reached = false;
 
-        Assert.Throws<IOException>(() => AnalysisStoreLifecycle.Publish(directory, kind, Guid.NewGuid(),
+        Assert.Throws<IOException>(() => AnalysisStoreLifecycle.Publish(directory, kind, replacement,
             CancellationToken.None, part =>
             {
                 if (part != (AnalysisPublicationPart)failingPart) return;
@@ -121,14 +117,14 @@ public sealed partial class AnalysisStoreLifecycleTests
     {
         var directory = NewBundle();
         var generation = Guid.NewGuid();
-        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), "synthetic result");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation), "synthetic result");
         Directory.CreateDirectory(BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Judgement, generation));
         var stages = new List<AnalysisPublicationPart>();
 
         Assert.Throws<UnauthorizedAccessException>(() =>
             AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generation, CancellationToken.None, stages.Add));
 
-        Assert.Equal(new[] { AnalysisPublicationPart.WritePendingManifest, AnalysisPublicationPart.MoveData, AnalysisPublicationPart.SealData }, stages);
+        Assert.Equal(new[] { AnalysisPublicationPart.WritePendingManifest, AnalysisPublicationPart.PrepareData, AnalysisPublicationPart.SealData }, stages);
         Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement)));
         Assert.True(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, AnalysisStoreKind.Judgement));
     }
@@ -137,14 +133,15 @@ public sealed partial class AnalysisStoreLifecycleTests
     public void PreCancelledPublicationDoesNotReportWorkItNeverStarted()
     {
         var directory = NewBundle();
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
+        var generation = Guid.NewGuid();
+        var staging = TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation);
         File.WriteAllText(staging, "synthetic result");
         using var stopping = new CancellationTokenSource();
         stopping.Cancel();
         var stages = new List<AnalysisPublicationPart>();
 
         Assert.Throws<OperationCanceledException>(() =>
-            AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, Guid.NewGuid(), stopping.Token, stages.Add));
+            AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generation, stopping.Token, stages.Add));
 
         Assert.Empty(stages);
         Assert.Equal("synthetic result", File.ReadAllText(staging));

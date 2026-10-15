@@ -156,10 +156,10 @@ public static class JudgementSchema
         // bundle.every_declared_unit_recorded_as_read is different from the evidence seal. The seal
         // says whether these bytes have changed. This says what the judging claimed to have done.
         //
-        // A READER OF A NAMED judgement.db SHOULD NEVER SEE Running OR Failed. Judging writes to
-        // judgement.db.partial and renames only after every scheduled rule has finished, so those
-        // two states live in a file no reader asks for. Finding one under the finished name means
-        // the file was assembled by something other than a judging run.
+        // A SELECTED ROOT SHOULD NEVER OFFER Running OR Failed. Judging writes to unique,
+        // unselected generation files and selects their sealed root only after every scheduled
+        // rule has finished. Finding either state in a selected store means the file was
+        // assembled by something other than a judging run.
         //
         // evaluation_as_of is the reference time temporal rules were evaluated against, recorded
         // rather than taken from the clock at read time. Without it a rule about stale accounts

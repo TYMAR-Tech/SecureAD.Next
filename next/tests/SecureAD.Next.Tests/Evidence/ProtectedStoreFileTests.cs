@@ -124,8 +124,9 @@ public sealed class ProtectedStoreFileTests
         using var write = writer.CreateCommand();
         write.CommandText = "PRAGMA journal_mode=WAL; CREATE TABLE answer(value INTEGER); INSERT INTO answer VALUES(42); PRAGMA wal_checkpoint(TRUNCATE);";
         write.ExecuteNonQuery();
-        File.Copy(scratch, AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement));
-        var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, Guid.NewGuid());
+        var generationId = Guid.NewGuid();
+        File.Copy(scratch, TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generationId));
+        var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generationId);
         write.CommandText = "INSERT INTO answer VALUES(99)";
         write.ExecuteNonQuery();
         File.Copy(scratch + "-wal", Data(directory, generation) + "-wal");
@@ -172,15 +173,16 @@ public sealed class ProtectedStoreFileTests
     {
         var directory = Path.Combine(TempDirectories.Create("protected-store"), "spaces # %");
         Directory.CreateDirectory(directory);
+        var generationId = Guid.NewGuid();
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-            { DataSource = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), Pooling = false }.ToString()))
+            { DataSource = TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generationId), Pooling = false }.ToString()))
         {
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "CREATE TABLE answer(value INTEGER NOT NULL); INSERT INTO answer VALUES (42);";
             command.ExecuteNonQuery();
         }
-        var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, Guid.NewGuid());
+        var generation = AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generationId);
         return (directory, generation);
     }
 

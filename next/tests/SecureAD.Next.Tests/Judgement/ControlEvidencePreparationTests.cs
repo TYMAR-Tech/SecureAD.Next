@@ -368,16 +368,15 @@ public sealed class ControlEvidencePreparationTests
         return directory;
     }
 
-    private static SqliteConnection PartialDatabase(string directory) => Connect(BundleLayout.JudgementPartialPath(directory));
+    private static SqliteConnection PartialDatabase(string directory) => Connect(TestSealing.PendingJudgementPath(directory), staged: true);
     private static SqliteConnection Database(string directory, JudgementDescription description,
         SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate) =>
         Connect(BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement, description.GenerationId), mode);
-    private static SqliteConnection Connect(string path, SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate)
+    private static SqliteConnection Connect(string path, SqliteOpenMode mode = SqliteOpenMode.ReadWriteCreate, bool staged = false)
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false, Mode = mode }.ToString());
         connection.Open();
         var directory = Path.GetDirectoryName(path)!;
-        var staged = Path.GetFileName(path) == BundleLayout.JudgementPartialFileName;
         TestSealing.AttachJudgementParts(connection, directory, staged ? Guid.Empty
             : AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId, staged);
         return connection;

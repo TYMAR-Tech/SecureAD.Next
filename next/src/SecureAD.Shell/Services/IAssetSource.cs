@@ -106,13 +106,20 @@ internal interface IAssetReader
     /// <summary>Resolves displayed direct membership references without traversing group nesting.</summary>
     Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names);
 
-    /// <summary>Lists one page of the objects in a container.</summary>
-    /// <param name="bundleDirectory">The run's bundle directory.</param>
-    /// <param name="containerDn">The container the operator selected.</param>
-    /// <param name="scope">How much of what is beneath it to include.</param>
-    /// <param name="pageNumber">The page to fetch, counting from one.</param>
+    /// <summary>Reads the next stable directory page in the exact selected capture and scope.</summary>
     Result<ObjectPage> ListObjects(
-        string bundleDirectory, string containerDn, ListingScope scope, int pageNumber);
+        string bundleDirectory, string containerDn, ListingScope scope, ObjectPageMark? after);
+
+    /// <summary>Reads only captured identity/class for entering an object's requested section.</summary>
+    Result<CapturedObjectIdentity?> ReadObjectIdentity(string bundleDirectory, string distinguishedName);
+
+    /// <summary>Reads only one original ordered membership-value page, with its independent full count.</summary>
+    Result<CapturedMembershipPage?> ReadCapturedMembership(string bundleDirectory, string distinguishedName,
+        bool parents, CapturedMembershipMark? after);
+
+    /// <summary>Reads only the explicitly requested catalogue attributes for a selected section.</summary>
+    Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
+        IReadOnlyCollection<string> attributes);
 
     /// <summary>Lists one page of completed saved LAPS inventory for a container, without reclassification.</summary>
     /// <remarks>

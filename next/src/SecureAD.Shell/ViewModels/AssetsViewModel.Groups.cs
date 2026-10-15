@@ -140,7 +140,7 @@ internal sealed partial class AssetsViewModel
     private void BrowseAllGroups()
     {
         _resetting = true;
-        foreach (var node in Roots.SelectMany(root => root.ThisAndBelow())) node.IsSelected = false;
+        if (Selected is { } selected) selected.IsSelected = false;
         Selected = null;
         Scope = ListingScope.Subtree;
         _resetting = false;

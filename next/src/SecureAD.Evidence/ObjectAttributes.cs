@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Immutable;
 using Microsoft.Data.Sqlite;
 using SecureAD.Kernel.Capture;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Evidence;
 
@@ -68,7 +69,7 @@ public sealed record ObjectAttribute(
 }
 
 /// <summary>
-/// Every attribute value this bundle holds for one object.
+/// Captured attribute values for one object; a selected-attribute read contains only its requested catalogue entries.
 /// </summary>
 /// <remarks>
 /// <b>The whole catalogue, not the part that arrived.</b> Handing back only the attributes with
@@ -203,8 +204,10 @@ public sealed record ObjectAttributes(
 /// </remarks>
 internal static class ObjectAttributesReader
 {
-    private static readonly string MultiValuedQuery = string.Join(" UNION ALL ",
-        BundleSchema.MultiValuedTables.Select((attribute, index) =>
+    private static readonly string FullMultiValuedQuery = MultiValuedQuery(BundleSchema.MultiValuedTables);
+
+    private static string MultiValuedQuery(IReadOnlyList<CapturedAttribute> tables) => string.Join(" UNION ALL ",
+        tables.Select((attribute, index) =>
             $"SELECT {index} AS attribute_index, ordinal, "
             + (attribute.Storage == AttributeStorage.Binary
                 ? "NULL AS text_value, value AS byte_value"
@@ -212,28 +215,36 @@ internal static class ObjectAttributesReader
             + " FROM " + BundleSchema.ValueTableNameFor(attribute.LdapDisplayName)
             + " WHERE object_id = $object"));
 
-    public static ObjectAttributes? Read(SqliteConnection connection, string distinguishedName)
+    public static ObjectAttributes? Read(SqliteConnection connection, string distinguishedName,
+        IReadOnlyCollection<string>? selected = null)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
-        return ReadCore(connection, distinguishedName, null);
+        return ReadCore(connection, distinguishedName, null, selected);
     }
 
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId) =>
         ReadCore(connection, null, objectId);
 
-    private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId)
+    private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId,
+        IReadOnlyCollection<string>? selected = null)
     {
-        var stored = SingleValuedOf(connection, distinguishedName, rowId);
+        var names = selected?.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (names is not null && names.Any(name => !CapturedAttributeCatalog.All.Any(attribute =>
+            attribute.LdapDisplayName.Equals(name, StringComparison.OrdinalIgnoreCase))))
+            throw new ArgumentException("A selected attribute is not part of the captured catalogue.", nameof(selected));
+        var stored = SingleValuedOf(connection, distinguishedName, rowId, names);
         if (stored is null)
             return null;
 
         var (objectId, dn, objectGuid, captured, completeness, domainFqdn, attributes) = stored.Value;
 
-        var values = StoredValuesFor(connection, objectId);
-        for (var i = 0; i < BundleSchema.MultiValuedTables.Count; i++)
+        var tables = names is null ? BundleSchema.MultiValuedTables
+            : BundleSchema.MultiValuedTables.Where(attribute => names.Contains(attribute.LdapDisplayName)).ToArray();
+        var values = StoredValuesFor(connection, objectId, tables);
+        for (var i = 0; i < tables.Count; i++)
         {
-            var attribute = BundleSchema.MultiValuedTables[i];
+            var attribute = tables[i];
             attributes.Add(new ObjectAttribute(
                 attribute.LdapDisplayName,
                 AttributeCardinality.MultiValued,
@@ -260,9 +271,10 @@ internal static class ObjectAttributesReader
     /// attribute columns so that adding a catalogued attribute does not move it.
     /// </remarks>
     private static (long ObjectId, string Dn, Guid? ObjectGuid, DateTimeOffset Captured, EvidenceCompleteness Completeness, string? DomainFqdn, List<ObjectAttribute> Attributes)? SingleValuedOf(
-        SqliteConnection connection, string? distinguishedName, long? rowId)
+        SqliteConnection connection, string? distinguishedName, long? rowId, HashSet<string>? selected)
     {
-        var columns = BundleSchema.SingleValuedColumns;
+        var columns = selected is null ? BundleSchema.SingleValuedColumns
+            : BundleSchema.SingleValuedColumns.Where(attribute => selected.Contains(attribute.LdapDisplayName)).ToArray();
 
         using var command = connection.CreateCommand();
         command.CommandText =
@@ -286,11 +298,9 @@ internal static class ObjectAttributesReader
         var captured = DateTimeOffset.Parse(
             reader.GetString(3), System.Globalization.CultureInfo.InvariantCulture);
 
-        var attributes = new List<ObjectAttribute>
-        {
-            Structural("distinguishedName", dn),
-            Structural("objectGUID", storedGuid),
-        };
+        var attributes = new List<ObjectAttribute>();
+        if (selected is null || selected.Contains("distinguishedName")) attributes.Add(Structural("distinguishedName", dn));
+        if (selected is null || selected.Contains("objectGUID")) attributes.Add(Structural("objectGUID", storedGuid));
 
         for (var i = 0; i < columns.Count; i++)
         {
@@ -331,15 +341,16 @@ internal static class ObjectAttributesReader
             text is null ? [] : [new AttributeValue(0, text, null)]);
 
     private static List<AttributeValue>[] StoredValuesFor(
-        SqliteConnection connection, long objectId)
+        SqliteConnection connection, long objectId, IReadOnlyList<CapturedAttribute> tables)
     {
-        var tables = BundleSchema.MultiValuedTables;
         var values = new List<AttributeValue>[tables.Count];
         for (var i = 0; i < values.Length; i++)
             values[i] = [];
+        if (tables.Count == 0) return values;
 
         using var command = connection.CreateCommand();
-        command.CommandText = MultiValuedQuery;
+        command.CommandText = ReferenceEquals(tables, BundleSchema.MultiValuedTables)
+            ? FullMultiValuedQuery : MultiValuedQuery(tables);
         command.Parameters.AddWithValue("$object", objectId);
 
         using var reader = command.ExecuteReader();
@@ -355,6 +366,25 @@ internal static class ObjectAttributesReader
             attributeValues.Sort(static (left, right) => left.Ordinal.CompareTo(right.Ordinal));
 
         return values;
+    }
+
+    internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        using var query = connection.CreateCommand();
+        var objectClass = navigation ? "o.most_specific_class"
+            : "(SELECT v.value FROM objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1)";
+        query.CommandText = $"""
+            SELECT o.distinguished_name,o.object_guid,{objectClass},o.domain_fqdn,o.objectsid
+            FROM captured_object o WHERE o.distinguished_name=$dn COLLATE NOCASE LIMIT 1
+            """;
+        query.Parameters.AddWithValue("$dn", distinguishedName);
+        using var row = query.ExecuteReader();
+        return !row.Read() ? null : new(row.GetString(0),
+            row.IsDBNull(1) ? null : Guid.Parse(row.GetString(1)),
+            row.IsDBNull(2) ? null : row.GetString(2),
+            row.IsDBNull(3) ? null : row.GetString(3),
+            row.IsDBNull(4) ? null : Sid.ToText(row.GetFieldValue<byte[]>(4)));
     }
 
     internal static AttributeValue ValueAt(

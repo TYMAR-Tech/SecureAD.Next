@@ -13,6 +13,15 @@ internal sealed partial class AssetsViewModel
         ListingScope? Scope, int Page, FindingsQuery? Findings, string? Search, GroupInventoryQuery? Groups, LapsQuery? Laps);
 
     private readonly Dictionary<AssetsPane, (ListingQuestion Question, Func<bool> IsCurrent)> _pages = [];
+    private readonly Stack<ObjectPageMark?> _objectPages = [];
+    private ObjectPageMark? _objectNext;
+
+    private void ResetObjectPaging()
+    {
+        _objectPages.Clear();
+        _objectNext = null;
+        PageNumber = 1;
+    }
 
     private ListingQuestion Question() => new(Pane, BundlePath!,
         Pane is AssetsPane.Delegations or AssetsPane.Tier0 || IsObjectSearch ? null : Selected?.DistinguishedName,
@@ -59,13 +68,15 @@ internal sealed partial class AssetsViewModel
                     await ReadObjectSearchPageAsync(_objectSearchAfter, 0);
                     break;
                 }
+                var objectAfter = _objectPages.TryPeek(out var objectPosition) ? objectPosition : null;
                 await ReadViewAsync(question.Bundle,
-                    reader => reader.ListObjects(question.Bundle, question.Container!, question.Scope!.Value, question.Page),
+                    reader => reader.ListObjects(question.Bundle, question.Container!, question.Scope!.Value, objectAfter),
                     (page, current) =>
                     {
                         foreach (var row in page.Objects) Objects.Add(new ListedObjectViewModel(row));
                         Total = page.Total;
                         Shortfall = page.ObjectsAreComplete ? null : page.Shortfall;
+                        _objectNext = page.Next;
                         RememberPage(question, current);
                     }, saved: false);
                 break;

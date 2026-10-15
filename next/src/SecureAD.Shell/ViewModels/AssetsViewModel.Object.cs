@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.Services;
@@ -65,13 +66,13 @@ internal sealed partial class AssetsViewModel
             var result = await _assets.ReadAsync(bundle, (reader, token) =>
             {
                 token.ThrowIfCancellationRequested();
-                var attributes = reader.ReadObjectAttributes(bundle, distinguishedName);
-                return (Attributes: attributes, Current: reader.CaptureReadValidity());
+                var identity = reader.ReadObjectIdentity(bundle, distinguishedName);
+                return (Identity: identity, Current: reader.CaptureReadValidity());
             }, pending.Token);
             if (pending.IsCancellationRequested || revision != _objectRevision || BundlePath != bundle) return;
-            if (!result.Attributes.IsSuccess) throw new InvalidOperationException(result.Attributes.Error.Description);
+            if (!result.Identity.IsSuccess) throw new InvalidOperationException(result.Identity.Error.Description);
             if (!result.Current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-            if (result.Attributes.Value is not { } attributes)
+            if (result.Identity.Value is not { } identity)
             {
                 ObjectRefusal = new Notice(NavigationText.Get("Refused"), NavigationText.Get("ObjectMissing"));
                 if (section == ObjectSectionCatalog.SavedTier0Path)
@@ -81,11 +82,11 @@ internal sealed partial class AssetsViewModel
                 navigation.Complete("refused", "object missing");
                 return;
             }
-            var objectClass = ClassOf(attributes);
-            var opened = new ObjectViewModel(distinguishedName, objectClass ?? "not recorded", objectClass,
-                (definition, token) => ReadSectionAsync(bundle, attributes, objectClass, definition, result.Current, token))
+            var objectClass = identity.ObjectClass;
+            var opened = new ObjectViewModel(identity.DistinguishedName, objectClass ?? "not recorded", objectClass,
+                (definition, token) => ReadSectionAsync(bundle, identity, definition, result.Current, token))
             {
-                ObjectGuid = attributes.ObjectGuid,
+                ObjectGuid = identity.ObjectGuid,
             };
             Opened = opened;
             IsOpeningObject = false;
@@ -119,8 +120,7 @@ internal sealed partial class AssetsViewModel
         LocateObjectRequested?.Invoke(this, EventArgs.Empty);
         Pane = AssetsPane.Objects;
         var parent = SecureAD.Kernel.Naming.DnHelper.GetParentDn(opened.DistinguishedName);
-        var node = Roots.SelectMany(root => root.ThisAndBelow()).FirstOrDefault(value =>
-            string.Equals(value.DistinguishedName, parent, StringComparison.OrdinalIgnoreCase));
+        var node = parent is null ? null : FindContainer(parent);
         if (node is not null)
         {
             node.IsSelected = true;
@@ -133,17 +133,28 @@ internal sealed partial class AssetsViewModel
         }
     }
 
-    private async Task<ObjectSectionViewModel> ReadSectionAsync(string bundle, ObjectAttributes attributes,
-        string? objectClass, ObjectSectionDefinition definition, Func<bool> current, CancellationToken token)
+    private async Task<ObjectSectionViewModel> ReadSectionAsync(string bundle, CapturedObjectIdentity identity,
+        ObjectSectionDefinition definition, Func<bool> current, CancellationToken token)
     {
-        var dn = attributes.DistinguishedName;
+        var dn = identity.DistinguishedName;
+        var objectClass = identity.ObjectClass;
         if (definition.Key == ObjectSectionCatalog.Help)
             return new ObjectHelpSectionViewModel(definition);
         if (definition.Key == ObjectSectionCatalog.Membership && string.Equals(objectClass, "group", StringComparison.OrdinalIgnoreCase))
         {
-            var members = new GroupMembershipSectionViewModel(definition, attributes,
-                (names, cancellation) => ReadBoundAsync(bundle, current,
-                    reader => reader.ResolveMembershipReferences(bundle, names), cancellation, "read captured group members"),
+            var members = new GroupMembershipSectionViewModel(definition,
+                (parents, after, cancellation) => ReadBoundAsync(bundle, current, reader =>
+                {
+                    var page = reader.ReadCapturedMembership(bundle, dn, parents, after);
+                    if (!page.IsSuccess)
+                        return Result<(CapturedMembershipPage, CapturedMemberReferences)>.Failure(page.Error);
+                    if (page.Value is not { } values) throw new InvalidOperationException(NavigationText.Get("ObjectMissing"));
+                    var names = values.Values.Select(value => value.Stored).ToArray();
+                    var resolved = reader.ResolveMembershipReferences(bundle, names);
+                    return resolved.IsSuccess
+                        ? Result<(CapturedMembershipPage, CapturedMemberReferences)>.Success((values, resolved.Value))
+                        : Result<(CapturedMembershipPage, CapturedMemberReferences)>.Failure(resolved.Error);
+                }, cancellation, "read captured group members"),
                 OpenGroupMember, current);
             using var cancellation = token.Register(members.Suspend);
             await members.ReadCompletion;
@@ -165,9 +176,8 @@ internal sealed partial class AssetsViewModel
         }
         if (definition.Key == ObjectSectionCatalog.ControlEdges)
         {
-            var sidValue = attributes.Find("objectSid")?.OnlyValue;
-            var sid = sidValue?.Bytes is { } bytes ? Sid.ToText(bytes) : sidValue?.Text;
-            var scope = sid is not null && Sid.IsBuiltinDomain(sid) ? attributes.DomainFqdn : null;
+            var sid = identity.PrincipalSid;
+            var scope = sid is not null && Sid.IsBuiltinDomain(sid) ? identity.DomainFqdn : null;
             var controls = new ControlEdgesSectionViewModel(definition, DnHelper.ExtractFirstRdn(dn));
             controls.ConfigureMemberAttributionAsync(
                 (row, cancellation) => ReadBoundAsync(bundle, current,
@@ -203,7 +213,12 @@ internal sealed partial class AssetsViewModel
                 if (!permissions.IsSuccess) return Result<ObjectSectionViewModel>.Failure(permissions.Error);
                 if (permissions.Value is not { } value) throw new InvalidOperationException(NavigationText.Get("ObjectMissing"));
                 if (definition.Key == ObjectSectionCatalog.Overview)
-                    return Result<ObjectSectionViewModel>.Success(new OverviewSectionViewModel(definition, value, attributes, objectClass ?? "not recorded"));
+                {
+                    var overview = ReadSectionAttributes(reader);
+                    return overview.IsSuccess
+                        ? Result<ObjectSectionViewModel>.Success(new OverviewSectionViewModel(definition, value, overview.Value, objectClass ?? "not recorded"))
+                        : Result<ObjectSectionViewModel>.Failure(overview.Error);
+                }
                 if (definition.Key == ObjectSectionCatalog.Evidence)
                     return Result<ObjectSectionViewModel>.Success(new EvidenceSectionViewModel(definition, value));
                 var classification = reader.ReadPermissionClassification(bundle, dn);
@@ -217,9 +232,29 @@ internal sealed partial class AssetsViewModel
                     classification.IsSuccess ? classification.Value.Classification : null,
                     classification.IsSuccess ? null : classification.Error.Description));
             }
-            return Result<ObjectSectionViewModel>.Success(ObjectViewModel.BuildAttributes(definition, attributes, objectClass));
+            var attributes = ReadSectionAttributes(reader);
+            return attributes.IsSuccess
+                ? Result<ObjectSectionViewModel>.Success(ObjectViewModel.BuildAttributes(definition, attributes.Value, objectClass))
+                : Result<ObjectSectionViewModel>.Failure(attributes.Error);
         }, token, "read object " + definition.Key);
         return content.IsSuccess ? content.Value : throw new InvalidOperationException(content.Error.Description);
+
+        Result<ObjectAttributes> ReadSectionAttributes(IAssetReader reader)
+        {
+            IReadOnlyCollection<string> names = definition.Attributes;
+            if (definition.Key == ObjectSectionCatalog.OtherValues)
+            {
+                var claimed = ObjectSectionCatalog.AttributesShownFor(objectClass);
+                names = CapturedAttributeCatalog.All.Select(attribute => attribute.LdapDisplayName)
+                    .Where(name => !claimed.Contains(name) && !ObjectSectionCatalog.NotShown.ContainsKey(name)).ToArray();
+            }
+            var attributes = reader.ReadObjectAttributes(bundle, dn, names);
+            if (!attributes.IsSuccess) return Result<ObjectAttributes>.Failure(attributes.Error);
+            if (attributes.Value is not { } value || value.ObjectGuid != identity.ObjectGuid
+                || !value.DistinguishedName.Equals(dn, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The requested captured attributes do not match the selected object identity.");
+            return Result<ObjectAttributes>.Success(value);
+        }
     }
 
     private async Task<Result<T>> ReadBoundAsync<T>(string bundle, Func<bool> current,

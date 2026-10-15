@@ -12,9 +12,11 @@ public sealed record ObjectSearchPage(IReadOnlyList<ListedObject> Objects, Objec
 internal static class CapturedObjectSearch
 {
     internal const int PageSize = ObjectListingReader.PageSize;
-    internal static string QuerySql => """
+    internal static string QuerySql => Query(navigation: false);
+
+    private static string Query(bool navigation) => $"""
         SELECT o.object_id, o.distinguished_name, o.object_guid, o.parent_dn, o.domain_fqdn,
-               (SELECT c.value FROM objectclass_value AS c WHERE c.object_id=o.object_id ORDER BY c.ordinal DESC LIMIT 1)
+               {(navigation ? "o.most_specific_class" : "(SELECT c.value FROM objectclass_value AS c WHERE c.object_id=o.object_id ORDER BY c.ordinal DESC LIMIT 1)")}
         FROM captured_object AS o
         WHERE o.object_id > $after
           AND (instr(lower(o.distinguished_name), lower($search)) > 0
@@ -23,7 +25,7 @@ internal static class CapturedObjectSearch
         """;
 
     internal static ObjectSearchPage Read(SqliteConnection connection, string fingerprint, BundleDescription description,
-        string search, ObjectSearchMark? after, CancellationToken token)
+        string search, ObjectSearchMark? after, CancellationToken token, bool navigation = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(search);
         search = search.Trim();
@@ -31,7 +33,7 @@ internal static class CapturedObjectSearch
         if (after is not null && (after.EvidenceFingerprint != fingerprint || after.Search != search || after.ObjectId <= 0))
             throw new ArgumentException("This object-search page belongs to another capture or search.", nameof(after));
         using var command = connection.CreateCommand();
-        command.CommandText = QuerySql;
+        command.CommandText = Query(navigation);
         command.Parameters.AddWithValue("$after", after?.ObjectId ?? 0);
         command.Parameters.AddWithValue("$search", search);
         command.Parameters.AddWithValue("$take", PageSize + 1);

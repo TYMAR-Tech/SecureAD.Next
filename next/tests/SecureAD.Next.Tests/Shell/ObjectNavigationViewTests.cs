@@ -176,8 +176,7 @@ public sealed class ObjectNavigationViewTests
             }
             return element;
         }
-        foreach (var element in root.Descendants().Where(element => element.Name.NamespaceName == "clr-namespace:SecureAD.Shell.Views"))
-            element.Name = XName.Get(element.Name.LocalName, "clr-namespace:SecureAD.Shell.Views;assembly=" + assembly);
+        QualifyNamespaces(root, assembly);
         var proxyElement = Assert.Single(root.Descendants().Where(element => element.Name.LocalName == "BindingProxy"));
         Assert.Equal("{Binding}", proxyElement.Attribute("Data")?.Value);
         proxyElement.ReplaceWith(new XElement(xaml + "Static", new XAttribute(xaml + "Key", "Screen"),
@@ -204,6 +203,52 @@ public sealed class ObjectNavigationViewTests
             var child = VisualTreeHelper.GetChild(parent, index);
             if (child is T value) yield return value;
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
+
+    internal static UserControl ObjectView(AssetsViewModel model)
+    {
+        XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
+        var root = XDocument.Load(Path.Combine(shell, "Views", "ObjectView.xaml")).Root!;
+        var sections = XDocument.Load(Path.Combine(shell, "Views", "ObjectSectionList.xaml")).Root!;
+        foreach (var element in new[] { root, sections })
+        {
+            element.Attribute(xaml + "Class")!.Remove();
+            element.Attribute(xaml + "ClassModifier")!.Remove();
+        }
+        // The unchanged clipboard control has separate checks; loose XAML cannot construct its internal type.
+        foreach (var copy in sections.Descendants().Where(element => element.Name.LocalName == "CopyValueButton").ToArray())
+        {
+            copy.Name = wpf + "Button";
+            copy.Attribute("Text")?.Remove();
+        }
+        root.Descendants().Single(element => element.Name.LocalName == "ObjectSectionList").ReplaceWith(sections);
+        var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
+        QualifyNamespaces(root, assembly);
+        var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
+            .Attributes("Source").Select(attribute => attribute.Value);
+        root.AddFirst(new XElement(wpf + "UserControl.Resources", new XElement(wpf + "ResourceDictionary",
+            new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source =>
+                new XElement(wpf + "ResourceDictionary", new XAttribute("Source",
+                    source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/{source}")))))));
+        var view = (UserControl)XamlReader.Parse(root.ToString());
+        view.DataContext = model;
+        return view;
+    }
+
+    private static void QualifyNamespaces(XElement root, string? assembly)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            var space = element.Name.NamespaceName;
+            if (space.StartsWith("clr-namespace:SecureAD.Shell.", StringComparison.Ordinal) && !space.Contains(";assembly=", StringComparison.Ordinal))
+                element.Name = XName.Get(element.Name.LocalName, space + ";assembly=" + assembly);
+            foreach (var declaration in element.Attributes().Where(attribute => attribute.IsNamespaceDeclaration
+                         && attribute.Value.StartsWith("clr-namespace:SecureAD.Shell.", StringComparison.Ordinal)
+                         && !attribute.Value.Contains(";assembly=", StringComparison.Ordinal)))
+                declaration.Value += ";assembly=" + assembly;
         }
     }
 

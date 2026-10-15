@@ -217,7 +217,7 @@ public sealed partial class OwnAccountMembershipPathTests
         {
             if (value.Phase != JudgingPhase.PublishingJudgement) return;
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-            { DataSource = BundleLayout.JudgementPartialPath(directory), Mode = SqliteOpenMode.ReadWrite, Pooling = false }.ToString());
+            { DataSource = TestSealing.PendingJudgementPath(directory), Mode = SqliteOpenMode.ReadWrite, Pooling = false }.ToString());
             connection.Open();
             TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             using var command = connection.CreateCommand();

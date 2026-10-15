@@ -27,9 +27,10 @@ public sealed partial class AnalysisStoreLifecycleTests
     {
         var directory = NewBundle();
         AnalysisStoreLifecycle.BeginAttempt(directory, kind);
-        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, kind), "result");
+        var generation = Guid.NewGuid();
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, kind, generation), "result");
 
-        AnalysisStoreLifecycle.Publish(directory, kind, Guid.NewGuid());
+        AnalysisStoreLifecycle.Publish(directory, kind, generation);
 
         Assert.False(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, kind));
     }
@@ -59,7 +60,7 @@ public sealed partial class AnalysisStoreLifecycleTests
     {
         var directory = NewBundle();
         var generation = Guid.NewGuid();
-        File.WriteAllText(AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement), "new result");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation), "new result");
         Directory.CreateDirectory(BundleLayout.AnalysisGenerationSealPath(directory, AnalysisStoreKind.Judgement, generation));
 
         Assert.Throws<UnauthorizedAccessException>(() => AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, generation));
@@ -89,7 +90,7 @@ public sealed partial class AnalysisStoreLifecycleTests
         var directory = NewBundle();
         var firstId = Guid.NewGuid();
         File.WriteAllText(
-            AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement),
+            TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, firstId),
             "first judgement");
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, firstId);
 
@@ -97,12 +98,13 @@ public sealed partial class AnalysisStoreLifecycleTests
             directory, AnalysisStoreKind.Judgement);
         using (var locked = File.Open(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
+            var replacement = Guid.NewGuid();
             File.WriteAllText(
-                AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement),
+                TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, replacement),
                 "replacement judgement");
 
             Assert.Throws<UnauthorizedAccessException>(() => AnalysisStoreLifecycle.Publish(
-                directory, AnalysisStoreKind.Judgement, Guid.NewGuid()));
+                directory, AnalysisStoreKind.Judgement, replacement));
         }
 
         var resolved = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement);
@@ -115,14 +117,15 @@ public sealed partial class AnalysisStoreLifecycleTests
     {
         var directory = NewBundle();
         var first = Guid.NewGuid();
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
-        File.WriteAllText(staging, "first");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, first), "first");
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, first);
+        var replacement = Guid.NewGuid();
+        var staging = TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, replacement);
         File.WriteAllText(staging, "replacement");
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var error = Record.Exception(() => AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement,
-            Guid.NewGuid(), cancellation.Token));
+            replacement, cancellation.Token));
         Assert.Equal((typeof(OperationCanceledException), first, "replacement"),
             (error?.GetType(), AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId, File.ReadAllText(staging)));
     }

@@ -496,7 +496,7 @@ public sealed class BundleReader : IDisposable
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>For a caller that has to look at all of them.</b> <see cref="ReadObjectAttributes"/> is
+    /// <b>For a caller that has to look at all of them.</b> <see cref="ReadObjectAttributes(string)"/> is
     /// the right shape for one object a person clicked on and the wrong shape for a forest: it
     /// fetches an object row and its batched values separately for each requested object.
     /// This walks the object table and each value table once, in step.
@@ -605,18 +605,35 @@ public sealed class BundleReader : IDisposable
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
         ObjectListingReader.Read(Connection, containerDn, scope, pageNumber, _navigation);
 
+    /// <summary>Reads the next ordered navigation page without revisiting earlier result rows.</summary>
+    public ObjectPage ListObjects(string containerDn, ListingScope scope, ObjectPageMark? after,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_navigation) throw new InvalidOperationException("Ordered browse continuation requires the captured navigation product.");
+        return ObjectListingReader.ReadNext(Connection, ProtectedQueryFingerprint(), containerDn, scope, after, cancellationToken);
+    }
+
+    /// <summary>Reads captured identity only, without attributes, permissions or analysis.</summary>
+    public CapturedObjectIdentity? ReadObjectIdentity(string distinguishedName) =>
+        ObjectAttributesReader.ReadIdentity(Connection, distinguishedName, _navigation);
+
     /// <summary>Resolves only a displayed page of original membership names to captured object identities.</summary>
     public CapturedMemberReferences ResolveMembershipReferences(IReadOnlyList<string> names, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(names);
-        return CapturedMembershipReferences.Read(Connection, names, cancellationToken);
+        return CapturedMembershipReferences.Read(Connection, names, cancellationToken, _navigation);
     }
+
+    /// <summary>Reads only the requested page of an object's original member/memberOf values.</summary>
+    public CapturedMembershipPage? ReadCapturedMembership(string distinguishedName, bool parents,
+        CapturedMembershipMark? after, CancellationToken cancellationToken = default) =>
+        CapturedMembershipReferences.ReadPage(Connection, ProtectedQueryFingerprint(), distinguishedName, parents, after, cancellationToken);
 
     /// <summary>Searches all captured objects by name/account name or DN without reading analysis stores.</summary>
     public ObjectSearchPage SearchObjects(string search, ObjectSearchMark? after, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return CapturedObjectSearch.Read(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
+        return CapturedObjectSearch.Read(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken, _navigation);
     }
 
     /// <summary>Finds captured user/group identities under a protected evidence lifetime.</summary>
@@ -873,6 +890,13 @@ public sealed class BundleReader : IDisposable
         return _bulkObjectIds is not null && _bulkObjectIds.TryGetValue(distinguishedName, out var objectId)
             ? ObjectAttributesReader.ReadAt(connection, objectId)
             : ObjectAttributesReader.Read(connection, distinguishedName);
+    }
+
+    /// <summary>Reads the selected catalogue attributes without reconstructing unrelated multivalued collections.</summary>
+    public ObjectAttributes? ReadObjectAttributes(string distinguishedName, IReadOnlyCollection<string> attributes)
+    {
+        ArgumentNullException.ThrowIfNull(attributes);
+        return ObjectAttributesReader.Read(Connection, distinguishedName, attributes);
     }
 
     /// <summary>

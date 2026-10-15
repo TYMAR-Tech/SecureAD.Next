@@ -95,6 +95,107 @@ when publication fails.
 
 ## Fix and feature priority
 
+**Fast saved-result UI takes priority over small judging-time increases - owner clarification,
+2026-10-15.**
+The owner's words: "i dont care if judgement is slightly longer at this point i do however need
+the results in the UI to be fast".
+A slightly longer judgement is acceptable in service of responsive saved-result browsing;
+the previous requirement that every measured judging operation stay within reference repeat
+variation must no longer make a slight increase, including the recorded half-millisecond
+completion difference, an automatic blocker to this work.
+Preserve the failed comparisons, frozen references, outliers and exact measurements as history;
+this changes the product priority and acceptable trade-off, not the recorded outcome or the
+test's arithmetic.
+It does not approve unlimited judging cost, dismiss a substantial unexplained delay, establish
+a new numerical time allowance or declare the unfinished UI/production acceptance complete.
+
+Judge the result by the operator's whole wait to open and use completed results: Dashboard,
+Findings, directory/object browsing, LAPS, filters/pages and requested details, not an isolated
+reader or final bookkeeping operation.
+The owner expects coherent completion of the existing ARCH-02 through ARCH-05 browsing programme,
+not a succession of newly presented single-click fixes.
+Dashboard/Findings serving products and aggregate completion are implemented, while the remaining
+search, paging, tree and selected-detail coverage belongs to the unfinished ARCH-04 portion and
+shared whole-flow acceptance.
+The heavyweight search/object-entry dependency is already identified in the retained review's F05;
+it is not a newly discovered architectural objective or a separate product milestone.
+Keep implementation sessions bounded, but carry one end-to-end results-browsing completion scope,
+reuse the implemented pieces and do not reopen settled decisions or the completed campaigns.
+The completed small-synthetic screen campaign is retained evidence, not proof of responsiveness
+at the documented production forest's size and complexity and not a reason to repeat that campaign
+by default.
+All saved answers, complete counts, explicit incompleteness, evidence/source/resource/generation
+binding, independent seals, protected reader lifetimes and previous-completed-root protection
+remain mandatory.
+This clarification does not approve new UI wording/layout, rule changes, another measurement
+campaign/tool, unrelated optimization, ARCH-06, live access, production exports/budgets, discovery,
+SYSVOL, compatibility, deployment, commit or push.
+Nor does it approve every conditional recommendation in the review: the consolidated remaining
+implementation/verification scope must distinguish already approved work from genuine extensions.
+
+**Coherent browsing continuation - owner-requested 2026-10-15; navigation/object read contract
+implemented and offline verified, overall browsing acceptance still open.**
+After the consolidated plan was restored, the owner requested continuing the browsing work.
+This implementation keeps search, initial object identity, displayed membership-name resolution
+and directory pages on the existing independently sealed Navigation product, and reads original
+attributes, permissions and proof only when the selected section needs them.
+Directory pages use capture/question-bound ordered continuation rather than discarding earlier
+rows through an offset, retaining the exact full-scope count and existing name ordering.
+The UI creates tree presentation nodes only for requested branches and connects their selection
+as they are created, rather than constructing/subscribing the whole hierarchy on arrival.
+Original attribute sections request only their own catalogue fields, and the existing group
+membership pager now reads the original value page itself, not an entire member/memberOf list
+before slicing it in memory.
+All original occurrences, ordering, missing-value distinctions, source/resource/generation
+binding, explicit refusals, protected lifetimes and previous-completed-root safeguards remain;
+recorded membership-value counts are not substituted for distinct-member, expansion or permission counts.
+
+Native Navigation format 2 adds captured account name/SID and the existing name-sort expression
+with ordering indexes; capture-root format 3, raw Evidence schema 17, Derivation schema 16 and
+Judgement format 74 remain unchanged.
+No existing sealed input is migrated or resealed and no compatibility reader is added:
+older Navigation products are explicitly refused where Navigation format 2 is required.
+The application layout, wording and XAML are unchanged, and no rule, analysis, discovery, budget,
+SYSVOL or production-access change is included.
+
+The final explicit correct-live-source Release rebuild, after all isolated restored controls,
+has zero errors and 866 warnings; all 635 affected behavior, actual-view, storage and architecture
+checks pass.
+All 22 new cases plus one strengthened existing object-Findings case detect explicitly rebuilt
+isolated defects across 16 variants, with 35 passing explicitly rebuilt restored-control observations.
+The complete offline search/page/filter/object-Findings/help/return/reopen flow renders at
+900/1300 widths while heavyweight files are locked, with original membership and Overview read
+only after they are requested and the locks are released.
+Both blank drawing and hidden object content are detected by rebuilt controls, and database-side
+payload observation proves only 51/51/23 membership values are evaluated for the existing
+50/50/23 displayed pages, while a selected unrelated attribute family evaluates no member payload.
+Every one of the 1,126 starting source/build inputs remains present: 1,105 byte-identical and
+21 extended, plus two new test files, preserving the prior publication correction and governing work.
+Compact exact results, failed setup attempts, source/binary fingerprints, fixture settings,
+rebuilt controls and the browsing-source delta are retained in this session's
+`files/browsing-completion`, without a repository/runtime dependency on that local location.
+
+This closes a shared navigation/object-read dependency, not the whole responsiveness programme.
+Groups inventory and the Tier 0 overview still reach coarse proof products; requested raw
+attributes/permissions and saved classification/path detail still have large first-verification
+units, and some requested multivalued cards still materialize their full values.
+Exact substring search and per-page full-scope counting can still scan Navigation data;
+continuation/index changes do not establish a constant-time page or a measured production saving.
+Those remaining serving/read boundaries, production-shaped complete-UI verification and ordinary
+physical-display acceptance remain within the same ARCH-04/shared browsing job, not a return to
+ARCH-06 or a succession of newly invented milestones.
+The completed small-synthetic campaigns and all earlier timing/gate outcomes remain unchanged;
+no new timing campaign, speedup, production-readiness claim, deployment, commit or push occurred.
+
+**Local results-browsing checkpoint - owner-requested 2026-10-15.**
+The owner requested committing the current work locally, then explaining the next steps.
+This authorizes preserving the validated publication-finalization correction, coherent
+navigation/object browsing changes and accumulated governing-document decisions together on
+`perf02/responsive-browsing`; it does not authorize a push or deployment.
+The checkpoint is not acceptance of the whole browsing programme: Groups/Tier-0 overview serving,
+requested heavy detail boundaries, production-shaped responsiveness and physical-display
+verification remain outstanding within the same plan.
+
 **Scout audit documentation - owner-requested 2026-10-13; implementation not approved.**
 The owner first requested revalidation of Scout's review and a plan, then asked for the work to be
 documented rather than proceeding directly with fixes.
@@ -364,6 +465,240 @@ their concrete bounded approval; physical-display checks remain ordinary verific
 separate prerequisite project.
 Preserve original evidence and all subsequent work, with no live access, production exports/budgets,
 SYSVOL work, compatibility, previous-generation browsing, ARCH-06 redesign, deployment or push.
+
+**Shared saved-run offline acceptance/fix pass - verified 2026-10-15; performance acceptance blocked.**
+A fresh explicit correct-source Release rebuild of local checkpoint `1f72035` has zero errors and
+861 warnings, and all 176 focused checks pass after a 10-case smoke included in that coverage;
+source/binary fingerprints and compact results are retained in this session's
+`files/shared-acceptance`, separately from the older pre-checkpoint measurement binaries.
+The checks exercise Dashboard first show/revisit/reopen, the actual Findings pane including its
+Tier 0 summary and native rendering of all 19 evidence kinds, object Findings, selected original
+proof, saved routes and return, complete-scope LAPS paging/filter resets and GUI/CLI/portable
+completion, without an application, test or UI correction or a new behavior check.
+Read-only inspection and hash verification preserve both rejected comparisons: the original
+format-2-input reference rejects checkpointing (11 to 30.5 ms medians; 6 ms baseline range),
+closure (7 to 16 ms; 2 ms range) and generation-file moves (2 to 6 ms; 2 ms range), whereas the
+different native-format input and format-73/74 reference reject permission-classification
+validation (1 to 2 ms; zero baseline range).
+Each comparison preserves its own 32 saved rule-execution answers and 54 finding identities, but
+their input seals and reference binaries differ, so they do not establish a same-input
+original-reference/current comparison or clear the original rejection.
+The retained runner calls the old detailed-Findings services without the pane's Tier 0 summary
+or WPF rendering; the passing screen checks establish behavior/read boundaries, not current
+complete-screen latency or production-scale performance.
+Acceptance still requires genuine original-reference/current common-input comparability without
+modifying retained inputs, and complete current-screen measurements rather than relabelled old
+service timings; any new tooling/campaign needs concrete approval, while PERF-02 remains unaccepted,
+the gate unchanged, ARCH-06 deferred and ordinary physical-display checks outstanding, with no
+optimization, live work, deployment, commit or push authorized.
+
+**Current complete-screen measurement - owner-approved 2026-10-15.**
+The owner approved one local-only screen-measurement runner based on the retained Windows
+measurement approach, one current saved judgement in a hash-verified copy of the native
+12,000-object/590,000-permission-entry nine-domain synthetic, and three fresh-process repetitions
+at each existing 900/1300 test width for Dashboard and Findings first show, revisit and reopen
+through completed loading and rendering, including the Tier 0 summary.
+Reuse the existing positive Tier 0 screen check, verify that measurement cannot finish early,
+preserve original inputs and working changes, retain compact results/build fingerprints and remove
+disposable generated outputs, without application/UI changes, optimization or production access.
+The original reference requires a format-2 capture root while the current build requires format 3,
+so neither retained input is accepted unchanged by both; this approved current-screen campaign
+does not change either reference or the gate, establish original-baseline non-regression, prove a
+speedup or production-scale/physical-display acceptance, or authorize compatibility, commit or push.
+
+The approved fixed campaign is complete: six fresh processes produce 36 first/revisit/reopen
+observations, with identical displayed saved answers across widths, visits and processes and
+unchanged measured input bytes.
+The final explicit correct-source Release rebuild has zero errors and 861 warnings, all 11
+focused existing screen checks pass including genuine saved Tier 0 findings and all 19 evidence
+kinds, and the local runner builds without warnings/errors; three rebuilt isolated defects in
+waiting, drawing and proof-counter separation are detected, each followed by a passing rebuilt
+restored control.
+
+| Complete load/render endpoint | 900-wide median, ms | 1300-wide median, ms |
+|---|---:|---:|
+| Dashboard first show | 491.49 | 424.83 |
+| Dashboard revisit | 111.28 | 127.08 |
+| Dashboard reopened selection | 80.97 | 101.39 |
+| Findings first show | 462.36 | 461.34 |
+| Findings revisit | 250.51 | 316.26 |
+| Findings reopened selection | 258.68 | 370.98 |
+
+The 1300-wide Findings revisit includes a 1,797.68-ms observation and its reopened selection an
+862.40-ms observation, retained rather than rerun or discarded; the recorded breakdown does not
+establish their cause.
+Every process verifies the Overview, Navigation and lightweight Findings products once on first
+use and once after closing/reopening selection, with no heavyweight Evidence, Derivation,
+permission proof, path proof or Facts verification.
+The actual Tier 0 summary is included, preserving zero SEC-071 findings and 972 unresolved access
+checks in this synthetic rather than presenting zero findings as a complete assessment.
+These are the compiled Dashboard view and complete Assets/Findings view, including captured scope
+navigation, the Tier 0 summary, bindings/layout and forced offscreen WPF drawing, not the old
+detailed-Findings service runner.
+Application startup/resources, global shell chrome, cold OS cache and physical display presentation
+are excluded, and the 12,000-object model does not establish the documented production workload.
+The one preparation judgement preserves the retained candidate's 32 saved rule-execution answers
+and 54 finding identities, but its unpaired duration is not a judging comparison.
+Compact observations, outliers, controls, source/binary fingerprints and the canonical measured-input
+retention mapping are in this session's `files/screen-measurement`, without a repository dependency
+on that local location.
+Those screen observations did not resolve either earlier judging rejection or original-reference
+comparability; the separately approved judging comparison below records that later result, with
+no screen-speedup or production-readiness claim, application/UI or reference change, production
+access, commit or push.
+
+**Fresh common-data/native-container judging comparison - owner-approved 2026-10-15.**
+After clarifying that the preceding session measured complete screens rather than before/after
+judging, the owner approved one fresh 12,000-object/590,000-permission-entry nine-domain synthetic
+snapshot, using existing native publishers to prepare old/current test containers with byte-identical
+captured directory, navigation and derived-fact databases.
+The manifests/native wrapping and the current overview differ by design; those format-opening costs
+remain inside each unchanged judging program's own timing, rather than modifying the old reader
+or pretending the whole input folders are byte-identical.
+This is fresh invented test data, not conversion/resealing of retained inputs or an application
+compatibility/migration feature, and the original reference and all frozen evidence remain unchanged.
+Before timing, prove that each version accepts its native container, shared data hashes/generation
+bindings match, and damaged or wrongly bound copies are refused.
+Run four fixed rounds of three versions (original pre-segmentation reference, format-73 reference
+and current candidate), twelve judging runs total, alternating relative order and assessing the
+candidate independently against each reference with the existing phase/write/validation/checkpoint/
+close/move/sealing timings, database-operation counts, memory, saved answers/finding identities
+and unchanged observed-repeat-variability rule.
+Retain outliers and failures without repeating until green; finish with either both supported
+passing comparisons and a recommendation for controlled production validation, or the specifically
+identified failing operation and a bounded correction proposal, not speculative optimization,
+another screen campaign or architecture review.
+This authorizes the necessary local fixture/comparison tooling, controls and fixed campaign only,
+not application/UI/reference changes, tolerance relaxation, live access, production data,
+discovery/budgets, SYSVOL, deployment, commit or push.
+
+The pre-correction fixed twelve-run matrix is complete, and the approved common-data method closes input
+comparability: all three unchanged versions accept their native fresh input, all eight
+damaged/foreign/wrong-format controls are refused, the captured/index/derived database bytes and
+generation bindings match, and no retained input is converted or resealed.
+All 32 saved execution answers and 54 finding identities agree across the twelve runs, with all
+27 operation measurements, nine memory snapshots per run and one successful seal per published
+part; traced writer statements are 3,219,130 for the original and 3,219,649 for both format 73 and
+the candidate, not a claim to count every reader connection.
+Two rebuilt isolated fixture-guard defects are detected with passing rebuilt restored controls,
+six existing binding checks pass and the final correct-source Release rebuild has zero errors
+and 861 warnings, preserving all 1,125 application/test inputs.
+The timed executables remain the retained, precisely fingerprinted instrumented working-source
+builds corresponding to the recorded sources, not relabelled clean builds of checkpoint `1f72035`.
+
+| Original reference to current | Baseline median, ms | Current median, ms | Baseline repeat range, ms |
+|---|---:|---:|---:|
+| Checkpoint databases | 11 | 41 | 6 |
+| Close databases | 6 | 21 | 5 |
+| Move generation files | 3.5 | 13.5 | 5 |
+
+Those three operations reject the unchanged original-reference gate; the separate format-73/current
+comparison passes all 27 operations, including permission-classification validation at 3 to 2.5 ms
+medians with a 3-ms baseline range.
+The earlier 1-to-2-ms rejection is retained unchanged as historical evidence, not erased or described
+as an application correction.
+Totals vary substantially: original/current medians are 95.363/111.779 seconds and the original
+observed range is 46.754-108.498 seconds, so the formal total-time row is inside observed variation
+but establishes neither a speedup nor production-scale judging performance.
+Retained pre-correction source and its SQL profile confirm four explicit per-schema WAL checkpoints versus one
+originally, a connection owning four attached databases, and four serial move/open-protection
+handoffs; the close/move native filesystem subcosts are not independently isolated.
+The proposed next correction is limited to generation finalization, retaining all four independently
+sealed products and one atomic root: prototype unique unselected generation paths to remove late
+file moves and establish whether checkpoint/close work can be removed rather than relocated or
+hidden, preserving rollback/durability, exact proof/count/binding semantics, one seal per byte and
+previous-completed-root protection.
+At matrix completion that correction was proposed rather than approved; the owner's subsequent
+bounded approval is recorded below, without changing the rejected comparison or recommending
+production validation.
+
+**Publication-generation finalization correction - owner-approved 2026-10-15; implement in a new session.**
+The owner approved the preceding concrete correction and requested a full handoff and starting
+prompt, explicitly deferring implementation to a new session.
+Limit the application change to the four-product generation-finalization path: use unique,
+unselected generation filenames from the start to remove late file moves, establish/remove
+avoidable checkpoint/close work without relocating it outside measured phases, and retain all
+four independently sealed products and atomic selection of the completed root.
+Preserve WAL/rollback/durability guarantees, every original proof occurrence and saved answer,
+counting/resource/source/generation binding, prepared statements/batching, explicit incompleteness,
+protected reader lifetimes and failure/cancellation protection for the previous completed root.
+Approval includes the necessary focused existing/new behavior checks, explicitly rebuilt isolated
+defects and restored controls, a final correct-source Release rebuild and validation with the
+existing unchanged common-data/native-container fixed judging matrix using a newly built corrected
+candidate against the frozen original and format-73 references.
+Do not ask again for this correction or completed ARCH-02/03/04/05/LAPS presentation approval, but
+do not turn it into another architecture review, UI/analysis/rule change, merged stores, weaker
+seal/WAL validation, invented zero timings, hidden work, tolerance/reference change or repeat-until-green.
+The small synthetic still does not establish production scale, and physical-display checks remain
+ordinary outstanding verification rather than a new prerequisite project.
+No implementation or new measurement occurs in this handoff turn, and no production access,
+capture/exports/budgets, discovery, SYSVOL, compatibility, previous-generation browsing, deployment,
+commit or push is authorized.
+
+**Publication-generation finalization - implemented and offline verified 2026-10-15;
+the unchanged judging gate still rejects.**
+Judgement now creates all four products directly under unique, unselected generation names;
+only the completed sealed root selects them, with no late data-file moves or shared Judgement
+staging paths.
+One checked SQLite command flushes all four write-ahead logs, the sidecar files holding committed
+database changes before they reach the main files, and a blocked checkpoint or remaining WAL
+bytes explicitly prevents publication.
+Clearing a connection pool is removed from the already non-pooled writer; required physical
+checkpointing and closure of all four databases remain inside their original measured phases,
+not claimed eliminated or moved elsewhere.
+The fixed metric named `move-generation-file` now measures acquiring the four file protections
+and excluding outstanding WAL bytes, with an explicit zero data-move count and real elapsed time,
+not an omitted operation or an invented zero timing.
+All four independent seals, prepared statements/batching, rollback/durability, saved answers and
+occurrences, exact bindings, explicit gaps and previous-completed-root failure/cancellation
+protection remain intact, without a schema, frozen fixture, rule or UI change.
+
+All 483 affected checks pass, and all 17 new/extended behavior cases detect explicitly rebuilt
+isolated defects within 11 variants, each followed by a passing explicitly rebuilt restored control.
+The final correct-live-source Release rebuild after those controls has zero errors and 861
+warnings, followed by 101 passing final checks.
+Protected readback of fresh sealed copies matches every table/occurrence count across all 89
+saved tables against the retained pre-correction result, including 590,000 classification
+occurrences and 589,946 shared values, with all four seals and exact evidence/derivation/generation
+bindings verified.
+All 1,125 original build inputs remain present: 1,098 byte-identical and 27 changed for this
+correction, plus the new focused test file; the pre-existing governing-document work and original
+evidence/measurements remain preserved.
+
+The one required fixed twelve-run matrix uses a newly rebuilt corrected measurement candidate,
+Judgement SHA-256 `7EA861B477B559691FCA11757A9F03B7FE4A40B60319AFDE43DE89CED90A2C81`,
+with the unchanged retained counter/entry point and frozen original/format-73 references.
+Canonical native inputs are exactly reassembled from the retained maps without regeneration,
+conversion or resealing; all 32 saved execution answers and 54 finding identities agree across
+all twelve runs, each with all 27 metrics, nine memory snapshots and one successful seal per product.
+Traced writer statements are 3,219,130 originally, 3,219,649 for format 73 and 3,219,646 corrected:
+three fewer SQL checkpoint commands, not elimination of four databases' physical flush work.
+
+| Unchanged comparison | Actual result |
+|---|---|
+| Original reference / corrected | All 27 rows formally within observed reference repeat variation |
+| Format 73 / corrected | Rejected at `record-completion`: reference median/range 0/0 ms, corrected median 0.5 ms |
+
+The completion observations are `[0,0,0,0]` ms for format 73 and `[1,1,0,0]` ms corrected;
+the existing gate and timing precision are unchanged, and the failed row is not waived or retimed.
+The original reference retains an unexplained 3,789.833-second first-run outlier, with no cause
+assigned, and its wide checkpoint/close repeat ranges of 124/12 ms cover medians still increasing
+from 11 to 26 ms and 5 to 13 ms.
+The file-protection/move metric is 1 to 1 ms against the original and 5.5 to 1 ms against format 73;
+the formal original pass does not establish that the remaining publication costs disappeared.
+Total medians are 56.047/58.964/57.577 seconds for original/format-73/corrected, with the outlier
+retained rather than excluded, so no speedup or production-scale claim follows.
+At completion, PERF-02 remained unaccepted under the then-mandatory judging gate, with no
+production-validation recommendation or repeat-until-green campaign.
+The later UI-first owner clarification above supersedes treating slight judging overhead alone
+as a blocker, without changing these measured results or establishing UI/production acceptance.
+Compact source/binary/input fingerprints, the corrected-source delta, case/mutation results,
+complete matrix/outlier, readback counts and canonical reassembly/retention maps are retained in
+the correction session's `files/publication-finalization`, without a repository/runtime dependency
+on that local location.
+Production-scale and ordinary physical-display acceptance remain outstanding, ARCH-06 stays
+deferred, and no screen campaign, UI/rule change, production access, discovery/budget change,
+SYSVOL work, compatibility, deployment, commit or push occurred.
 
 **PERF-01 production saved-run browsing - owner-approved offline feasibility, 2026-10-13;
 application implementation not approved.**

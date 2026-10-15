@@ -154,7 +154,7 @@ public sealed class NavigationSegmentTests
             Assert.True(membership.IsSuccess);
             Assert.Null(membership.Value);
             Assert.True(source.ReadTree(directory).IsSuccess);
-            Assert.True(source.ListObjects(directory, Root, ListingScope.Subtree, 1).IsSuccess);
+            Assert.True(source.ListObjects(directory, Root, ListingScope.Subtree, null).IsSuccess);
             Assert.True(source.CaptureReadValidity()());
             Assert.Equal(1, counts.For("overview"));
             Assert.Equal(1, counts.For("navigation"));

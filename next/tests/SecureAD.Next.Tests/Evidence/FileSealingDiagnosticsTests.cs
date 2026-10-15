@@ -219,7 +219,7 @@ public sealed class FileSealingDiagnosticsTests
     {
         var directory = TempDirectories.Create("diagnostic-publication");
         var generation = Guid.NewGuid();
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
+        var staging = TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation);
         File.WriteAllText(staging, "finished synthetic result");
         var log = new StatusLog(line =>
         {
@@ -237,16 +237,17 @@ public sealed class FileSealingDiagnosticsTests
     public void CancellationFromTheSealLogStillPreventsAnalysisManifestSelection()
     {
         var directory = TempDirectories.Create("diagnostic-publication-cancel");
-        var staging = AnalysisStoreLifecycle.StagingPath(directory, AnalysisStoreKind.Judgement);
         var previous = Guid.NewGuid();
-        File.WriteAllText(staging, "previous result");
+        File.WriteAllText(TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, previous), "previous result");
         AnalysisStoreLifecycle.Publish(directory, AnalysisStoreKind.Judgement, previous);
+        var generation = Guid.NewGuid();
+        var staging = TestSealing.AnalysisInputPath(directory, AnalysisStoreKind.Judgement, generation);
         File.WriteAllText(staging, "replacement result");
         using var stopping = new CancellationTokenSource();
         var log = new StatusLog(_ => stopping.Cancel());
 
         Assert.Throws<OperationCanceledException>(() =>
-            AnalysisStoreLifecycle.PublishWithDiagnostics(directory, AnalysisStoreKind.Judgement, Guid.NewGuid(), stopping.Token, log));
+            AnalysisStoreLifecycle.PublishWithDiagnostics(directory, AnalysisStoreKind.Judgement, generation, stopping.Token, log));
 
         Assert.Equal("Completed", Assert.Single(log.Lines).Value("outcome"));
         Assert.Equal(previous, AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement).Value.GenerationId);

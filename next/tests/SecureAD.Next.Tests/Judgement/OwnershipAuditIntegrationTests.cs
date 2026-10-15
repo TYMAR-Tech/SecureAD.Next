@@ -245,7 +245,7 @@ public sealed partial class OwnershipAuditIntegrationTests(ITestOutputHelper out
         public void Report(JudgingRun.JudgingProgress value)
         {
             if (value.Phase != JudgingPhase.SelectingOwnershipScope || Rows is not null) return;
-            using var connection = new SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Mode=ReadOnly;Pooling=False");
+            using var connection = new SqliteConnection("Data Source=" + TestSealing.PendingJudgementPath(directory) + ";Mode=ReadOnly;Pooling=False");
             connection.Open();
             TestSealing.AttachJudgementParts(connection, directory, Guid.Empty, staged: true);
             Rows = PrimitiveRows(connection);

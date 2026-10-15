@@ -44,13 +44,13 @@ public sealed class JudgementWritingTests
 
         writer.Write(RuleExecution.Judged(Sec010, 1, 0, [SomeFinding()]));
 
-        Assert.True(File.Exists(BundleLayout.JudgementPartialPath(directory)));
+        Assert.True(File.Exists(TestSealing.PendingJudgementPath(directory)));
         Assert.False(AnalysisStoreLifecycle.Resolve(
             directory, AnalysisStoreKind.Judgement).IsSuccess);
     }
 
     /// <summary>
-    /// Completing gives the store its name and seals it.
+    /// Completing seals the generation and selects its root.
     /// </summary>
     [Fact]
     public void CompletingNamesTheStoreAndSealsIt()
@@ -66,14 +66,14 @@ public sealed class JudgementWritingTests
         var generation = Current(directory);
         Assert.True(File.Exists(DataPath(directory, generation)));
         Assert.True(File.Exists(SealPath(directory, generation)));
-        Assert.False(File.Exists(BundleLayout.JudgementPartialPath(directory)));
+        Assert.False(AnalysisStoreLifecycle.HasUnpublishedChanges(directory, AnalysisStoreKind.Judgement));
     }
 
     /// <summary>
     /// A judging that never finished leaves the previous judgement untouched.
     /// </summary>
     /// <remarks>
-    /// Re-judging replaces the store, and the replacement happens at the rename. So the answer a
+    /// Re-judging replaces the selected root, and the replacement happens atomically. So the answer a
     /// bundle already had survives a judging that died, rather than being destroyed by one that
     /// produced nothing.
     /// </remarks>
@@ -150,7 +150,7 @@ public sealed class JudgementWritingTests
 
         Assert.False(AnalysisStoreLifecycle.Resolve(
             directory, AnalysisStoreKind.Judgement).IsSuccess);
-        Assert.True(File.Exists(BundleLayout.JudgementPartialPath(directory)));
+        Assert.True(File.Exists(TestSealing.PendingJudgementPath(directory)));
     }
 
     /// <summary>
@@ -419,7 +419,7 @@ public sealed class JudgementWritingTests
         var current = AnalysisStoreLifecycle.Resolve(directory, AnalysisStoreKind.Judgement);
         var path = current.IsSuccess
             ? DataPath(directory, current.Value!)
-            : BundleLayout.JudgementPartialPath(directory);
+            : TestSealing.PendingJudgementPath(directory);
 
         using var connection = new SqliteConnection(
             new SqliteConnectionStringBuilder

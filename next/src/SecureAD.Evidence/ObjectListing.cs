@@ -47,6 +47,14 @@ public sealed record ListedObject(
     public string? DomainFqdn { get; init; }
 }
 
+/// <summary>Captured identity used to enter an object without loading its attributes or permissions.</summary>
+public sealed record CapturedObjectIdentity(string DistinguishedName, Guid? ObjectGuid, string? ObjectClass,
+    string? DomainFqdn, string? PrincipalSid);
+
+/// <summary>The last ordered row of an exact protected directory-listing question.</summary>
+public sealed record ObjectPageMark(string Fingerprint, string ContainerDn, ListingScope Scope,
+    string Name, long ObjectId);
+
 /// <summary>
 /// One page of objects, and what is true about the whole listing they came from.
 /// </summary>
@@ -80,7 +88,11 @@ public sealed record ObjectPage(
     IReadOnlyList<ListedObject> Objects,
     int Total,
     bool ObjectsAreComplete,
-    string? Shortfall);
+    string? Shortfall)
+{
+    /// <summary>The next position, not a cached result or a statement about captured completeness.</summary>
+    public ObjectPageMark? Next { get; init; }
+}
 
 /// <summary>Whether the capture covers a selected listing scope, independently of the product being listed.</summary>
 public sealed record ListingCoverage(bool IsComplete, string? Shortfall);
@@ -159,6 +171,53 @@ internal static class ObjectListingReader
         return new ObjectPage(objects, total, complete, shortfall);
     }
 
+    internal static ObjectPage ReadNext(SqliteConnection connection, string fingerprint, string containerDn,
+        ListingScope scope, ObjectPageMark? after, CancellationToken token)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+        token.ThrowIfCancellationRequested();
+        if (after is not null && (after.Fingerprint != fingerprint || after.ContainerDn != containerDn
+            || after.Scope != scope || after.ObjectId <= 0 || after.Name is null))
+            throw new ArgumentException("This object page belongs to another capture or listing scope.", nameof(after));
+        var where = WhereFor(scope);
+        var total = CountOf(connection, where, containerDn);
+        var (complete, shortfall) = CoverageOf(connection, containerDn, scope);
+        var continuation = after is null ? ""
+            : "AND (o.name_sort COLLATE NOCASE,o.object_id) > ($name,$id)";
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT o.object_id,o.distinguished_name,o.object_guid,o.parent_dn,o.most_specific_class,o.name_sort
+            FROM captured_object o
+            WHERE {where}
+              {continuation}
+            ORDER BY o.name_sort COLLATE NOCASE,o.object_id
+            LIMIT $take
+            """;
+        Bind(command, containerDn);
+        if (after is not null)
+        {
+            command.Parameters.AddWithValue("$name", after.Name);
+            command.Parameters.AddWithValue("$id", after.ObjectId);
+        }
+        command.Parameters.AddWithValue("$take", PageSize + 1);
+        var objects = new List<ListedObject>();
+        ObjectPageMark? next = null;
+        using var rows = command.ExecuteReader();
+        while (rows.Read())
+        {
+            token.ThrowIfCancellationRequested();
+            if (objects.Count == PageSize)
+                return new(objects, total, complete, shortfall) { Next = next };
+            var dn = rows.GetString(1);
+            objects.Add(new(dn, DnHelper.ExtractFirstRdn(dn),
+                rows.IsDBNull(2) ? null : Guid.Parse(rows.GetString(2)),
+                rows.IsDBNull(4) ? null : rows.GetString(4),
+                rows.IsDBNull(3) ? null : rows.GetString(3)));
+            next = new(fingerprint, containerDn, scope, rows.GetString(5), rows.GetInt64(0));
+        }
+        return new(objects, total, complete, shortfall);
+    }
+
     /// <summary>
     /// The condition selecting one scope, written once so the count and the page can never
     /// disagree about which objects they are talking about.
@@ -221,7 +280,7 @@ internal static class ObjectListingReader
                    {objectClass}
             FROM captured_object AS o
             WHERE {where}
-            ORDER BY {NameOrder} COLLATE NOCASE
+            ORDER BY {(navigation ? "o.name_sort" : NameOrder)} COLLATE NOCASE,o.object_id
             LIMIT $take OFFSET $skip
             """;
 

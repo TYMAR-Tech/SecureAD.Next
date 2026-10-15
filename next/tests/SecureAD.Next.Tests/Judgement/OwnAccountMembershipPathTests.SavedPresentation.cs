@@ -158,9 +158,14 @@ public sealed partial class OwnAccountMembershipPathTests
         Assert.Contains("Prerequisites for adding this account to the group: unresolved", PresentationQuestions(section)[0].Membership);
     }
 
-    private static string UnpublishedPath(string directory, AnalysisStoreKind kind, bool manifest) => manifest
-        ? AnalysisStoreLifecycle.ManifestPath(directory, kind) + ".partial"
-        : AnalysisStoreLifecycle.StagingPath(directory, kind);
+    private static string UnpublishedPath(string directory, AnalysisStoreKind kind, bool manifest)
+    {
+        if (manifest) return AnalysisStoreLifecycle.ManifestPath(directory, kind) + ".partial";
+        if (kind == AnalysisStoreKind.Derivation) return AnalysisStoreLifecycle.StagingPath(directory, kind);
+        var generation = Guid.NewGuid();
+        AnalysisStoreLifecycle.BeginAttempt(directory, kind, generation);
+        return BundleLayout.AnalysisGenerationDataPath(directory, kind, generation);
+    }
 
     [Fact]
     public void SavedPathQuestionsKeepUnknownReadinessAsANamedSavedAnswer()

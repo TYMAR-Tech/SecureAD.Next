@@ -19,7 +19,7 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<ObjectSearchPage> SearchObjects(string bundleDirectory, string search, ObjectSearchMark? after) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.SearchObjects(search, after, _readCancellation), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.SearchObjects(search, after, _readCancellation), _readCancellation));
 
     /// <inheritdoc/>
     public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after) =>
@@ -78,11 +78,23 @@ internal sealed partial class AssetReadRequest(
         WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadGroupInventory(query, after, _readCancellation), _readCancellation));
 
     public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ResolveMembershipReferences(names, _readCancellation), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ResolveMembershipReferences(names, _readCancellation), _readCancellation));
 
-    /// <inheritdoc/>
-    public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, int pageNumber) =>
-        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ListObjects(containerDn, scope, pageNumber), _readCancellation));
+    public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, ObjectPageMark? after) =>
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ListObjects(containerDn, scope, after, _readCancellation), _readCancellation));
+
+    public Result<CapturedObjectIdentity?> ReadObjectIdentity(string bundleDirectory, string distinguishedName) =>
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ReadObjectIdentity(distinguishedName), _readCancellation));
+
+    public Result<CapturedMembershipPage?> ReadCapturedMembership(string bundleDirectory, string distinguishedName,
+        bool parents, CapturedMembershipMark? after) =>
+        WithRun(bundleDirectory, run => run.ReadEvidence(reader =>
+            reader.ReadCapturedMembership(distinguishedName, parents, after, _readCancellation), _readCancellation));
+
+    public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
+        IReadOnlyCollection<string> attributes) =>
+        WithRun(bundleDirectory, run => run.ReadEvidence(reader =>
+            reader.ReadObjectAttributes(distinguishedName, attributes), _readCancellation));
 
     /// <inheritdoc/>
     public Result<LapsPage> ListLapsComputers(string bundleDirectory, LapsQuery query, LapsPageMark? after) =>

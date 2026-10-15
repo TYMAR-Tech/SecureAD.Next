@@ -21,7 +21,7 @@ public sealed class ControlEdgeStorageTests
         File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
         using (var writer = JudgementWriter.Create(directory, Seal, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch))
         {
-            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False"))
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + TestSealing.PendingJudgementPath(directory) + ";Pooling=False"))
             {
                 connection.Open();
                 TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
@@ -84,7 +84,7 @@ public sealed class ControlEdgeStorageTests
         {
             writer.StartControlEdges(true);
             writer.CompleteControlEdges();
-            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False"))
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + TestSealing.PendingJudgementPath(directory) + ";Pooling=False"))
             {
                 connection.Open();
                 TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);

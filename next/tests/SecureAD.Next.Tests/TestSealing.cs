@@ -7,6 +7,23 @@ namespace SecureAD.Next.Tests;
 
 internal static class TestSealing
 {
+    internal static string AnalysisInputPath(string directory, AnalysisStoreKind kind, Guid generation) =>
+        kind == AnalysisStoreKind.Derivation ? AnalysisStoreLifecycle.StagingPath(directory, kind)
+            : BundleLayout.AnalysisGenerationDataPath(directory, kind, generation);
+
+    internal static AnalysisStoreGeneration PendingJudgementGeneration(string directory)
+    {
+        var pending = AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement) + ".partial";
+        var root = JsonSerializer.Deserialize<StoreRootManifest>(File.ReadAllText(pending));
+        if (root is null || root.GenerationId == Guid.Empty)
+            throw new InvalidDataException("The fixture has no identified pending judgement generation.");
+        return new(AnalysisStoreKind.Judgement, root.GenerationId);
+    }
+
+    internal static string PendingJudgementPath(string directory) =>
+        BundleLayout.AnalysisGenerationDataPath(directory, AnalysisStoreKind.Judgement,
+            PendingJudgementGeneration(directory).GenerationId);
+
     internal static void ResealCapture(string directory)
     {
         var path = BundleLayout.EvidencePath(directory);
@@ -31,11 +48,11 @@ internal static class TestSealing
 
     internal static void AttachJudgementParts(SqliteConnection connection, string directory, Guid generation, bool staged = false)
     {
-        var selected = new AnalysisStoreGeneration(AnalysisStoreKind.Judgement, generation);
+        var selected = staged ? PendingJudgementGeneration(directory)
+            : new AnalysisStoreGeneration(AnalysisStoreKind.Judgement, generation);
         foreach (var role in BundleLayout.JudgementParts)
         {
-            var path = staged ? BundleLayout.JudgementPartStagingPath(directory, role)
-                : BundleLayout.AnalysisSegmentDataPath(directory, selected, role);
+            var path = BundleLayout.AnalysisSegmentDataPath(directory, selected, role);
             if (!File.Exists(path)) throw new FileNotFoundException("The generated test fixture is missing a proof part.", path);
             using var attach = connection.CreateCommand();
             attach.CommandText = $"ATTACH DATABASE $path AS \"{role}\"";
@@ -75,9 +92,12 @@ internal static class TestSealing
     internal static string CopyStagedJudgement(string directory, string name)
     {
         var copy = TempDirectories.Create(name);
-        File.Copy(BundleLayout.JudgementPartialPath(directory), BundleLayout.JudgementPartialPath(copy));
-        foreach (var role in BundleLayout.JudgementParts)
-            File.Copy(BundleLayout.JudgementPartStagingPath(directory, role), BundleLayout.JudgementPartStagingPath(copy, role));
+        var generation = PendingJudgementGeneration(directory);
+        foreach (var role in BundleLayout.JudgementParts.Prepend(StoreSegmentRole.Judgement))
+            File.Copy(BundleLayout.AnalysisSegmentDataPath(directory, generation, role),
+                BundleLayout.AnalysisSegmentDataPath(copy, generation, role));
+        File.Copy(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement) + ".partial",
+            AnalysisStoreLifecycle.ManifestPath(copy, AnalysisStoreKind.Judgement) + ".partial");
         return copy;
     }
 

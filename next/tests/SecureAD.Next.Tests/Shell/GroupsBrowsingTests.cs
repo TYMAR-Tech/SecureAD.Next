@@ -155,9 +155,9 @@ public sealed class GroupsBrowsingTests
             [new("member", SecureAD.Kernel.Capture.AttributeCardinality.MultiValued, [new(0, "CN=Missing," + Root, null)])] };
         var definition = new ObjectSectionDefinition("Membership", "Membership", ["member"]);
         var opens = new List<string>();
-        var section = new GroupMembershipSectionViewModel(definition, attributes,
+        var section = new GroupMembershipSectionViewModel(definition, MembershipReader(attributes,
             (names, _) => Task.FromResult(SecureAD.Kernel.Result<CapturedMemberReferences>.Success(new(
-                names.Select(name => new CapturedMemberReference(name, null, null, null, null, null)).ToArray()))),
+                names.Select(name => new CapturedMemberReference(name, null, null, null, null, null)).ToArray())))),
             opens.Add, () => true);
         await section.ReadCompletion;
         var row = Assert.Single(section.Members);
@@ -220,13 +220,13 @@ public sealed class GroupsBrowsingTests
             [new("member", SecureAD.Kernel.Capture.AttributeCardinality.MultiValued,
                 Enumerable.Range(0, 123).Select(i => new AttributeValue(i, $"CN=Member{i}," + Root, null)).ToArray())] };
         var calls = new List<IReadOnlyList<string>>();
-        var section = new GroupMembershipSectionViewModel(new("Membership", "Membership", ["member"]), attributes,
+        var section = new GroupMembershipSectionViewModel(new("Membership", "Membership", ["member"]), MembershipReader(attributes,
             (names, _) =>
             {
                 calls.Add(names);
                 return Task.FromResult(SecureAD.Kernel.Result<CapturedMemberReferences>.Success(new(
                     names.Select(name => new CapturedMemberReference(name, null, null, null, null, null)).ToArray())));
-            }, _ => throw new InvalidOperationException("Unresolved members must not open."), () => true);
+            }), _ => throw new InvalidOperationException("Unresolved members must not open."), () => true);
         await section.ReadCompletion;
         Assert.Equal(50, Assert.Single(calls).Count);
         section.NextCommand.Execute(null);
@@ -249,15 +249,31 @@ public sealed class GroupsBrowsingTests
         var opened = false;
         var attributes = FakeAssetSource.CapturedObject(Group, "group") with { Attributes =
             [new("member", SecureAD.Kernel.Capture.AttributeCardinality.MultiValued, [new(0, "CN=Member," + Root, null)])] };
-        var section = new GroupMembershipSectionViewModel(new("Membership", "Membership", ["member"]), attributes,
+        var section = new GroupMembershipSectionViewModel(new("Membership", "Membership", ["member"]), MembershipReader(attributes,
             (names, _) => Task.FromResult(SecureAD.Kernel.Result<CapturedMemberReferences>.Success(new(
-                names.Select(name => new CapturedMemberReference(name, Guid.NewGuid(), name, "Member", "user", "contoso.com")).ToArray()))),
+                names.Select(name => new CapturedMemberReference(name, Guid.NewGuid(), name, "Member", "user", "contoso.com")).ToArray())))),
             _ => opened = true, () => current);
         await section.ReadCompletion;
         current = false;
         section.OpenMemberCommand.Execute(Assert.Single(section.Members));
         Assert.False(opened);
         Assert.True(section.HasError);
+    }
+
+    private static Func<bool, CapturedMembershipMark?, CancellationToken,
+        Task<SecureAD.Kernel.Result<(CapturedMembershipPage, CapturedMemberReferences)>>> MembershipReader(
+        ObjectAttributes attributes,
+        Func<IReadOnlyList<string>, CancellationToken, Task<SecureAD.Kernel.Result<CapturedMemberReferences>>> resolve)
+    {
+        var source = new FakeAssetSource { Attributes = attributes };
+        return async (parents, after, token) =>
+        {
+            var page = source.ReadCapturedMembership("test", attributes.DistinguishedName, parents, after).Value!;
+            var members = await resolve(page.Values.Select(value => value.Stored).ToArray(), token);
+            return members.IsSuccess
+                ? SecureAD.Kernel.Result<(CapturedMembershipPage, CapturedMemberReferences)>.Success((page, members.Value))
+                : SecureAD.Kernel.Result<(CapturedMembershipPage, CapturedMemberReferences)>.Failure(members.Error);
+        };
     }
 
     private static (AssetsViewModel, FakeAssetSource) Model()

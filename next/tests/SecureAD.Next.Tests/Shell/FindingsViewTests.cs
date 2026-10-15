@@ -263,7 +263,7 @@ public sealed class FindingsViewTests
         return (model, source);
     }
 
-    private static FrameworkElement View(AssetsViewModel model, string file = "FindingsView.xaml")
+    internal static FrameworkElement View(AssetsViewModel model, string file = "FindingsView.xaml")
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";

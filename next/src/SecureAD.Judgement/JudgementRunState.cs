@@ -12,8 +12,8 @@ namespace SecureAD.Judgement;
 /// </para>
 /// <para>
 /// <b>A reader of a finished store should never see <see cref="Running"/> or <see cref="Failed"/>.</b>
-/// Judging writes to <c>judgement.db.partial</c> and renames it only after every scheduled rule has
-/// finished, so those two states live in a file no reader asks for by name.
+/// Judging writes to unique, unselected generation files and selects their sealed root only after
+/// every scheduled rule has finished, so neither state is offered by a completed root.
 /// </para>
 /// </remarks>
 public enum JudgementRunState

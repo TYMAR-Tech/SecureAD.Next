@@ -340,7 +340,7 @@ internal sealed class FakeAssetSource : IAssetSource
             : Result<DirectoryTree>.Success(Tree);
     }
 
-    public Result<ObjectPage> ListObjects(
+    private Result<ObjectPage> ListObjectsAtPage(
         string bundleDirectory, string containerDn, ListingScope scope, int pageNumber)
     {
         ListedContainer = containerDn;
@@ -351,6 +351,54 @@ internal sealed class FakeAssetSource : IAssetSource
         return ListingFails is { } error
             ? Result<ObjectPage>.Failure(error)
             : Result<ObjectPage>.Success(Page);
+    }
+
+    public Result<ObjectPage> ListObjects(string bundleDirectory, string containerDn, ListingScope scope, ObjectPageMark? after)
+    {
+        var number = after is null ? 1 : checked((int)after.ObjectId + 1);
+        var answer = ListObjectsAtPage(bundleDirectory, containerDn, scope, number);
+        return answer.IsSuccess ? Result<ObjectPage>.Success(answer.Value with
+        {
+            Next = number * ObjectListingReader.PageSize < answer.Value.Total
+                ? new("fake", containerDn, scope, "", number) : null,
+        }) : answer;
+    }
+
+    public Result<CapturedObjectIdentity?> ReadObjectIdentity(string bundleDirectory, string distinguishedName)
+    {
+        Reads.Add("Identity");
+        OpenedObject = distinguishedName;
+        if (AttributesFail is { } failure) return Result<CapturedObjectIdentity?>.Failure(failure);
+        if (Attributes is not { } attributes) return Result<CapturedObjectIdentity?>.Success(null);
+        var sid = attributes.Find("objectSid")?.OnlyValue;
+        return Result<CapturedObjectIdentity?>.Success(new(attributes.DistinguishedName, attributes.ObjectGuid,
+            attributes.Find("objectClass")?.Values.LastOrDefault()?.Text, attributes.DomainFqdn,
+            sid?.Bytes is { } bytes ? SecureAD.Kernel.Security.Sid.ToText(bytes) : sid?.Text));
+    }
+
+    public List<IReadOnlyCollection<string>> AttributeSelections { get; } = [];
+    public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
+        IReadOnlyCollection<string> attributes)
+    {
+        AttributeSelections.Add(attributes.ToArray());
+        var result = ReadObjectAttributes(bundleDirectory, distinguishedName);
+        return result.IsSuccess && result.Value is { } value
+            ? Result<ObjectAttributes?>.Success(value with
+            { Attributes = value.Attributes.Where(attribute => attributes.Contains(attribute.LdapDisplayName, StringComparer.OrdinalIgnoreCase)).ToArray() })
+            : result;
+    }
+
+    public Result<CapturedMembershipPage?> ReadCapturedMembership(string bundleDirectory, string distinguishedName,
+        bool parents, CapturedMembershipMark? after)
+    {
+        if (AttributesFail is { } failure) return Result<CapturedMembershipPage?>.Failure(failure);
+        if (Attributes is null) return Result<CapturedMembershipPage?>.Success(null);
+        var values = Attributes.Find(parents ? "memberOf" : "member")?.Values ?? [];
+        var page = values.Where(value => value.Ordinal > (after?.Ordinal ?? -1)).Take(51).ToArray();
+        var next = page.Length > 50
+            ? new CapturedMembershipMark("fake", distinguishedName, parents, page[49].Ordinal) : null;
+        return Result<CapturedMembershipPage?>.Success(new(page.Take(50).ToArray(), values.Count,
+            Attributes.Find("primaryGroupID")?.OnlyValue?.Text, next));
     }
 
     public LapsPage LapsPage { get; set; } =

@@ -29,6 +29,8 @@ internal static class ObjectPaging
 internal sealed partial class TreeNodeViewModel : ObservableObject
 {
     private readonly TreeNode _node;
+    private readonly Action<TreeNodeViewModel>? _observe;
+    private IReadOnlyList<TreeNodeViewModel>? _children;
 
     /// <summary>
     /// Whether this container is the one selected.
@@ -44,12 +46,14 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
 
     /// <summary>Creates a screen's view of one container.</summary>
     /// <param name="node">The container as the evidence rebuilt it.</param>
-    public TreeNodeViewModel(TreeNode node)
+    /// <param name="observe">Connects selection only when a presented node is created.</param>
+    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe = null)
     {
         ArgumentNullException.ThrowIfNull(node);
 
         _node = node;
-        Children = [.. node.Children.Select(c => new TreeNodeViewModel(c))];
+        _observe = observe;
+        observe?.Invoke(this);
     }
 
     /// <summary>The container's name, for showing.</summary>
@@ -78,7 +82,8 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
         };
 
     /// <summary>The containers directly beneath it.</summary>
-    public IReadOnlyList<TreeNodeViewModel> Children { get; }
+    public IReadOnlyList<TreeNodeViewModel> Children =>
+        _children ??= _node.Children.Select(child => new TreeNodeViewModel(child, _observe)).ToArray();
 
     /// <summary>
     /// What this run established about the container itself.
@@ -112,8 +117,7 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
 
     /// <summary>This container and every container beneath it.</summary>
     /// <remarks>
-    /// So the screen can listen to all of them for a selection. A tree reports selection on the
-    /// item, and the item is wherever the operator clicked.
+    /// Explicit enumeration materializes descendants; normal presentation needs only expanded branches.
     /// </remarks>
     public IEnumerable<TreeNodeViewModel> ThisAndBelow() =>
         new[] { this }.Concat(Children.SelectMany(c => c.ThisAndBelow()));

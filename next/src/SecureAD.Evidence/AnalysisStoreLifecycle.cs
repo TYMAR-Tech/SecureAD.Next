@@ -22,7 +22,7 @@ public sealed record AnalysisStoreGeneration(AnalysisStoreKind Kind, Guid Genera
 internal enum AnalysisPublicationPart
 {
     WritePendingManifest,
-    MoveData,
+    PrepareData,
     SealData,
     SelectManifest,
 }
@@ -101,17 +101,18 @@ public static class AnalysisStoreLifecycle
         });
     }
 
-    /// <summary>Marks a new attempt before replacing its staging file; failure leaves the attempt visible.</summary>
-    public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind)
+    /// <summary>Marks an attempt before creating its files; failure leaves the unselected generation visible.</summary>
+    public static void BeginAttempt(string bundleDirectory, AnalysisStoreKind kind, Guid generationId = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         WritePendingManifest(ManifestPath(bundleDirectory, kind) + ".partial",
-            new StoreRootManifest(StoreRootManifest.CurrentVersion, Guid.Empty, "", [], null, ""));
+            new StoreRootManifest(StoreRootManifest.CurrentVersion, generationId, "", [], null, ""));
     }
 
-    /// <summary>Whether a newer attempt is unfinished, including the interval after its database was renamed.</summary>
+    /// <summary>Whether a newer attempt is unfinished, including while its unselected generation is sealed.</summary>
     public static bool HasUnpublishedChanges(string bundleDirectory, AnalysisStoreKind kind) =>
-        Exists(StagingPath(bundleDirectory, kind)) || Exists(ManifestPath(bundleDirectory, kind) + ".partial");
+        Exists(ManifestPath(bundleDirectory, kind) + ".partial")
+        || kind == AnalysisStoreKind.Derivation && Exists(StagingPath(bundleDirectory, kind));
 
     private static bool Exists(string path)
     {
@@ -120,7 +121,7 @@ public static class AnalysisStoreLifecycle
         catch (DirectoryNotFoundException) { return false; }
     }
 
-    /// <summary>Returns the private staging database path used while a generation is being written.</summary>
+    /// <summary>Returns the private Derivation staging path; Judgement uses its generation paths from creation.</summary>
     public static string StagingPath(string bundleDirectory, AnalysisStoreKind kind)
     {
         return BundleLayout.AnalysisStagingPath(bundleDirectory, kind);
@@ -143,11 +144,11 @@ public static class AnalysisStoreLifecycle
     }
 
     /// <summary>
-    /// Seals and publishes a staged database as the current immutable generation.
+    /// Seals and publishes an unselected database as the current immutable generation.
     /// </summary>
     /// <param name="bundleDirectory">The bundle containing the analysis store.</param>
     /// <param name="kind">Which disposable store is being published.</param>
-    /// <param name="generationId">The generation written into the staged database.</param>
+    /// <param name="generationId">The generation written into the database.</param>
     /// <param name="cancellationToken">Stops before the atomic manifest replacement; already-written generation files remain unselected.</param>
     public static AnalysisStoreGeneration Publish(
         string bundleDirectory,
@@ -191,13 +192,6 @@ public static class AnalysisStoreLifecycle
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var stagingPath = StagingPath(bundleDirectory, kind);
-        if (!File.Exists(stagingPath))
-        {
-            throw new FileNotFoundException(
-                $"The staged {Prefix(kind)} database does not exist.", stagingPath);
-        }
-
         var generation = Generation(bundleDirectory, kind, generationId);
         var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
         if (additionalParts is not null && (kind != AnalysisStoreKind.Judgement
@@ -206,34 +200,39 @@ public static class AnalysisStoreLifecycle
         var roles = (additionalParts ?? []).Prepend(role).ToArray();
         var products = roles.Select(product => (
             Role: product,
-            Staging: product == role ? stagingPath : BundleLayout.JudgementPartStagingPath(bundleDirectory, product),
+            Source: kind == AnalysisStoreKind.Derivation ? StagingPath(bundleDirectory, kind)
+                : BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product),
             Data: BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product))).ToArray();
-        if (products.Any(product => File.Exists(product.Data) || File.Exists(product.Data + ".seal")))
+        if (products.Any(product => kind == AnalysisStoreKind.Derivation && File.Exists(product.Data)
+            || File.Exists(product.Data + ".seal")))
         {
             throw new InvalidOperationException(
                 $"Analysis generation '{generationId:D}' already exists. Generation identifiers "
                 + "are immutable and cannot be published twice.");
         }
         foreach (var product in products)
-            if (!File.Exists(product.Staging))
-                throw new FileNotFoundException("A staged analysis product is missing.", product.Staging);
+            if (!File.Exists(product.Source))
+                throw new FileNotFoundException("An unselected analysis product is missing.", product.Source);
 
         var manifestPath = ManifestPath(bundleDirectory, kind);
         var stagedManifestPath = manifestPath + ".partial";
-        // The staging database disappears during sealing. Keep the unfinished attempt visible
-        // until the single atomic operation that makes its sealed generation current.
+        // File names never select a Judgement. Keep the unfinished attempt visible until
+        // the single atomic operation that selects all of its sealed products.
         beginPart?.Invoke(AnalysisPublicationPart.WritePendingManifest);
         WritePendingManifest(stagedManifestPath,
             new StoreRootManifest(StoreRootManifest.CurrentVersion, generationId, evidenceSeal, [], summary, ""));
 
-        beginPart?.Invoke(AnalysisPublicationPart.MoveData);
+        beginPart?.Invoke(AnalysisPublicationPart.PrepareData);
         var protection = new List<FileStream>();
         try
         {
             foreach (var product in products)
             {
-                File.Move(product.Staging, product.Data);
+                if (kind == AnalysisStoreKind.Derivation) File.Move(product.Source, product.Data);
                 protection.Add(new FileStream(product.Data, FileMode.Open, FileAccess.Read, FileShare.Read));
+                if (kind == AnalysisStoreKind.Judgement && File.Exists(product.Data + "-wal")
+                    && new FileInfo(product.Data + "-wal").Length != 0)
+                    throw new InvalidDataException("A judgement product still has uncheckpointed write-ahead-log bytes.");
             }
             beginPart?.Invoke(AnalysisPublicationPart.SealData);
             var segments = new List<SealedStoreSegment>();

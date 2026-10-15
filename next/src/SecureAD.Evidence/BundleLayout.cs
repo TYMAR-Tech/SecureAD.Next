@@ -93,18 +93,6 @@ public static class BundleLayout
     /// </remarks>
     public const string JudgementFileName = "judgement.db";
 
-    /// <summary>
-    /// The judgement of a run that has not finished. Deliberately not a name any reader asks for.
-    /// </summary>
-    /// <remarks>
-    /// The same mechanism <see cref="PartialFileName"/> uses, for the same reason: a judgement is
-    /// written under this name and renamed only after every scheduled rule has finished and the
-    /// seal is written, so an interrupted judgement has no file by the name a reader asks for. A
-    /// half-judged bundle showing some of its findings would be the more dangerous half of
-    /// <c>docs/decisions/0002</c> - fewer findings than the truth, presented as the truth.
-    /// </remarks>
-    public const string JudgementPartialFileName = "judgement.db.partial";
-
     /// <summary>The seal covering <see cref="JudgementFileName"/>.</summary>
     /// <remarks>
     /// Separate from <see cref="SealFileName"/> because the two cover different artefacts made at
@@ -134,8 +122,8 @@ public static class BundleLayout
 
     /// <summary>The derived facts of a derivation in progress in a bundle directory.</summary>
     /// <remarks>
-    /// A derivation writes here and is renamed only once every phase has finished, exactly as
-    /// <see cref="JudgementPartialFileName"/> is. A partial closure presented as a complete one
+    /// A derivation writes here and is renamed only once every phase has finished.
+    /// A partial closure presented as a complete one
     /// is the same failure as a partial judgement presented as a complete one, and worse: a rule
     /// resting on it would report a clean result it never established.
     /// </remarks>
@@ -307,10 +295,6 @@ public static class BundleLayout
     internal static IReadOnlyList<StoreSegmentRole> JudgementParts { get; } = Array.AsReadOnly(
         new[] { StoreSegmentRole.PermissionProof, StoreSegmentRole.PathProof, StoreSegmentRole.JudgementFacts });
 
-    /// <summary>The private staging file for a judgement product other than compact Findings.</summary>
-    public static string JudgementPartStagingPath(string bundleDirectory, StoreSegmentRole role) =>
-        Combine(bundleDirectory, $"judgement.{PartName(role)}.db.partial");
-
     /// <summary>The exact immutable file declared for an analysis product.</summary>
     public static string AnalysisSegmentDataPath(string bundleDirectory, AnalysisStoreGeneration generation, StoreSegmentRole role)
     {
@@ -340,11 +324,6 @@ public static class BundleLayout
     public static string JudgementPath(string bundleDirectory) =>
         Combine(bundleDirectory, JudgementFileName);
 
-    /// <summary>The judgement of a run in progress in <paramref name="bundleDirectory"/>.</summary>
-    /// <param name="bundleDirectory">The bundle's directory.</param>
-    public static string JudgementPartialPath(string bundleDirectory) =>
-        Combine(bundleDirectory, JudgementPartialFileName);
-
     internal static string JudgementWriteLockPath(string bundleDirectory) =>
         Combine(bundleDirectory, "judgement.write.lock");
 
@@ -368,9 +347,13 @@ public static class BundleLayout
     public static string DerivationSealPath(string bundleDirectory) =>
         Combine(bundleDirectory, DerivationSealFileName);
 
-    /// <summary>The staging database for a disposable analysis store.</summary>
-    public static string AnalysisStagingPath(string bundleDirectory, AnalysisStoreKind kind) =>
-        Combine(bundleDirectory, AnalysisPrefix(kind) + ".db.partial");
+    /// <summary>The private Derivation staging database; Judgement writes directly to unselected generation paths.</summary>
+    public static string AnalysisStagingPath(string bundleDirectory, AnalysisStoreKind kind)
+    {
+        if (kind != AnalysisStoreKind.Derivation)
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Judgement uses unique generation paths, not a shared staging file.");
+        return DerivationPartialPath(bundleDirectory);
+    }
 
     /// <summary>The manifest selecting the current generation of a disposable analysis store.</summary>
     public static string AnalysisManifestPath(string bundleDirectory, AnalysisStoreKind kind) =>

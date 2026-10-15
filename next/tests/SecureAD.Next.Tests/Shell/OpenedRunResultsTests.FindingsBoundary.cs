@@ -139,7 +139,7 @@ public sealed partial class OpenedRunResultsTests
     public async Task Arch03ObjectFindingsAndReturnNavigationDoNotOpenOriginalProof()
     {
         var directory = FindingsPagingRun();
-        using var locks = new FindingsHeavyLocks(directory, capture: false);
+        using var locks = new FindingsHeavyLocks(directory);
         using var counts = new FindingsVerificationCounts(directory);
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
@@ -155,7 +155,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Null(findings.Refusal);
         Assert.Equal(new[] { "SEC-022", "SEC-030" }, findings.Findings.Select(finding => finding.Rule));
         Assert.Equal("Display 000", findings.Findings[0].Principal);
-        Assert.Equal(0L, counts.Proof);
+        Assert.Equal(0L, counts.Heavy);
         screen.CloseObject();
         await screen.ReadCompletion;
         Assert.Equal(before, screen.Findings.Select(FindingDisplaySnapshot));

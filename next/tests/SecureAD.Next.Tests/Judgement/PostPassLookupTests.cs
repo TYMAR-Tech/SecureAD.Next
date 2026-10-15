@@ -189,7 +189,7 @@ public sealed class PostPassLookupTests
             writer.WriteControlEdges(evaluation with { Edges = evaluation.Edges.Select(edge => edge with { GenerationId = writer.GenerationId }).ToArray() }, null);
             writer.FlushObjects();
             writer.CompleteControlEdges();
-            Connection = new SqliteConnection("Data Source=" + BundleLayout.JudgementPartialPath(directory) + ";Pooling=False");
+            Connection = new SqliteConnection("Data Source=" + TestSealing.PendingJudgementPath(directory) + ";Pooling=False");
             Connection.Open();
             TestSealing.AttachJudgementParts(Connection, directory, writer.GenerationId, staged: true);
             Execute(Connection, "PRAGMA foreign_keys=ON");

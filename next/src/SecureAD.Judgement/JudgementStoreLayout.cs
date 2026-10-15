@@ -50,10 +50,11 @@ internal static class JudgementStoreLayout
         Execute(connection, "PRAGMA temp_store=FILE");
         // Split the original 2 MiB writer cache, rather than opening four large caches.
         Execute(connection, "PRAGMA main.cache_size=-512");
+        var selected = new AnalysisStoreGeneration(AnalysisStoreKind.Judgement, generation);
         foreach (var role in BundleLayout.JudgementParts)
         {
-            var path = BundleLayout.JudgementPartStagingPath(directory, role);
-            if (File.Exists(path)) File.Delete(path);
+            var path = BundleLayout.AnalysisSegmentDataPath(directory, selected, role);
+            using (File.Open(path, FileMode.CreateNew, FileAccess.Write)) { }
             using var attach = connection.CreateCommand();
             attach.CommandText = $"ATTACH DATABASE $path AS {Quote(Schema(role))}";
             attach.Parameters.AddWithValue("$path", path);
@@ -106,9 +107,11 @@ internal static class JudgementStoreLayout
 
     internal static void Checkpoint(SqliteConnection connection)
     {
-        Execute(connection, "PRAGMA main.wal_checkpoint(TRUNCATE)");
-        foreach (var role in BundleLayout.JudgementParts)
-            Execute(connection, $"PRAGMA {Quote(Schema(role))}.wal_checkpoint(TRUNCATE)");
+        // Omitting the schema checkpoints every attached WAL database, not just main.
+        using var checkpoint = connection.CreateCommand();
+        checkpoint.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
+        if ((long)checkpoint.ExecuteScalar()! != 0)
+            throw new InvalidOperationException("The judgement products could not be fully checkpointed and were not published.");
     }
 
     internal static string Schema(StoreSegmentRole role) => role == StoreSegmentRole.Judgement ? "main" : role.ToString();
