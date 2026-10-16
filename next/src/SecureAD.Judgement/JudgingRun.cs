@@ -278,14 +278,30 @@ public static class JudgingRun
         DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
         IRunLog log, CancellationToken cancellationToken, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget)
     {
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return JudgeAudit(bundleDirectory, rules, requesterPolicy, startedUtc, evaluationAsOf, progress, log,
+            cancellationToken, selfMembershipDiscoveryBudget, files);
+    }
+
+    /// <summary>Runs the same audit policy while retaining exact input/output file protection for a handoff.</summary>
+    public static Result<JudgementRunState> JudgeAudit(
+        string bundleDirectory, IReadOnlyList<IRule> rules, PathRequesterPolicy requesterPolicy,
+        DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
+        IRunLog log, CancellationToken cancellationToken, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget,
+        ProtectedRunFiles files)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(log);
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
         if (!Enum.IsDefined(requesterPolicy)) throw new ArgumentOutOfRangeException(nameof(requesterPolicy));
         selfMembershipDiscoveryBudget?.Validate();
         if (requesterPolicy == PathRequesterPolicy.Disabled)
-            return JudgeWithTier0Discovery(bundleDirectory, rules, startedUtc, evaluationAsOf, progress, log,
-                cancellationToken, selfMembershipDiscoveryBudget);
+            return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true,
+                selfMembershipDiscoveryBudget, null, startedUtc, evaluationAsOf, progress, log, cancellationToken,
+                true, [], [], [], false, files);
 
         var previous = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
         var attempt = Guid.NewGuid();
@@ -302,7 +318,8 @@ public static class JudgingRun
         {
             var result = JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true,
                 selfMembershipDiscoveryBudget, null, startedUtc, evaluationAsOf, watched, log, cancellationToken,
-                tier0DiscoveryRequested: true, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [], offlineSelection: true);
+                tier0DiscoveryRequested: true, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [],
+                offlineSelection: true, files);
             Record(result.IsSuccess ? "Published" : "Failed");
             recorded = true;
             return result;
@@ -367,6 +384,21 @@ public static class JudgingRun
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
         bool offlineSelection = false)
     {
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return JudgeCore(bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
+            discoveryBudget, memberBudget, startedUtc, evaluationAsOf, progress, log, cancellationToken,
+            tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests, offlineSelection, files);
+    }
+
+    private static Result<JudgementRunState> JudgeCore(
+        string bundleDirectory, IReadOnlyList<IRule> rules, IReadOnlyList<SelfMembershipRequest> selfMembershipRequests,
+        SelfMembershipBudget selfMembershipBudget, bool automaticDiscovery, SelfMembershipDiscoveryBudget? discoveryBudget,
+        MemberAttributionBudget? memberBudget, DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf,
+        IProgress<JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken,
+        bool tier0DiscoveryRequested, IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
+        IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
+        bool offlineSelection, ProtectedRunFiles files)
+    {
         var account = new JudgingAccount();
         var began = System.Diagnostics.Stopwatch.GetTimestamp();
         using var status = new JudgingStatus(log, progress, TimeProvider.System, PostPassMemory.Read);
@@ -377,13 +409,13 @@ public static class JudgingRun
                 bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
                 discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
                 tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
-                offlineSelection, account);
+                offlineSelection, account, files);
 
             if (judged.IsSuccess)
             {
                 AppendPortableSummary(
                     bundleDirectory, account.GenerationId, System.Diagnostics.Stopwatch.GetElapsedTime(began),
-                    account.Phases, account.Rules, log, cancellationToken);
+                    account.Phases, account.Rules, log, cancellationToken, files);
             }
             else
             {
@@ -436,7 +468,17 @@ public static class JudgingRun
         string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases, IReadOnlyList<RuleTiming> timings,
         IRunLog log, CancellationToken cancellationToken)
     {
-        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        AppendPortableSummary(bundleDirectory, generationId, elapsed, phases, timings, log, cancellationToken, files);
+    }
+
+    private static void AppendPortableSummary(
+        string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases, IReadOnlyList<RuleTiming> timings,
+        IRunLog log, CancellationToken cancellationToken, ProtectedRunFiles files)
+    {
+        var protectedFile = files.Analysis(AnalysisStoreKind.Judgement, StoreSegmentRole.Judgement, cancellationToken);
+        var opened = protectedFile.IsSuccess ? JudgementReader.Open(protectedFile.Value, cancellationToken)
+            : Result<JudgementReader>.Failure(protectedFile.Error);
 
         if (!opened.IsSuccess)
         {
@@ -526,7 +568,7 @@ public static class JudgingRun
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
         bool offlineSelection,
-        JudgingAccount account)
+        JudgingAccount account, ProtectedRunFiles files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -585,7 +627,7 @@ public static class JudgingRun
             return refusal;
         }
 
-        var openedInputs = JudgingInputs.Open(bundleDirectory, cancellationToken);
+        var openedInputs = JudgingInputs.Open(files, cancellationToken);
         if (!openedInputs.IsSuccess)
         {
             log.Record(JudgePhase, openedInputs.Error!, []);

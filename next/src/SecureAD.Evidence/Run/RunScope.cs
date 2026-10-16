@@ -6,9 +6,8 @@ namespace SecureAD.Evidence.Run;
 /// <remarks>
 /// <para>
 /// <b>This is the answer to "3 of 3 domains" on a screen.</b> A run listing says what became of a
-/// run - finished, damaged, interrupted - which is read from the bundle directory without opening
-/// anything. What a run <i>saw</i> is inside the bundle, so it costs an open, and the library reads
-/// it for the run an operator has selected rather than for every row.
+/// run - finished, damaged, interrupted. Captured scope is also published in the compact capture
+/// root, so the library can group runs without opening their databases.
 /// </para>
 /// <para>
 /// <b>Every declared domain has a row, including the ones nobody read.</b> That is the property

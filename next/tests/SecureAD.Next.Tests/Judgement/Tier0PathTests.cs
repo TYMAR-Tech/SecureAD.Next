@@ -289,7 +289,7 @@ public sealed partial class Tier0PathTests(ITestOutputHelper output)
         var command = Assert.IsType<SecureAD.Cli.CommandLine>(SecureAD.Cli.CommandLine.Parse(["--judge", directory]));
 
         Assert.Equal(0, await SecureAD.Cli.Program.RunAsync(command, CancellationToken.None, discoveryBudget: null,
-            capture: _ => throw new InvalidOperationException("Offline judging must not capture.")));
+            capture: (_, _) => throw new InvalidOperationException("Offline judging must not capture.")));
         using var reader = Open(directory);
 
         Assert.Equal(2, reader.ReadTier0Path(UserDn).ShortestProvenDistance);

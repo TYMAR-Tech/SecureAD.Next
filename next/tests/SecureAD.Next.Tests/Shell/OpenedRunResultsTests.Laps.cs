@@ -209,7 +209,7 @@ public sealed partial class OpenedRunResultsTests
 
         Assert.Equal((1, 1L, 1L, 0L),
             (second.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications, counts.AnalyticalReads));
-        Assert.Equal((1L, 0L, 0L), (counts.FactsVerifications, counts.PermissionProofVerifications, counts.PathProofVerifications));
+        Assert.Equal((0L, 0L, 0L), (counts.FactsVerifications, counts.PermissionProofVerifications, counts.PathProofVerifications));
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public sealed partial class OpenedRunResultsTests
 
         Assert.Equal((1, 0L, 2L), (page.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications));
         Assert.Equal(2L, counts.NavigationVerifications);
-        Assert.Equal(2L, counts.FactsVerifications);
+        Assert.Equal(0L, counts.FactsVerifications);
     }
 
     [Fact]

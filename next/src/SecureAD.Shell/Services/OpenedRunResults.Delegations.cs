@@ -11,12 +11,12 @@ internal sealed partial class OpenedRunResults
     {
         ArgumentNullException.ThrowIfNull(query);
         if (!query.IncludeGroupHeldPermissions)
-            return ReadEvidence(reader => reader.ReadDelegations(query, after, token), token);
-        var read = ReadDerivation(reader => reader.ReadContainingGroups(query.Principal.Sid, query.Principal.DomainFqdn, token), token);
+            return ReadCapturedDelegations(reader => reader.ReadDelegations(query, after, token), token);
+        var read = ReadMembership(reader => reader.ReadContainingGroups(query.Principal.Sid, query.Principal.DomainFqdn, token), token);
         if (!read.IsSuccess) return Result<DelegationPage>.Failure(AuditError.Create(ErrorCategory.Shell,
             "DelegationMembershipUnavailable", ErrorSeverity.Failed,
             DelegationText.Get("MembershipUnavailable") + "\n" + read.Error.Description, Directory));
-        return ReadEvidence(evidence =>
+        return ReadCapturedDelegations(evidence =>
         {
             var membership = read.Value;
             RequireCurrentMembership(membership);
@@ -71,7 +71,7 @@ internal sealed partial class OpenedRunResults
 
     private void RequireCurrentMembership(DelegationMembership membership)
     {
-        if (_evidence?.Fingerprint != membership.EvidenceFingerprint || CurrentDerivation(membership.GenerationId) is not null)
+        if (_delegations?.Root.EvidenceSeal != membership.EvidenceFingerprint || CurrentDerivation(membership.GenerationId) is not null)
             throw new InvalidDataException(DelegationText.Get("MembershipChanged"));
     }
 }

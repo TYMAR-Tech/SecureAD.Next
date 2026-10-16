@@ -17,13 +17,14 @@ namespace SecureAD.Shell.Services;
 internal sealed class RunCatalog : IRunCatalog
 {
     /// <inheritdoc/>
-    public Result<IReadOnlyList<RunListing>> List(string libraryRoot)
+    public Result<IReadOnlyList<RunListing>> List(string libraryRoot, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
 
         try
         {
-            return new RunLibrary(libraryRoot, TimeProvider.System).List();
+            cancellationToken.ThrowIfCancellationRequested();
+            return new RunLibrary(libraryRoot, TimeProvider.System).List(cancellationToken);
         }
         catch (Exception ex) when (ex is IOException
                                       or UnauthorizedAccessException

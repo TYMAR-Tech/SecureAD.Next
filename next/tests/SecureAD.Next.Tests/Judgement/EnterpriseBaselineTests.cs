@@ -127,6 +127,35 @@ public sealed class EnterpriseBaselineTests
         Assert.Contains("store-verification-attempt", events);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AsyncObservationDoesNotFinishBeforeTheRequestedWork(bool fails)
+    {
+        var root = Fresh();
+        using var stopping = new CancellationTokenSource();
+        using var observation = new EnterpriseBaselineObservation(root, 32L * 1024 * 1024 * 1024, stopping);
+        var release = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var read = observation.MeasureAsync("awaited-work", () => release.Task);
+        try
+        {
+            Assert.False(read.IsCompleted);
+            Assert.Empty(observation.Stages);
+            if (fails)
+            {
+                release.SetException(new InvalidDataException("deliberate asynchronous refusal"));
+                await Assert.ThrowsAsync<InvalidDataException>(() => read);
+            }
+            else
+            {
+                release.SetResult(7);
+                Assert.Equal(7, await read);
+            }
+            Assert.Equal(!fails, Assert.Single(observation.Stages).Succeeded);
+        }
+        finally { release.TrySetResult(7); }
+    }
+
     private static string Fresh()
     {
         var path = Path.Combine(Path.GetTempPath(), "er-" + Guid.NewGuid().ToString("N")[..8]);

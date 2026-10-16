@@ -116,99 +116,111 @@ internal static class Program
     internal static async Task<int> RunAsync(
         CommandLine options, CancellationToken cancellationToken,
         SelfMembershipDiscoveryBudget? discoveryBudget,
-        Func<CancellationToken, Task<Result<CaptureRunResult>>>? capture,
+        Func<Func<string, ProtectedRunFiles>, CancellationToken, Task<Result<CaptureRunResult>>>? capture,
         PathRequesterPolicy requesterPolicy = JudgingRun.ProductionPathRequesterPolicy)
     {
         // Before this machine's own addresses are read, because deriving contacts nothing: it opens
         // a sealed bundle that already exists. Asking the network anything first would make a
         // read-only operation depend on the machine being able to see a forest.
         if (options.DeriveOnly is not null)
-            return Derive(options.DeriveOnly, afterCapture: false, cancellationToken);
+        {
+            using var files = new ProtectedRunFiles(options.DeriveOnly);
+            return Derive(options.DeriveOnly, afterCapture: false, cancellationToken, files);
+        }
 
         if (options.JudgeOnly is not null)
-            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget, requesterPolicy);
+        {
+            using var files = new ProtectedRunFiles(options.JudgeOnly);
+            return Judge(options.JudgeOnly, afterCapture: false, cancellationToken, discoveryBudget, requesterPolicy, files);
+        }
 
         if (options.DescribeOnly is not null)
             return Describe(options.DescribeOnly, options.Sizes, cancellationToken);
 
         Console.WriteLine(options.ClassScopeDescription);
 
-        if (capture is not null)
+        ProtectedRunFiles? capturedFiles = null;
+        ProtectedRunFiles ProtectCapture(string directory)
         {
-            if (options.PreviewOnly || options.ValidateOnly)
-                throw new ArgumentException("A capture substitute cannot perform preview or validation.", nameof(capture));
-            return FinishCapture(await capture(cancellationToken).ConfigureAwait(false), options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy);
+            if (capturedFiles is not null)
+                throw new InvalidOperationException("One capture cannot acquire more than one run owner.");
+            return capturedFiles = new ProtectedRunFiles(directory);
         }
-
-        // A machine whose own addresses cannot be read has no site, and every domain then reports
-        // as chosen without full knowledge rather than the run pretending it was sited.
-        var addresses = MachineAddresses.OfThisMachine();
-        if (!addresses.IsSuccess)
+        try
         {
-            Console.Error.WriteLine(addresses.Error!.Description);
-        }
-
-        var localAddresses = addresses.IsSuccess ? addresses.Value! : [];
-
-        if (options.PreviewOnly)
-        {
-            return await PreviewAsync(options, localAddresses, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        // The ceiling the operator stated, or the capture's own default where he said nothing. It
-        // is never read from the window's settings file - 0047 - so a scheduled run does what its
-        // command line says rather than inheriting a number from somebody's profile.
-        var session = new CaptureSession(
-            new RunLibrary(options.LibraryRoot!, TimeProvider.System),
-            options.Concurrency is { } domainsAtOnce
-                ? DirectoryConnectionSettings.Default with { DomainsAtOnce = domainsAtOnce }
-                : DirectoryConnectionSettings.Default,
-            TimeProvider.System,
-            new MachineDomain(),
-            localAddresses);
-
-        if (options.ValidateOnly)
-        {
-            var preflight = await session
-                .ValidateAsync(options.Forest, options.Overrides, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!preflight.IsSuccess)
+            if (capture is not null)
             {
-                Console.Error.WriteLine(preflight.Error!.Description);
-                return Failed;
+                if (options.PreviewOnly || options.ValidateOnly)
+                    throw new ArgumentException("A capture substitute cannot perform preview or validation.", nameof(capture));
+                var substituted = await capture(ProtectCapture, cancellationToken).ConfigureAwait(false);
+                return FinishCapture(substituted, options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy, capturedFiles);
             }
 
-            return Describe(preflight.Value!);
+            // A machine whose own addresses cannot be read has no site, and every domain then reports
+            // as chosen without full knowledge rather than the run pretending it was sited.
+            var addresses = MachineAddresses.OfThisMachine();
+            if (!addresses.IsSuccess)
+            {
+                Console.Error.WriteLine(addresses.Error!.Description);
+            }
+
+            var localAddresses = addresses.IsSuccess ? addresses.Value! : [];
+
+            if (options.PreviewOnly)
+            {
+                return await PreviewAsync(options, localAddresses, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            // The ceiling the operator stated, or the capture's own default where he said nothing. It
+            // is never read from the window's settings file - 0047 - so a scheduled run does what its
+            // command line says rather than inheriting a number from somebody's profile.
+            var session = new CaptureSession(
+                new RunLibrary(options.LibraryRoot!, TimeProvider.System),
+                options.Concurrency is { } domainsAtOnce
+                    ? DirectoryConnectionSettings.Default with { DomainsAtOnce = domainsAtOnce }
+                    : DirectoryConnectionSettings.Default,
+                TimeProvider.System,
+                new MachineDomain(),
+                localAddresses);
+
+            if (options.ValidateOnly)
+            {
+                var preflight = await session
+                    .ValidateAsync(options.Forest, options.Overrides, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!preflight.IsSuccess)
+                {
+                    Console.Error.WriteLine(preflight.Error!.Description);
+                    return Failed;
+                }
+
+                return Describe(preflight.Value!);
+            }
+
+            // An unattended capture cannot obtain the per-run attestation for leaving a domain out.
+            var run = await session
+                .RunAsync(
+                    options.Forest,
+                    options.Overrides,
+                    ImmutableDictionary<string, AttestedExclusion>.Empty,
+                    Warn,
+                    options.ObjectScope,
+                    new CaptureOptions(options.ScanGppPasswords),
+                    cancellationToken, ProtectCapture)
+                .ConfigureAwait(false);
+
+            return FinishCapture(run, options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy, capturedFiles);
         }
-
-        // No exclusions from here, and there cannot be any. An attestation names the person who
-        // authorised leaving a domain out, and a command line has nobody to ask - per
-        // docs/decisions/0059-an-exclusion-is-attested-once-per-run.md an attestation is made every
-        // run and never carried forward, so there is nothing to read from a previous one either. A
-        // forest with a domain nothing can read therefore still refuses to produce a bundle here,
-        // exactly as it did before the window gained the attestation. 0059 records that scheduling
-        // meets this same wall and leaves it open.
-        var run = await session
-            .RunAsync(
-                options.Forest,
-                options.Overrides,
-                ImmutableDictionary<string, AttestedExclusion>.Empty,
-                Warn,
-                options.ObjectScope,
-                new CaptureOptions(options.ScanGppPasswords),
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        return FinishCapture(run, options.CaptureOnly, cancellationToken, discoveryBudget, requesterPolicy);
+        finally { capturedFiles?.Dispose(); }
     }
 
     private static int FinishCapture(
         Result<CaptureRunResult> run,
         bool captureOnly,
         CancellationToken cancellationToken,
-        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy)
+        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy, ProtectedRunFiles? files)
     {
         if (!run.IsSuccess)
         {
@@ -225,6 +237,11 @@ internal static class Program
         }
 
         Console.Out.WriteLine("Sealed: " + run.Value.BundleDirectory);
+        if (files is null || !string.Equals(Path.GetFullPath(run.Value.BundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine("The evidence is sealed and safe, but capture did not supply the protected handoff for this run.");
+            return Failed;
+        }
 
         // ASKED FOR, AND THEREFORE SAID OUT LOUD. A bundle that was captured and not analysed is
         // complete evidence rather than a partial run - but a reader who finds no findings beside
@@ -246,10 +263,10 @@ internal static class Program
         // than stopping one stage short of an answer. Judging only runs if deriving succeeded: the
         // rules that read derived facts would otherwise refuse the run, per docs/decisions/0091,
         // and reporting that as a judging failure would blame the wrong stage.
-        var derived = Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken);
+        var derived = Derive(run.Value.BundleDirectory, afterCapture: true, cancellationToken, files);
 
         return derived is Success
-            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken, discoveryBudget, requesterPolicy)
+            ? Judge(run.Value.BundleDirectory, afterCapture: true, cancellationToken, discoveryBudget, requesterPolicy, files)
             : derived;
     }
 
@@ -446,7 +463,7 @@ internal static class Program
     };
 
     private static int Derive(
-        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken)
+        string bundleDirectory, bool afterCapture, CancellationToken cancellationToken, ProtectedRunFiles files)
     {
         var previousDerivation = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
         var previousGeneration = previousDerivation.IsSuccess ? previousDerivation.Value.GenerationId : (Guid?)null;
@@ -478,7 +495,7 @@ internal static class Program
                 DateTimeOffset.UtcNow,
                 Stage2aRun.Unwatched,
                 log,
-                cancellationToken);
+                cancellationToken, files);
         }
         catch (OperationCanceledException)
         {
@@ -545,7 +562,7 @@ internal static class Program
     /// </remarks>
     private static int Judge(
         string bundleDirectory, bool afterCapture, CancellationToken cancellationToken,
-        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy)
+        SelfMembershipDiscoveryBudget? discoveryBudget, PathRequesterPolicy requesterPolicy, ProtectedRunFiles files)
     {
         if (!afterCapture && !Directory.Exists(bundleDirectory))
         {
@@ -581,7 +598,7 @@ internal static class Program
                 generation,
                 log,
                 cancellationToken,
-                discoveryBudget);
+                discoveryBudget, files);
 
             if (!judged.IsSuccess)
             {
@@ -591,7 +608,7 @@ internal static class Program
                 return afterCapture && requesterPolicy == PathRequesterPolicy.Disabled ? Success : Failed;
             }
 
-            var summary = Summarise(bundleDirectory, generation.GenerationId.GetValueOrDefault(), requesterPolicy, cancellationToken);
+            var summary = Summarise(bundleDirectory, generation.GenerationId.GetValueOrDefault(), requesterPolicy, cancellationToken, files);
             if (!summary.IsSuccess)
             {
                 Console.Error.WriteLine(summary.Error.Description);
@@ -647,7 +664,16 @@ internal static class Program
     internal static Result<string> Summarise(string bundleDirectory, Guid generationId,
         PathRequesterPolicy requesterPolicy, CancellationToken cancellationToken)
     {
-        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return Summarise(bundleDirectory, generationId, requesterPolicy, cancellationToken, files);
+    }
+
+    private static Result<string> Summarise(string bundleDirectory, Guid generationId,
+        PathRequesterPolicy requesterPolicy, CancellationToken cancellationToken, ProtectedRunFiles files)
+    {
+        var judgement = files.Analysis(AnalysisStoreKind.Judgement, StoreSegmentRole.Judgement, cancellationToken);
+        var opened = judgement.IsSuccess ? JudgementReader.Open(judgement.Value, cancellationToken)
+            : Result<JudgementReader>.Failure(judgement.Error);
 
         if (!opened.IsSuccess)
             return Result<string>.Failure(opened.Error);

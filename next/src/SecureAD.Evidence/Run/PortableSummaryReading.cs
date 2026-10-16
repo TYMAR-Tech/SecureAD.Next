@@ -82,9 +82,21 @@ public static class PortableSummaryReading
         IReadOnlyList<DomainRunTiming> domains,
         AuditError? ending)
     {
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return OfCapture(bundleDirectory, elapsedMilliseconds, stages, domains, ending, files);
+    }
+
+    /// <summary>Reads the same saved capture counts without releasing the producer's file protection.</summary>
+    public static CaptureSummary OfCapture(
+        string bundleDirectory, long elapsedMilliseconds, IReadOnlyList<StageTiming> stages,
+        IReadOnlyList<DomainRunTiming> domains, AuditError? ending, ProtectedRunFiles files)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(stages);
         ArgumentNullException.ThrowIfNull(domains);
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
 
         var observed = RunStateReader.Observe(bundleDirectory);
 
@@ -103,7 +115,9 @@ public static class PortableSummaryReading
 
         IReadOnlyList<SummarisedDomain> rows = [];
 
-        var opened = BundleReader.Open(bundleDirectory);
+        var evidence = files.Capture(StoreSegmentRole.Evidence, CancellationToken.None);
+        var opened = evidence.IsSuccess ? BundleReader.Open(evidence.Value)
+            : BundleReader.CaptureOpenFailure(evidence.Error, bundleDirectory);
 
         if (opened.IsSuccess)
         {

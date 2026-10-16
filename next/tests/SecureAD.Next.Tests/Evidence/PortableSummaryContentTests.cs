@@ -324,6 +324,35 @@ public sealed class PortableSummaryContentTests
     }
 
     [Theory]
+    [InlineData("unreadable", false, "Evidence.SealUnreadable")]
+    [InlineData("unreadable", true, "Evidence.SealUnreadable")]
+    [InlineData("absent", false, "Evidence.SealAbsent")]
+    [InlineData("absent", true, "Evidence.SealAbsent")]
+    [InlineData("mismatch", false, "Evidence.SealMismatch")]
+    [InlineData("mismatch", true, "Evidence.SealMismatch")]
+    public async Task CaptureSummaryKeepsEstablishedRefusalCodesThroughBothOwnershipRoutes(
+        string damage, bool suppliedOwner, string expected)
+    {
+        var bundle = await ACapturedForest();
+        if (damage == "unreadable") File.WriteAllText(BundleLayout.SealPath(bundle), "not a seal");
+        else if (damage == "absent") File.Delete(BundleLayout.SealPath(bundle));
+        else
+        {
+            using var data = File.Open(BundleLayout.EvidencePath(bundle), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            data.Position = data.Length - 1;
+            var last = data.ReadByte();
+            data.Position--;
+            data.WriteByte((byte)(last ^ 1));
+        }
+        using var files = new ProtectedRunFiles(bundle);
+        var summary = suppliedOwner ? PortableSummaryReading.OfCapture(bundle, 0, [], [], null, files)
+            : CaptureSummaryOf(bundle);
+
+        Assert.Equal(new[] { (expected, 1) }, summary.Problems.Select(problem => (problem.Code, problem.Count)));
+        Assert.Empty(summary.Domains);
+    }
+
+    [Theory]
     [InlineData(RunOutcome.Failed, RunState.Failed)]
     [InlineData(RunOutcome.Cancelled, RunState.Cancelled)]
     public void UnfinishedCaptureKeepsItsStateWithoutInventingDomainCounts(RunOutcome outcome, RunState state)

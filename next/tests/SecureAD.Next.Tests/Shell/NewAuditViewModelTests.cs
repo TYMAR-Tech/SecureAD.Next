@@ -2291,7 +2291,7 @@ public sealed class NewAuditViewModelTests
         await screen.ReviewAsync();
         await screen.StartAsync();
 
-        screen.Leave();
+        await screen.LeaveAsync();
 
         Assert.Equal(@"D:\audits\run", _opener.Opened);
         Assert.Equal(1, _dialogs.TimesLeft);
@@ -2325,7 +2325,7 @@ public sealed class NewAuditViewModelTests
         var leftWhenOpened = -1;
         _opener.WhenOpening = () => leftWhenOpened = _dialogs.TimesLeft;
 
-        screen.Leave();
+        await screen.LeaveAsync();
 
         Assert.Equal(@"D:\audits\run", _opener.Opened);
         Assert.Equal(1, leftWhenOpened);
@@ -2344,7 +2344,7 @@ public sealed class NewAuditViewModelTests
     {
         var screen = await Opened();
 
-        screen.Leave();
+        await screen.LeaveAsync();
 
         Assert.Null(_opener.Opened);
         Assert.Equal(1, _dialogs.TimesLeft);
@@ -2370,7 +2370,7 @@ public sealed class NewAuditViewModelTests
         Assert.True(screen.HasFinished);
         Assert.Equal("Done", screen.LeaveLabel);
 
-        screen.Leave();
+        await screen.LeaveAsync();
 
         Assert.Null(_opener.Opened);
     }

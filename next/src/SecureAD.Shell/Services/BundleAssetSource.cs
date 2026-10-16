@@ -14,8 +14,13 @@ namespace SecureAD.Shell.Services;
 /// <remarks>Evidence and findings share the selected run's protected files, not a shared query connection.</remarks>
 internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 {
+    private readonly RunProtectionSessions? _protection;
     /// <summary>Creates the owner of a selected run's protected reading lifetime.</summary>
     public BundleAssetSource() { }
+    internal BundleAssetSource(RunProtectionSessions protection) => _protection =
+        protection ?? throw new ArgumentNullException(nameof(protection));
+
+    private OpenedRunResults OpenResults(string path) => new(path, _protection?.TakeForViewing(path));
 
     /// <inheritdoc/>
     public Task<T> ReadAsync<T>(string bundleDirectory, Func<IAssetReader, CancellationToken, T> read,
@@ -28,7 +33,7 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         lock (_sessionGate)
         {
             if (_closed) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-            _results ??= new OpenedRunResults(path);
+            _results ??= OpenResults(path);
             session = _results;
             if (!string.Equals(session.Directory, path, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
@@ -227,7 +232,7 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
             if (_results is { } current && string.Equals(current.Directory, path, StringComparison.OrdinalIgnoreCase)
                 && current.IsCurrent) return;
             previous = _results;
-            _results = new OpenedRunResults(path);
+            _results = OpenResults(path);
             _closed = false;
         }
         previous?.Dispose();
@@ -240,7 +245,7 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         OpenedRunResults? session;
         lock (_sessionGate)
         {
-            if (!_closed) _results ??= new OpenedRunResults(path);
+            if (!_closed) _results ??= OpenResults(path);
             session = _results;
         }
         return read(new AssetReadRequest(session, () => session is not null && Holds(session), CancellationToken.None));

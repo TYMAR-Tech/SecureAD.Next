@@ -1,10 +1,11 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using SecureAD.Evidence.Run;
 
 namespace SecureAD.Evidence;
 
 /// <summary>The immutable product selected by a publication root.</summary>
-public enum StoreSegmentRole { Evidence, Navigation, Derivation, Judgement, PermissionProof, PathProof, JudgementFacts, Overview }
+public enum StoreSegmentRole { Evidence, Navigation, Derivation, Judgement, PermissionProof, PathProof, JudgementFacts, Overview, Delegations, Membership }
 
 /// <summary>Exact sealed bytes, schema and generation for one independently readable product.</summary>
 public sealed record SealedStoreSegment(StoreSegmentRole Role, int SchemaVersion, Guid GenerationId,
@@ -21,12 +22,14 @@ public sealed record StoreRootManifest(int Version, Guid GenerationId, string Ev
     [System.Text.Json.Serialization.JsonInclude]
     internal IReadOnlyList<SealedStoreSegment> Segments { get; init; } = Segments;
 
-    internal const int CurrentVersion = 3;
+    internal const int CurrentVersion = 4;
     /// <summary>The captured-object count maintained by the capture projection write, not by a loaded page.</summary>
     public long? CapturedObjects { get; init; }
+    /// <summary>Scope for the library list, without opening any captured database.</summary>
+    public CapturedLibraryHeader? LibraryHeader { get; init; }
 
     internal string ComputeHash() => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
-        new { Version, GenerationId, EvidenceSeal, Segments, DerivationSummary, CapturedObjects }))).ToLowerInvariant();
+        new { Version, GenerationId, EvidenceSeal, Segments, DerivationSummary, CapturedObjects, LibraryHeader }))).ToLowerInvariant();
 
     /// <summary>Returns the single declared role; duplicate or missing roles are never guessed.</summary>
     public SealedStoreSegment Segment(StoreSegmentRole role) => Segments.Single(segment => segment.Role == role);

@@ -68,19 +68,13 @@ internal sealed partial class HomeViewModel : ObservableObject
 
     /// <summary>Opens the New Audit window.</summary>
     /// <remarks>
-    /// Starting an audit is a modal act, per
-    /// <c>docs/decisions/0057-starting-an-audit-is-a-modal-act.md</c>. Home is where it starts and
-    /// where the operator lands afterwards.
+    /// The audit occupies the shell; Show does not wait for it to finish. The shell refreshes Home
+    /// on return, rather than starting a redundant library read while the audit is being planned.
     /// </remarks>
     [RelayCommand(CanExecute = nameof(CanStartAnAudit))]
     public void NewAudit()
     {
         _newAudit.Show();
-
-        // Show is modal, so this runs once the window has closed - by which time the library may
-        // hold a run it did not hold a moment ago. Home would otherwise show a list that omits the
-        // run the operator has just watched finish.
-        Library.Refresh();
     }
 
     /// <summary>Where this installation keeps its runs.</summary>
@@ -96,8 +90,8 @@ internal sealed partial class HomeViewModel : ObservableObject
           + "evidence go.";
 
     /// <summary>Asks the operator for a run library folder and adopts it.</summary>
-    [RelayCommand]
-    public void ChooseLibrary()
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public async Task ChooseLibraryAsync()
     {
         var chosen = _picker.Pick("Choose the folder your audit runs are kept in", Location.Path);
 
@@ -113,6 +107,6 @@ internal sealed partial class HomeViewModel : ObservableObject
         NewAuditCommand.NotifyCanExecuteChanged();
 
         // The list on this screen was read from the old library, or from no library at all.
-        Library.Refresh();
+        await Library.RefreshAsync();
     }
 }

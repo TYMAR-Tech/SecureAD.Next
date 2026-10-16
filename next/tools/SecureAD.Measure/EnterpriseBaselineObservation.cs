@@ -67,7 +67,10 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     internal int ResourceSamples { get { lock (_gate) return _resourceSamples; } }
     internal CancellationToken Token => _stopping.Token;
 
-    internal T Measure<T>(string name, Func<T> work)
+    internal T Measure<T>(string name, Func<T> work) =>
+        MeasureAsync(name, () => Task.FromResult(work())).GetAwaiter().GetResult();
+
+    internal async Task<T> MeasureAsync<T>(string name, Func<Task<T>> work)
     {
         _samplingFailure?.Throw();
         Token.ThrowIfCancellationRequested();
@@ -83,7 +86,7 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         var succeeded = false;
         try
         {
-            var result = work();
+            var result = await work();
             _samplingFailure?.Throw();
             Token.ThrowIfCancellationRequested();
             succeeded = true;

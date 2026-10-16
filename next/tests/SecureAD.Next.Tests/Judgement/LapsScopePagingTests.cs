@@ -122,7 +122,7 @@ public sealed class LapsScopePagingTests
     {
         var directory = FilterRun();
         var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
-        var part = root.Segment(StoreSegmentRole.JudgementFacts);
+        var part = root.Segment(StoreSegmentRole.Judgement);
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         { DataSource = Path.Combine(directory, part.FileName), Pooling = false }.ToString()))
         {

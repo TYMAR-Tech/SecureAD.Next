@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,10 +26,8 @@ namespace SecureAD.Shell.ViewModels;
 /// <para>
 /// <b>A listing says what became of a run, not what it saw.</b> What became of it is read from the
 /// bundle directory without opening anything. How much of the forest it covered is inside the
-/// bundle, and is read by opening it - which this product does, through
-/// <c>BundleReader.ReadScope</c>. This remark previously said the product could not open a bundle
-/// at all; that stopped being true when the Assets section landed, and it is corrected here rather
-/// than left to mislead the next reader.
+/// bundle's atomic publication header, so listing runs does not open their payloads or establish
+/// their integrity. Selected readers check the products they need.
 /// </para>
 /// </remarks>
 internal sealed partial class RunLibraryViewModel : ObservableObject
@@ -38,6 +38,16 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     private readonly IRunOpener _opener;
     private readonly IDerivationLauncher _deriving;
     private readonly IJudgingLauncher _judging;
+    private CancellationTokenSource? _refreshing;
+    private long _refreshRevision;
+    private long _selectionRevision;
+    private string? _listedLibrary;
+    private readonly RunRows _runs = [];
+
+    public Task ReadCompletion { get; private set; } = Task.CompletedTask;
+
+    [ObservableProperty]
+    private bool _isRefreshing;
 
     /// <summary>
     /// Stops whichever analysis is running.
@@ -149,7 +159,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     public ICollectionView RunsView { get; }
 
     /// <summary>The runs found, in the order the library listed them.</summary>
-    public ObservableCollection<RunSummaryViewModel> Runs { get; } = [];
+    public ObservableCollection<RunSummaryViewModel> Runs => _runs;
 
     /// <summary>Whether a run is selected, and so whether there is anything to detail.</summary>
     public bool HasSelection => Selected is not null;
@@ -189,56 +199,102 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// the only way back here was an explicit refresh; it became wrong once navigation re-read the
     /// library, which is nine occasions including returning from another screen.
     /// </remarks>
-    [RelayCommand]
-    public void Refresh()
+    [RelayCommand(AllowConcurrentExecutions = true)]
+    public Task RefreshAsync() => ReadCompletion = RefreshCoreAsync(adopt: null);
+
+    public void CancelRefresh()
     {
-        // Held by path rather than by object. Every row is built fresh below, so the old instance
-        // is gone whatever happens; the path is what says which run the operator had chosen.
-        var chosen = Selected?.Path;
+        ++_refreshRevision;
+        _refreshing?.Cancel();
+        IsRefreshing = false;
+    }
 
-        Runs.Clear();
+    private async Task<bool> RefreshCoreAsync(string? adopt)
+    {
+        CancelRefresh();
+        var revision = _refreshRevision;
+        var root = _location.Path;
+        var selectionRevision = _selectionRevision;
+        using var stopping = new CancellationTokenSource();
+        _refreshing = stopping;
+        IsRefreshing = true;
         HasLooked = false;
-
-        // Cleared while the list is empty, then restored below if the run is still there. A
-        // selection pointing into a list that no longer exists would leave a details card
-        // describing a run this library may no longer hold.
-        Selected = null;
-
-        if (!_location.IsChosen)
-        {
-            Problem = "No run library has been chosen yet.";
-            OnPropertyChanged(nameof(IsEmpty));
-            return;
-        }
-
-        var listed = _catalog.List(_location.Path!);
-
-        if (!listed.IsSuccess)
-        {
-            Problem = listed.Error.Description;
-            OnPropertyChanged(nameof(IsEmpty));
-            return;
-        }
-
         Problem = null;
-
-        foreach (var run in listed.Value)
-            Runs.Add(new RunSummaryViewModel(run));
-
-        HasLooked = true;
         OnPropertyChanged(nameof(IsEmpty));
 
-        // A run that has been deleted, or that a newly chosen library does not hold, leaves nothing
-        // selected rather than selecting something else on the operator's behalf.
-        if (chosen is not null)
+        if (!string.Equals(_listedLibrary, root, StringComparison.OrdinalIgnoreCase))
         {
+            Selected = null;
+            Runs.Clear();
+            _listedLibrary = root;
+            selectionRevision = _selectionRevision;
+        }
+
+        bool IsCurrent() => revision == _refreshRevision
+            && string.Equals(root, _location.Path, StringComparison.OrdinalIgnoreCase);
+
+        try
+        {
+            if (root is null)
+            {
+                Problem = "No run library has been chosen yet.";
+                return false;
+            }
+
+            var listed = await Task.Run(() => _catalog.List(root, stopping.Token), stopping.Token);
+            if (!IsCurrent()) return false;
+            if (!listed.IsSuccess)
+            {
+                Selected = null;
+                Runs.Clear();
+                Problem = listed.Error.Description;
+                return false;
+            }
+
+            // Capture the latest choice before clearing a bound list can deselect its row.
+            var adopting = adopt is not null && selectionRevision == _selectionRevision;
+            var chosen = adopting ? adopt : Selected?.Path;
+            Selected = null;
+            _runs.ReplaceWith(listed.Value.Select(run => new RunSummaryViewModel(run)));
             Selected = Runs.FirstOrDefault(
                 run => string.Equals(run.Path, chosen, StringComparison.OrdinalIgnoreCase));
+            HasLooked = true;
+
+            if (adopting && Selected is null)
+                Problem = "This run is not in the library at " + root
+                    + ". Its evidence is at " + adopt + ".";
+
+            return adopt is null || adopting && Selected is not null;
+        }
+        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+            or InvalidOperationException or ArgumentException or NotSupportedException)
+        {
+            if (IsCurrent())
+            {
+                Selected = null;
+                Runs.Clear();
+                Problem = failure.Message;
+            }
+            return false;
+        }
+        finally
+        {
+            if (ReferenceEquals(_refreshing, stopping))
+            {
+                _refreshing = null;
+                IsRefreshing = false;
+                OnPropertyChanged(nameof(IsEmpty));
+            }
         }
     }
 
     partial void OnSelectedChanged(RunSummaryViewModel? value)
     {
+        ++_selectionRevision;
         // The boxes follow the selection rather than being cleared, so an operator who selects a
         // run he has already named sees what he wrote and can correct it rather than retype it.
         TypedName = value?.IsNamed == true ? value.Name : null;
@@ -293,11 +349,12 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </para>
     /// </remarks>
     [RelayCommand]
-    public void SaveAnnotation()
+    public async Task SaveAnnotationAsync()
     {
         if (Selected is not { } selected)
             return;
 
+        CancelRefresh();
         var path = selected.Path;
 
         // The baseline mark is carried through rather than defaulted. Both live in one row, so
@@ -315,7 +372,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         // Refresh keeps the selection, so the renamed run stays selected and its new name appears
         // in the details card without the operator having to find it again.
-        Refresh();
+        await RefreshAsync();
     }
 
     /// <summary>
@@ -335,23 +392,12 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </para>
     /// </remarks>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
-    public void Adopt(string bundleDirectory)
+    public Task<bool> AdoptAsync(string bundleDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
-
-        Refresh();
-
-        var found = Runs.FirstOrDefault(
-            run => string.Equals(run.Path, bundleDirectory, StringComparison.OrdinalIgnoreCase));
-
-        if (found is null)
-        {
-            Problem = "This run is not in the library at " + _location.Path
-                + ". Its evidence is at " + bundleDirectory + ".";
-            return;
-        }
-
-        Selected = found;
+        var reading = RefreshCoreAsync(bundleDirectory);
+        ReadCompletion = reading;
+        return reading;
     }
 
     /// <summary>
@@ -363,7 +409,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// letting it report a missing file, which describes the symptom rather than the cause.
     /// </remarks>
     [RelayCommand]
-    public void OpenRun()
+    public async Task OpenRunAsync()
     {
         if (Selected is not { } selected)
             return;
@@ -375,7 +421,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
         }
 
         Problem = null;
-        _opener.Open(selected.Path);
+        await _opener.OpenAsync(selected.Path);
     }
 
     /// <summary>
@@ -402,7 +448,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </para>
     /// </remarks>
     [RelayCommand]
-    public void MarkAsBaseline()
+    public async Task MarkAsBaselineAsync()
     {
         if (Selected is not { } selected)
             return;
@@ -417,6 +463,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         var group = selected.GroupKey;
         var chosen = selected.Path;
+        CancelRefresh();
 
         // Cleared first, so that a failure leaves no baseline rather than two.
         foreach (var run in Runs.Where(run => run.GroupKey == group && run.Path != chosen))
@@ -429,8 +476,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
             if (!cleared.IsSuccess)
             {
-                Problem = cleared.Error.Description;
-                Refresh();
+                await RefreshAfterFailureAsync(cleared.Error.Description);
                 return;
             }
         }
@@ -440,13 +486,22 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
 
         if (!marked.IsSuccess)
         {
-            Problem = marked.Error.Description;
-            Refresh();
+            await RefreshAfterFailureAsync(marked.Error.Description);
             return;
         }
 
         // Refresh keeps the selection, so the run the operator just marked stays selected.
-        Refresh();
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAfterFailureAsync(string problem)
+    {
+        var root = _location.Path;
+        var reading = RefreshAsync();
+        var revision = _refreshRevision;
+        await reading;
+        if (revision == _refreshRevision && string.Equals(root, _location.Path, StringComparison.OrdinalIgnoreCase))
+            Problem = problem;
     }
 
     /// <summary>
@@ -465,7 +520,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
     /// </para>
     /// </remarks>
     [RelayCommand]
-    public void DeleteRun()
+    public async Task DeleteRunAsync()
     {
         if (Selected is not { } selected)
             return;
@@ -479,15 +534,28 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
         if (!confirmed)
             return;
 
-        var deleted = _catalog.Delete(selected.Path);
+        CancelRefresh();
+        var root = _location.Path;
+        var revision = _refreshRevision;
+        try { await _opener.CloseAsync(); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            if (revision == _refreshRevision && string.Equals(root, _location.Path, StringComparison.OrdinalIgnoreCase))
+                Problem = failure.Message;
+            return;
+        }
+        var deleted = await Task.Run(() => _catalog.Delete(selected.Path));
 
         if (!deleted.IsSuccess)
         {
-            Problem = deleted.Error.Description;
+            if (revision == _refreshRevision && string.Equals(root, _location.Path, StringComparison.OrdinalIgnoreCase))
+                Problem = deleted.Error.Description;
             return;
         }
 
-        Refresh();
+        while (IsRefreshing) await ReadCompletion;
+        if (string.Equals(root, _location.Path, StringComparison.OrdinalIgnoreCase))
+            await RefreshAsync();
     }
 
     /// <summary>
@@ -721,12 +789,7 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
             _stopping = null;
         }
 
-        var showing = Selected?.Path;
-
-        Refresh();
-
-        Selected = Runs.FirstOrDefault(
-            listed => string.Equals(listed.Path, showing, StringComparison.OrdinalIgnoreCase));
+        await RefreshAsync();
 
         AnalysisStatus = outcome;
     }
@@ -767,4 +830,17 @@ internal sealed partial class RunLibraryViewModel : ObservableObject
         _ =>
             $"{name}: the judging did not finish. The evidence is sealed and can be judged again.",
     };
+
+    private sealed class RunRows : ObservableCollection<RunSummaryViewModel>
+    {
+        internal void ReplaceWith(IEnumerable<RunSummaryViewModel> rows)
+        {
+            CheckReentrancy();
+            Items.Clear();
+            foreach (var row in rows) Items.Add(row);
+            OnPropertyChanged(new(nameof(Count)));
+            OnPropertyChanged(new("Item[]"));
+            OnCollectionChanged(new(NotifyCollectionChangedAction.Reset));
+        }
+    }
 }

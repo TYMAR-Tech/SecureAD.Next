@@ -506,7 +506,7 @@ public sealed class AttributeWriteRuleTests
         var before = Hash(directory);
         if (host == "cli")
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None,
-                null, _ => throw new InvalidOperationException("The property rules must never recapture.")));
+                null, (_, _) => throw new InvalidOperationException("The property rules must never recapture.")));
         else
             Assert.True((await new JudgingLauncher(null).RunAsync(directory, new Progress<JudgingRun.JudgingProgress>(), CancellationToken.None)).IsSuccess);
         using var reader = Open(directory);

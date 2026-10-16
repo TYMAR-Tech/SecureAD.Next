@@ -60,11 +60,12 @@ public sealed class WorkflowArchitectureTests(ITestOutputHelper output)
         var options = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
 
         var exit = await Program.RunAsync(options, CancellationToken.None, discoveryBudget: null,
-            capture: token =>
+            capture: (protect, token) =>
             {
                 token.ThrowIfCancellationRequested();
                 Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Derivation)));
                 Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement)));
+                protect(directory);
                 return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
             });
 

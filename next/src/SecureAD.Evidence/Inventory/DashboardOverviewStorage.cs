@@ -11,7 +11,7 @@ internal static class DashboardOverviewStorage
 {
     internal const int Version = 1;
 
-    internal static void Write(SqliteConnection connection, string directory, long objects, CancellationToken token)
+    internal static CapturedLibraryHeader Write(SqliteConnection connection, string directory, long objects, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var path = BundleLayout.OverviewPartialPath(directory);
@@ -102,6 +102,12 @@ internal static class DashboardOverviewStorage
         }
         token.ThrowIfCancellationRequested();
         transaction.Commit();
+        command.Transaction = null;
+        command.Parameters.Clear();
+        command.CommandText = "SELECT coverage_id FROM main.bundle";
+        var coverageId = command.ExecuteScalar() as string
+            ?? throw new InvalidDataException("The captured library identity is absent.");
+        return new(coverageId, domains.Select(row => new CapturedDomainHeader(row.Name, row.Outcome, row.Reason)).ToArray());
     }
 
     internal static Result<ForestInventory> Read(

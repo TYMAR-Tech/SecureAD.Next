@@ -31,10 +31,14 @@ public sealed partial class SameForestRequesterTests
         {
             Derive(directory);
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None, discoveryBudget: null,
-                capture: _ => throw new InvalidOperationException("Offline judging must not capture.")));
+                capture: (_, _) => throw new InvalidOperationException("Offline judging must not capture.")));
         }
         else Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--library", System.IO.Path.GetDirectoryName(directory)!])!, CancellationToken.None,
-            discoveryBudget: null, capture: _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)))));
+            discoveryBudget: null, capture: (protect, _) =>
+            {
+                protect(directory);
+                return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+            }));
         using var reader = Open(directory);
         var assessment = Assessment(reader);
         Assert.Equal(ControlEvaluationState.Established, assessment.Authorization);

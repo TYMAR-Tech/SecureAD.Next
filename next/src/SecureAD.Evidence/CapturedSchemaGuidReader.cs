@@ -78,7 +78,7 @@ internal static class CapturedSchemaGuidReader
     /// the caller keeps the two apart by noticing that a catalogue with no captured layer resolves
     /// nothing a forest added.
     /// </returns>
-    public static CapturedSchema Read(SqliteConnection connection)
+    public static CapturedSchema Read(SqliteConnection connection, bool delegations = false)
     {
         ArgumentNullException.ThrowIfNull(connection);
 
@@ -100,7 +100,7 @@ internal static class CapturedSchemaGuidReader
             + BundleSchema.ColumnNameFor("validAccesses") + ", "
             + BundleSchema.ColumnNameFor("isSingleValued") + ", "
             + BundleSchema.ColumnNameFor("attributeSecurityGUID")
-            + " FROM captured_object"
+            + (delegations ? " FROM delegation_schema" : " FROM captured_object")
             + " WHERE " + BundleSchema.ColumnNameFor("schemaIDGUID") + " IS NOT NULL"
             + " OR " + BundleSchema.ColumnNameFor("rightsGuid") + " IS NOT NULL";
 

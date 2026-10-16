@@ -199,11 +199,12 @@ public sealed class DashboardOverviewTests
         var error = Record.Exception(() => writer.Complete(Coverage(), When.AddMinutes(1),
             ContinuationReconciliation.NotPerformed, CaptureObjectScope.Default, stopping.Token, (data, seal, token) =>
             {
-                BundleSealing.Seal(data, seal, token);
-                if (data != BundleLayout.OverviewPartialPath(directory)) return;
+                var contents = BundleSealing.Seal(data, seal, token);
+                if (data != BundleLayout.OverviewPartialPath(directory)) return contents;
                 reached = true;
                 if (cancel) stopping.Cancel();
                 else throw new IOException("Injected overview sealing failure.");
+                return contents;
             }));
         Assert.True(reached);
         if (cancel) Assert.IsType<OperationCanceledException>(error);

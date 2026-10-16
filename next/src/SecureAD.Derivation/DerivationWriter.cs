@@ -850,7 +850,28 @@ internal sealed class DerivationWriter : IDisposable
     /// <param name="completedUtc">When deriving finished.</param>
     public DerivationRunState Complete(DateTimeOffset completedUtc) => Complete(completedUtc, null);
 
-    internal DerivationRunState Complete(DateTimeOffset completedUtc, IRunLog? log)
+    internal DerivationRunState Complete(DateTimeOffset completedUtc, IRunLog? log) =>
+        Complete(completedUtc, log, CancellationToken.None);
+
+    internal DerivationRunState Complete(DateTimeOffset completedUtc, IRunLog? log, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.CanBeCanceled)
+            SQLitePCL.raw.sqlite3_progress_handler(_connection.Handle ?? throw new InvalidOperationException(),
+                1000, _ => cancellationToken.IsCancellationRequested ? 1 : 0, null);
+        try { return CompleteCore(completedUtc, log, cancellationToken); }
+        catch (SqliteException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        finally
+        {
+            if (cancellationToken.CanBeCanceled && _connection.Handle is { } handle)
+                SQLitePCL.raw.sqlite3_progress_handler(handle, 0, null, null);
+        }
+    }
+
+    private DerivationRunState CompleteCore(DateTimeOffset completedUtc, IRunLog? log, CancellationToken cancellationToken)
     {
         ThrowIfFinished();
 
@@ -869,6 +890,7 @@ internal sealed class DerivationWriter : IDisposable
         FinishWithState(state, completedUtc);
 
         DerivationSchema.CreateDeferredIndexes(_connection);
+        MembershipBrowseStorage.Write(_connection, _bundleDirectory, GenerationId, cancellationToken);
         Pragma(_connection, "wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
@@ -877,7 +899,7 @@ internal sealed class DerivationWriter : IDisposable
         var summary = new DerivationBrowseSummary(1, _evidenceSeal, GenerationId, nestingWasDerived,
             nestingWasDerived ? _groupsWithUnidentifiedMembers.Count : null);
         AnalysisStoreLifecycle.PublishBound(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId,
-            DerivationSchema.Version, _evidenceSeal, summary, CancellationToken.None, log);
+            DerivationSchema.Version, _evidenceSeal, summary, cancellationToken, log);
         _finished = true;
         return state;
     }

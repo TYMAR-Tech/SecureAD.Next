@@ -22,7 +22,7 @@ internal interface IRunCatalog
 {
     /// <summary>Lists the runs held in <paramref name="libraryRoot"/>.</summary>
     /// <param name="libraryRoot">The directory the operator chose.</param>
-    Result<IReadOnlyList<RunListing>> List(string libraryRoot);
+    Result<IReadOnlyList<RunListing>> List(string libraryRoot, CancellationToken cancellationToken);
 
     /// <summary>
     /// Records what the operator has called the run at <paramref name="bundleDirectory"/>.

@@ -593,7 +593,7 @@ public sealed class ServiceAccountRuleTests
         if (host == "cli")
         {
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None,
-                null, _ => throw new InvalidOperationException("The service-account pair must use captured evidence offline.")));
+                null, (_, _) => throw new InvalidOperationException("The service-account pair must use captured evidence offline.")));
         }
         else
         {

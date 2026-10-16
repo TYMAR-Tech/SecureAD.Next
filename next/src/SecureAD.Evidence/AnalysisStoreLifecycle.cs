@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SecureAD.Evidence.Inventory;
+using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 
 namespace SecureAD.Evidence;
@@ -182,7 +183,8 @@ public static class AnalysisStoreLifecycle
     public static AnalysisStoreGeneration PublishBound(string bundleDirectory, AnalysisStoreKind kind,
         Guid generationId, int schemaVersion, string evidenceSeal, DerivationBrowseSummary? summary,
         CancellationToken cancellationToken, IRunLog? log) =>
-        Publish(bundleDirectory, kind, generationId, cancellationToken, null, log, schemaVersion, evidenceSeal, summary, null);
+        Publish(bundleDirectory, kind, generationId, cancellationToken, null, log, schemaVersion, evidenceSeal, summary,
+            kind == AnalysisStoreKind.Derivation ? BundleLayout.DerivationParts : null);
 
     internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
         Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart,
@@ -194,16 +196,16 @@ public static class AnalysisStoreLifecycle
 
         var generation = Generation(bundleDirectory, kind, generationId);
         var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
-        if (additionalParts is not null && (kind != AnalysisStoreKind.Judgement
-            || !additionalParts.SequenceEqual(BundleLayout.JudgementParts)))
-            throw new ArgumentException("A judgement must publish all of its declared parts together.", nameof(additionalParts));
+        if (additionalParts is not null && !additionalParts.SequenceEqual(
+            kind == AnalysisStoreKind.Judgement ? BundleLayout.JudgementParts : BundleLayout.DerivationParts))
+            throw new ArgumentException("An analysis must publish all of its declared parts together.", nameof(additionalParts));
         var roles = (additionalParts ?? []).Prepend(role).ToArray();
         var products = roles.Select(product => (
             Role: product,
-            Source: kind == AnalysisStoreKind.Derivation ? StagingPath(bundleDirectory, kind)
+            Source: kind == AnalysisStoreKind.Derivation && product == StoreSegmentRole.Derivation ? StagingPath(bundleDirectory, kind)
                 : BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product),
             Data: BundleLayout.AnalysisSegmentDataPath(bundleDirectory, generation, product))).ToArray();
-        if (products.Any(product => kind == AnalysisStoreKind.Derivation && File.Exists(product.Data)
+        if (products.Any(product => product.Source != product.Data && File.Exists(product.Data)
             || File.Exists(product.Data + ".seal")))
         {
             throw new InvalidOperationException(
@@ -228,7 +230,7 @@ public static class AnalysisStoreLifecycle
         {
             foreach (var product in products)
             {
-                if (kind == AnalysisStoreKind.Derivation) File.Move(product.Source, product.Data);
+                if (product.Source != product.Data) File.Move(product.Source, product.Data);
                 protection.Add(new FileStream(product.Data, FileMode.Open, FileAccess.Read, FileShare.Read));
                 if (kind == AnalysisStoreKind.Judgement && File.Exists(product.Data + "-wal")
                     && new FileInfo(product.Data + "-wal").Length != 0)
@@ -302,8 +304,9 @@ public static class AnalysisStoreLifecycle
             using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             var manifest = JsonSerializer.Deserialize<StoreRootManifest>(stream);
             var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
-            var roles = kind == AnalysisStoreKind.Judgement && manifest?.Segments is { Count: > 1 }
-                ? BundleLayout.JudgementParts.Prepend(role).ToArray() : new[] { role };
+            var roles = manifest?.Segments is { Count: > 1 }
+                ? (kind == AnalysisStoreKind.Judgement ? BundleLayout.JudgementParts : BundleLayout.DerivationParts)
+                    .Prepend(role).ToArray() : new[] { role };
             if (!ValidRoot(manifest, roles))
             {
                 return RootFailure(
@@ -364,8 +367,9 @@ public static class AnalysisStoreLifecycle
                 description,
                 context));
 
-    internal static StoreRootManifest PublishCapture(string directory, string stagedEvidence, Guid generation, long objects, CancellationToken token,
-        Action<string, string, CancellationToken> seal, Action claimPublication)
+    internal static StoreRootManifest PublishCapture(string directory, string stagedEvidence, Guid generation, long objects,
+        CapturedLibraryHeader libraryHeader, CancellationToken token,
+        Func<string, string, CancellationToken, BundleSealContents> seal, Action claimPublication, ProtectedRunFiles files)
     {
         var manifestPath = BundleLayout.CaptureManifestPath(directory);
         if (File.Exists(manifestPath)) throw new InvalidOperationException("Captured generations are never replaced.");
@@ -373,38 +377,77 @@ public static class AnalysisStoreLifecycle
             new(StoreRootManifest.CurrentVersion, generation, "", [], null, ""));
         var navigation = BundleLayout.NavigationPath(directory, generation);
         var overview = BundleLayout.OverviewPath(directory, generation);
+        var delegations = BundleLayout.DelegationsPath(directory, generation);
         if (File.Exists(navigation) || File.Exists(navigation + ".seal")
-            || File.Exists(overview) || File.Exists(overview + ".seal"))
+            || File.Exists(overview) || File.Exists(overview + ".seal")
+            || File.Exists(delegations) || File.Exists(delegations + ".seal"))
             throw new InvalidOperationException("A captured browse generation already exists.");
         var evidence = BundleLayout.EvidencePath(directory);
         var stagedNavigation = BundleLayout.NavigationPartialPath(directory);
         var stagedOverview = BundleLayout.OverviewPartialPath(directory);
-        using var protectedEvidence = new FileStream(stagedEvidence, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        using var protectedNavigation = new FileStream(stagedNavigation, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        using var protectedOverview = new FileStream(stagedOverview, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        token.ThrowIfCancellationRequested();
-        seal(stagedEvidence, BundleLayout.SealPath(directory), token);
-        token.ThrowIfCancellationRequested();
-        seal(stagedNavigation, navigation + ".seal", token);
-        token.ThrowIfCancellationRequested();
-        seal(stagedOverview, overview + ".seal", token);
-        var captured = SealedSegment(stagedEvidence, BundleLayout.SealPath(directory),
-            StoreSegmentRole.Evidence, BundleSchema.Version, generation) with { FileName = Path.GetFileName(evidence) };
-        var browse = SealedSegment(stagedNavigation, navigation + ".seal",
-            StoreSegmentRole.Navigation, NavigationStorage.Version, generation) with { FileName = Path.GetFileName(navigation) };
-        var dashboard = SealedSegment(stagedOverview, overview + ".seal",
-            StoreSegmentRole.Overview, DashboardOverviewStorage.Version, generation) with { FileName = Path.GetFileName(overview) };
-        var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generation, captured.Hash,
-            [captured, browse, dashboard], null, "") { CapturedObjects = objects };
-        root = root with { Hash = root.ComputeHash() };
-        WritePendingManifest(manifestPath + ".partial", root);
-        token.ThrowIfCancellationRequested();
-        claimPublication();
-        File.Move(stagedNavigation, navigation);
-        File.Move(stagedOverview, overview);
-        File.Move(stagedEvidence, evidence);
-        File.Move(manifestPath + ".partial", manifestPath);
-        return root;
+        var stagedDelegations = BundleLayout.DelegationsPartialPath(directory);
+        var products = new[]
+        {
+            (Staged: stagedEvidence, Data: evidence, Role: StoreSegmentRole.Evidence, Version: BundleSchema.Version),
+            (Staged: stagedNavigation, Data: navigation, Role: StoreSegmentRole.Navigation, Version: NavigationStorage.Version),
+            (Staged: stagedOverview, Data: overview, Role: StoreSegmentRole.Overview, Version: DashboardOverviewStorage.Version),
+            (Staged: stagedDelegations, Data: delegations, Role: StoreSegmentRole.Delegations, Version: CapturedDelegationStorage.Version),
+        };
+        var originals = new List<FileStream>();
+        var seals = new List<FileStream>();
+        var published = new List<ProtectedStoreFile>();
+        var adopted = false;
+        try
+        {
+            foreach (var product in products)
+                originals.Add(ProtectedStoreFile.ProtectPublicationFile(product.Staged, FileShare.Read | FileShare.Delete));
+            var segments = new List<SealedStoreSegment>();
+            for (var index = 0; index < products.Length; index++)
+            {
+                var product = products[index];
+                token.ThrowIfCancellationRequested();
+                using var hashing = ProtectedStoreFile.ProtectPublicationFile(product.Staged, FileShare.Read);
+                ProtectedStoreFile.RequireSameFile(originals[index], hashing);
+                var contents = seal(product.Staged, product.Data + ".seal", token);
+                seals.Add(ProtectedStoreFile.ProtectPublicationFile(product.Data + ".seal", FileShare.Read));
+                if (contents.Algorithm != BundleSealing.Algorithm || !IsHash(contents.Hash)
+                    || BundleSealing.ReadSeal(product.Data + ".seal") != contents)
+                    throw new InvalidDataException("A capture seal changed before publication protection was acquired.");
+                segments.Add(new(product.Role, product.Version, generation, Path.GetFileName(product.Data),
+                    hashing.Length, contents.Hash));
+            }
+            var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generation, segments[0].Hash,
+                Array.AsReadOnly(segments.ToArray()), null, "") { CapturedObjects = objects, LibraryHeader = libraryHeader };
+            root = root with { Hash = root.ComputeHash() };
+            WritePendingManifest(manifestPath + ".partial", root);
+            token.ThrowIfCancellationRequested();
+            claimPublication();
+            foreach (var product in products.Skip(1).Append(products[0])) File.Move(product.Staged, product.Data);
+            for (var index = 0; index < products.Length; index++)
+            {
+                var product = products[index];
+                var data = ProtectedStoreFile.ProtectPublicationFile(product.Data, FileShare.Read);
+                try
+                {
+                    ProtectedStoreFile.RequireSameFile(originals[index], data);
+                    published.Add(ProtectedStoreFile.FromPublishedCapture(directory, data, seals[index], root, product.Role));
+                }
+                catch { data.Dispose(); throw; }
+            }
+            files.AdoptCapture(root, published);
+            adopted = true;
+            File.Move(manifestPath + ".partial", manifestPath);
+            return root;
+        }
+        finally
+        {
+            foreach (var original in originals) original.Dispose();
+            if (!adopted)
+            {
+                foreach (var file in published) file.Dispose();
+                foreach (var file in seals) file.Dispose();
+            }
+        }
     }
 
     /// <summary>Resolves a complete capture without hashing unselected products.</summary>
@@ -417,22 +460,30 @@ public static class AnalysisStoreLifecycle
                 throw new InvalidDataException("The capture root is a link.");
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             var root = JsonSerializer.Deserialize<StoreRootManifest>(stream);
-            if (!ValidRoot(root, [StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview])
+            if (!ValidRoot(root, [StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview, StoreSegmentRole.Delegations])
                 || root!.EvidenceSeal != root.Segment(StoreSegmentRole.Evidence).Hash || root.DerivationSummary is not null
-                || root.CapturedObjects is not >= 0)
+                || root.CapturedObjects is not >= 0 || root.LibraryHeader is not { Domains: not null } header
+                || string.IsNullOrWhiteSpace(header.CoverageId))
                 throw new InvalidDataException("The capture root has unsupported or contradictory declarations.");
+            if (header.Domains.Count > 0 && !header.ReadScope(directory).IsSuccess)
+                throw new InvalidDataException("The capture library header has contradictory coverage.");
             RequireDeclaration(root.Segment(StoreSegmentRole.Evidence), BundleLayout.EvidencePath(directory));
             RequireDeclaration(root.Segment(StoreSegmentRole.Navigation), BundleLayout.NavigationPath(directory, root.GenerationId));
             RequireDeclaration(root.Segment(StoreSegmentRole.Overview), BundleLayout.OverviewPath(directory, root.GenerationId));
+            RequireDeclaration(root.Segment(StoreSegmentRole.Delegations), BundleLayout.DelegationsPath(directory, root.GenerationId));
             foreach (var segment in root.Segments)
             {
                 var dataPath = Path.Combine(directory, segment.FileName);
                 if (!File.Exists(dataPath) || !File.Exists(dataPath + ".seal"))
                     throw new FileNotFoundException("A selected capture segment or its seal is missing.", dataPath);
             }
-            return root with { Segments = Array.AsReadOnly(root.Segments.ToArray()) };
+            return root with
+            {
+                Segments = Array.AsReadOnly(root.Segments.ToArray()),
+                LibraryHeader = header with { Domains = Array.AsReadOnly(header.Domains.ToArray()) },
+            };
         }
-        catch (Exception error) when (error is JsonException or InvalidDataException or IOException or UnauthorizedAccessException)
+        catch (Exception error) when (error is JsonException or InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException)
         {
             return Result<StoreRootManifest>.Failure(AuditError.Create(ErrorCategory.Evidence, "CaptureManifestUnreadable",
                 ErrorSeverity.Failed, $"The captured generation could not be selected: {error.Message}", path));

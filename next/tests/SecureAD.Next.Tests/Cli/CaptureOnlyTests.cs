@@ -1,5 +1,6 @@
 using SecureAD.Audit.Capture;
 using SecureAD.Cli;
+using SecureAD.Evidence;
 using SecureAD.Kernel;
 using SecureAD.Next.Tests.Judgement;
 using Xunit;
@@ -37,7 +38,7 @@ public sealed class CaptureOnlyTests
             Parsed(bundle, "--capture"),
             CancellationToken.None,
             discoveryBudget: null,
-            capture: _ => Task.FromResult(Sealed(bundle)));
+            capture: (protect, _) => Task.FromResult(Sealed(bundle, protect)));
 
         Assert.Equal(0, exit);
 
@@ -67,7 +68,7 @@ public sealed class CaptureOnlyTests
             Parsed(bundle),
             CancellationToken.None,
             discoveryBudget: null,
-            capture: _ => Task.FromResult(Sealed(bundle)));
+            capture: (protect, _) => Task.FromResult(Sealed(bundle, protect)));
 
         Assert.True(
             File.Exists(Path.Combine(bundle, "derivation.current.json")),
@@ -78,6 +79,9 @@ public sealed class CaptureOnlyTests
         Assert.IsType<CommandLine>(
             CommandLine.Parse([.. new[] { "--library", Path.GetDirectoryName(bundle)! }, .. rest]));
 
-    private static Result<CaptureRunResult> Sealed(string bundle) =>
-        new CaptureRunResult(RunCompletion.Sealed, bundle, Error: null);
+    private static Result<CaptureRunResult> Sealed(string bundle, Func<string, ProtectedRunFiles> protect)
+    {
+        protect(bundle);
+        return new CaptureRunResult(RunCompletion.Sealed, bundle, Error: null);
+    }
 }

@@ -29,6 +29,11 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 internal sealed class DerivationLauncher : IDerivationLauncher
 {
+    private readonly RunProtectionSessions? _protection;
+    internal DerivationLauncher() { }
+    internal DerivationLauncher(RunProtectionSessions protection) => _protection =
+        protection ?? throw new ArgumentNullException(nameof(protection));
+
     /// <inheritdoc/>
     public Task<Result<DerivingOutcome>> RunAsync(
         string bundleDirectory,
@@ -39,7 +44,12 @@ internal sealed class DerivationLauncher : IDerivationLauncher
         ArgumentNullException.ThrowIfNull(progress);
 
         return Task.Run(
-            () => Derive(bundleDirectory, progress, cancellationToken),
+            () =>
+            {
+                using var standalone = new RunProtectionSessions();
+                return (_protection ?? standalone).Produce(bundleDirectory,
+                    files => Derive(bundleDirectory, progress, cancellationToken, files));
+            },
             cancellationToken);
     }
 
@@ -49,7 +59,7 @@ internal sealed class DerivationLauncher : IDerivationLauncher
     private static Result<DerivingOutcome> Derive(
         string bundleDirectory,
         IProgress<DerivationProgress> progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, ProtectedRunFiles files)
     {
         // Only the attempt's generation is retained from progress. Completed counts come from the
         // saved store, and another attempt cannot supply them under this attempt's completion.
@@ -76,13 +86,13 @@ internal sealed class DerivationLauncher : IDerivationLauncher
             DateTimeOffset.UtcNow,
             watched,
             log,
-            cancellationToken);
+            cancellationToken, files);
 
         if (!derived.IsSuccess)
             return Result<DerivingOutcome>.Failure(derived.Error!);
 
         progress.Report(new DerivationProgress("ReadingDerivedResults", 0));
-        var summary = DerivationReader.ReadSummary(bundleDirectory, cancellationToken);
+        var summary = DerivationReader.ReadSummary(files, cancellationToken);
         if (!summary.IsSuccess)
             return Result<DerivingOutcome>.Failure(summary.Error);
         var stored = summary.Value;

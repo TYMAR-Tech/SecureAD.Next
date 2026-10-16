@@ -18,7 +18,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         using var writer = BundleWriter.Create(directory, DateTimeOffset.UnixEpoch);
 
         Record.Exception(() => Complete(writer, cancellation.Token,
-            (partial, seal, token) => { BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); }));
+            (partial, seal, token) => { var contents = BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); return contents; }));
 
         Assert.Equal((true, false),
             (File.Exists(BundleLayout.PartialPath(directory)), File.Exists(BundleLayout.EvidencePath(directory))));
@@ -32,7 +32,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         using var writer = BundleWriter.Create(directory, DateTimeOffset.UnixEpoch);
 
         var failure = Record.Exception(() => Complete(writer, cancellation.Token,
-            (partial, seal, token) => { BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); }));
+            (partial, seal, token) => { var contents = BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); return contents; }));
 
         Assert.Equal(cancellation.Token, Assert.IsType<OperationCanceledException>(failure).CancellationToken);
     }
@@ -53,7 +53,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         {
             failure = Record.Exception(() => Complete(writer, cancellation.Token, (partial, seal, token) =>
             {
-                BundleSealing.Seal(partial, seal, token);
+                var contents = BundleSealing.Seal(partial, seal, token);
                 // CTS invokes callbacks in reverse registration order. Hold this newer one
                 // so the token is set while the writer's earlier callback cannot run yet.
                 blocker = token.Register(() =>
@@ -65,6 +65,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
                 cancellationWork = Task.Run(cancellation.Cancel);
                 if (!callbackEntered.Wait(TimeSpan.FromSeconds(30)))
                     throw new TimeoutException("Cancellation callback was not entered.");
+                return contents;
             }));
         }
         finally
@@ -84,7 +85,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         using var cancellation = new CancellationTokenSource();
         using (var writer = BundleWriter.Create(directory, DateTimeOffset.UnixEpoch))
             Record.Exception(() => Complete(writer, cancellation.Token,
-                (partial, seal, token) => { BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); }));
+                (partial, seal, token) => { var contents = BundleSealing.Seal(partial, seal, token); cancellation.Cancel(); return contents; }));
 
         var released = Directory.GetFiles(directory).Select(path =>
         {
@@ -96,7 +97,8 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
             Path.GetFileName(BundleLayout.SealPath(directory)), Path.GetFileName(BundleLayout.AnnotationsPath(directory)),
             Path.GetFileName(BundleLayout.CaptureManifestPath(directory)) + ".partial",
             Path.GetFileName(BundleLayout.NavigationPartialPath(directory)),
-            Path.GetFileName(BundleLayout.OverviewPartialPath(directory)) }
+            Path.GetFileName(BundleLayout.OverviewPartialPath(directory)),
+            Path.GetFileName(BundleLayout.DelegationsPartialPath(directory)) }
             .Order(StringComparer.Ordinal), released);
     }
 
@@ -125,8 +127,9 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         var failure = Record.Exception(() => Complete(writer, CancellationToken.None,
             (partial, seal, token) =>
             {
-                BundleSealing.Seal(partial, seal, token);
+                var contents = BundleSealing.Seal(partial, seal, token);
                 File.WriteAllText(BundleLayout.EvidencePath(directory), "Existing synthetic destination.");
+                return contents;
             }));
 
         Assert.IsType<IOException>(failure);
@@ -173,7 +176,7 @@ public sealed class BundleWriterCancellationTests(ITestOutputHelper output)
         : new IOException("Synthetic seal write failure.");
 
     private static BundleSealTimings Complete(BundleWriter writer, CancellationToken token,
-        Action<string, string, CancellationToken> seal) =>
+        Func<string, string, CancellationToken, BundleSealContents> seal) =>
         writer.Complete(Coverage(), DateTimeOffset.UnixEpoch, ContinuationReconciliation.NotPerformed,
             CaptureObjectScope.Default, token, seal);
 

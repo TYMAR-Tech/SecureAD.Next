@@ -12,6 +12,8 @@ namespace SecureAD.Judgement;
 internal sealed class JudgingInputs : IDisposable
 {
     private readonly ProtectedStoreFile _evidence;
+    private readonly ProtectedRunFiles _files;
+    private ProtectedRunFiles? _ownedFiles;
     private readonly CancellationToken _cancellationToken;
     private ProtectedStoreFile? _derivedFile;
     private DerivationReader? _derivation;
@@ -23,8 +25,9 @@ internal sealed class JudgingInputs : IDisposable
     private readonly Dictionary<string, string?> _domainSids = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
-    private JudgingInputs(ProtectedStoreFile evidence, BundleReader bundle, CancellationToken cancellationToken)
+    private JudgingInputs(ProtectedRunFiles files, ProtectedStoreFile evidence, BundleReader bundle, CancellationToken cancellationToken)
     {
+        _files = files;
         _evidence = evidence;
         Bundle = bundle;
         _cancellationToken = cancellationToken;
@@ -46,17 +49,28 @@ internal sealed class JudgingInputs : IDisposable
 
     internal static Result<JudgingInputs> Open(string directory, CancellationToken cancellationToken)
     {
-        var file = ProtectedStoreFile.OpenEvidence(directory, cancellationToken);
-        if (!file.IsSuccess) return Result<JudgingInputs>.Failure(file.Error);
+        var files = new ProtectedRunFiles(directory);
         var accepted = false;
         try
         {
-            var opened = BundleReader.Open(file.Value, cancellationToken);
-            if (!opened.IsSuccess) return Result<JudgingInputs>.Failure(opened.Error);
-            accepted = true;
-            return new JudgingInputs(file.Value, opened.Value, cancellationToken);
+            var opened = Open(files, cancellationToken);
+            if (opened.IsSuccess)
+            {
+                opened.Value._ownedFiles = files;
+                accepted = true;
+            }
+            return opened;
         }
-        finally { if (!accepted) file.Value.Dispose(); }
+        finally { if (!accepted) files.Dispose(); }
+    }
+
+    internal static Result<JudgingInputs> Open(ProtectedRunFiles files, CancellationToken cancellationToken)
+    {
+        var file = files.Capture(StoreSegmentRole.Evidence, cancellationToken);
+        if (!file.IsSuccess) return Result<JudgingInputs>.Failure(file.Error);
+        var opened = BundleReader.Open(file.Value, cancellationToken);
+        return opened.IsSuccess ? new JudgingInputs(files, file.Value, opened.Value, cancellationToken)
+            : Result<JudgingInputs>.Failure(opened.Error);
     }
 
     internal Result<DerivationReader> OpenDerivation()
@@ -69,7 +83,7 @@ internal sealed class JudgingInputs : IDisposable
         }
         var selected = AnalysisStoreLifecycle.Resolve(Directory, AnalysisStoreKind.Derivation);
         if (!selected.IsSuccess) return Result<DerivationReader>.Failure(selected.Error);
-        var file = ProtectedStoreFile.OpenAnalysis(Directory, selected.Value, _cancellationToken);
+        var file = _files.Analysis(AnalysisStoreKind.Derivation, StoreSegmentRole.Derivation, _cancellationToken);
         if (!file.IsSuccess) return Result<DerivationReader>.Failure(file.Error);
         DerivationReader? reader = null;
         var accepted = false;
@@ -101,7 +115,6 @@ internal sealed class JudgingInputs : IDisposable
             if (!accepted)
             {
                 reader?.Dispose();
-                file.Value.Dispose();
             }
         }
     }
@@ -181,9 +194,12 @@ internal sealed class JudgingInputs : IDisposable
     internal void RequireCurrent()
     {
         CheckLifetime();
+        var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+        if (!capture.IsSuccess || capture.Value.Hash != _evidence.Root.Hash) throw OwnershipAuditStorage.InvalidProof();
         if (_derivedFile?.Generation is not { } generation) return;
-        var selected = AnalysisStoreLifecycle.Resolve(Directory, AnalysisStoreKind.Derivation);
-        if (!selected.IsSuccess || selected.Value != generation) throw OwnershipAuditStorage.InvalidProof();
+        var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
+        if (!selected.IsSuccess || selected.Value.GenerationId != generation.GenerationId
+            || selected.Value.Hash != _derivedFile.Root.Hash) throw OwnershipAuditStorage.InvalidProof();
     }
 
     internal IDisposable? ProtectPublication(JudgementDescription description)
@@ -275,8 +291,7 @@ internal sealed class JudgingInputs : IDisposable
             try { Bundle.Dispose(); }
             finally
             {
-                _derivedFile?.Dispose();
-                _evidence.Dispose();
+                _ownedFiles?.Dispose();
                 _membership = null;
                 _facts = null;
             }

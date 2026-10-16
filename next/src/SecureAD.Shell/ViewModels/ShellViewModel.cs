@@ -34,6 +34,7 @@ internal sealed partial class ShellViewModel : ObservableObject
     private ShellSection _section = ShellSection.Home;
 
     private NewAuditViewModel? _audit;
+    private long _navigationRevision;
 
     /// <summary>Creates the window's state over the sections it will show.</summary>
     /// <param name="home">Where the run library is chosen and a run is started from.</param>
@@ -287,6 +288,13 @@ internal sealed partial class ShellViewModel : ObservableObject
     /// </remarks>
     public void ShowOpenedRun() => Show(ShellSection.Dashboard);
 
+    public async Task OpenCompletedRunAsync(string bundleDirectory)
+    {
+        var revision = _navigationRevision;
+        if (await Library.AdoptAsync(bundleDirectory) && revision == _navigationRevision)
+            ShowOpenedRun();
+    }
+
     /// <summary>Puts <paramref name="audit"/> on the audit surface and shows it.</summary>
     /// <param name="audit">The freshly planned run.</param>
     public void Begin(NewAuditViewModel audit)
@@ -418,6 +426,7 @@ internal sealed partial class ShellViewModel : ObservableObject
 
     partial void OnSectionChanged(ShellSection value)
     {
+        ++_navigationRevision;
         // Rebuilding tabs must not start a read against the previous Assets selection.
         Assets.Suspend();
         Rules.Suspend();
@@ -466,7 +475,7 @@ internal sealed partial class ShellViewModel : ObservableObject
 
         // Home shows the library, so arriving there reads it. A run started since the operator was
         // last here would otherwise be missing from a screen that looks current.
-        Library.Refresh();
+        if (value == ShellSection.Home) Library.RefreshCommand.Execute(null);
     }
 
     /// <summary>

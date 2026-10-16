@@ -183,7 +183,7 @@ public sealed class SelfMembershipWorkflowTests
         var options = Assert.IsType<CommandLine>(CommandLine.Parse(["--judge", directory]));
 
         var exit = await Program.RunAsync(options, CancellationToken.None, discoveryBudget: null,
-            capture: _ => throw new InvalidOperationException("Offline judging must not capture."));
+            capture: (_, _) => throw new InvalidOperationException("Offline judging must not capture."));
 
         Assert.Equal(0, exit);
         var summary = Summary(directory);

@@ -291,6 +291,16 @@ public static class BundleLayout
     public static string OverviewPath(string bundleDirectory, Guid generationId) =>
         Combine(bundleDirectory, $"overview.{generationId:N}.db");
 
+    /// <summary>The private captured-permission browsing product.</summary>
+    public static string DelegationsPartialPath(string bundleDirectory) => Combine(bundleDirectory, "delegations.db.partial");
+
+    /// <summary>Shared original descriptors and a compact permission-candidate index, without attribute bulk.</summary>
+    public static string DelegationsPath(string bundleDirectory, Guid generationId) =>
+        Combine(bundleDirectory, $"delegations.{generationId:N}.db");
+
+    internal static IReadOnlyList<StoreSegmentRole> DerivationParts { get; } = Array.AsReadOnly(
+        new[] { StoreSegmentRole.Membership });
+
     /// <summary>The independently sealed proof and inventory products belonging to one judgement.</summary>
     internal static IReadOnlyList<StoreSegmentRole> JudgementParts { get; } = Array.AsReadOnly(
         new[] { StoreSegmentRole.PermissionProof, StoreSegmentRole.PathProof, StoreSegmentRole.JudgementFacts });
@@ -302,6 +312,8 @@ public static class BundleLayout
         if (role == StoreSegmentRole.Derivation && generation.Kind == AnalysisStoreKind.Derivation
             || role == StoreSegmentRole.Judgement && generation.Kind == AnalysisStoreKind.Judgement)
             return AnalysisGenerationDataPath(bundleDirectory, generation.Kind, generation.GenerationId);
+        if (role == StoreSegmentRole.Membership && generation.Kind == AnalysisStoreKind.Derivation)
+            return Combine(bundleDirectory, $"derivation.{generation.GenerationId:N}.membership.db");
         if (generation.Kind != AnalysisStoreKind.Judgement) throw new ArgumentException("The product is not part of this analysis.");
         return Combine(bundleDirectory, $"judgement.{generation.GenerationId:N}.{PartName(role)}.db");
     }

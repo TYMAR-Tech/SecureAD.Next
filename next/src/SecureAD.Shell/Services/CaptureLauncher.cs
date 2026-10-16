@@ -32,13 +32,22 @@ namespace SecureAD.Shell.Services;
 internal sealed class CaptureLauncher : ICaptureLauncher
 {
     private readonly Func<string, int, CaptureSession> _session;
+    private readonly RunProtectionSessions? _protection;
 
     internal CaptureLauncher() : this(Session) { }
 
-    internal CaptureLauncher(Func<string, int, CaptureSession> session)
+    internal CaptureLauncher(RunProtectionSessions protection) : this(Session, protection)
+    {
+        ArgumentNullException.ThrowIfNull(protection);
+    }
+
+    internal CaptureLauncher(Func<string, int, CaptureSession> session) : this(session, null) { }
+
+    internal CaptureLauncher(Func<string, int, CaptureSession> session, RunProtectionSessions? protection)
     {
         ArgumentNullException.ThrowIfNull(session);
         _session = session;
+        _protection = protection;
     }
 
     /// <inheritdoc/>
@@ -126,21 +135,33 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         // progress to offer, and a progress bar over a run that cannot report one is a picture of a
         // run rather than a report of it. What preflight found was shown on the Review step, before
         // the operator pressed Start.
-        var run = await _session(libraryRoot, domainsAtOnce)
-            .RunAsync(
-                forest,
-                overrides,
-                exclusions.ToDictionary(e => e.NamingContext, Describe, StringComparer.OrdinalIgnoreCase),
-                reportPreflight: null,
-                CaptureObjectScope.For(includeEnatelSso),
-                new CaptureOptions(scanGppPasswords),
-                cancellationToken)
-            .ConfigureAwait(false);
+        using var standalone = new RunProtectionSessions();
+        var protections = _protection ?? standalone;
+        RunProtectionSessions.Lease? producing = null;
+        try
+        {
+            var run = await _session(libraryRoot, domainsAtOnce)
+                .RunAsync(
+                    forest,
+                    overrides,
+                    exclusions.ToDictionary(e => e.NamingContext, Describe, StringComparer.OrdinalIgnoreCase),
+                    reportPreflight: null,
+                    CaptureObjectScope.For(includeEnatelSso),
+                    new CaptureOptions(scanGppPasswords),
+                    cancellationToken, directory =>
+                    {
+                        producing = protections.Acquire(directory);
+                        return producing.Files;
+                    })
+                .ConfigureAwait(false);
 
-        return run.IsSuccess
-            ? Result<CaptureOutcome>.Success(
-                new CaptureOutcome(run.Value!.ProducedABundle, run.Value.BundleDirectory))
-            : Result<CaptureOutcome>.Failure(run.Error!);
+            if (run.IsSuccess && run.Value.ProducedABundle)
+                protections.Offer(producing ?? throw new InvalidOperationException("Capture completed without its run owner."));
+            return run.IsSuccess
+                ? Result<CaptureOutcome>.Success(new CaptureOutcome(run.Value.ProducedABundle, run.Value.BundleDirectory))
+                : Result<CaptureOutcome>.Failure(run.Error);
+        }
+        finally { producing?.Dispose(); }
     }
 
     /// <summary>

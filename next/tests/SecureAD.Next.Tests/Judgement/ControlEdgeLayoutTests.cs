@@ -167,6 +167,8 @@ public sealed class ControlEdgeLayoutTests
         [74] = "0D70D8708CE5EEF272B5D9BF69481DED2F458D2A7A15FCD3B48011646695438B",
         // Observed compact Groups/Tier 0 serving layout; original proof and earlier checkpoints stay separate.
         [75] = "6DD365895EC3F435F2A835A9ED40445CD73A6D653CC07F680661E2436C07067C",
+        // Observed format-76 LAPS serving index; no historical layout checkpoint is changed.
+        [76] = "46A7B9EF398A4F904B15471A37B8ADC441AD055A877E7E6122F0DFC17AC1AC9E",
     };
 
     [Fact]

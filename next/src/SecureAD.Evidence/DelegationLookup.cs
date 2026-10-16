@@ -83,7 +83,8 @@ internal static class DelegationLookup
     private const int WriteProperty = 0x20;
 
     internal static DelegationPrincipalPage FindPrincipals(SqliteConnection connection, string fingerprint,
-        BundleDescription description, string search, DelegationPrincipalMark? after, CancellationToken token)
+        BundleDescription description, string search, DelegationPrincipalMark? after, CancellationToken token,
+        bool serving = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(search);
         search = search.Trim();
@@ -93,11 +94,14 @@ internal static class DelegationLookup
         var sid = Sid.ToBytes(search);
         if (sid is null && search.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("The supplied SID is not valid.", nameof(search));
+        var principalClass = serving ? "(o.delegation_is_user=1 OR o.delegation_is_group=1)" : $"""
+            EXISTS (SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} AS c
+                    WHERE c.object_id=o.object_id AND c.value COLLATE NOCASE IN ('user','group'))
+            """;
         var identity = sid is not null ? "o.objectsid = $sid" : $"""
             (instr(lower(o.distinguished_name), lower($search)) > 0
              OR instr(lower(o.samaccountname), lower($search)) > 0)
-            AND EXISTS (SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} AS c
-                        WHERE c.object_id=o.object_id AND c.value COLLATE NOCASE IN ('user','group'))
+            AND {principalClass}
             """;
         using var command = connection.CreateCommand();
         command.CommandText = $"""
@@ -156,7 +160,8 @@ internal static class DelegationLookup
         => Read(connection, fingerprint, ReadCoverage(connection, description), schema, query, after, token, pageSize);
 
     internal static DelegationPage Read(SqliteConnection connection, string fingerprint, DelegationCoverage coverage,
-        SchemaGuidCatalog schema, DelegationQuery query, DelegationPageMark? after, CancellationToken token, int pageSize)
+        SchemaGuidCatalog schema, DelegationQuery query, DelegationPageMark? after, CancellationToken token, int pageSize,
+        bool serving = false)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.Principal);
@@ -181,7 +186,7 @@ internal static class DelegationLookup
             _ => null,
         };
         using var candidates = connection.CreateCommand();
-        candidates.CommandText = CandidateSql;
+        candidates.CommandText = serving ? CapturedDelegationStorage.CandidateSql : CandidateSql;
         candidates.Parameters.AddWithValue("$sid", query.Principal.Sid);
         candidates.Parameters.AddWithValue("$after", after?.DescriptorId ?? 0);
         candidates.Parameters.AddWithValue("$mask", query.Permission switch
@@ -206,10 +211,15 @@ internal static class DelegationLookup
             var entries = namedEntries.Where(ace => MatchesRight(ace, query, requiredGuid)).OrderBy(ace => ace.Ordinal).ToArray();
             if (entries.Length == 0) continue;
             using var objects = connection.CreateCommand();
+            var isUser = serving ? "o.delegation_is_user" : $"""
+                EXISTS(SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} c WHERE c.object_id=o.object_id AND c.value='user' COLLATE NOCASE)
+                """;
+            var classWasRead = serving ? "o.delegation_class_was_read" : $"""
+                EXISTS(SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} c WHERE c.object_id=o.object_id)
+                """;
             objects.CommandText = $"""
                 SELECT o.object_id, o.distinguished_name, o.domain_fqdn,
-                       EXISTS(SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} c WHERE c.object_id=o.object_id AND c.value='user' COLLATE NOCASE),
-                       EXISTS(SELECT 1 FROM {BundleSchema.ValueTableNameFor("objectClass")} c WHERE c.object_id=o.object_id)
+                       {isUser}, {classWasRead}
                 FROM object_security_descriptor AS link INDEXED BY ix_object_security_descriptor
                 CROSS JOIN captured_object AS o ON o.object_id=link.object_id
                 WHERE link.descriptor_id=$descriptor AND o.object_id >= $after

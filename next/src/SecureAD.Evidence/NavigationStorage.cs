@@ -5,8 +5,8 @@ namespace SecureAD.Evidence;
 
 internal static class NavigationStorage
 {
-    internal const int Version = 2;
-    private static readonly string[] Metadata =
+    internal const int Version = 3;
+    internal static readonly string[] Metadata =
     [
         "bundle", "capture_object_class_exclusion", "partition_coverage", "domain_coverage",
         "forest_partition_coverage", "unread_partition", "excluded_domain", "sysvol_gpo_coverage",
@@ -38,7 +38,8 @@ internal static class NavigationStorage
                 distinguished_name TEXT NOT NULL, dn_reversed TEXT NOT NULL, parent_dn TEXT NULL,
                 parent_guid TEXT NULL, domain_fqdn TEXT NOT NULL, most_specific_class TEXT NULL,
                 samaccountname TEXT NULL, objectsid BLOB NULL, name_sort TEXT NOT NULL,
-                is_container INTEGER NOT NULL CHECK(is_container IN (0,1)));
+                is_container INTEGER NOT NULL CHECK(is_container IN (0,1)),
+                delegation_is_user INTEGER NOT NULL,delegation_is_group INTEGER NOT NULL,delegation_class_was_read INTEGER NOT NULL);
             """;
         command.ExecuteNonQuery();
         var classes = string.Join(",", DirectoryTreeReader.ContainerClasses.Select(value => "'" + value + "'"));
@@ -48,13 +49,17 @@ internal static class NavigationStorage
                 o.parent_guid,o.domain_fqdn,
                 (SELECT v.value FROM main.objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1),
                 o.samaccountname,o.objectsid,SUBSTR(o.distinguished_name,INSTR(o.distinguished_name,'=')+1),
-                EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id AND v.value COLLATE NOCASE IN ({classes}))
+                EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id AND v.value COLLATE NOCASE IN ({classes})),
+                EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id AND v.value='user' COLLATE NOCASE),
+                EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id AND v.value='group' COLLATE NOCASE),
+                EXISTS(SELECT 1 FROM main.objectclass_value v WHERE v.object_id=o.object_id)
             FROM main.captured_object o;
             """;
         var objects = command.ExecuteNonQuery();
         token.ThrowIfCancellationRequested();
         command.CommandText = """
             CREATE INDEX navigation.ix_navigation_dn ON captured_object(distinguished_name);
+            CREATE INDEX navigation.ix_navigation_sid ON captured_object(objectsid);
             CREATE INDEX navigation.ix_navigation_dn_nocase ON captured_object(distinguished_name COLLATE NOCASE);
             CREATE INDEX navigation.ix_navigation_parent ON captured_object(parent_dn);
             CREATE INDEX navigation.ix_navigation_parent_nocase ON captured_object(parent_dn COLLATE NOCASE);
@@ -112,6 +117,7 @@ internal static class NavigationStorage
             DROP TABLE temp.navigation_name;
             """;
         command.ExecuteNonQuery();
+        CapturedDelegationStorage.WriteSchema(connection, "navigation", transaction);
         token.ThrowIfCancellationRequested();
         transaction.Commit();
         return objects;

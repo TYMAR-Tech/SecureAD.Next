@@ -206,10 +206,23 @@ public sealed class CaptureRun
         CaptureOptions options,
         CancellationToken cancellationToken)
     {
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return await RunAsync(plan, bundleDirectory, exclusions, options, cancellationToken, files)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Captures into a caller-owned lifetime that can continue directly into offline analysis.</summary>
+    public async Task<CaptureRunResult> RunAsync(
+        CapturePlan plan, string bundleDirectory, IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        CaptureOptions options, CancellationToken cancellationToken, ProtectedRunFiles files)
+    {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(exclusions);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
 
         // The denominator, recorded before anything is read. A run that worked out afterwards how
         // much of the forest it had covered would be measuring against whatever it managed to
@@ -549,7 +562,7 @@ public sealed class CaptureRun
         {
             sealing = writer.Complete(
                 coverage, _time.GetUtcNow(), reconciliation, plan.ObjectScope, cancellationToken,
-                (data, seal, token) => BundleSealing.SealWithDiagnostics(data, seal, token, _log, null, null));
+                (data, seal, token) => BundleSealing.SealWithDiagnostics(data, seal, token, _log, null, null), files);
         }
         catch (OperationCanceledException cancellation) when (
             cancellationToken.IsCancellationRequested && cancellation.CancellationToken == cancellationToken)

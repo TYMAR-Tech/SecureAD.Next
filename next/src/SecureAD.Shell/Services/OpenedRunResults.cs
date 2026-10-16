@@ -12,8 +12,10 @@ using SecureAD.Shell.ViewModels;
 namespace SecureAD.Shell.Services;
 
 /// <summary>Owns one selected run's protected files, never a connection shared between queries.</summary>
-internal sealed partial class OpenedRunResults(string directory) : IDisposable, IAsyncDisposable
+internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
 {
+    private readonly ProtectedRunFiles _files;
+    private readonly RunProtectionSessions.Lease? _sharedProtection;
     private readonly SemaphoreSlim _gate = new(1);
     private readonly CancellationTokenSource _stopping = new();
     private readonly object _schemaGate = new();
@@ -21,6 +23,8 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     private ProtectedStoreFile? _evidence;
     private ProtectedStoreFile? _navigation;
     private ProtectedStoreFile? _overview;
+    private ProtectedStoreFile? _delegations;
+    private ProtectedStoreFile? _membership;
     private ProtectedStoreFile? _derivation;
     private ProtectedStoreFile? _judgement;
     private DerivationDescription? _derived;
@@ -29,7 +33,19 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     private bool _disposed;
     private int _disposeRequested;
 
-    internal string Directory { get; } = Path.GetFullPath(directory);
+    internal OpenedRunResults(string directory) : this(directory, null) { }
+
+    internal OpenedRunResults(string directory, RunProtectionSessions.Lease? protection)
+    {
+        Directory = Path.GetFullPath(directory);
+        if (protection is not null
+            && !string.Equals(protection.Files.Directory, Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(protection));
+        _sharedProtection = protection;
+        _files = protection?.Files ?? new ProtectedRunFiles(Directory);
+    }
+
+    internal string Directory { get; }
 
     internal bool IsCurrent
     {
@@ -49,7 +65,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
         }
     }
 
-    internal Result<SchemaGuidCatalog> ReadSchemaGuids(CancellationToken cancellationToken = default) => ReadEvidence(reader =>
+    internal Result<SchemaGuidCatalog> ReadSchemaGuids(CancellationToken cancellationToken = default) => ReadNavigation(reader =>
     {
         lock (_schemaGate) return _schema ??= reader.ReadSchemaGuids();
     }, cancellationToken);
@@ -59,6 +75,15 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
 
     internal Result<T> ReadNavigation<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenNavigation, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+
+    internal Result<T> ReadCapturedDelegations<T>(Func<BundleReader, T> read, CancellationToken cancellationToken) =>
+        Read(OpenCapturedDelegations, (reader, _) => read(reader),
+            _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+
+    private Result<T> ReadMembership<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken) =>
+        Read(OpenMembership, (reader, _) => read(reader),
+            reader => CurrentDerivation(reader.Description.GenerationId)
+                ?? (!CaptureIsCurrent() || !BrowseDerivationIsCurrent() ? Unavailable("GenerationChanged") : null), cancellationToken);
 
     internal Result<T> ReadOverview<T>(Func<DashboardOverviewReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenOverview, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
@@ -207,7 +232,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     {
         if (_evidence is null)
         {
-            var file = ProtectedStoreFile.OpenEvidence(Directory, cancellationToken);
+            var file = _files.Capture(StoreSegmentRole.Evidence, cancellationToken);
             if (!file.IsSuccess) return Result<BundleReader>.Failure(file.Error);
             _evidence = file.Value;
         }
@@ -219,7 +244,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     {
         if (_navigation is null)
         {
-            var file = ProtectedStoreFile.OpenNavigation(Directory, cancellationToken);
+            var file = _files.Capture(StoreSegmentRole.Navigation, cancellationToken);
             if (!file.IsSuccess) return Result<BundleReader>.Failure(file.Error);
             _navigation = file.Value;
         }
@@ -231,7 +256,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     {
         if (_overview is null)
         {
-            var file = ProtectedStoreFile.OpenOverview(Directory, cancellationToken);
+            var file = _files.Capture(StoreSegmentRole.Overview, cancellationToken);
             if (!file.IsSuccess) return Result<DashboardOverviewReader>.Failure(file.Error);
             _overview = file.Value;
         }
@@ -239,15 +264,58 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
         return DashboardOverviewReader.Open(_overview, cancellationToken);
     }
 
+    private Result<BundleReader> OpenCapturedDelegations(CancellationToken token)
+    {
+        if (_delegations is null)
+        {
+            var file = _files.Capture(StoreSegmentRole.Delegations, token);
+            if (!file.IsSuccess) return Result<BundleReader>.Failure(file.Error);
+            _delegations = file.Value;
+        }
+        return BundleReader.Open(_delegations, token);
+    }
+
+    private Result<DerivationReader> OpenMembership(CancellationToken token)
+    {
+        if (Pending() is { } pending) return Result<DerivationReader>.Failure(pending);
+        var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+        if (!capture.IsSuccess) return Result<DerivationReader>.Failure(capture.Error);
+        var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
+        if (!selected.IsSuccess) return Result<DerivationReader>.Failure(selected.Error);
+        if (!CaptureIsCurrent() || _browseDerivation is not null && _browseDerivation.Hash != selected.Value.Hash)
+            return Result<DerivationReader>.Failure(Unavailable("GenerationChanged"));
+        if (_membership is not null && _membership.Root.Hash != selected.Value.Hash)
+            return Result<DerivationReader>.Failure(Unavailable("GenerationChanged"));
+        if (_membership is null)
+        {
+            var file = _files.Analysis(AnalysisStoreKind.Derivation, StoreSegmentRole.Membership, token);
+            if (!file.IsSuccess) return Result<DerivationReader>.Failure(file.Error);
+            _membership = file.Value;
+        }
+        var opened = DerivationReader.Open(_membership, token);
+        if (!opened.IsSuccess) return opened;
+        if (opened.Value.Description.State is not (DerivationRunState.Completed or DerivationRunState.CompletedDegraded)
+            || opened.Value.Description.EvidenceSeal != capture.Value.EvidenceSeal
+            || _membership.Root.EvidenceSeal != capture.Value.EvidenceSeal)
+        {
+            opened.Value.Dispose();
+            return Result<DerivationReader>.Failure(Unavailable("GenerationChanged"));
+        }
+        _browseDerivation = selected.Value;
+        _findingsCapture = capture.Value;
+        return opened;
+    }
+
     private bool CaptureIsCurrent()
     {
-        var root = _evidence?.Root ?? _navigation?.Root ?? _overview?.Root ?? _findingsCapture;
+        var root = _evidence?.Root ?? _navigation?.Root ?? _overview?.Root ?? _delegations?.Root ?? _findingsCapture;
         if (root is null) return true;
         var selected = AnalysisStoreLifecycle.ResolveCapture(Directory);
         return selected.IsSuccess && selected.Value.Hash == root.Hash
             && (_evidence is null || _evidence.Root.Hash == root.Hash)
             && (_navigation is null || _navigation.Root.Hash == root.Hash)
             && (_overview is null || _overview.Root.Hash == root.Hash)
+            && (_delegations is null || _delegations.Root.Hash == root.Hash)
             && (_findingsCapture is null || _findingsCapture.Hash == root.Hash);
     }
 
@@ -270,7 +338,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
             return Result<DerivationReader>.Failure(Unavailable("GenerationChanged"));
         if (_derivation is null)
         {
-            var file = ProtectedStoreFile.OpenAnalysis(Directory, selected.Value, cancellationToken);
+            var file = _files.Analysis(AnalysisStoreKind.Derivation, StoreSegmentRole.Derivation, cancellationToken);
             if (!file.IsSuccess) return Result<DerivationReader>.Failure(file.Error);
             _derivation = file.Value;
         }
@@ -303,8 +371,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
             return Result<JudgementReader>.Failure(Unavailable("GenerationChanged"));
         if (_judgement is null)
         {
-            var generation = new AnalysisStoreGeneration(AnalysisStoreKind.Judgement, selected.Value.GenerationId);
-            var file = ProtectedStoreFile.OpenAnalysis(Directory, generation, cancellationToken);
+            var file = _files.Analysis(AnalysisStoreKind.Judgement, StoreSegmentRole.Judgement, cancellationToken);
             if (!file.IsSuccess) return Result<JudgementReader>.Failure(file.Error);
             _judgement = file.Value;
         }
@@ -419,11 +486,8 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
         {
             if (_disposed) return;
             _disposed = true;
-            _judgement?.Dispose();
-            _derivation?.Dispose();
-            _evidence?.Dispose();
-            _navigation?.Dispose();
-            _overview?.Dispose();
+            if (_sharedProtection is { } shared) shared.Dispose();
+            else _files.Dispose();
             _stopping.Dispose();
         }
         finally { _gate.Release(); }
@@ -432,10 +496,7 @@ internal sealed partial class OpenedRunResults(string directory) : IDisposable, 
     public async ValueTask DisposeAsync()
     {
         Dispose();
-        if (_judgement is { } judgement) await judgement.DisposeAsync().ConfigureAwait(false);
-        if (_derivation is { } derivation) await derivation.DisposeAsync().ConfigureAwait(false);
-        if (_evidence is { } evidence) await evidence.DisposeAsync().ConfigureAwait(false);
-        if (_navigation is { } navigation) await navigation.DisposeAsync().ConfigureAwait(false);
-        if (_overview is { } overview) await overview.DisposeAsync().ConfigureAwait(false);
+        if (_sharedProtection is { } shared) await shared.DisposeAsync().ConfigureAwait(false);
+        else await _files.DisposeAsync().ConfigureAwait(false);
     }
 }

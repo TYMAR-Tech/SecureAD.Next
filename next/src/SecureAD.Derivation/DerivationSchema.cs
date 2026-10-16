@@ -109,7 +109,7 @@ internal static class DerivationSchema
     // Version 15 retains CA registrations and dNSHostName in source-bound inputs. The tables are
     // unchanged, but a version 14 derivation cannot establish a CA host match from values it dropped.
     // Version 16 retains explicit group self-loops in the cycle inventory, without changing closure membership.
-    public const int Version = 16;
+    public const int Version = 17;
 
 
     private static readonly string[] TableDdl =

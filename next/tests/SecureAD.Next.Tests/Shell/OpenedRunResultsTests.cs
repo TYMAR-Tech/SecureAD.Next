@@ -490,7 +490,7 @@ public sealed partial class OpenedRunResultsTests
         TestSealing.ResealAnalysis(directory, generation);
     }
 
-    private sealed class ReadbackCounts : IDisposable
+    internal sealed class ReadbackCounts : IDisposable
     {
         private readonly MeterListener _listener = new();
         private readonly ConcurrentDictionary<string, long> _counts = new();
@@ -514,7 +514,12 @@ public sealed partial class OpenedRunResultsTests
                         : Path.GetFileName(path).Contains(".permission-proof.", StringComparison.Ordinal) ? "permission-proof"
                         : Path.GetFileName(path).Contains(".path-proof.", StringComparison.Ordinal) ? "path-proof"
                         : Path.GetFileName(path).Contains(".facts.", StringComparison.Ordinal) ? "facts"
-                        : Path.GetFileName(path).StartsWith("derivation.", StringComparison.Ordinal) ? "derivation" : "judgement";
+                        : Path.GetFileName(path).Contains(".membership.", StringComparison.Ordinal) ? "membership"
+                        : Path.GetFileName(path).StartsWith("delegations.", StringComparison.Ordinal) ? "delegations"
+                        : Path.GetFileName(path).StartsWith("overview.", StringComparison.Ordinal) ? "overview"
+                        : Path.GetFileName(path).StartsWith("derivation.", StringComparison.Ordinal) ? "derivation"
+                        : Path.GetFileName(path).StartsWith("judgement.", StringComparison.Ordinal) ? "judgement"
+                        : throw new InvalidOperationException("An observed verified product has no counter: " + path);
                     _counts.AddOrUpdate(key, value, (_, count) => count + value);
                 }
             });
@@ -523,12 +528,15 @@ public sealed partial class OpenedRunResultsTests
 
         internal long EvidenceVerifications => _counts.GetValueOrDefault("evidence");
         internal long NavigationVerifications => _counts.GetValueOrDefault("navigation");
+        internal long OverviewVerifications => _counts.GetValueOrDefault("overview");
         internal long EvidenceFormatChecks => _counts.GetValueOrDefault("format");
         internal long DerivationVerifications => _counts.GetValueOrDefault("derivation");
         internal long JudgementVerifications => _counts.GetValueOrDefault("judgement");
         internal long PermissionProofVerifications => _counts.GetValueOrDefault("permission-proof");
         internal long PathProofVerifications => _counts.GetValueOrDefault("path-proof");
         internal long FactsVerifications => _counts.GetValueOrDefault("facts");
+        internal long MembershipVerifications => _counts.GetValueOrDefault("membership");
+        internal long DelegationVerifications => _counts.GetValueOrDefault("delegations");
         internal long AnalyticalReads => _counts.GetValueOrDefault("analysis");
         public void Dispose() => _listener.Dispose();
     }

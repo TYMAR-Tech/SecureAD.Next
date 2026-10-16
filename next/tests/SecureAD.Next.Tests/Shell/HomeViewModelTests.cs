@@ -43,7 +43,7 @@ public sealed class HomeViewModelTests
     {
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.True(_picker.WasAsked);
     }
@@ -54,7 +54,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal(@"D:\audits", screen.Location.Path);
     }
@@ -65,7 +65,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal(@"D:\audits", _settings.Stored.RunLibraryPath);
     }
@@ -76,7 +76,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal(@"D:\audits", screen.LibraryDescription);
     }
@@ -88,7 +88,7 @@ public sealed class HomeViewModelTests
         _settings.Stored = new ShellSettings(@"D:\audits", DomainsAtOnce: null);
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal(@"D:\audits", screen.Location.Path);
     }
@@ -103,7 +103,7 @@ public sealed class HomeViewModelTests
         _settings.WriteFails = Failures.Any("The settings file is read-only.");
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Null(screen.Location.Path);
     }
@@ -115,7 +115,7 @@ public sealed class HomeViewModelTests
         _settings.WriteFails = Failures.Any("The settings file is read-only.");
         var screen = Screen();
 
-        screen.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => screen.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal("The settings file is read-only.", screen.Location.Problem);
     }
@@ -150,7 +150,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
 
         var home = Screen();
-        home.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => home.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.True(home.NewAuditCommand.CanExecute(null));
     }
@@ -161,7 +161,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
 
         var home = Screen();
-        home.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => home.ChooseLibraryCommand.ExecuteAsync(null));
         home.NewAuditCommand.Execute(null);
 
         Assert.Equal(1, _newAudit.TimesOpened);
@@ -173,7 +173,7 @@ public sealed class HomeViewModelTests
         _picker.Answer = @"D:\audits";
 
         var home = Screen();
-        home.ChooseLibraryCommand.Execute(null);
+        OneThread.Run(() => home.ChooseLibraryCommand.ExecuteAsync(null));
 
         Assert.Equal(0, _newAudit.TimesOpened);
     }

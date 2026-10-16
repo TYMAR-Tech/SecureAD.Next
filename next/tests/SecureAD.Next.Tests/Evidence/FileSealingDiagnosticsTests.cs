@@ -23,10 +23,11 @@ public sealed class FileSealingDiagnosticsTests
         BundleSealing.Seal(path, path + ".control", CancellationToken.None);
         var log = new StatusLog();
 
-        BundleSealing.SealWithDiagnostics(path, path + ".observed", CancellationToken.None, log, null, null);
+        var receipt = BundleSealing.SealWithDiagnostics(path, path + ".observed", CancellationToken.None, log, null, null);
 
         Assert.Equal(File.ReadAllBytes(path + ".control"), File.ReadAllBytes(path + ".observed"));
         Assert.Equal(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), BundleSealing.ReadSeal(path + ".observed")!.Hash);
+        Assert.Equal(new(BundleSealing.Algorithm, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()), receipt);
         Assert.Equal(bytes, File.ReadAllBytes(path));
         var report = Assert.Single(log.Lines);
         Assert.Equal("file sealing", report.Message);

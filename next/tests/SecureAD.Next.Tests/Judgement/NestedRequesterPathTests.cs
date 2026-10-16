@@ -31,11 +31,15 @@ public sealed partial class NestedRequesterPathTests
         {
             Derive(directory);
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None,
-                discoveryBudget: null, capture: _ => throw new InvalidOperationException("This check must not capture.")));
+                discoveryBudget: null, capture: (_, _) => throw new InvalidOperationException("This check must not capture.")));
         }
         else
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!])!, CancellationToken.None,
-                discoveryBudget: null, capture: _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)))));
+                discoveryBudget: null, capture: (protect, _) =>
+                {
+                    protect(directory);
+                    return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+                }));
         using var reader = Open(directory);
         var question = Assert.Single(reader.ReadPathRiskPage(UserDn, PathRiskVerdict.UnexpectedRoute, null, CancellationToken.None).Questions);
         var finding = Assert.Single(reader.Read().Findings, value => value.RuleId == "SEC-071");

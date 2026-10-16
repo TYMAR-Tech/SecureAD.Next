@@ -24,14 +24,23 @@ public sealed partial class DerivationReader
     public static Result<StoredDerivationSummary> ReadSummary(string bundleDirectory, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return ReadSummary(files, cancellationToken);
+    }
+
+    /// <summary>Reads saved completion figures under the same protected lifetime as the producing stages.</summary>
+    public static Result<StoredDerivationSummary> ReadSummary(ProtectedRunFiles files, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        var bundleDirectory = files.Directory;
         cancellationToken.ThrowIfCancellationRequested();
         var capture = AnalysisStoreLifecycle.ResolveCapture(bundleDirectory);
         if (!capture.IsSuccess) return Result<StoredDerivationSummary>.Failure(capture.Error);
         var selected = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Derivation);
         if (!selected.IsSuccess) return Result<StoredDerivationSummary>.Failure(selected.Error);
-        var protectedFile = ProtectedStoreFile.OpenAnalysis(bundleDirectory, selected.Value, cancellationToken);
+        var protectedFile = files.Analysis(AnalysisStoreKind.Derivation, StoreSegmentRole.Derivation, cancellationToken);
         if (!protectedFile.IsSuccess) return Result<StoredDerivationSummary>.Failure(protectedFile.Error);
-        using var file = protectedFile.Value;
+        var file = protectedFile.Value;
         var opened = Open(file, cancellationToken);
         if (!opened.IsSuccess) return Result<StoredDerivationSummary>.Failure(opened.Error);
         using var reader = opened.Value;

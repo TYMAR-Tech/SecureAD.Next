@@ -1510,19 +1510,32 @@ public sealed class BundleWriter : IDisposable
     /// <param name="reconciliation">The comparison of received referrals with authorized scope.</param>
     /// <param name="objectScope">The class exclusions actually applied by capture.</param>
     /// <param name="cancellationToken">Cancellation until the final publication claim.</param>
-    /// <param name="seal">Prepares the seal and closes its files before returning; must not publish or leave background work.</param>
+    /// <param name="seal">Returns the computed seal and closes its files; must not publish or leave background work.</param>
     public BundleSealTimings Complete(
         RunCoverage coverage,
         DateTimeOffset completedUtc,
         ContinuationReconciliation reconciliation,
         CaptureObjectScope objectScope,
         CancellationToken cancellationToken,
-        Action<string, string, CancellationToken> seal)
+        Func<string, string, CancellationToken, BundleSealContents> seal)
+    {
+        using var files = new ProtectedRunFiles(_bundleDirectory);
+        return Complete(coverage, completedUtc, reconciliation, objectScope, cancellationToken, seal, files);
+    }
+
+    /// <summary>Publishes into the caller's run lifetime without releasing the sealed capture files.</summary>
+    public BundleSealTimings Complete(
+        RunCoverage coverage, DateTimeOffset completedUtc, ContinuationReconciliation reconciliation,
+        CaptureObjectScope objectScope, CancellationToken cancellationToken,
+        Func<string, string, CancellationToken, BundleSealContents> seal, ProtectedRunFiles files)
     {
         ArgumentNullException.ThrowIfNull(coverage);
         ArgumentNullException.ThrowIfNull(reconciliation);
         ArgumentNullException.ThrowIfNull(objectScope);
         ArgumentNullException.ThrowIfNull(seal);
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(_bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
         ThrowIfFinished();
 
         // 0 = preparation, 1 = cancellation owns the ending, 2 = publication owns it.
@@ -1663,7 +1676,8 @@ public sealed class BundleWriter : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         CountEntriesPerObject();
         var navigationObjects = NavigationStorage.Write(_connection, _bundleDirectory, _captureGeneration, cancellationToken);
-        DashboardOverviewStorage.Write(_connection, _bundleDirectory, navigationObjects, cancellationToken);
+        var libraryHeader = DashboardOverviewStorage.Write(_connection, _bundleDirectory, navigationObjects, cancellationToken);
+        CapturedDelegationStorage.Write(_connection, _bundleDirectory, _captureGeneration, navigationObjects, cancellationToken);
 
         var backfill = clock.Elapsed;
         clock.Restart();
@@ -1672,6 +1686,7 @@ public sealed class BundleWriter : IDisposable
         Pragma(_connection, "main.wal_checkpoint(TRUNCATE)");
         Pragma(_connection, "navigation.wal_checkpoint(TRUNCATE)");
         Pragma(_connection, "overview.wal_checkpoint(TRUNCATE)");
+        Pragma(_connection, "delegations.wal_checkpoint(TRUNCATE)");
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
@@ -1685,12 +1700,12 @@ public sealed class BundleWriter : IDisposable
         // The claim is the cancellation boundary. Once claimed, rename errors remain errors,
         // and cancellation cannot relabel a successful rename as a cancelled capture.
         // The token is set before callbacks run; a different callback may still be blocking ours.
-        AnalysisStoreLifecycle.PublishCapture(_bundleDirectory, _partialPath, _captureGeneration, navigationObjects, cancellationToken, seal, () =>
+        AnalysisStoreLifecycle.PublishCapture(_bundleDirectory, _partialPath, _captureGeneration, navigationObjects, libraryHeader, cancellationToken, seal, () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (Interlocked.CompareExchange(ref publication, 2, 0) != 0)
                 throw new OperationCanceledException(cancellationToken);
-        });
+        }, files);
         _completed = true;
 
         return new BundleSealTimings(commit, indexes, backfill, checkpoint, clock.Elapsed);

@@ -1,4 +1,7 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 using Microsoft.Data.Sqlite;
+using Microsoft.Win32.SafeHandles;
 using SecureAD.Kernel;
 
 namespace SecureAD.Evidence;
@@ -27,6 +30,48 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
         Role = role;
     }
 
+    internal static FileStream ProtectPublicationFile(string path, FileShare sharing)
+    {
+        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("A publishing store or seal is a link.");
+        return new FileStream(path, FileMode.Open, FileAccess.Read, sharing);
+    }
+
+    internal static void RequireSameFile(FileStream before, FileStream after)
+    {
+        var first = Identity(before);
+        var second = Identity(after);
+        if (first.Volume != second.Volume || first.Low != second.Low || first.High != second.High)
+            throw new InvalidDataException("A capture product was replaced during publication.");
+    }
+
+    private static FileIdentity Identity(FileStream stream)
+    {
+        // Rename needs delete sharing. Compare the still-write-protected original with the
+        // final non-replaceable handle before carrying its sealing result across that rename.
+        if (!GetFileInformationByHandleEx(stream.SafeFileHandle, 18, out var identity, 24))
+            throw new IOException("The publishing file's identity could not be established.",
+                new Win32Exception(Marshal.GetLastPInvokeError()));
+        return identity;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileIdentity
+    {
+        internal ulong Volume;
+        internal ulong Low;
+        internal ulong High;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetFileInformationByHandleEx(
+        SafeFileHandle file, int informationClass, out FileIdentity information, uint size);
+
+    internal static ProtectedStoreFile FromPublishedCapture(string directory, FileStream data, FileStream seal,
+        StoreRootManifest root, StoreSegmentRole role) =>
+        new(Path.GetFullPath(directory), null, data, seal, root, role) { Fingerprint = root.Segment(role).Hash };
+
     /// <summary>The bundle owning the protected file.</summary>
     public string BundleDirectory { get; }
 
@@ -52,6 +97,10 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     public static Result<ProtectedStoreFile> OpenOverview(string directory, CancellationToken cancellationToken = default) =>
         OpenCapture(directory, StoreSegmentRole.Overview, cancellationToken);
 
+    /// <summary>Verifies the captured permission-browsing product without unrelated attribute data.</summary>
+    public static Result<ProtectedStoreFile> OpenDelegations(string directory, CancellationToken cancellationToken = default) =>
+        OpenCapture(directory, StoreSegmentRole.Delegations, cancellationToken);
+
     private static Result<ProtectedStoreFile> OpenCapture(string directory, StoreSegmentRole role, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -62,6 +111,7 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             StoreSegmentRole.Evidence => BundleLayout.EvidencePath(directory),
             StoreSegmentRole.Navigation => BundleLayout.NavigationPath(directory, selected.Value.GenerationId),
             StoreSegmentRole.Overview => BundleLayout.OverviewPath(directory, selected.Value.GenerationId),
+            StoreSegmentRole.Delegations => BundleLayout.DelegationsPath(directory, selected.Value.GenerationId),
             _ => throw new ArgumentOutOfRangeException(nameof(role)),
         };
         return Open(directory, null, path, path + ".seal",

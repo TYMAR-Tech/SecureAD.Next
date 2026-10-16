@@ -26,6 +26,53 @@ namespace SecureAD.Shell;
 /// </remarks>
 internal partial class App : Application
 {
+    private readonly Func<IShellSettingsStore> _settingsStore;
+    private readonly Action<AppStartupPoint> _startup;
+    private readonly Action<ShellWindow, ShellViewModel> _prepared;
+    private readonly IRunCatalog _catalog;
+    private readonly Func<RunProtectionSessions, ICaptureLauncher> _capture;
+
+    public App() : this(
+        static () => new JsonShellSettingsStore(JsonShellSettingsStore.DefaultPath),
+        static _ => { }, static (_, _) => { })
+    {
+    }
+
+    internal App(Func<IShellSettingsStore> settingsStore, Action<AppStartupPoint> startup,
+        Action<ShellWindow, ShellViewModel> prepared)
+        : this(settingsStore, startup, prepared, new RunCatalog())
+    {
+    }
+
+    internal App(Func<IShellSettingsStore> settingsStore, Action<AppStartupPoint> startup,
+        Action<ShellWindow, ShellViewModel> prepared, IRunCatalog catalog)
+        : this(settingsStore, startup, prepared, catalog, static protections => new CaptureLauncher(protections))
+    {
+    }
+
+    internal App(Func<IShellSettingsStore> settingsStore, Action<AppStartupPoint> startup,
+        Action<ShellWindow, ShellViewModel> prepared, IRunCatalog catalog, ICaptureLauncher capture)
+        : this(settingsStore, startup, prepared, catalog, _ => capture)
+    {
+        ArgumentNullException.ThrowIfNull(capture);
+    }
+
+    private App(Func<IShellSettingsStore> settingsStore, Action<AppStartupPoint> startup,
+        Action<ShellWindow, ShellViewModel> prepared, IRunCatalog catalog,
+        Func<RunProtectionSessions, ICaptureLauncher> capture)
+    {
+        ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(startup);
+        ArgumentNullException.ThrowIfNull(prepared);
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(capture);
+        _settingsStore = settingsStore;
+        _startup = startup;
+        _prepared = prepared;
+        _catalog = catalog;
+        _capture = capture;
+    }
+
     /// <summary>Assembles the product and shows its window.</summary>
     /// <param name="e">The startup arguments.</param>
     protected override async void OnStartup(StartupEventArgs e)
@@ -36,11 +83,12 @@ internal partial class App : Application
             return;
         }
 
+        _startup(AppStartupPoint.Entered);
         base.OnStartup(e);
 
         // ONE STORE, THREE SETTINGS. Run location, appearance and concurrency each own one field
         // and read the current record before writing, so changing one cannot erase the others.
-        var settingsStore = new JsonShellSettingsStore(JsonShellSettingsStore.DefaultPath);
+        var settingsStore = _settingsStore();
 
         var appearance = new ApplicationTheme(settingsStore, new WpfThemeApplier(Resources));
         var location = new RunLibraryLocation(settingsStore);
@@ -49,6 +97,7 @@ internal partial class App : Application
         appearance.Load();
         location.Load();
         concurrency.Load();
+        _startup(AppStartupPoint.SettingsLoaded);
 
         // One launcher, shared by nothing else: the audit surface is the only place that plans,
         // checks or starts a run. Home chooses the library and starts an audit on it.
@@ -76,13 +125,16 @@ internal partial class App : Application
         //
         // The shared requester policy does not activate the separate legacy membership scan.
         // That scan still needs its own measured and approved processing limit.
-        var deriving = new DerivationLauncher();
+        var protections = new RunProtectionSessions();
+        var capturing = _capture(protections);
+        var deriving = new DerivationLauncher(protections);
         var judging = new JudgingLauncher(
-            discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy);
+            discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy, protections);
 
-        var assets = new BundleAssetSource();
+        var assets = new BundleAssetSource(protections);
         Task CloseOpenedRun()
         {
+            protections.ReleaseHandoff();
             var closed = assets.CloseRunAsync();
             shell.ClearOpenedRun();
             return closed;
@@ -95,13 +147,9 @@ internal partial class App : Application
         newAudit = new NewAuditDialog(
             () => new NewAuditViewModel(
                 location,
-                new CaptureLauncher(),
+                capturing,
                 newAudit,
-                new RunOpener(path =>
-                {
-                    library.Adopt(path);
-                    shell.Show(ShellSection.Assets);
-                }, CloseOpenedRun),
+                new RunOpener(path => shell.OpenCompletedRunAsync(path), CloseOpenedRun),
                 deriving,
                 judging,
                 concurrency),
@@ -111,7 +159,7 @@ internal partial class App : Application
         // One library object. Home is the only screen that shows it.
         library = new RunLibraryViewModel(
             location,
-            new RunCatalog(),
+            _catalog,
             new Confirmation(),
             // Moving to a section already opens whichever run is selected - ShellViewModel does it
             // on arrival, and it knows whether a capture is running, which this does not. So Open
@@ -120,7 +168,11 @@ internal partial class App : Application
             //
             // It lands wherever ShellViewModel.ShowOpenedRun says, which is where that product
             // decision is written down and tested. Restating it here would be a second answer.
-            new RunOpener(_ => shell.ShowOpenedRun(), CloseOpenedRun),
+            new RunOpener(_ =>
+            {
+                shell.ShowOpenedRun();
+                return Task.CompletedTask;
+            }, CloseOpenedRun),
             deriving,
             judging);
 
@@ -133,13 +185,22 @@ internal partial class App : Application
             new DashboardViewModel(assets),
             new SettingsViewModel(concurrency, appearance),
             new RulesViewModel(assets));
-
-        // Home is the section already showing, so nothing navigates to it and nothing would
-        // otherwise ask the library to read itself before the first screen is painted.
-        library.Refresh();
+        _startup(AppStartupPoint.ModelsComposed);
 
         var window = new ShellWindow { DataContext = shell };
+        window.Closed += (_, _) =>
+        {
+            library.CancelRefresh();
+            assets.Dispose();
+            protections.Dispose();
+        };
         _ = new ObjectDetailPresenter(shell.Assets, window);
+        _prepared(window, shell);
         window.Show();
+        _startup(AppStartupPoint.WindowShown);
+
+        _startup(AppStartupPoint.LibraryRefreshStarting);
+        await library.RefreshAsync();
+        _startup(AppStartupPoint.LibraryRefreshCompleted);
     }
 }

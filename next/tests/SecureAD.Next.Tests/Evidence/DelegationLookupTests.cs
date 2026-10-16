@@ -539,6 +539,13 @@ public sealed class DelegationLookupTests
             return _reader;
         }
         private static string Dn(string domain) => "DC=" + domain.Replace(".", ",DC=", StringComparison.Ordinal);
+        internal void CloseCapturedReader()
+        {
+            _reader?.Dispose();
+            _reader = null;
+            _store?.Dispose();
+            _store = null;
+        }
         public void Dispose()
         {
             _reader?.Dispose();

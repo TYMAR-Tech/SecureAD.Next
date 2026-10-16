@@ -243,13 +243,19 @@ public sealed class RunLibrary
     /// own statement. Identifier order breaks a tie, so the list is stable.
     /// </para>
     /// </remarks>
-    public Result<IReadOnlyList<RunListing>> List()
+    public Result<IReadOnlyList<RunListing>> List(CancellationToken cancellationToken = default)
     {
         List<string> directories;
 
         try
         {
-            directories = Directory.EnumerateDirectories(Root).ToList();
+            cancellationToken.ThrowIfCancellationRequested();
+            directories = [];
+            foreach (var directory in Directory.EnumerateDirectories(Root))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                directories.Add(directory);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -265,6 +271,7 @@ public sealed class RunLibrary
 
         foreach (var directory in directories)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var observation = RunStateReader.Observe(directory);
             if (!observation.IsSuccess)
                 continue;
@@ -297,21 +304,14 @@ public sealed class RunLibrary
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Only a sealed run is opened.</b> Anything else has no evidence to read, and attempting it
-    /// would turn every damaged run in the library into a failed open on the way past.
+    /// Only a sealed run has a published capture header. Other states have no captured scope to claim.
     /// </para>
     /// <para>
-    /// <b>The seal is not verified here.</b> This is asked of every run each time the Home list is
-    /// drawn, and verifying hashes the whole evidence file: measured at 2,400 ms per 1.73 GB, on
-    /// nine occasions including every navigation back to Home. What comes out is a heading on a
-    /// list - which domains a run covered, and which group of comparable runs it belongs to.
-    /// <c>docs/decisions/0020-the-seal-detects-corruption-not-tampering.md</c> puts the one
-    /// verification at the moment a bundle is opened and requires that it not be repeated per
-    /// screen, so a run whose evidence has gone bad is refused there, before anything is read off
-    /// it.
+    /// The atomic capture root supplies the library heading without opening a database. It is not
+    /// a verdict on payload integrity: selected readers still verify the products they actually use.
     /// </para>
     /// <para>
-    /// <b>A failure here is null, not an error for the whole listing.</b> One unopenable bundle
+    /// <b>A failure here is null, not an error for the whole listing.</b> One unselectable bundle
     /// must not cost the operator the rest of his library - which is the same judgement the loop
     /// above already makes for a directory that is not a run. The null is visible: the screen shows
     /// such a run apart rather than among those whose scope is known.
@@ -322,14 +322,9 @@ public sealed class RunLibrary
         if (state != RunState.Sealed)
             return null;
 
-        using var opened = BundleReader.OpenUnverified(directory) is { IsSuccess: true } opening
-            ? opening.Value
-            : null;
-
-        if (opened is null)
-            return null;
-
-        var scope = opened.ReadScope();
+        var capture = AnalysisStoreLifecycle.ResolveCapture(directory);
+        if (!capture.IsSuccess) return null;
+        var scope = capture.Value.LibraryHeader!.ReadScope(directory);
         return scope.IsSuccess ? scope.Value : null;
     }
 

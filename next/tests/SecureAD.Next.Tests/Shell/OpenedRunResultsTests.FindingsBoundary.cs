@@ -360,6 +360,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(new[]
         {
             "finding", "finding_circular_group", "group_inventory", "group_inventory_product", "judgement",
+            "laps_inventory", "laps_inventory_product",
             "member_attribution_product", "membership_route",
             "membership_route_step", "membership_route_summary", "rule_execution", "rule_execution_missing_input",
             "tier0_distance", "tier0_distance_product", "tier0_finding_product", "tier0_path_calculation",

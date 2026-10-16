@@ -122,6 +122,46 @@ The recommended first application batch remains the joined-up RESP-02/03/04 scop
 its concrete measured implementation confirmation; no live access, production transfer beyond
 permitted logs/summaries, discovery/budget or SYSVOL change, deployment, commit or push is authorised.
 
+**Application fixes start now - owner direction, 2026-10-16.**
+The owner directed the programme to start fixing the application instead of completing all remaining
+RESP-01 preparation first.
+Existing source evidence and validated controls are sufficient to begin the joined-up RESP-02/03/04
+application batch; unfinished measurement coverage is not a blanket prerequisite.
+Keep targeted correctness checks and measurement at the changed boundaries, preserve all historical
+evidence and explicit limitations, and do not mistake an implementation or small control for enterprise
+acceptance.
+Do not expand general measurement machinery ahead of those fixes; concrete application/native-format
+and navigation scope is confirmed as one batch, with current wording/layout preserved unless a specific
+visual change is separately approved.
+
+**Joined-up application batch approved 2026-10-16.**
+The owner approved implementing RESP-02/03/04 now, beginning with a main window/Home that does
+not wait for whole-library enumeration, background library refresh with selected-run retention,
+stale-result refusal and existing error messages.
+Keep the current layout and wording and use the existing unread state while loading rather than
+claiming an empty library; both a newly completed audit and an existing saved run are to open the
+existing Dashboard.
+The same approval covers safe run-protection handoffs and lightweight ordinary LAPS/Delegations
+serving, including necessary native serving-table/index/version changes, while preserving exact
+saved answers, counts, qualifications and evidence/generation/resource binding.
+Additional serving preparation may cost audit time/storage and is checked at the changed boundary,
+not held behind expansion of the general measurement framework.
+No migration, old-capture rewriting, custom block reader, rule/scope/budget change, live AD, recapture,
+production export, SYSVOL change, deployment, commit or push is authorised.
+At the owner's request implementation starts in a fresh session from the current dirty checkout;
+this approval is not to be requested again for individual clicks or the already-confirmed batch.
+
+**Small-library startup delay remains a follow-up - owner report and direction, 2026-10-16.**
+The owner reported roughly 12 seconds from launching the application until the UI appeared in the
+small lab with one run in the library; executable/build provenance was not supplied, so this is not
+a controlled current-build baseline.
+Keep an explicit startup-loading follow-up in
+[RESP-03-F01](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md#resp-03---make-launch-home-and-results-entry-lightweight-and-consistent)
+while continuing the remaining responsiveness work rather than making this a new prerequisite.
+The implemented functional startup changes and measurement-host controls do not accept actual
+application loading time, and the report is not a direction to restart the completed batch or a new
+general measurement campaign.
+
 **Fast saved-result UI takes priority over small judging-time increases - owner clarification,
 2026-10-15.**
 The owner's words: "i dont care if judgement is slightly longer at this point i do however need

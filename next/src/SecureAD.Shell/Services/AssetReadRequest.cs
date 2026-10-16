@@ -23,7 +23,7 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<DelegationPrincipalPage> FindDelegationPrincipals(string bundleDirectory, string search, DelegationPrincipalMark? after) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.FindDelegationPrincipals(search, after, _readCancellation), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.FindDelegationPrincipals(search, after, _readCancellation), _readCancellation));
 
     /// <inheritdoc/>
     public Result<DelegationPage> ReadDelegations(string bundleDirectory, DelegationQuery query, DelegationPageMark? after) =>

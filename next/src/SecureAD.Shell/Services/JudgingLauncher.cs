@@ -31,8 +31,12 @@ namespace SecureAD.Shell.Services;
 /// </para>
 /// </remarks>
 internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget,
-    PathRequesterPolicy requesterPolicy = JudgingRun.ProductionPathRequesterPolicy) : IJudgingLauncher
+    PathRequesterPolicy requesterPolicy, RunProtectionSessions? protection) : IJudgingLauncher
 {
+    internal JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBudget,
+        PathRequesterPolicy requesterPolicy = JudgingRun.ProductionPathRequesterPolicy)
+        : this(discoveryBudget, requesterPolicy, null) { }
+
     /// <inheritdoc/>
     public Task<Result<JudgingOutcome>> RunAsync(
         string bundleDirectory,
@@ -43,7 +47,12 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
         ArgumentNullException.ThrowIfNull(progress);
 
         return Task.Run(
-            () => Judge(bundleDirectory, progress, cancellationToken),
+            () =>
+            {
+                using var standalone = new RunProtectionSessions();
+                return (protection ?? standalone).Produce(bundleDirectory,
+                    files => Judge(bundleDirectory, progress, cancellationToken, files));
+            },
             cancellationToken);
     }
 
@@ -61,7 +70,7 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
     private Result<JudgingOutcome> Judge(
         string bundleDirectory,
         IProgress<JudgingRun.JudgingProgress> progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, ProtectedRunFiles files)
     {
         using var file = RunLogFile.Open(bundleDirectory, "judging", TimeProvider.System)
             is { IsSuccess: true } log
@@ -94,13 +103,15 @@ internal sealed class JudgingLauncher(SelfMembershipDiscoveryBudget? discoveryBu
             watched,
             file ?? RunLog.Discarded,
             cancellationToken,
-            discoveryBudget);
+            discoveryBudget, files);
 
         if (!judged.IsSuccess)
             return Result<JudgingOutcome>.Failure(judged.Error!);
 
         progress.Report(new JudgingRun.JudgingProgress(objectsRead) { Phase = JudgingPhase.ReadingResults });
-        var opened = JudgementReader.Open(bundleDirectory, cancellationToken);
+        var protectedFile = files.Analysis(AnalysisStoreKind.Judgement, StoreSegmentRole.Judgement, cancellationToken);
+        var opened = protectedFile.IsSuccess ? JudgementReader.Open(protectedFile.Value, cancellationToken)
+            : Result<JudgementReader>.Failure(protectedFile.Error);
         if (!opened.IsSuccess)
             return Result<JudgingOutcome>.Failure(opened.Error!);
 

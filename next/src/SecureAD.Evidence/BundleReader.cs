@@ -112,6 +112,7 @@ public sealed class BundleReader : IDisposable
     private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
     private readonly SqliteConnection _connection;
     private readonly bool _navigation;
+    private bool _delegations;
     private ProtectedStoreFile.Lease? _protection;
     private bool _disposed;
     private (long ObjectId, string Dn)? _streamedIdentity;
@@ -170,19 +171,24 @@ public sealed class BundleReader : IDisposable
             return Refused(new(SealState.Absent, "This captured Evidence has no seal."), bundleDirectory);
         var file = ProtectedStoreFile.OpenEvidence(bundleDirectory);
         if (!file.IsSuccess)
-        {
-            var reason = file.Error.Code switch
-            {
-                "Evidence.ProtectedStoreMismatch" => "SealMismatch",
-                "Evidence.ProtectedStoreUnreadable" => "SealUnreadable",
-                "Evidence.ProtectedStoreAbsent" => "SealAbsent",
-                _ => null,
-            };
-            return reason is null ? Result<BundleReader>.Failure(file.Error)
-                : Failure(reason, file.Error.Description, bundleDirectory);
-        }
+            return CaptureOpenFailure(file.Error, bundleDirectory);
         using var store = file.Value;
         return Open(store);
+    }
+
+    internal static Result<BundleReader> CaptureOpenFailure(AuditError error, string bundleDirectory)
+    {
+        if (!File.Exists(BundleLayout.SealPath(bundleDirectory)))
+            return Refused(new(SealState.Absent, "This captured Evidence has no seal."), bundleDirectory);
+        var reason = error.Code switch
+        {
+            "Evidence.ProtectedStoreMismatch" => "SealMismatch",
+            "Evidence.ProtectedStoreUnreadable" => "SealUnreadable",
+            "Evidence.ProtectedStoreAbsent" => "SealAbsent",
+            _ => null,
+        };
+        return reason is null ? Result<BundleReader>.Failure(error)
+            : Failure(reason, error.Description, bundleDirectory);
     }
 
     /// <summary>Reads only the captured navigation product under its own verified file lifetime.</summary>
@@ -239,7 +245,8 @@ public sealed class BundleReader : IDisposable
     {
         ArgumentNullException.ThrowIfNull(store);
         if (store.Generation is not null) throw new ArgumentException(nameof(store));
-        if (store.Role is not (StoreSegmentRole.Evidence or StoreSegmentRole.Navigation)) throw new ArgumentException(nameof(store));
+        if (store.Role is not (StoreSegmentRole.Evidence or StoreSegmentRole.Navigation or StoreSegmentRole.Delegations))
+            throw new ArgumentException(nameof(store));
         ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {
@@ -249,18 +256,23 @@ public sealed class BundleReader : IDisposable
                 // Format validation includes a descriptor-version scan. Its verdict, like the
                 // seal's, is reusable only under this same protected file lifetime.
                 opened = store.EvidenceDescription is { } description
-                    ? new BundleReader(store.BundleDirectory, lease.Connection, description, store.Role == StoreSegmentRole.Navigation)
-                    : OpenConnection(store.BundleDirectory, lease.Connection, store.Role == StoreSegmentRole.Navigation);
+                    ? new BundleReader(store.BundleDirectory, lease.Connection, description, store.Role != StoreSegmentRole.Evidence)
+                    : OpenConnection(store.BundleDirectory, lease.Connection, store.Role != StoreSegmentRole.Evidence);
                 if (opened.IsSuccess && opened.Value.Description.CaptureGenerationId != store.Root.GenerationId)
                     throw new InvalidDataException("The captured product does not identify the generation selected by its root.");
+                if (opened.IsSuccess && opened.Value.Description.CoverageId != store.Root.LibraryHeader?.CoverageId)
+                    throw new InvalidDataException("The captured product contradicts its library identity.");
                 if (opened.IsSuccess && store.Role == StoreSegmentRole.Navigation)
                     NavigationStorage.RequireBinding(lease.Connection, store.Root);
+                if (opened.IsSuccess && store.Role == StoreSegmentRole.Delegations)
+                    CapturedDelegationStorage.RequireBinding(lease.Connection, store.Root);
                 if (opened.IsSuccess && store.Root.Segment(StoreSegmentRole.Evidence).SchemaVersion != BundleSchema.Version)
                     throw new InvalidDataException("The root declares an unsupported captured Evidence schema.");
                 if (opened.IsSuccess) store.EvidenceDescription = opened.Value.Description;
             }
             if (opened.IsSuccess)
             {
+                opened.Value._delegations = store.Role == StoreSegmentRole.Delegations;
                 opened.Value._verifiedFingerprint = store.Root.EvidenceSeal;
                 opened.Value._protection = lease;
                 lease = null;
@@ -639,7 +651,7 @@ public sealed class BundleReader : IDisposable
     /// <summary>Finds captured user/group identities under a protected evidence lifetime.</summary>
     public DelegationPrincipalPage FindDelegationPrincipals(string search, DelegationPrincipalMark? after,
         CancellationToken cancellationToken = default) =>
-        DelegationLookup.FindPrincipals(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken);
+        DelegationLookup.FindPrincipals(Connection, ProtectedQueryFingerprint(), Description, search, after, cancellationToken, _navigation);
 
     /// <summary>Reads original direct-trustee permission occurrences; never computes effective access.</summary>
     public DelegationPage ReadDelegations(DelegationQuery query, DelegationPageMark? after,
@@ -647,8 +659,9 @@ public sealed class BundleReader : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var fingerprint = ProtectedQueryFingerprint();
-        var preparation = _delegationPreparation ??= (ReadSchemaGuids(), DelegationLookup.ReadCoverage(Connection, Description));
-        return DelegationLookup.Read(Connection, fingerprint, preparation.Coverage, preparation.Schema, query, after, cancellationToken, pageSize);
+        var preparation = _delegationPreparation ??= (ReadSchemaGuids(), _delegations
+            ? CapturedDelegationStorage.ReadCoverage(Connection, Description) : DelegationLookup.ReadCoverage(Connection, Description));
+        return DelegationLookup.Read(Connection, fingerprint, preparation.Coverage, preparation.Schema, query, after, cancellationToken, pageSize, _delegations);
     }
 
     /// <summary>Resolves one saved membership identity without reconstructing the object's attributes or permissions.</summary>
@@ -932,7 +945,7 @@ public sealed class BundleReader : IDisposable
     /// </remarks>
     public SchemaGuidCatalog ReadSchemaGuids()
     {
-        var captured = CapturedSchemaGuidReader.Read(Connection);
+        var captured = CapturedSchemaGuidReader.Read(Connection, _navigation);
 
         return SchemaGuidCatalog.CapturedOver(
             captured.Entries, SchemaGuidCatalog.Embedded, captured.PropertySetMembers);

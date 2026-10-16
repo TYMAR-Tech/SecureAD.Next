@@ -74,17 +74,29 @@ public static class Stage2aRun
         IRunLog log,
         CancellationToken cancellationToken)
     {
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        return Derive(bundleDirectory, budget, startedUtc, progress, log, cancellationToken, files);
+    }
+
+    /// <summary>Derives and reads completion under a lifetime that can be handed directly to judging and viewing.</summary>
+    public static Result<DerivationRunState> Derive(
+        string bundleDirectory, ExpansionBudget budget, DateTimeOffset startedUtc,
+        IProgress<DerivationProgress> progress, IRunLog log, CancellationToken cancellationToken, ProtectedRunFiles files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
         var clock = new PhaseClock();
         var began = Stopwatch.GetTimestamp();
 
         var derived = DeriveIntoStore(
-            bundleDirectory, budget, startedUtc, progress, log, clock, cancellationToken);
+            bundleDirectory, budget, startedUtc, progress, log, clock, cancellationToken, files);
 
         // ONLY ONCE THE STORE IS CLOSED. The section is read back out of the derivation, and the
         // writer inside DeriveIntoStore holds it open until that method returns - which is the
         // whole reason this wrapper exists rather than a few lines at the end of the body.
         if (derived.IsSuccess)
-            AppendPortableSummary(bundleDirectory, clock.GenerationId, Stopwatch.GetElapsedTime(began), clock.Phases, log, cancellationToken);
+            AppendPortableSummary(bundleDirectory, clock.GenerationId, Stopwatch.GetElapsedTime(began), clock.Phases, log, cancellationToken, files);
 
         return derived;
     }
@@ -118,7 +130,15 @@ public static class Stage2aRun
         string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases,
         IRunLog log, CancellationToken cancellationToken)
     {
-        var summary = DerivationReader.ReadSummary(bundleDirectory, cancellationToken);
+        using var files = new ProtectedRunFiles(bundleDirectory);
+        AppendPortableSummary(bundleDirectory, generationId, elapsed, phases, log, cancellationToken, files);
+    }
+
+    private static void AppendPortableSummary(
+        string bundleDirectory, Guid generationId, TimeSpan elapsed, IReadOnlyList<StageTiming> phases,
+        IRunLog log, CancellationToken cancellationToken, ProtectedRunFiles files)
+    {
+        var summary = DerivationReader.ReadSummary(files, cancellationToken);
         if (!summary.IsSuccess)
         {
             log.Record("Derive", summary.Error, []);
@@ -202,7 +222,7 @@ public static class Stage2aRun
         IProgress<DerivationProgress> progress,
         IRunLog log,
         PhaseClock clock,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, ProtectedRunFiles files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(budget);
@@ -225,7 +245,11 @@ public static class Stage2aRun
             return refusal;
         }
 
-        var opened = BundleReader.Open(bundleDirectory);
+        var protectedFile = files.Capture(StoreSegmentRole.Evidence, cancellationToken);
+        if (!protectedFile.IsSuccess) return Result<DerivationRunState>.Failure(protectedFile.Error);
+        if (!string.Equals(protectedFile.Value.Fingerprint, seal.Hash, StringComparison.OrdinalIgnoreCase))
+            return Failure("EvidenceChanged", "The evidence seal changed while deriving was opening it.", bundleDirectory);
+        var opened = BundleReader.Open(protectedFile.Value, cancellationToken);
         if (!opened.IsSuccess)
             return Result<DerivationRunState>.Failure(opened.Error!);
 
@@ -272,7 +296,9 @@ public static class Stage2aRun
                 DerivationCompleteness.NothingWasRead(scope.Value!, writer.GenerationId));
 
             progress.Report(new DerivationProgress("PublishingDerivation", 0) { DerivationGenerationId = writer.GenerationId });
-            writer.Complete(DateTimeOffset.UtcNow, log);
+            var current = files.Capture(StoreSegmentRole.Evidence, cancellationToken);
+            if (!current.IsSuccess) return Result<DerivationRunState>.Failure(current.Error);
+            writer.Complete(DateTimeOffset.UtcNow, log, cancellationToken);
             return DerivationRunState.CompletedDegraded;
         }
 
@@ -345,7 +371,9 @@ public static class Stage2aRun
         writer.RecordCompleteness(completeness);
 
         progress.Report(new DerivationProgress("PublishingDerivation", 0) { DerivationGenerationId = writer.GenerationId });
-        var state = writer.Complete(DateTimeOffset.UtcNow, log);
+        var currentCapture = files.Capture(StoreSegmentRole.Evidence, cancellationToken);
+        if (!currentCapture.IsSuccess) return Result<DerivationRunState>.Failure(currentCapture.Error);
+        var state = writer.Complete(DateTimeOffset.UtcNow, log, cancellationToken);
 
         log.Note(DerivePhase, "finished", [new RunLogDetail("state", state.ToString())]);
 

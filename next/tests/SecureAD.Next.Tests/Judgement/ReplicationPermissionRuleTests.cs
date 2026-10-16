@@ -307,7 +307,7 @@ public sealed class ReplicationPermissionRuleTests
         var before = Hash(directory);
         if (host == "cli")
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None,
-                null, _ => throw new InvalidOperationException("SEC-002 must not contact a forest.")));
+                null, (_, _) => throw new InvalidOperationException("SEC-002 must not contact a forest.")));
         else
         {
             var result = await new JudgingLauncher(null).RunAsync(directory, new Progress<JudgingRun.JudgingProgress>(), CancellationToken.None);

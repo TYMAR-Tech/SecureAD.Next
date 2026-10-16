@@ -1410,7 +1410,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// </para>
     /// <para>
     /// <b>The order is load-bearing.</b> Both acts navigate: <c>ShellViewModel.Leave</c> shows Home,
-    /// and opening a run shows Assets, so whichever runs last decides where the operator ends up.
+    /// and opening a run shows Dashboard, so whichever runs last decides where the operator ends up.
     /// Leaving therefore happens first and opening second. The reverse was shipped on 2026-08-21
     /// and the owner found it in the lab: View results tore down the audit and landed him on Home,
     /// having passed through Assets. <c>TheAuditIsLeftBeforeTheRunIsOpened</c> pins this, by
@@ -1418,12 +1418,12 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     /// </para>
     /// </remarks>
     [RelayCommand(CanExecute = nameof(CanLeave))]
-    public void Leave()
+    public async Task LeaveAsync()
     {
         _dialogs.Leave();
 
         if (BundleDirectory is { } directory)
-            _opener.Open(directory);
+            await _opener.OpenAsync(directory);
     }
 
     /// <summary>Whether the operator may leave the audit.</summary>

@@ -45,7 +45,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(201, screen.LapsCounts.Single(count => count.State == LapsManagement.WindowsLaps).Count);
         Assert.Equal((0L, 0L, 0L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
             counts.PermissionProofVerifications, counts.PathProofVerifications));
-        Assert.Equal((1L, 1L, 1L), (counts.NavigationVerifications, counts.JudgementVerifications, counts.FactsVerifications));
+        Assert.Equal((1L, 1L, 0L), (counts.NavigationVerifications, counts.JudgementVerifications, counts.FactsVerifications));
         FindingsViewTests.VerifySavedLapsRowsRender(screen);
     }
 
@@ -79,7 +79,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = LapsScopePagingTests.FilterRun();
         var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        { DataSource = Path.Combine(directory, root.Segment(StoreSegmentRole.JudgementFacts).FileName), Pooling = false }.ToString()))
+        { DataSource = Path.Combine(directory, root.Segment(StoreSegmentRole.Judgement).FileName), Pooling = false }.ToString()))
         {
             connection.Open();
             using var command = connection.CreateCommand();
@@ -121,7 +121,7 @@ public sealed partial class OpenedRunResultsTests
         internal LapsUnrelatedStoreLocks(string directory)
         {
             var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
-            var paths = root.Segments.Where(segment => segment.Role is StoreSegmentRole.PermissionProof or StoreSegmentRole.PathProof)
+            var paths = root.Segments.Where(segment => segment.Role is StoreSegmentRole.PermissionProof or StoreSegmentRole.PathProof or StoreSegmentRole.JudgementFacts)
                 .Select(segment => Path.Combine(directory, segment.FileName)).Append(Path.Combine(directory, BundleLayout.EvidenceFileName));
             foreach (var path in paths) _files.Add(new(path, FileMode.Open, FileAccess.Read, FileShare.None));
             var derivation = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Derivation);

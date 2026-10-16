@@ -326,10 +326,27 @@ public sealed class CaptureSession
         CaptureOptions options,
         CancellationToken cancellationToken)
     {
+        ProtectedRunFiles? files = null;
+        try
+        {
+            return await RunAsync(typedName, overrides, exclusions, reportPreflight, objectScope, options,
+                cancellationToken, directory => files = new ProtectedRunFiles(directory)).ConfigureAwait(false);
+        }
+        finally { files?.Dispose(); }
+    }
+
+    /// <summary>Captures with an explicitly supplied run owner, retained by the caller after completion.</summary>
+    public async Task<Result<CaptureRunResult>> RunAsync(
+        string? typedName, IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions, Action<PreflightReport>? reportPreflight,
+        CaptureObjectScope objectScope, CaptureOptions options, CancellationToken cancellationToken,
+        Func<string, ProtectedRunFiles> protectCapture)
+    {
         ArgumentNullException.ThrowIfNull(overrides);
         ArgumentNullException.ThrowIfNull(exclusions);
         ArgumentNullException.ThrowIfNull(objectScope);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(protectCapture);
 
         // MEASURED HERE BECAUSE NOTHING PERSISTS IT. The bundle records what was read; how long
         // preflight and the reading each took is known only while the run is happening, and the
@@ -387,6 +404,10 @@ public sealed class CaptureSession
         // disk is the half that sharding makes binding - every domain's database exists at once
         // before the merge - and it is the one nothing else in the product would ever record.
         using var cost = RunResourceWatch.Start(directory.Value!, _time);
+        var files = protectCapture(directory.Value);
+        ArgumentNullException.ThrowIfNull(files);
+        if (!string.Equals(Path.GetFullPath(directory.Value), files.Directory, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("The protected lifetime belongs to another run.", nameof(protectCapture));
 
         // THE LOG IS OPENED HERE RATHER THAN TAKEN AS AN ARGUMENT, and the reason is the line above
         // it: until CreateRun there is no directory to write beside, so no caller could have opened
@@ -446,7 +467,7 @@ public sealed class CaptureSession
                 directory.Value!,
                 exclusions,
                 options,
-                cancellationToken)
+                cancellationToken, files)
             .ConfigureAwait(false);
 
         var captureElapsed = _time.GetUtcNow() - runStartedUtc - preflightElapsed;
@@ -481,7 +502,7 @@ public sealed class CaptureSession
             captured,
             _time.GetUtcNow() - runStartedUtc,
             preflightElapsed,
-            captureElapsed);
+            captureElapsed, files);
 
         return captured;
     }
@@ -519,7 +540,7 @@ public sealed class CaptureSession
         CaptureRunResult captured,
         TimeSpan elapsed,
         TimeSpan preflight,
-        TimeSpan reading)
+        TimeSpan reading, ProtectedRunFiles files)
     {
         var timings = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -547,7 +568,7 @@ public sealed class CaptureSession
                     new StageTiming("capture", (long)reading.TotalMilliseconds),
                 ],
                 domains,
-                captured.Error));
+                captured.Error, files));
     }
 
     /// <summary>The name the capture coordinator logs under.</summary>

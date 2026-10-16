@@ -359,7 +359,7 @@ public sealed class NestedDelegationTests
                 if (nestingOutcome is not null || wrongHolderIdentity)
                 {
                     var generation = AnalysisStoreLifecycle.Resolve(_directory, AnalysisStoreKind.Derivation).Value;
-                    var path = BundleLayout.AnalysisGenerationDataPath(_directory, AnalysisStoreKind.Derivation, generation.GenerationId);
+                    var path = BundleLayout.AnalysisSegmentDataPath(_directory, generation, StoreSegmentRole.Membership);
                     using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
                     {
                         connection.Open();

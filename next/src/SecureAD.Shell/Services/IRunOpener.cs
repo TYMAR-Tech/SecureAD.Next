@@ -20,7 +20,7 @@ internal interface IRunOpener
 {
     /// <summary>Opens the run in <paramref name="bundleDirectory"/> and shows it.</summary>
     /// <param name="bundleDirectory">The run's bundle directory, as listed.</param>
-    void Open(string bundleDirectory);
+    Task OpenAsync(string bundleDirectory);
 
     /// <summary>Clears displayed results and waits for their protected readers to close.</summary>
     Task CloseAsync();
@@ -35,9 +35,9 @@ internal interface IRunOpener
 /// Audit window in <c>App.xaml.cs</c>.
 /// </remarks>
 /// <param name="open">What to do with the run's directory.</param>
-internal sealed class RunOpener(Action<string> open, Func<Task> close) : IRunOpener
+internal sealed class RunOpener(Func<string, Task> open, Func<Task> close) : IRunOpener
 {
-    private readonly Action<string> _open =
+    private readonly Func<string, Task> _open =
         open ?? throw new ArgumentNullException(nameof(open));
     private readonly Func<Task> _close =
         close ?? throw new ArgumentNullException(nameof(close));
@@ -46,9 +46,9 @@ internal sealed class RunOpener(Action<string> open, Func<Task> close) : IRunOpe
     public Task CloseAsync() => _close();
 
     /// <inheritdoc/>
-    public void Open(string bundleDirectory)
+    public Task OpenAsync(string bundleDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
-        _open(bundleDirectory);
+        return _open(bundleDirectory);
     }
 }

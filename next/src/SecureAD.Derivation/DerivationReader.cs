@@ -399,6 +399,9 @@ public sealed partial class DerivationReader : IDisposable
     {
         ArgumentNullException.ThrowIfNull(store);
         if (store.Generation is not { Kind: AnalysisStoreKind.Derivation } generation) throw new ArgumentException(nameof(store));
+        if (store.Role is not (StoreSegmentRole.Derivation or StoreSegmentRole.Membership)
+            || store.Root.Segment(store.Role).SchemaVersion != StorageVersion)
+            throw new ArgumentException("This is not a supported saved derivation product.", nameof(store));
         ProtectedStoreFile.Lease? lease = store.Acquire(cancellationToken);
         try
         {

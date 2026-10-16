@@ -18,7 +18,7 @@ using Xunit;
 
 namespace SecureAD.Next.Tests.Shell;
 
-public sealed class CaptureReviewBoundaryTests
+public sealed partial class CaptureReviewBoundaryTests
 {
     private const string Root = "DC=example,DC=com";
     private const string Configuration = "CN=Configuration," + Root;
@@ -506,14 +506,19 @@ public sealed class CaptureReviewBoundaryTests
         private Func<IDirectoryChannelFactory, IDirectoryChannelFactory>? DecorateConnections { get; set; }
         private readonly string _rootDns;
 
-        internal Fixture(string rootDns = "example.com")
+        internal Fixture(string rootDns = "example.com", bool analysisInputs = false)
         {
             _rootDns = rootDns;
             Bootstrap.CrossReferences.RemoveAt(0);
             Bootstrap.CrossReferences.Insert(0, CrossReference.Domain(Root, rootDns));
             Add(Bootstrap, Schema);
             Add(Bootstrap, "CN=Partitions," + Configuration);
-            Add(Bootstrap, Root);
+            if (analysisInputs)
+            {
+                AdministrativeGroupCaptureFixture.AddTo(Bootstrap);
+                DecorateConnections = inner => new NamingContextDirectory(inner);
+            }
+            else Add(Bootstrap, Root);
             Add(Bootstrap, "CN=Password Settings Container,CN=System," + Root);
             RegisterController(First, Root);
             RegisterController(Second, Root);

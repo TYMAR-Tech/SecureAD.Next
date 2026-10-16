@@ -57,7 +57,7 @@ Do not invent production thresholds or limits from small fixtures.
 - Branch: `perf02/responsive-browsing`, base HEAD `65dbb144430325ace9c30d63cf75193743068427`.
 - Preserve the pending Groups/Tier 0 serving implementation, earlier navigation/publication work,
   owner changes and all frozen evidence; do not reset or recommit them merely to start this queue.
-- Current native formats are capture root 3, Navigation 2, overview 1, Evidence 17,
+- At programme start the native formats were capture root 3, Navigation 2, overview 1, Evidence 17,
   Derivation 16 and Judgement 75, with 32 registered rules.
 - Existing foundations include small Dashboard/Findings/Groups/Tier 0 serving, saved completion
   aggregates, selected navigation/identity, ordered directory continuation, requested tree nodes,
@@ -129,13 +129,18 @@ Finish and validate a coherent batch; continue the same queue with the next read
 
 | Batch | Items | Delivered outcome |
 |---|---|---|
-| 0: baseline and scope lock | RESP-00/01 | One current end-to-end cost map, response budgets and fixed verification/measurement protocol, not another architecture review |
+| 0: evidence and continuing baseline | RESP-00/01 | Preserve current source/controls and continue the cost map alongside fixes; unfinished baseline tooling is not a blanket implementation gate |
 | 1: run lifetime and all ordinary entry points | RESP-02/03/04 | Prompt shell/Home, consistent results entry, continuous trust reuse and lightweight normal data for every ordinary view, including LAPS and Delegations |
 | 2: complete requested-detail journey | RESP-05/06/07 | Original attributes/permissions, saved classifications and route/control detail served at the requested boundary, with matching query, paging and UI lifecycle behaviour |
 | 3: audit throughput and resource contention | RESP-08/09/10, RESP-11 if demonstrated necessary | Corrections to measured dominant judging/capture costs without weakening coverage, plus derivation/worker changes only where evidence warrants them |
 | 4: enterprise proof and delivery | RESP-12/13 | Whole-journey performance evidence, ordinary display checks, accurate unresolved limitations and a self-contained correct-source handoff |
 
 UI responsiveness is the first delivery objective.
+**Owner direction, 2026-10-16:** start application fixes now, using the evidence and validated
+controls already available rather than extending general measurement preparation first.
+RESP-02/03/04 may begin on RESP-00 and their confirmed application scope; finish only the
+measurement needed to inform or verify each changed boundary, keeping broader RESP-01/12
+coverage and enterprise acceptance explicitly outstanding.
 RESP-08/09/10 depend technically on the measured baseline, but are scheduled after the integrated
 viewer correction so expensive analysis work does not displace completing the viewer.
 Do not turn that scheduling choice into an old ARCH-06 prohibition or a reason to leave those
@@ -159,43 +164,61 @@ This closes the read-only scope inventory, not implementation, timing or enterpr
 
 ### RESP-01 - Establish the current whole-journey cost map and response budgets
 
-**Status:** open - approved RESP-01 execution in progress; current-format producer/readback measurement foundation implemented and behaviour-verified, but whole-journey/enterprise inputs, the fixed campaign and numerical response budgets remain outstanding. **Dependencies:** RESP-00.
+**Status:** open - approved RESP-01 execution in progress; producer, ordinary-view and real application-composition/Home/saved-entry controls verified, with an explicitly unaccepted return-selection finding; new-run/full-journey/enterprise inputs, the fixed campaign and numerical response budgets remain outstanding. **Dependencies:** RESP-00.
 
 Use existing phase records and a proposed fixed offline workload/run matrix to record first paint, complete load/render, verification, SQL, content assembly, allocations/memory and audit-stage costs for the journeys below.
 Distinguish new-run handoff, a fresh-process saved-run opening, warm browsing and close/reopen, identify binaries/input hashes and modelling limits, and recommend numerical per-journey response budgets after measuring the enterprise-shaped workload.
 Complete with one retained baseline and an engineering-owned batch scope/format/UI proposal tied to those costs, without live access, recycled old service timings, rerunning completed campaigns by default or asking the owner to design the solution.
 
-**Approved scope packet:** [RESP-01 baseline and execution scope](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/resp01-baseline-execution-scope.md) - current-format inputs/settings, fixed whole-journey matrix, complete render/resource endpoints, budget method and recommended integrated RESP-02/03/04 batch; application/format/UI implementation not approved
+**Historical measurement approval, 2026-10-15:** [RESP-01 baseline and execution scope](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/resp01-baseline-execution-scope.md) - retained inputs/settings, matrix and budget protocol; its measurement-only restriction is superseded for the confirmed RESP-02/03/04 batch by the owner's application approval of 2026-10-16
 
 **Preservation checkpoint:** expected branch/HEAD; all 18 arrival-file hashes and nine retained test-output assembly hashes matched the handoff; no build, test, measurement or application-source/format/UI change in packet preparation
 
 **Execution checkpoint:** [current state and evidence map](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/resp01/current-state.json) - explicit control-only measurement mode; 343 objects, 795 original member occurrences, 32 current rules and saved Groups/LAPS/Tier 0/permission readback; 72 focused regression checks passed; all 16 new cases mutation-covered across nine rebuilt defects with 20 failing and 20 rebuilt restored observations; final correct-source Release rebuild, 0 errors/866 warnings
 
-**Not enterprise acceptance:** no startup/Home/render/requested-detail journey measurements, ENT75 eligibility or numerical response budgets yet; control-owned inspection opens are not real producer/completion/viewer handoff timings; seven production assemblies remain byte-identical to arrival, while the measurement/test assemblies changed and their originals remain retained
+**View-control checkpoint:** [current view-control state](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/resp01-browsing-v1/current-state.json) - 36 read/draw/dispatcher observations at each of 900/1300 widths through first protected opening, warm revisit and close/reopen; all ordinary surfaces, direct/group-held Delegations and group findings/original-membership/return; 78 focused harness checks passed, six new cases mutation-covered by six rebuilt defects with 12 failing and 12 rebuilt restored observations; final correct-source Release rebuild, 0 errors/866 warnings
+
+**Real application checkpoint:** [startup/Home/saved-entry state](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/resp01-startup-v1/current-state.json) - fresh measurement-host processes execute the real App composition and compiled ShellWindow with isolated settings; empty/saved/unavailable libraries at 900/1300, first drawing and Home, selected saved-run Dashboard entry, Home return and reopen; six final process controls/12 window journeys, 97 focused checks passed, eight new trace cases and all six process cases reject rebuilt missing-observation/undrawn defects; five isolated variants with 20 failing and 20 rebuilt restored observations, final correct-source Release 0 errors/866 warnings
+
+**Not enterprise acceptance:** the application control times fresh measurement-host entry, not the installed product executable's loader; synchronous library refresh, default application behaviour and UI wording/layout remain unchanged; new-run handoff, large-library/tail/refusal corpus, remaining selected permission/classification/path/huge-value and accounting/overhead/enterprise endpoints are outstanding, and RESP-07-F01 remains explicitly unaccepted
+
+**Commit boundary:** validated 24-path serving/programme/producer-control checkpoint committed as `fde2eb21c7be89c74812cf777b7f2e06fcc99207` at the owner's request, without push; subsequent view-control work remains uncommitted; earlier binary-equality/provenance records retain their original pre-commit build identity, while later rebuilds identify this committed base
 
 ### RESP-02 - Unify protected run lifetimes and trustworthy stage handoffs
 
-**Status:** open. **Dependencies:** RESP-01.
+**Status:** done - continuous capture publication/first analytical opening and the protected analysis/completion/viewer handoffs are implemented and focused offline behaviour-verified; enterprise-shaped response-budget acceptance remains RESP-12. **Dependencies:** RESP-00; RESP-01 is supporting work, not a blanket gate.
 
 Give one explicit owner responsibility for exact captured/derived/judged generations through analysis, completion and browsing, reusing already established verification only while unchanged-file protection is continuous.
 Eliminate demonstrated cross-stage reopening/rehashing and repeated deep consistency work where its guarantee can safely be retained, while preserving cancellation, lease disposal, source/resource binding and cheap current-request checks.
 Complete with actual verification/read observations and rebuilt corruption, replacement, stale-generation, handoff-failure and lifetime controls, not a persisted already-verified flag or a more permissive reader.
 
+**Capture-to-analysis checkpoint, 2026-10-16:** [verified current state](C:/Users/jistrand/.copilot/session-state/32d52e66-b752-4eb0-b670-61e4ef9290cc/files/resp02-capture-handoff/current-state.json) - all four captured products stay protected across sealing, rename and atomic root selection, and enter the existing run owner inside capture's reported publication work; the application, CLI, capture summary, capture-only/later opening and failure/cancellation/disposal use that lifetime without a persisted verdict, changed native formats or changed screen wording/layout.
+The final correct-source Release rebuild has 0 errors/890 warnings and 606 combined affected cases passing, with 31 new plus five strengthened cases all detecting a rebuilt defect across 22 qualified variants/61 failing and 68 rebuilt restored observations, and two fresh-process application controls/eight window journeys at 900/1300 using the retained current-format input.
+The corrected refusal-code regression's earlier 599-pass/one-failure result, the 29/30 mutation-coverage stop and fixture/compiler/script attempts remain retained alongside the earlier 705-pass checkpoint, 704-pass/one-timeout run and repaired ordinal-test survivor, while RESP-07-F01, the unchanged three null-default signatures, coarse requested-proof verification, physical-display checks and enterprise budgets remain unaccepted.
+
 ### RESP-03 - Make launch, Home and results entry lightweight and consistent
 
-**Status:** open. **Dependencies:** RESP-01.
+**Status:** done - launch/Home/results-entry application behaviour implemented and focused offline controls verified on 2026-10-16; actual application loading time remains open under RESP-03-F01, and production-shaped response-budget acceptance remains RESP-12, not a claim made by the small controls. **Dependencies:** RESP-00; RESP-01 is supporting work, not a blanket gate.
 
 Show the shell without a synchronous whole-library refresh, load authoritative compact run headers asynchronously, and refresh Home without needlessly reopening run payloads or losing the selected-run context.
 Use the existing Dashboard results landing as the proposed common destination for both a newly finished audit and a saved library run, retaining the current presentation unless a specifically approved loading/behaviour mockup changes it.
 Complete against launch/first-paint, large-library/Home-return, new/existing-run entry and selection-preservation journeys, including slow/unavailable storage and cancellation.
 
+**Finding RESP-03-F01 - MEDIUM, open:** on 2026-10-16 the owner reported roughly 12 seconds from launching the application until the UI appeared in the small lab with one run in the library; executable/build provenance was not supplied, so this is an owner-observed delay rather than a controlled current-build baseline.
+Revisit the actual launch-to-first-visible-window wait, including executable/runtime startup and work before the first window, identifying the build and where the time is spent without assuming library enumeration is the cause or treating measurement-host timings as the same endpoint.
+The owner wants the remaining responsiveness work to continue while this startup follow-up stays open; completed functional changes do not accept loading performance, and this entry alone does not authorize a new measurement campaign/tool or application behaviour change.
+
 ### RESP-04 - Finish lightweight serving for every ordinary view
 
-**Status:** open. **Dependencies:** RESP-01.
+**Status:** done - ordinary LAPS/Delegations serving implemented and offline behaviour-verified alongside the existing ordinary views; first verification of the shared original-descriptor product is still a whole-file unit, and enterprise performance and the separate RESP-07-F01 return-selection defect remain unaccepted. **Dependencies:** RESP-00; RESP-01 is supporting work, not a blanket gate.
 
 Reuse the implemented Dashboard/Rules/Objects/Findings/Groups/Tier 0 foundations and remove remaining ordinary-view dependencies on unrelated bulk, beginning with LAPS inventory in the classification-heavy Facts product and the direct/group-held Delegations query path.
 Produce required metadata/indexes in their proper capture/derivation/judging stage with exact scope/count/qualification/source binding, preserving capture-only reads, original proof separately, missing-judgement refusals and no compatibility fallback.
 Complete with every ordinary tab, filter/page/revisit/reopen and supporting action exercised against the integrated services while unrelated bulk is inaccessible, followed by complete-view measurements rather than only reader timings.
+
+**Application implementation checkpoint, 2026-10-16:** [verified current state](C:/Users/jistrand/.copilot/session-state/5c372f1d-ec4a-499b-b140-baea9ce24eb1/files/responsive-application/current-state.json) - Home precedes library enumeration; compact published headers, background refresh, selection/stale-error protection and every affected action/return/adoption caller are wired; new and saved completed runs share Dashboard; continuous analysis/completion/viewer protection, ordinary LAPS in the main serving file and captured Delegations/derived Membership products preserve the saved meanings without changing screen wording/layout.
+The final correct-source Release rebuild has 0 errors/884 warnings, with 701 combined checks plus four separately run unchanged UI controls passing, 34 qualified rebuilt defects/73 failing and 102 restored unit observations, all 43 new cases detecting a defect, eight refused/eight restored real-application cases and eight final fresh-process application controls covering 20 window journeys at 900/1300 widths.
+Current native formats are capture root 4, Navigation 3, overview 1, captured Delegations 1, Evidence 17, Derivation/Membership 17 and Judgement 76 with 32 rules; older formats are refused rather than migrated or rewritten, and the 343-object/seven-descriptor-position control, capture bootstrap gap, first shared-descriptor verification, remaining synchronous annotation/baseline metadata writes, unperformed physical-display checks and enterprise response budgets are not accepted by these results.
 
 ### RESP-05 - Implement one requested-detail read and integrity boundary
 
@@ -220,6 +243,10 @@ Complete first/later/last/empty-page and changed-filter/scope journeys with actu
 Wire the bounded backend through every caller and render only requested branches/visible rows, retaining correct object-window, return/revisit/selection state and cancellation of superseded reads.
 Where the current card genuinely requests an entire large collection/value, recommend one grouped paging/streaming/loading presentation and obtain its visual approval rather than truncating data, freezing the UI or calling an eagerly reconstructed object paged.
 Complete the whole operator journey at the two existing test widths with actual drawing/visibility endpoints and ordinary laptop/external-display checks, keeping unperformed physical checks outstanding rather than creating another monitor project.
+
+**Finding RESP-07-F01 - MEDIUM, open:** the offline real-view control at 900/1300 widths can return from a selected group's original membership with another group highlighted, despite unchanged saved page contents and generation binding.
+The Groups refresh clears the bound collection before its loader captures the selected identity, allowing WPF selection changes to lose the intended row; the existing first-row-only return control did not expose it.
+Retain the failed control observations and treat this return journey as unaccepted until the approved UI-lifecycle batch repairs it, without stopping RESP-01's remaining measurements or changing application behaviour under measurement-only approval.
 
 ### RESP-08 - Reduce the dominant judgement/requester/path workload
 
@@ -260,6 +287,14 @@ Complete with concurrent-interaction observations, worker failure/recovery contr
 Run the fixed approved complete-UI and audit-stage protocol against current source/binaries and approved lab/synthetic inputs informed by the nine-domain production shape, preserving outliers and separating behavioural correctness from response-budget success.
 Include all journey-matrix cells, new-run/cold/warm/reopen modes, exact answers/counts/qualifications, adverse inputs, ordinary displays and resource contention, while repairing or explicitly retaining the three pre-existing null-default signatures as code-quality debt without weakening the gate.
 Complete only with the RESP-01 budgets met or precise named failures still open in this queue, a final correct-source Release rebuild after every rebuilt isolated defect/restored control, and compact provenance rather than a green label from a small fixture or a subset of screens.
+
+**Finding RESP-12-F01 - HIGH, fixed:** a new ordinary-Delegations comparison let both readers repeat the same incorrect original ACE ordinals, so its first rebuilt ordinal defect survived all eight cases.
+The checks now also assert fixture-defined original ordinal sequences, raw access masks, inheritance flags, callback bytes and unknown/qualified capture states independently of the shared reader.
+The surviving attempt is retained unchanged, and the rebuilt repaired ordinal/mask defects fail eight/four cases respectively before their rebuilt correct-source controls pass all eight.
+
+**Finding RESP-12-F02 - MEDIUM, open:** the final combined regression run hit the unchanged 30-second drawing-control watchdog at width 900, and its cause has not been established.
+The same four unchanged UI controls passed separately and the other 701 affected checks passed together; the earlier 704-pass/one-timeout result is retained rather than relabelled or its watchdog raised.
+This does not establish a product contention defect, a numerical response budget or enterprise acceptance, and the ordinary-view controls still explicitly retain RESP-07-F01 at both widths.
 
 ### RESP-13 - Deliver one coherent result and honest rollout boundary
 
@@ -315,8 +350,22 @@ Measures must distinguish file checking, query execution, content reconstruction
    Lab/synthetic inputs and permitted production logs/summaries inform the work; production data
    stays in its environment and any later owner-side validation has its own authorisation.
 
-**Next action:** continue the existing RESP-01 approval by completing the whole-journey
-UI/endpoint/overhead adapters and current-format control/tail/library/refusal corpus, then prove
-ENT75 input eligibility before the fixed enterprise-shaped campaign and numerical response budgets.
-The producer/readback foundation is not a substitute for those endpoints; application/format/UI
-implementation and the interrupted checksum-adapter proposal remain unapproved.
+**Approved batch, 2026-10-16:** background launch/Home library refresh with selected-run retention,
+stale-result/error protection and the existing unread state; new and saved completed results both
+land on the existing Dashboard; safe run-protection handoffs and lightweight ordinary LAPS/Delegations
+serving, including required native serving table/index/version changes, with all evidence/answers/counts/
+qualifications/bindings preserved and current wording/layout unchanged
+
+**Next action:** the approved RESP-02/03/04 application correction is implemented and focused
+offline behaviour-verified; the next unfinished implementation is RESP-05's requested-detail
+boundary, whose concrete native/public-contract scope still requires its stated confirmation.
+Continue the programme's supporting RESP-01/12 evidence and budget work without restarting
+launch/Home, ordinary LAPS/Delegations or general measurement preparation as an implementation gate.
+Retain the RESP-03-F01 startup-delay follow-up, coarse first original-descriptor verification,
+RESP-07-F01, the known null-default gate and unperformed physical-display checks as explicit
+limitations; no custom checksum adapter, unapproved detail contract, live work, deployment,
+commit or push is implied.
+
+**Historical approval handoff:** [approved application implementation](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/approved-implementation-handoff/next-session-handoff.md) - authority and arrival-state preservation record; the implementation checkpoint above supersedes its unimplemented next-action state
+
+**Historical arrival handoff for this correction:** [capture-to-analysis handoff](C:/Users/jistrand/.copilot/session-state/5c372f1d-ec4a-499b-b140-baea9ce24eb1/files/capture-analysis-handoff/next-session-handoff.md) and [copy-ready prompt](C:/Users/jistrand/.copilot/session-state/5c372f1d-ec4a-499b-b140-baea9ce24eb1/files/capture-analysis-handoff/next-session-prompt.txt) - retained authority/preservation history; the verified capture-to-analysis checkpoint above supersedes its unfinished next-action state

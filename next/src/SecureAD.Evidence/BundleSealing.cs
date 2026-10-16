@@ -186,14 +186,16 @@ public static class BundleSealing
     /// </summary>
     /// <param name="evidenceFilePath">The evidence file being sealed.</param>
     /// <param name="sealFilePath">Where the seal is written.</param>
-    public static void Seal(string evidenceFilePath, string sealFilePath) =>
+    /// <returns>The computed seal, not a verdict that may survive unprotected file changes.</returns>
+    public static BundleSealContents Seal(string evidenceFilePath, string sealFilePath) =>
         Seal(evidenceFilePath, sealFilePath, CancellationToken.None);
 
     /// <summary>Prepares a seal without publishing the evidence file.</summary>
     /// <param name="evidenceFilePath">The evidence file being sealed.</param>
     /// <param name="sealFilePath">Where the seal is written.</param>
     /// <param name="cancellationToken">Cancellation during hashing and before writing the seal.</param>
-    public static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken) =>
+    /// <returns>The computed seal for checking a continuously protected publication handoff.</returns>
+    public static BundleSealContents Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken) =>
         Seal(evidenceFilePath, sealFilePath, cancellationToken, null);
 
     /// <summary>Seals normally and records aggregate file-operation timings without directory-object data.</summary>
@@ -203,7 +205,8 @@ public static class BundleSealing
     /// <param name="log">The run log receiving one aggregate record, including interrupted attempts.</param>
     /// <param name="kind">The analysis store, or null for captured evidence.</param>
     /// <param name="generation">The analysis generation, or null for captured evidence.</param>
-    public static void SealWithDiagnostics(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken,
+    /// <returns>The computed seal; diagnostics do not change its contents or lifetime.</returns>
+    public static BundleSealContents SealWithDiagnostics(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken,
         IRunLog log, AnalysisStoreKind? kind, Guid? generation)
     {
         ArgumentNullException.ThrowIfNull(log);
@@ -213,8 +216,9 @@ public static class BundleSealing
         var outcome = "Failed";
         try
         {
-            Seal(evidenceFilePath, sealFilePath, cancellationToken, work);
+            var contents = Seal(evidenceFilePath, sealFilePath, cancellationToken, work);
             outcome = "Completed";
+            return contents;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -226,12 +230,13 @@ public static class BundleSealing
             var name = Path.GetFileName(evidenceFilePath);
             var artifact = kind is not null ? null
                 : name.StartsWith("navigation.", StringComparison.Ordinal) ? "Navigation"
-                : name.StartsWith("overview.", StringComparison.Ordinal) ? "Overview" : null;
+                : name.StartsWith("overview.", StringComparison.Ordinal) ? "Overview"
+                : name.StartsWith("delegations.", StringComparison.Ordinal) ? "Delegations" : null;
             work.Report(log, kind, generation, outcome, artifact);
         }
     }
 
-    internal static void Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken, FileSealWork? work)
+    internal static BundleSealContents Seal(string evidenceFilePath, string sealFilePath, CancellationToken cancellationToken, FileSealWork? work)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(evidenceFilePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(sealFilePath);
@@ -246,6 +251,7 @@ public static class BundleSealing
             work?.Begin(FileSealPart.WriteSeal);
             File.WriteAllText(sealFilePath, json);
             work?.End();
+            return contents;
         }
         catch
         {

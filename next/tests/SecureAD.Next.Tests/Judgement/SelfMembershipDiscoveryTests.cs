@@ -52,17 +52,18 @@ public sealed class SelfMembershipDiscoveryTests
         {
             Derive(directory);
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--judge", directory])!, CancellationToken.None,
-                TestBudget, _ => throw new InvalidOperationException("Offline judging must not capture.")));
+                TestBudget, (_, _) => throw new InvalidOperationException("Offline judging must not capture.")));
         }
         else
         {
             var called = false;
             Assert.Equal(0, await Program.RunAsync(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!])!,
-                CancellationToken.None, TestBudget, token =>
+                CancellationToken.None, TestBudget, (protect, token) =>
                 {
                     token.ThrowIfCancellationRequested();
                     called = true;
                     Assert.False(File.Exists(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Derivation)));
+                    protect(directory);
                     return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
                 }));
             Assert.True(called);

@@ -15,13 +15,13 @@ internal static class LapsInventoryStorage
         ?? throw new MissingManifestResourceException(key);
 
     internal static void CreateTables(SqliteConnection connection) => Execute(connection, $"""
-        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.laps_inventory_product (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.laps_inventory_product (
             singleton INTEGER NOT NULL PRIMARY KEY CHECK (singleton = 1),
             generation_id TEXT NOT NULL,
             state TEXT NOT NULL CHECK (state IN ('Writing', 'Complete')),
             computer_count INTEGER NULL CHECK (computer_count >= 0)
         );
-        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.laps_inventory (
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.laps_inventory (
             distinguished_name TEXT COLLATE NOCASE NOT NULL PRIMARY KEY,
             name TEXT COLLATE NOCASE NOT NULL,
             parent_dn TEXT COLLATE NOCASE NULL,
@@ -33,9 +33,10 @@ internal static class LapsInventoryStorage
         """);
 
     internal static void CreateIndexes(SqliteConnection connection) => Execute(connection, $"""
-        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_parent ON laps_inventory(parent_dn, name, distinguished_name);
-        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_subtree ON laps_inventory(dn_reversed, management);
-        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.ix_laps_inventory_name ON laps_inventory(name, distinguished_name);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_parent ON laps_inventory(parent_dn, name, distinguished_name);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_subtree ON laps_inventory(dn_reversed, management);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_name ON laps_inventory(name, distinguished_name);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_domain ON laps_inventory(domain_fqdn COLLATE NOCASE, management, name, distinguished_name);
         """);
 
     internal static void Start(SqliteConnection connection, Guid generation)

@@ -43,7 +43,7 @@ public sealed class RunLibraryViewModelTests
     {
         var screen = Screen();
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.False(screen.IsEmpty);
     }
@@ -53,7 +53,7 @@ public sealed class RunLibraryViewModelTests
     {
         var screen = Screen();
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.False(string.IsNullOrWhiteSpace(screen.Problem));
     }
@@ -63,7 +63,7 @@ public sealed class RunLibraryViewModelTests
     {
         var screen = Screen();
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Null(_catalog.AskedFor);
     }
@@ -81,10 +81,10 @@ public sealed class RunLibraryViewModelTests
         _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Equal(@"D:\audits\b", screen.Selected?.Path);
     }
@@ -100,11 +100,11 @@ public sealed class RunLibraryViewModelTests
         _catalog.Runs.Add(Listed("b-20260102-000000", @"D:\audits\b"));
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs.Single(run => run.Path == @"D:\audits\b");
 
         _catalog.Runs.RemoveAll(run => run.Path == @"D:\audits\b");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Null(screen.Selected);
     }
@@ -114,7 +114,7 @@ public sealed class RunLibraryViewModelTests
     {
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.True(screen.IsEmpty);
     }
@@ -125,7 +125,7 @@ public sealed class RunLibraryViewModelTests
         _catalog.Fails = Failures.Any("The drive is not there.");
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.False(screen.IsEmpty);
     }
@@ -136,7 +136,7 @@ public sealed class RunLibraryViewModelTests
         _catalog.Fails = Failures.Any("The drive is not there.");
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Equal("The drive is not there.", screen.Problem);
     }
@@ -147,7 +147,7 @@ public sealed class RunLibraryViewModelTests
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Equal("a-20260101-000000", Assert.Single(screen.Runs).Identifier);
     }
@@ -157,7 +157,7 @@ public sealed class RunLibraryViewModelTests
     {
         var screen = Screen(@"D:\audits");
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Equal(@"D:\audits", _catalog.AskedFor);
     }
@@ -171,10 +171,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         _catalog.Fails = Failures.Any("The drive is not there.");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Empty(screen.Runs);
     }
@@ -184,10 +184,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Fails = Failures.Any("The drive is not there.");
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         _catalog.Fails = null;
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Null(screen.Problem);
     }
@@ -207,10 +207,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Contains(screen.Selected, screen.Runs);
     }
@@ -228,7 +228,7 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         screen.Selected = screen.Runs[0];
 
@@ -241,10 +241,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
-        screen.OpenRun();
+        OneThread.Run(screen.OpenRunAsync);
 
         Assert.Equal(@"D:\audits\a", _opener.Opened);
     }
@@ -258,10 +258,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Failed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
-        screen.OpenRun();
+        OneThread.Run(screen.OpenRunAsync);
 
         Assert.Null(_opener.Opened);
         Assert.NotNull(screen.Problem);
@@ -285,10 +285,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Scoped("a-20260101-000000", @"D:\audits\a", "scope-one"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
-        screen.MarkAsBaseline();
+        OneThread.Run(screen.MarkAsBaselineAsync);
 
         Assert.True(_catalog.Annotated!.Value.Annotation.IsBaseline);
         Assert.Equal(@"D:\audits\a", _catalog.Annotated!.Value.BundleDirectory);
@@ -303,10 +303,10 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
-        screen.MarkAsBaseline();
+        OneThread.Run(screen.MarkAsBaselineAsync);
 
         Assert.Null(_catalog.Annotated);
         Assert.NotNull(screen.Problem);
@@ -327,11 +327,11 @@ public sealed class RunLibraryViewModelTests
         _catalog.Runs.Add(
             Scoped("a-20260101-000000", @"D:\audits\a", "scope-one", isBaseline: true));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
         screen.TypedName = "Quarterly review";
-        screen.SaveAnnotation();
+        OneThread.Run(screen.SaveAnnotationAsync);
 
         Assert.True(_catalog.Annotated!.Value.Annotation.IsBaseline);
     }
@@ -375,11 +375,11 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
         screen.TypedName = "Quarterly review";
-        screen.SaveAnnotation();
+        OneThread.Run(screen.SaveAnnotationAsync);
 
         Assert.Equal(@"D:\audits\a", _catalog.Annotated!.Value.BundleDirectory);
         Assert.Equal("Quarterly review", _catalog.Annotated!.Value.Annotation.Name);
@@ -394,12 +394,12 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
         _catalog.AnnotationFails = Failures.Any("The disk is read-only.");
         screen.TypedName = "Quarterly review";
-        screen.SaveAnnotation();
+        OneThread.Run(screen.SaveAnnotationAsync);
 
         Assert.Equal("The disk is read-only.", screen.Problem);
     }
@@ -413,12 +413,12 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
         var name = screen.Selected.Name;
 
         _confirmation.Answer = true;
-        screen.DeleteRun();
+        OneThread.Run(screen.DeleteRunAsync);
 
         Assert.Equal(1, _confirmation.TimesAsked);
         Assert.Contains(name, _confirmation.Asked!.Value.Question, StringComparison.Ordinal);
@@ -433,11 +433,11 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
         _confirmation.Answer = false;
-        screen.DeleteRun();
+        OneThread.Run(screen.DeleteRunAsync);
 
         Assert.Null(_catalog.Deleted);
         Assert.NotEmpty(screen.Runs);
@@ -449,12 +449,12 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
         var path = screen.Selected.Path;
 
         _confirmation.Answer = true;
-        screen.DeleteRun();
+        OneThread.Run(screen.DeleteRunAsync);
 
         Assert.Equal(path, _catalog.Deleted);
         Assert.DoesNotContain(screen.Runs, run => run.Path == path);
@@ -473,13 +473,13 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
         var path = screen.Selected.Path;
 
         _catalog.DeletionFails = Failures.Any("Something still has the run open.");
         _confirmation.Answer = true;
-        screen.DeleteRun();
+        OneThread.Run(screen.DeleteRunAsync);
 
         Assert.Equal("Something still has the run open.", screen.Problem);
         Assert.Contains(screen.Runs, run => run.Path == path);
@@ -493,9 +493,9 @@ public sealed class RunLibraryViewModelTests
     public void WithNothingSelectedNothingIsDeletedAndNothingIsAsked()
     {
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
-        screen.DeleteRun();
+        OneThread.Run(screen.DeleteRunAsync);
 
         Assert.Equal(0, _confirmation.TimesAsked);
         Assert.Null(_catalog.Deleted);
@@ -510,7 +510,7 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Equal(
             "Scope not established - these runs could not be opened",
@@ -526,7 +526,7 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         var grouping = Assert.Single(screen.RunsView.GroupDescriptions);
         Assert.Equal(
@@ -541,10 +541,10 @@ public sealed class RunLibraryViewModelTests
     public void WithNothingSelectedNothingIsSaved()
     {
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         screen.TypedName = "Quarterly review";
-        screen.SaveAnnotation();
+        OneThread.Run(screen.SaveAnnotationAsync);
 
         Assert.Null(_catalog.Annotated);
     }
@@ -562,13 +562,13 @@ public sealed class RunLibraryViewModelTests
     public void ARunWrittenSinceTheLastReadCanBeAdopted()
     {
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         Assert.Empty(screen.Runs);
 
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
 
-        screen.Adopt(@"D:\audits\a");
+        OneThread.Run(async () => await screen.AdoptAsync(@"D:\audits\a"));
 
         Assert.Equal(@"D:\audits\a", screen.Selected?.Path);
         Assert.Null(screen.Problem);
@@ -587,9 +587,9 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(Listed("a-20260101-000000", @"D:\audits\a"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
-        screen.Adopt(@"E:\elsewhere\b");
+        OneThread.Run(async () => await screen.AdoptAsync(@"E:\elsewhere\b"));
 
         Assert.Null(screen.Selected);
         Assert.NotNull(screen.Problem);
@@ -634,7 +634,7 @@ public sealed class RunLibraryViewModelTests
     {
         _catalog.Runs.Add(run);
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
         return screen;
     }
@@ -707,7 +707,7 @@ public sealed class RunLibraryViewModelTests
     public void WithNothingSelectedNothingIsDerived() => OneThread.Run(async () =>
     {
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
 
         await screen.DeriveFactsAsync();
 
@@ -768,7 +768,7 @@ public sealed class RunLibraryViewModelTests
             _catalog.Runs.Add(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
             _catalog.Runs.Add(CaptureOnly("b-20260202-000000", @"D:\audits\b"));
             var screen = Screen(@"D:\audits");
-            screen.Refresh();
+            OneThread.Run(screen.RefreshAsync);
             screen.Selected = screen.Runs[0];
 
             _deriving.WhileRunning = () => screen.Selected = screen.Runs[1];
@@ -790,7 +790,7 @@ public sealed class RunLibraryViewModelTests
         _catalog.Runs.Add(CaptureOnly("a-20260101-000000", @"D:\audits\a"));
         _catalog.Runs.Add(CaptureOnly("b-20260202-000000", @"D:\audits\b"));
         var screen = Screen(@"D:\audits");
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         screen.Selected = screen.Runs[0];
 
         _deriving.WhileRunning = () => screen.Selected = screen.Runs[1];
@@ -927,7 +927,7 @@ public sealed class RunLibraryViewModelTests
         var original = AlreadyJudged("a-20260101-000000", @"D:\audits\a");
         var screen = Selecting(original);
         _catalog.Runs.Add(AlreadyJudged("b-20260101-000000", @"D:\audits\b"));
-        screen.Refresh();
+        OneThread.Run(screen.RefreshAsync);
         _confirmation.Answer = true;
         var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _opener.WhenClosing = () => closed.Task;

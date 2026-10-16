@@ -76,12 +76,16 @@ public sealed partial class OwnAccountMembershipPathTests
                 Derive(directory);
                 var offline = Assert.IsType<CommandLine>(CommandLine.Parse(["--judge", directory]));
                 Assert.Equal(0, await Program.RunAsync(offline, CancellationToken.None, discoveryBudget: null,
-                    capture: _ => throw new InvalidOperationException("Offline judging must not capture.")));
+                    capture: (_, _) => throw new InvalidOperationException("Offline judging must not capture.")));
                 break;
             case "cli-capture":
                 var capture = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
                 Assert.Equal(0, await Program.RunAsync(capture, CancellationToken.None, discoveryBudget: null,
-                    capture: _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)))));
+                    capture: (protect, _) =>
+                    {
+                        protect(directory);
+                        return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+                    }));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(host));
@@ -182,7 +186,7 @@ public sealed partial class OwnAccountMembershipPathTests
         var options = Assert.IsType<CommandLine>(CommandLine.Parse(["--judge", directory]));
 
         var exit = await Program.RunAsync(options, CancellationToken.None, null,
-            _ => throw new InvalidOperationException("Offline judging must not capture."), PathRequesterPolicy.SupportedCapturedQuestions);
+            (_, _) => throw new InvalidOperationException("Offline judging must not capture."), PathRequesterPolicy.SupportedCapturedQuestions);
 
         Assert.Equal(1, exit);
     }
@@ -195,7 +199,11 @@ public sealed partial class OwnAccountMembershipPathTests
         var options = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
 
         var exit = await Program.RunAsync(options, CancellationToken.None, null,
-            _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null))),
+            (protect, _) =>
+            {
+                protect(directory);
+                return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+            },
             PathRequesterPolicy.SupportedCapturedQuestions);
 
         Assert.Equal(1, exit);
@@ -443,12 +451,16 @@ public sealed partial class OwnAccountMembershipPathTests
                 Derive(directory);
                 var offline = Assert.IsType<CommandLine>(CommandLine.Parse(["--judge", directory]));
                 Assert.Equal(0, await Program.RunAsync(offline, CancellationToken.None, null,
-                    _ => throw new InvalidOperationException("Offline judging must not capture."), policy));
+                    (_, _) => throw new InvalidOperationException("Offline judging must not capture."), policy));
                 break;
             case "cli-capture":
                 var capture = Assert.IsType<CommandLine>(CommandLine.Parse(["--library", Path.GetDirectoryName(directory)!]));
                 Assert.Equal(0, await Program.RunAsync(capture, CancellationToken.None, null,
-                    _ => Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null))), policy));
+                    (protect, _) =>
+                    {
+                        protect(directory);
+                        return Task.FromResult(Result<CaptureRunResult>.Success(new(RunCompletion.Sealed, directory, null)));
+                    }, policy));
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(host));

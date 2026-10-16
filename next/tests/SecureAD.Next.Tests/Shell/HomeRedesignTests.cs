@@ -162,7 +162,7 @@ public sealed class HomeRedesignTests
     {
         var fixture = Model();
         fixture.Catalog.Fails = Failures.Any("Library disk is unavailable.");
-        fixture.Home.Library.Refresh();
+        OneThread.Run(fixture.Home.Library.RefreshAsync);
         var view = View(fixture.Home);
         DashboardRedesignTests.InWindow(view, 1200, 800, () =>
         {
@@ -172,7 +172,7 @@ public sealed class HomeRedesignTests
             Assert.Contains(Descendants<TextBox>(view), box => box.Text == "Library disk is unavailable." && box.IsVisible);
             fixture.Catalog.Fails = null;
             fixture.Catalog.Runs.Clear();
-            fixture.Home.Library.Refresh();
+            OneThread.Run(fixture.Home.Library.RefreshAsync);
             Layout(view, 1200, 800);
             Assert.False(fixture.Home.Library.HasProblem);
             Assert.True(fixture.Home.Library.IsEmpty);
@@ -240,7 +240,7 @@ public sealed class HomeRedesignTests
         var deriving = new FakeDerivationLauncher();
         var library = new RunLibraryViewModel(location, catalog, confirmation, opener, deriving, new FakeJudgingLauncher());
         var home = new HomeViewModel(location, picker, audit, library);
-        library.Refresh();
+        OneThread.Run(library.RefreshAsync);
         if (library.Runs.Count != 0) library.Selected = library.Runs[0];
         return new(home, catalog, confirmation, opener, picker, audit, deriving);
     }

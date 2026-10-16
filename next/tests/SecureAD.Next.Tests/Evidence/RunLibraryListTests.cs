@@ -359,8 +359,10 @@ public sealed class RunLibraryListTests : IDisposable
         File.WriteAllText(BundleLayout.PartialPath(directory), "not really a database");
         File.WriteAllText(BundleLayout.NavigationPartialPath(directory), "not really navigation");
         File.WriteAllText(BundleLayout.OverviewPartialPath(directory), "not really an overview");
+        File.WriteAllText(BundleLayout.DelegationsPartialPath(directory), "not really captured permissions");
+        using var files = new ProtectedRunFiles(directory);
         AnalysisStoreLifecycle.PublishCapture(directory, BundleLayout.PartialPath(directory), Guid.NewGuid(), 0,
-            CancellationToken.None, BundleSealing.Seal, () => { });
+            new("synthetic", []), CancellationToken.None, BundleSealing.Seal, () => { }, files);
 
         return directory;
     }

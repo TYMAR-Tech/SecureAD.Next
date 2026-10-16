@@ -22,7 +22,7 @@ public sealed class NavigationSegmentTests
         var directory = Capture();
         var root = Selected(directory);
         Assert.Equal(root.Hash, root.ComputeHash());
-        Assert.Equal(new[] { StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview },
+        Assert.Equal(new[] { StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview, StoreSegmentRole.Delegations },
             root.Segments.Select(segment => segment.Role));
         Assert.Equal(8, root.CapturedObjects);
         foreach (var segment in root.Segments)
@@ -181,11 +181,12 @@ public sealed class NavigationSegmentTests
             ContinuationReconciliation.NotPerformed, SecureAD.Kernel.Capture.CaptureObjectScope.Default, stopping.Token,
             (data, seal, token) =>
             {
-                BundleSealing.Seal(data, seal, token);
-                if (!data.EndsWith("navigation.db.partial", StringComparison.Ordinal)) return;
+                var contents = BundleSealing.Seal(data, seal, token);
+                if (!data.EndsWith("navigation.db.partial", StringComparison.Ordinal)) return contents;
                 reachedNavigation = true;
                 if (cancel) stopping.Cancel();
                 else throw new IOException("Injected navigation sealing failure.");
+                return contents;
             }));
         Assert.True(reachedNavigation);
         if (cancel) Assert.IsType<OperationCanceledException>(error);
@@ -204,11 +205,13 @@ public sealed class NavigationSegmentTests
         File.WriteAllText(evidence, "sealed synthetic evidence");
         File.WriteAllText(BundleLayout.NavigationPartialPath(directory), "sealed synthetic navigation");
         File.WriteAllText(BundleLayout.OverviewPartialPath(directory), "sealed synthetic overview");
+        File.WriteAllText(BundleLayout.DelegationsPartialPath(directory), "sealed synthetic captured permissions");
         Directory.CreateDirectory(BundleLayout.EvidencePath(directory));
         var claimed = false;
+        using var files = new ProtectedRunFiles(directory);
 
         Assert.Throws<IOException>(() => AnalysisStoreLifecycle.PublishCapture(directory, evidence, generation, 0,
-            CancellationToken.None, BundleSealing.Seal, () => claimed = true));
+            new("synthetic", []), CancellationToken.None, BundleSealing.Seal, () => claimed = true, files));
 
         Assert.True(claimed);
         Assert.True(File.Exists(BundleLayout.NavigationPath(directory, generation)));
@@ -228,15 +231,18 @@ public sealed class NavigationSegmentTests
         File.WriteAllText(evidence, "sealed synthetic evidence");
         File.WriteAllText(navigation, "sealed synthetic navigation");
         File.WriteAllText(BundleLayout.OverviewPartialPath(directory), "sealed synthetic overview");
+        File.WriteAllText(BundleLayout.DelegationsPartialPath(directory), "sealed synthetic captured permissions");
         using var stopping = new CancellationTokenSource();
         var claimed = false;
+        using var files = new ProtectedRunFiles(directory);
 
         Assert.Throws<OperationCanceledException>(() => AnalysisStoreLifecycle.PublishCapture(directory, evidence,
-            generation, 0, stopping.Token, (data, seal, token) =>
+            generation, 0, new("synthetic", []), stopping.Token, (data, seal, token) =>
             {
-                BundleSealing.Seal(data, seal, token);
+                var contents = BundleSealing.Seal(data, seal, token);
                 if (data == navigation) stopping.Cancel();
-            }, () => claimed = true));
+                return contents;
+            }, () => claimed = true, files));
 
         Assert.False(claimed);
         Assert.True(File.Exists(evidence));

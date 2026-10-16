@@ -48,13 +48,17 @@ internal sealed class FakeRunCatalog : IRunCatalog
 
     public string? AskedFor { get; private set; }
 
-    public Result<IReadOnlyList<RunListing>> List(string libraryRoot)
+    public Func<string, CancellationToken, Result<IReadOnlyList<RunListing>>>? WhenListing { get; set; }
+
+    public Result<IReadOnlyList<RunListing>> List(string libraryRoot, CancellationToken cancellationToken)
     {
         AskedFor = libraryRoot;
+        if (WhenListing is { } listing) return listing(libraryRoot, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         return Fails is { } error
             ? Result<IReadOnlyList<RunListing>>.Failure(error)
-            : Result<IReadOnlyList<RunListing>>.Success(Runs);
+            : Result<IReadOnlyList<RunListing>>.Success(Runs.ToArray());
     }
 
     /// <summary>What was last saved, and against which run.</summary>
@@ -131,10 +135,11 @@ internal sealed class FakeRunOpener : IRunOpener
     /// </remarks>
     public Action? WhenOpening { get; set; }
 
-    public void Open(string bundleDirectory)
+    public Task OpenAsync(string bundleDirectory)
     {
         WhenOpening?.Invoke();
         Opened = bundleDirectory;
+        return Task.CompletedTask;
     }
 }
 
@@ -765,6 +770,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
 
     public bool? AskedToIncludeEnatelSso { get; private set; }
     public bool? AskedToScanGppPasswords { get; private set; }
+    public Action? WhenCapturing { get; set; }
 
     public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -790,6 +796,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
         if (Throws is { } defect)
             throw defect;
 
+        WhenCapturing?.Invoke();
         return Task.FromResult(Fails is { } error
             ? Result<CaptureOutcome>.Failure(error)
             : Result<CaptureOutcome>.Success(Outcome));
