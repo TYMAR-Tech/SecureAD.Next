@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -25,6 +26,16 @@ internal static class BestSupportedRouteStorage
         command.Parameters.Add("$target", SqliteType.Text);
         command.Parameters.Add("$proof", SqliteType.Integer);
         command.Parameters.Add("$hash", SqliteType.Blob);
+        using var overview = connection.CreateCommand();
+        overview.Transaction = transaction;
+        overview.CommandText = """
+            UPDATE tier0_distance SET best_grade=$grade,overview_fingerprint=$hash
+            WHERE target=$target COLLATE NOCASE AND identity_json=$identity AND overview_fingerprint IS NULL
+            """;
+        overview.Parameters.Add("$grade", SqliteType.Text);
+        overview.Parameters.Add("$hash", SqliteType.Blob);
+        overview.Parameters.Add("$target", SqliteType.Text);
+        overview.Parameters.Add("$identity", SqliteType.Text);
         foreach (var selection in selections)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -34,6 +45,13 @@ internal static class BestSupportedRouteStorage
             command.Parameters["$proof"].Value = proof.Id;
             command.Parameters["$hash"].Value = proof.Fingerprint;
             if (command.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
+            var identity = JsonSerializer.Serialize(selection.Subject, ProofSerialization.Options);
+            var grade = selection.Best is null ? null : JsonSerializer.Serialize(selection.Best.Grade, ProofSerialization.Options);
+            overview.Parameters["$grade"].Value = (object?)grade ?? DBNull.Value;
+            overview.Parameters["$hash"].Value = Tier0DistanceStorage.OverviewFingerprint(selection.CalculationFingerprint, identity, grade);
+            overview.Parameters["$target"].Value = selection.Subject.DistinguishedName;
+            overview.Parameters["$identity"].Value = identity;
+            if (overview.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
         }
     }
 
@@ -189,18 +207,25 @@ internal static class BestSupportedRouteStorage
             || (value.Best is null) != (value.CompleteCandidates == value.UngradedCandidates)) throw Tier0PathStorage.InvalidProof();
         if (value.Best is not { } best) return;
         var grade = best.Grade;
+        if (grade is null) throw Tier0PathStorage.InvalidProof();
+        ValidateGrade(best.Subject, grade);
         if (best.Subject != value.Subject || best.ReachedTarget is not { IsValid: true } || !Enum.IsDefined(best.Source)
-            || grade is null || grade.Evidence != RouteEvidenceClass.Definite || !Enum.IsDefined(grade.Feasibility)
-            || !Enum.IsDefined(grade.Confidence) || grade.Length < 0 || grade.StableSignature is not { Length: 64 }
-            || grade.UnmetConditions is null || grade.UnmetConditions.Any(condition => condition is null
-                || condition.Requester != best.Subject || condition.Group is not { IsValid: true })
-            || grade.UnmetConditions.Select(SupportedRouteGrade.ConditionKey).Distinct(StringComparer.Ordinal).Count() != grade.UnmetConditions.Count
-            || (grade.Feasibility == RouteFeasibility.Direct) != (grade.UnmetConditions.Count == 0)
             || (best.Source == RouteSourceKind.FixedTarget) != (grade.Length == 0)
             || (best.Source is RouteSourceKind.Requester or RouteSourceKind.OwnAccount or RouteSourceKind.MembershipDacl
                 ? best.ProofId is null or <= 0 || best.ProofFingerprint is not { Length: 64 } || best.Terminal is not null
                 : best.ProofId is not null)
             || (best.Source == RouteSourceKind.Terminal) != (best.Terminal is not null))
+            throw Tier0PathStorage.InvalidProof();
+    }
+
+    internal static void ValidateGrade(Tier0Target subject, SupportedRouteGrade grade)
+    {
+        if (grade.Evidence != RouteEvidenceClass.Definite || !Enum.IsDefined(grade.Feasibility)
+            || !Enum.IsDefined(grade.Confidence) || grade.Length < 0 || grade.StableSignature is not { Length: 64 }
+            || grade.UnmetConditions is null || grade.UnmetConditions.Any(condition => condition is null
+                || condition.Requester != subject || condition.Group is not { IsValid: true })
+            || grade.UnmetConditions.Select(SupportedRouteGrade.ConditionKey).Distinct(StringComparer.Ordinal).Count() != grade.UnmetConditions.Count
+            || (grade.Feasibility == RouteFeasibility.Direct) != (grade.UnmetConditions.Count == 0))
             throw Tier0PathStorage.InvalidProof();
     }
 }

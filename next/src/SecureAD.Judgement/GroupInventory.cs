@@ -40,9 +40,9 @@ internal static class GroupInventoryStorage
     {
         using var command = connection.CreateCommand();
         command.CommandText = $"""
-            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.group_inventory_product (id INTEGER PRIMARY KEY CHECK(id=1), generation TEXT NOT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.group_inventory_product (id INTEGER PRIMARY KEY CHECK(id=1), generation TEXT NOT NULL,
                 capture_complete INTEGER NOT NULL, completed INTEGER NOT NULL CHECK(completed IN (0,1)));
-            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.group_inventory (distinguished_name TEXT PRIMARY KEY COLLATE NOCASE, object_guid TEXT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.group_inventory (distinguished_name TEXT PRIMARY KEY COLLATE NOCASE, object_guid TEXT NULL,
                 name TEXT NOT NULL, account_name TEXT NULL, domain_fqdn TEXT NULL, group_type INTEGER NULL,
                 direct_members INTEGER NOT NULL CHECK(direct_members>=0), unreadable_references INTEGER NOT NULL CHECK(unreadable_references>=0),
                 description TEXT NULL, parent_dn TEXT NULL, dn_reversed TEXT NOT NULL,
@@ -50,8 +50,8 @@ internal static class GroupInventoryStorage
                 unresolved_members INTEGER NULL CHECK(unresolved_members>=0),
                 unreadable_members INTEGER NULL CHECK(unreadable_members>=0),
                 membership_limitations INTEGER NULL CHECK(membership_limitations BETWEEN 0 AND 63));
-            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_group_inventory_name ON group_inventory(name COLLATE NOCASE,distinguished_name);
-            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_group_inventory_direct ON group_inventory(direct_members,distinguished_name);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_group_inventory_name ON group_inventory(name COLLATE NOCASE,distinguished_name);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_group_inventory_direct ON group_inventory(direct_members,distinguished_name);
             """;
         command.ExecuteNonQuery();
     }

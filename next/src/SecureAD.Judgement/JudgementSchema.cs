@@ -138,7 +138,8 @@ public static class JudgementSchema
     // Format 72 places Findings, permission proofs, path proofs and inventory in separate immutable products.
     // Format 73 creates product-owned schemas directly and saves the final Findings display answers.
     // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
-    public const int Version = 74;
+    // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
+    public const int Version = 75;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [

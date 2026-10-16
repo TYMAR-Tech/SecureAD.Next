@@ -41,29 +41,30 @@ internal static class Tier0Browsing
             throw new ArgumentException("The Tier 0 page belongs to another saved calculation.", nameof(after));
         using var command = connection.CreateCommand();
         command.CommandText = scope == Tier0OverviewScope.Supported
-            ? """
-              SELECT target FROM tier0_distance
+            ? $"""
+              SELECT {Tier0DistanceStorage.OverviewColumns} FROM tier0_distance
               WHERE target>$after COLLATE NOCASE
                 AND (classification=$established OR supported_distance IS NOT NULL)
               ORDER BY target COLLATE NOCASE LIMIT 51
               """
-            : "SELECT target FROM tier0_distance WHERE target>$after COLLATE NOCASE ORDER BY target COLLATE NOCASE LIMIT 51";
+            : $"SELECT {Tier0DistanceStorage.OverviewColumns} FROM tier0_distance WHERE target>$after COLLATE NOCASE ORDER BY target COLLATE NOCASE LIMIT 51";
         command.Parameters.AddWithValue("$after", after?.AfterDn ?? "");
         if (scope == Tier0OverviewScope.Supported)
             command.Parameters.AddWithValue("$established", Tier0State.Established.ToString());
-        var names = new List<string>();
-        using (var read = command.ExecuteReader())
-            while (read.Read()) { token.ThrowIfCancellationRequested(); names.Add(read.GetString(0)); }
         var rows = new List<Tier0OverviewRow>();
-        foreach (var name in names.Take(50))
+        Tier0OverviewMark? next = null;
+        using var read = command.ExecuteReader();
+        while (read.Read())
         {
-            var distance = Tier0DistanceStorage.ReadObject(connection, description, name, token) ?? throw Tier0PathStorage.InvalidProof();
-            var best = BestSupportedRouteStorage.ReadSelection(connection, description, distance, token);
-            rows.Add(new(distance.Subject, distance.Facts, best.Best?.Grade));
+            token.ThrowIfCancellationRequested();
+            if (rows.Count == 50)
+            {
+                next = new(description.GenerationId, summary.CalculationFingerprint, scope, rows[^1].Subject.DistinguishedName);
+                break;
+            }
+            rows.Add(Tier0DistanceStorage.ReadOverviewRow(read, summary.CalculationFingerprint));
         }
-        return new(summary, rows, names.Count > 50
-            ? new(description.GenerationId, summary.CalculationFingerprint, scope, rows[^1].Subject.DistinguishedName)
-            : null);
+        return new(summary, rows, next);
     }
 
     internal static Tier0RouteDetails? ReadObject(SqliteConnection connection, JudgementDescription description,

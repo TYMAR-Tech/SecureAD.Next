@@ -6,6 +6,8 @@
 
 **A question the owner has already answered is a defect in this repository, not a lapse of memory.** When he answers one, write the answer into that file in the same turn. The rest of this document is about how to work; that file is about what is being built, and neither substitutes for the other.
 
+**Enterprise responsiveness uses one dedicated queue - owner-requested 2026-10-15.** Read [`docs/ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md`](../docs/ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md) before this programme's work and follow its RESP order, batch scope and completion checks. It supersedes older ARCH/PERF sequencing and historical acceptance gates as the programme's execution plan; the general punch list and old reviews must not become competing queues or reasons to restart an architecture review or single-click projects. Preserve correctness, frozen evidence, exact bindings and explicit authorization boundaries, but do not use an old architecture preference as a veto on a justified replacement.
+
 ## Who you are working with
 
 **The owner is an Active Directory/security administrator, not a software developer.** He knows what the SecureAD product must do and why it matters to the people who will use it. He is relying on you to build it.
@@ -23,7 +25,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 **This is a hobby project that must be accurate, not a professional codebase with a documentation department.** The owner's time is the scarce resource. On 2026-09-11, 260 tests that existed only to prove a document and the code said the same thing were deleted, because they protected a second copy of the truth rather than the product.
 
-- **Three documents are maintained and nothing else.** `docs/PUNCH-LIST.md` is the work queue. `docs/WHAT-THE-PRODUCT-IS.md` records decisions the owner has already made, so he is never asked twice. This file says how to work. Keep these three accurate.
+- **Maintain governing records, not parallel descriptions.** `docs/ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md` is the owner's single execution queue for the complete responsiveness programme, replacing the ARCH/PERF queue for that work; `docs/PUNCH-LIST.md` retains unrelated backlog and historical records. `docs/WHAT-THE-PRODUCT-IS.md` records owner direction, and this file says how to work. Keep programme status only in its dedicated queue rather than duplicating it across these files.
 - **A specification is not a description, and the difference decides whether it may be deleted.** A *description* says what the code does; the code says that better, so a document repeating it is a second copy of the truth and goes. A *specification* says what the code **must** do — including cases not built yet, alternatives that were rejected and why, and the outside sources a rule rests on. **None of that can be recovered from the code**, because code records the decision taken and never the ones refused. Specifications live in `docs/specs/` and are kept. **This rule exists because the 2026-09-11 cut deleted 7,216 lines of specification** — 100 acceptance criteria and the specification of every shipping security rule — **along with 24,000 lines of description, because they sat inside `docs/layers/`.** They were deleted for where they were, not for what they were; the commit weighed every test it touched and recorded the documents as folder counts. Restored 2026-09-12 as `P-187`. Before deleting a document, ask which of the two it is.
 - **Reasoning goes in code comments and in the commit message.** That is where it is actually read, it cannot drift from the code beside it, and nobody has to edit around it later. Do not write narrative into a document.
 - **docs/layers/, docs/reviews/, docs/corrections/ and docs/planned/ are gone.** They were unbound from the code on 2026-09-11 and deleted on 2026-09-12. Do not recreate them, and write their paths without backticks when history has to mention one.
@@ -41,7 +43,7 @@ Watch for drift: it is easy to slip into developer-to-developer shorthand severa
 
 ## When to stop and raise it
 
-**The default is to keep moving.** Something that is wrong but contained gets written down as a finding, with a severity and a status, in `docs/PUNCH-LIST.md` — and the work carries on. Stopping for every defect is as damaging as stopping for none: it turns a session into a list of interruptions and the owner into an approver of things he is not positioned to judge.
+**The default is to keep moving.** A contained responsiveness finding is recorded with severity/status against its RESP item in `docs/ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md`; unrelated findings go in `docs/PUNCH-LIST.md`, without duplicating the live programme queue. The work carries on rather than turning every defect into an interruption or the owner into an approver of engineering minutiae.
 
 **Five things stop the work.** In each case, say plainly what is wrong and propose the fix; do not hand over an open technical question.
 

@@ -38,11 +38,16 @@ public sealed class JudgementSegmentTests
             while (rows.Read()) Assert.True(tables.TryAdd(rows.GetString(0), segment.Role), rows.GetString(0));
         }
         Assert.Equal(StoreSegmentRole.Judgement, tables["finding"]);
+        Assert.Equal(StoreSegmentRole.Judgement, tables["group_inventory"]);
+        Assert.Equal(StoreSegmentRole.Judgement, tables["group_inventory_product"]);
+        Assert.Equal(StoreSegmentRole.Judgement, tables["tier0_distance"]);
+        Assert.Equal(StoreSegmentRole.Judgement, tables["tier0_distance_product"]);
         Assert.Equal(StoreSegmentRole.PermissionProof, tables["finding_attribute_write_entry"]);
         Assert.Equal(StoreSegmentRole.PermissionProof, tables["permission_entry"]);
         Assert.Equal(StoreSegmentRole.PermissionProof, tables["shared_proof_value"]);
         Assert.Equal(StoreSegmentRole.PathProof, tables["path_proof_chunk"]);
         Assert.Equal(StoreSegmentRole.PathProof, tables["path_shared_proof"]);
+        Assert.Equal(StoreSegmentRole.PathProof, tables["tier0_best_route"]);
         Assert.Equal(StoreSegmentRole.JudgementFacts, tables["permission_classification_entry"]);
     }
 

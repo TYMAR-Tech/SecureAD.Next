@@ -29,17 +29,23 @@ public sealed record Tier0RunSummary(int Version, Guid GenerationId, Guid? Deriv
 
 internal static class Tier0DistanceStorage
 {
+    internal const string OverviewColumns = """
+        target,identity_json,verdict,classification,supported_distance,minimum_established,requester_checked,
+        fingerprint,best_grade,overview_fingerprint
+        """;
+
     internal static void CreateTables(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = $"""
-            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_distance_product (id INTEGER PRIMARY KEY CHECK(id=1),
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.tier0_distance_product (id INTEGER PRIMARY KEY CHECK(id=1),
                 proof TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
-            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof)}.tier0_distance (target TEXT PRIMARY KEY COLLATE NOCASE,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.tier0_distance (target TEXT PRIMARY KEY COLLATE NOCASE,
                 verdict TEXT NOT NULL, classification TEXT NOT NULL, supported_distance INTEGER NULL,
                 minimum_established INTEGER NOT NULL CHECK(minimum_established IN (0,1)),
                 requester_checked INTEGER NOT NULL CHECK(requester_checked IN (0,1)),
-                fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
+                fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32), identity_json TEXT NOT NULL,
+                best_grade TEXT NULL, overview_fingerprint BLOB NULL CHECK(length(overview_fingerprint)=32));
             """;
         command.ExecuteNonQuery();
     }
@@ -63,8 +69,10 @@ internal static class Tier0DistanceStorage
         var checkedCount = 0;
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO tier0_distance VALUES ($target,$verdict,$classification,$distance,$minimum,$checked,$hash)";
-        foreach (var name in new[] { "$target", "$verdict", "$classification", "$distance", "$minimum", "$checked", "$hash" })
+        insert.CommandText = """
+            INSERT INTO tier0_distance VALUES ($target,$verdict,$classification,$distance,$minimum,$checked,$hash,$identity,NULL,NULL)
+            """;
+        foreach (var name in new[] { "$target", "$verdict", "$classification", "$distance", "$minimum", "$checked", "$hash", "$identity" })
             insert.Parameters.Add(new SqliteParameter(name, DBNull.Value));
         foreach (var row in recorded)
         {
@@ -94,6 +102,7 @@ internal static class Tier0DistanceStorage
             insert.Parameters["$minimum"].Value = facts.IsMinimumEstablished;
             insert.Parameters["$checked"].Value = facts.HasRequesterChecks;
             insert.Parameters["$hash"].Value = Fingerprint(calculationFingerprint, row.Identity.DistinguishedName, facts);
+            insert.Parameters["$identity"].Value = JsonSerializer.Serialize(row.Identity, ProofSerialization.Options);
             if (insert.ExecuteNonQuery() != 1) throw Tier0PathStorage.InvalidProof();
         }
         var summary = new Tier0RunSummary(1, description.GenerationId, description.DerivationGenerationId,
@@ -156,17 +165,44 @@ internal static class Tier0DistanceStorage
         if (!OwnershipAuditStorage.Hash(identityJson).AsSpan().SequenceEqual((byte[])read.GetValue(1)))
             throw Tier0PathStorage.InvalidProof();
         var subject = JsonSerializer.Deserialize<Tier0Target>(identityJson, ProofSerialization.Options) ?? throw Tier0PathStorage.InvalidProof();
-        if (subject.DistinguishedName != read.GetString(2) || read.GetInt32(6) is not (0 or 1) || read.GetInt32(7) is not (0 or 1))
-            throw Tier0PathStorage.InvalidProof();
-        var facts = new Tier0DistanceFacts(Enum.Parse<Tier0DistanceVerdict>(read.GetString(3)),
-            Enum.Parse<Tier0State>(read.GetString(4)), read.IsDBNull(5) ? null : read.GetInt32(5),
-            read.GetBoolean(6), read.GetBoolean(7));
-        Validate(facts);
+        if (subject.DistinguishedName != read.GetString(2)) throw Tier0PathStorage.InvalidProof();
+        var facts = ReadFacts(read, 3);
         if (!Fingerprint(summary.CalculationFingerprint, subject.DistinguishedName, facts).AsSpan().SequenceEqual((byte[])read.GetValue(8)))
             throw Tier0PathStorage.InvalidProof();
         cancellationToken.ThrowIfCancellationRequested();
         return new(description.GenerationId, description.DerivationGenerationId, description.EvidenceSeal,
             summary.CalculationFingerprint, subject, facts, summary.Coverage);
+    }
+
+    internal static Tier0OverviewRow ReadOverviewRow(SqliteDataReader row, string calculation)
+    {
+        var identity = row.GetString(1);
+        var subject = JsonSerializer.Deserialize<Tier0Target>(identity, ProofSerialization.Options) ?? throw Tier0PathStorage.InvalidProof();
+        if (!subject.IsValid || subject.DistinguishedName != row.GetString(0)) throw Tier0PathStorage.InvalidProof();
+        var facts = ReadFacts(row, 2);
+        if (!Fingerprint(calculation, subject.DistinguishedName, facts).AsSpan().SequenceEqual((byte[])row.GetValue(7)))
+            throw Tier0PathStorage.InvalidProof();
+        var gradeJson = row.IsDBNull(8) ? null : row.GetString(8);
+        var grade = gradeJson is null ? null
+            : JsonSerializer.Deserialize<SupportedRouteGrade>(gradeJson, ProofSerialization.Options) ?? throw Tier0PathStorage.InvalidProof();
+        if (grade is not null) BestSupportedRouteStorage.ValidateGrade(subject, grade);
+        if (row.IsDBNull(9) || !OverviewFingerprint(calculation, identity, gradeJson).AsSpan().SequenceEqual((byte[])row.GetValue(9)))
+            throw Tier0PathStorage.InvalidProof();
+        return new(subject, facts, grade);
+    }
+
+    internal static byte[] OverviewFingerprint(string calculation, string identity, string? grade) =>
+        OwnershipAuditStorage.Hash(calculation + "\0" + identity + "\0" + (grade ?? "null"));
+
+    private static Tier0DistanceFacts ReadFacts(SqliteDataReader row, int first)
+    {
+        if (row.GetInt32(first + 3) is not (0 or 1) || row.GetInt32(first + 4) is not (0 or 1))
+            throw Tier0PathStorage.InvalidProof();
+        var facts = new Tier0DistanceFacts(Enum.Parse<Tier0DistanceVerdict>(row.GetString(first)),
+            Enum.Parse<Tier0State>(row.GetString(first + 1)), row.IsDBNull(first + 2) ? null : row.GetInt32(first + 2),
+            row.GetBoolean(first + 3), row.GetBoolean(first + 4));
+        Validate(facts);
+        return facts;
     }
 
     internal static void RequirePublishable(SqliteConnection connection, JudgementDescription? description,
@@ -180,11 +216,12 @@ internal static class Tier0DistanceStorage
                    COALESCE(SUM(supported_distance IS NOT NULL AND classification='Unknown'),0),
                    COALESCE(SUM(verdict='Unresolved'),0),COALESCE(SUM(verdict='NotAssessed'),0),
                    COALESCE(SUM(requester_checked),0),(SELECT COUNT(*) FROM ownership_target),
-                   (SELECT COUNT(*) FROM tier0_distance_product),(SELECT COUNT(*) FROM tier0_path_calculation)
+                   (SELECT COUNT(*) FROM tier0_distance_product),(SELECT COUNT(*) FROM tier0_path_calculation),
+                   COALESCE(SUM(overview_fingerprint IS NULL),0)
             FROM tier0_distance
             """;
         using var read = command.ExecuteReader();
-        if (!read.Read()) throw Tier0PathStorage.InvalidProof();
+        if (!read.Read() || read.GetInt64(11) != 0) throw Tier0PathStorage.InvalidProof();
         if (summary is null)
         {
             if (read.GetInt64(0) != 0 || read.GetInt64(9) != 0 || read.GetInt64(10) != 0) throw Tier0PathStorage.InvalidProof();

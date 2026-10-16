@@ -282,7 +282,6 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
         return Tier0DistanceStorage.ReadSummary(_connection, Description, cancellationToken);
     }
 
@@ -318,8 +317,6 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
-        OpenPart(StoreSegmentRole.PermissionProof);
         return Tier0Browsing.ReadPage(_connection, Description, scope, after, cancellationToken);
     }
 
@@ -342,7 +339,6 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PermissionProof);
         return GroupInventoryStorage.Read(_connection, Description, query, after, cancellationToken);
     }
 

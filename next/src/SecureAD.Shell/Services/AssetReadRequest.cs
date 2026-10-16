@@ -58,8 +58,10 @@ internal sealed partial class AssetReadRequest(
                 .GetString("InvalidEvidence", System.Globalization.CultureInfo.CurrentUICulture)
                 ?? throw new System.Resources.MissingManifestResourceException("InvalidEvidence"));
 
-    private Result<T> ReadProduct<T>(string bundleDirectory, Func<JudgementReader, T> read, string code, string message) =>
-        Flatten(WithRun(bundleDirectory, run => run.ReadJudgement(reader =>
+    private Result<T> ReadProduct<T>(string bundleDirectory, Func<JudgementReader, T> read, string code, string message,
+        bool lightweight = false)
+    {
+        Result<T> Read(JudgementReader reader)
         {
             try { return Result<T>.Success(read(reader)); }
             catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException
@@ -68,14 +70,18 @@ internal sealed partial class AssetReadRequest(
                 return Result<T>.Failure(AuditError.Create(ErrorCategory.Shell, code, ErrorSeverity.Failed,
                     message + " " + error.Message, bundleDirectory));
             }
-        }, _readCancellation)));
+        }
+        return Flatten(WithRun(bundleDirectory, run => lightweight
+            ? run.ReadFindings(Read, _readCancellation)
+            : run.ReadJudgement(Read, _readCancellation)));
+    }
 
     /// <inheritdoc/>
     public Result<DirectoryTree> ReadTree(string bundleDirectory) =>
         WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ReadTree(), _readCancellation));
 
     public Result<GroupInventoryPage> ReadGroups(string bundleDirectory, GroupInventoryQuery query, GroupInventoryMark? after) =>
-        WithRun(bundleDirectory, run => run.ReadJudgement(reader => reader.ReadGroupInventory(query, after, _readCancellation), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupInventory(query, after, _readCancellation), _readCancellation));
 
     public Result<CapturedMemberReferences> ResolveMembershipReferences(string bundleDirectory, IReadOnlyList<string> names) =>
         WithRun(bundleDirectory, run => run.ReadNavigation(reader => reader.ResolveMembershipReferences(names, _readCancellation), _readCancellation));

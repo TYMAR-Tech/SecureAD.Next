@@ -95,6 +95,33 @@ when publication fails.
 
 ## Fix and feature priority
 
+**Dedicated enterprise-responsiveness programme - owner-requested 2026-10-15.**
+After the complete launch/capture/derivation/judgement/browsing walkthrough, the owner requested
+that it be captured completely in a new punch list that will be followed, without the existing
+punch list or other documentation obstructing the work.
+[ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md) is now the
+single scope, sequencing and completion record for this programme; the ARCH/PERF entries and old
+reviews below remain history/reference rather than competing priorities or automatic acceptance gates.
+The programme covers the entire operator journey, including every ordinary tab, selected proof,
+Home/startup, stage handoffs and measured audit costs, rather than a succession of single-click fixes.
+Engineering must reuse sound existing work, own the technical recommendation and follow the RESP
+batch order, with no need for the owner to restate the priority or design the internals.
+This request authorizes the dedicated execution plan and its governing-reference updates, not an
+unbounded implementation, a new measurement campaign, a chosen checksum adapter or new UI wording.
+Correctness, frozen evidence, exact counts/bindings, explicit gaps and previous-completed-root
+protection remain; live work, production exports/budgets, discovery, SYSVOL changes, compatibility,
+deployment, commit and push still need their separate authorization.
+
+**RESP-01 offline baseline scope approved 2026-10-15.**
+The owner confirmed the bounded instrumentation, current-format synthetic generation and fixed
+whole-journey measurement campaign in the scope packet linked from
+[RESP-01](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md#resp-01---establish-the-current-whole-journey-cost-map-and-response-budgets).
+This approves that offline baseline for the next execution session, not measured results,
+application/native-format/visual implementation or the interrupted checksum/block-reader proposal.
+The recommended first application batch remains the joined-up RESP-02/03/04 scope and still needs
+its concrete measured implementation confirmation; no live access, production transfer beyond
+permitted logs/summaries, discovery/budget or SYSVOL change, deployment, commit or push is authorised.
+
 **Fast saved-result UI takes priority over small judging-time increases - owner clarification,
 2026-10-15.**
 The owner's words: "i dont care if judgement is slightly longer at this point i do however need
@@ -176,7 +203,7 @@ rebuilt controls and the browsing-source delta are retained in this session's
 `files/browsing-completion`, without a repository/runtime dependency on that local location.
 
 This closes a shared navigation/object-read dependency, not the whole responsiveness programme.
-Groups inventory and the Tier 0 overview still reach coarse proof products; requested raw
+At that checkpoint, Groups inventory and the Tier 0 overview still reached coarse proof products; requested raw
 attributes/permissions and saved classification/path detail still have large first-verification
 units, and some requested multivalued cards still materialize their full values.
 Exact substring search and per-page full-scope counting can still scan Navigation data;
@@ -192,9 +219,63 @@ The owner requested committing the current work locally, then explaining the nex
 This authorizes preserving the validated publication-finalization correction, coherent
 navigation/object browsing changes and accumulated governing-document decisions together on
 `perf02/responsive-browsing`; it does not authorize a push or deployment.
-The checkpoint is not acceptance of the whole browsing programme: Groups/Tier-0 overview serving,
+The checkpoint was not acceptance of the whole browsing programme: Groups/Tier-0 overview serving,
 requested heavy detail boundaries, production-shaped responsiveness and physical-display
-verification remain outstanding within the same plan.
+verification remained outstanding within the same plan.
+
+**Combined Groups and Tier 0 serving boundary - owner-approved 2026-10-15.**
+The owner approved one combined continuation of the existing browsing plan: put saved group
+inventory/known totals and compact Tier 0 list/summary values in the existing independently sealed
+lightweight Findings product, retaining original cycle, permission and route proof separately for
+requested detail.
+Preserve the existing screens, filters, ordering, pages, exact totals and qualifications, including
+independent membership/permission/route counts, capture/resource/generation binding, explicit
+refusals, protected reader lifetimes and previous-completed-result protection.
+Reuse existing read contracts where possible and introduce the required native judgement format
+without migration or changing captured evidence; older judgements require offline judging again,
+not recapture.
+The accepted trade-off is additional compact display metadata and finishing work during judging,
+not duplication of full proofs or an unmeasured production-speed claim.
+Approval includes focused offline combined first-open/filter/page/object/return/reopen checks,
+heavy-file isolation, damaged/foreign-generation refusals, explicitly rebuilt isolated defects
+and restored controls, fresh TEMP/TMP before discovery and a final correct-source Release rebuild.
+Requested heavy detail and realistic-scale/physical-display acceptance remain within the same
+browsing job; no new timing campaign, UI wording/layout, rule change, production access/exports,
+discovery/budget change, SYSVOL, compatibility, ARCH-06, deployment, commit or push is authorized.
+
+The approved combined boundary is implemented and offline verified in native Judgement format 75.
+Group inventory/known totals and Tier 0 distance/summary tables move into the existing lightweight
+product rather than leaving duplicate tables in the proof products.
+Compact saved Tier 0 identities and best-route grades retain resource scope and calculation binding;
+an unfinished grade projection prevents publication, using the existing aggregate validation scan.
+Original cycle, permission and route proof stays separate and is verified only when requested.
+Existing public read shapes, counts, qualifications, filters, ordering, continuations and screen
+wording/layout remain unchanged, as do capture-root 3, Navigation 2, overview 1, Evidence 17 and
+Derivation 16; older judgements are explicitly refused, not migrated or resealed.
+
+The final explicit correct-live-source Release rebuild after every restored control has zero
+errors and 866 warnings, and 714 of 715 combined checks pass.
+The sole failed check is the pre-existing null-default architecture gate: its three offending
+signatures and scanner are unchanged from the clean starting inputs, recorded as open in the
+punch list rather than waived, fixed outside scope or described as repository-wide green.
+All 32 new cases and two adapted serving-schema cases detect explicitly rebuilt isolated defects
+across 19 variants, with 53 failing defect observations and 73 passing rebuilt restored observations.
+The real Groups/Tier 0 filter/page/object-Findings/return/reopen flow renders at 900/1300 widths
+with heavyweight files locked; requested original route details load separately and damaged
+original proof is refused without repairing or altering it during overview browsing.
+All 1,050 starting tracked build inputs remain present (1,037 identical, 13 extended), with one
+new test file, all 39 application XAML files unchanged and all 60 historical layout values retained.
+Compact results, source/binary fingerprints, rebuilt controls, failed setup/checkpoint attempts and
+the source delta are retained in this session's `files/groups-tier0-serving`, without a repository
+or runtime dependency on that local location.
+
+This closes both overview dependencies within the existing browsing plan, not complete acceptance.
+Requested raw attributes/permissions and saved classification/path details still have coarse
+first-verification units, some requested multivalued cards still materialize whole values, and
+exact searches/full-scope counts can still scan Navigation or serving data.
+Production-shaped complete-flow responsiveness and ordinary physical-display acceptance remain
+outstanding; no new timing campaign, speedup/production-readiness claim, UI/rule change, live work,
+deployment, commit or push occurred, and all historical timing failures remain unchanged.
 
 **Scout audit documentation - owner-requested 2026-10-13; implementation not approved.**
 The owner first requested revalidation of Scout's review and a plan, then asked for the work to be

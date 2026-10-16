@@ -31,7 +31,7 @@ internal static class JudgementStoreLayout
         new("permission_classification_object", StoreSegmentRole.JudgementFacts, "target", "control_object", StoreSegmentRole.PermissionProof, "target"),
         new("permission_classification_value", StoreSegmentRole.JudgementFacts, "entry_id", "permission_entry", StoreSegmentRole.PermissionProof, "id"),
         new("permission_classification_entry", StoreSegmentRole.JudgementFacts, "entry_id", "permission_entry", StoreSegmentRole.PermissionProof, "id"),
-        new("tier0_distance", StoreSegmentRole.PathProof, "target", "ownership_target", StoreSegmentRole.PermissionProof, "target"),
+        new("tier0_distance", StoreSegmentRole.Judgement, "target", "ownership_target", StoreSegmentRole.PermissionProof, "target"),
         new("tier0_path_calculation", StoreSegmentRole.Judgement, "proof", "path_proof", StoreSegmentRole.PathProof, "id"),
         new("tier0_path_node", StoreSegmentRole.PathProof, "target", "ownership_target", StoreSegmentRole.PermissionProof, "target"),
     ];

@@ -92,7 +92,7 @@ internal sealed partial class AssetReadRequest
         Tier0OverviewScope scope,
         Tier0OverviewMark? after) =>
         ReadProduct(bundleDirectory, reader => reader.ReadTier0Overview(scope, after, _readCancellation),
-            "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:");
+            "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:", lightweight: true);
 
     /// <inheritdoc/>
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName) =>

@@ -2,6 +2,12 @@
 
 Work still owed, with the next milestone separated from unscheduled findings.
 
+**Enterprise responsiveness has its own authoritative execution queue.**
+Use [ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md)
+for the complete launch/capture/derivation/judgement/results-browsing programme.
+The ARCH/PERF records below are retained history and reference, not a competing sequence or
+automatic performance gate; unrelated backlog stays here and programme findings/status go there.
+
 **Three sentences per entry.** Reasoning belongs in code comments and commit messages; specifications
 and accepted decisions are retained separately, not deleted because an implementation task is closed.
 
@@ -39,10 +45,10 @@ The owner places SYSVOL acquisition/capture assembly redesign and previous-gener
 No backward compatibility remains settled and was context the owner had not given Scout before its review, so legacy-reader work or another compatibility decision does not belong in the immediate scope.
 Keep complete Dashboard/Findings responsiveness and truthful scope filtering/paging as the objective, preserving existing integrity, generation binding, previous-completed-root protection and the approved gate without treating this clarification as approval for new implementation, measurements, UI/live work, deployment, commit or push.
 
-### Combined-review implementation queue
+### Historical combined-review implementation queue
 
-Each item is a bounded follow-up, not approval to implement the entire review; ARCH-02, ARCH-03 and the combined ARCH-04/05 core are offline verified below, with broader conditional work and overall acceptance still outstanding.
-The retained [Scout review](SecureAD-Architecture-Review-2026-10-14.md) is an assessment, while this queue and the recorded owner decisions govern priority.
+These records preserve the original bounded follow-ups and their observed outcomes; current programme sequencing and completion are governed only by the [dedicated responsiveness queue](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md).
+The retained [Scout review](SecureAD-Architecture-Review-2026-10-14.md) remains reference, not an alternative work queue.
 
 **ARCH-02 - small saved Dashboard overview - HIGH, implemented and focused offline verified 2026-10-14; overall responsiveness acceptance outstanding.**
 Capture now publishes a native independently sealed overview under root format 3, preserving authoritative per-domain/class counts, coverage/reasons, recorded exclusions, confidential-attribute caveats and GPO counts, while the complete Dashboard uses only that overview and the existing generation-bound membership summary with unchanged layout, wording, figures and missing-versus-zero behavior.
@@ -54,10 +60,10 @@ Judgement format 73 creates native product-owned schemas directly, saves lightwe
 All 4,106 affected storage/view-model/architecture checks pass, all 29 new cases detect 22 explicitly rebuilt isolated defects with 22 passing rebuilt restored controls, native saved rows of all 19 finding-evidence kinds render in the real Findings template with heavyweight files locked, and the final correct-live-source Release rebuild has zero errors and 860 warnings followed by 79 passing final checks; all historical hashes remain unchanged with a new format-73 checkpoint, and all 92 starting paths remain present with 73 byte-identical and 19 extended.
 PERF-02 remains unaccepted under its unchanged judging gate, production-sized responsiveness and physical-display acceptance remain outstanding, and the wider parallel rendered-host attempt was stopped after repeated WPF timeouts although the targeted Findings render/control checks pass; retain the compact verification records and frozen evidence, with no new measurement campaign, Tier 0 visual redesign, compatibility, live access, production budgets/exports, SYSVOL work, deployment, commit or push.
 
-**ARCH-04 - complete-scope predictable browsing - HIGH, LAPS and shared navigation/object core implemented/offline verified; whole serving acceptance open.**
-Alongside complete-scope LAPS, ordinary search/object identity/displayed membership-name resolution now use native Navigation format 2, directory pages use stable ordered continuation, tree presentation creates only requested branches, and selected attribute families and original membership-value pages replace eager whole-object/member-list reconstruction, without new layout/wording, raw Evidence schema or rule changes.
+**ARCH-04 - complete-scope predictable browsing - HIGH, LAPS/navigation/object/Groups/Tier 0 core implemented/offline verified; whole serving acceptance open.**
+Alongside complete-scope LAPS, native Navigation format 2 serves search/object identity/membership names and ordered directory pages, tree presentation creates only requested branches, selected fields/member-value pages replace eager reconstruction, and native Judgement 75 serves Groups/Tier 0 overviews without original proof, retaining layout/wording, captured Evidence and rule behavior.
 Preserve substring search, escaped names, selected-container inclusion, empty/observed containers, original multivalued order and duplicate occurrences, exact full-scope counts, explicit gaps, capture/question-bound continuation and exact source/resource/generation binding; recorded membership-value counts remain separate from distinct or expanded members and permission counts.
-Remaining work in this same browsing delivery includes Groups/Tier-0 overview coarse proof dependencies, first verification of requested raw/permission/path detail, requested large value-card materialization and measured Navigation scan/count costs, plus production-shaped complete-flow and physical-display acceptance, without inferring totals from pages, weakening verification or reopening the completed campaigns or ARCH-06.
+Remaining work in this same browsing delivery includes first verification of requested raw/permission/classification/path detail, requested large value-card materialization and actual Navigation/serving scan/count costs, plus production-shaped complete-flow and physical-display acceptance, without inferring totals from pages, weakening verification or reopening the completed campaigns or ARCH-06.
 
 **ARCH-04 coherent navigation/object read contract - implemented and offline verified 2026-10-15; full browsing acceptance outstanding.**
 The owner requested continuing the consolidated browsing plan, and the shared change covers search, directory paging, tree presentation, object entry, selected captured fields and the existing membership pager together, preserving prior work and four-product publication protection with capture-root 3/Evidence 17/Derivation 16/Judgement 74 unchanged and explicit refusal of older Navigation products rather than compatibility or resealing.
@@ -68,6 +74,21 @@ All 1,126 starting inputs remain present (1,105 identical, 21 extended) with two
 The owner requested committing the current validated application/test work and accumulated governing decisions on `perf02/responsive-browsing`, then explaining the next steps, without a push.
 The checkpoint includes the publication-generation finalization correction and coherent navigation/object read contract, preserving their measured outcomes, offline verification, pre-existing work and frozen evidence rather than claiming full UI responsiveness or production acceptance.
 Continue the same browsing plan through lightweight Groups/Tier-0 overview serving, bounded requested detail and realistic-scale complete-flow/display verification, with no authorization for unrelated judging optimization, UI/rule redesign, live work, deployment or push.
+
+**ARCH-04 combined Groups/Tier 0 serving boundary - HIGH, implemented and offline verified 2026-10-15; wider acceptance open.**
+Native Judgement 75 moves group inventory/known totals and Tier 0 distance/summary serving into the existing lightweight product, adds compact bound identity/grade values without copying original proof, and preserves existing screens, filters, ordering, pages, exact totals/qualifications, resource/generation binding and publication protection at the approved cost of additional display metadata/finishing work.
+After the final correct-live-source Release rebuild (zero errors/866 warnings), 714 of 715 combined checks pass with only the separately recorded pre-existing null-default gate failure; all 32 new cases and two adapted schema cases detect 19 explicitly rebuilt isolated defects with 73 passing rebuilt restored observations, including actual 900/1300-width combined flows, heavyweight-file isolation and separate original-proof refusal/readback.
+All 1,050 starting tracked build inputs remain present (1,037 identical, 13 extended) with one new test file, 39 unchanged XAML files and 60 unchanged historical layout values; requested heavy detail/value cards, realistic-scale complete-flow and physical-display acceptance remain open, with compact provenance/failed attempts/source delta retained and no timing campaign, production-speed claim, UI/rule change, migration, live work, SYSVOL, ARCH-06, deployment, commit or push.
+
+**ARCH-04 verification: pre-existing null-default architecture gate - MEDIUM, open.**
+The broader checkpoint reports three default-null parameters in [ObjectAttributes.cs](../next/src/SecureAD.Evidence/ObjectAttributes.cs) (`Read.selected`, `ReadCore.selected`) and [AssetRowViewModels.cs](../next/src/SecureAD.Shell/ViewModels/AssetRowViewModels.cs) (`TreeNodeViewModel.observe`), with both source files and the gate byte-identical to the clean `65dbb14` starting inputs.
+Correct the signatures and their callers together in a separate bounded correction so nullable selections/observers are passed explicitly, rather than weakening the gate or changing browsing answers.
+This pre-existing debt is separate from the combined overview-serving correction, its failed result remains retained, and whole-repository green must not be claimed while it remains open.
+
+**ARCH-04 whole-journey read dependencies - HIGH, open; source-confirmed 2026-10-15, current costs not measured.**
+Ordinary LAPS pages still open the classification-heavy JudgementFacts product, while Delegations reads captured Evidence and optionally Derivation, so remaining coarse first-verification costs are not confined to object-detail screens.
+Startup and return to Home synchronously refresh run metadata, with the initial refresh preceding the main window, and View results after a new audit opens Assets while opening an existing library run lands on Dashboard.
+Address these paths and the separate capture/derivation/judging/completion/viewer protection lifetimes within the same end-to-end responsiveness job, distinguishing already-shared in-viewer verification from cross-stage reopening and measuring actual query/assembly/render costs before selecting further optimization; this records findings, not a new integrity format, UI change, measurement campaign or implementation approval.
 
 **ARCH-04/05 combined core - implemented and offline verified 2026-10-14; overall acceptance outstanding.**
 Complete-scope LAPS filtering/paging and aggregate GUI/CLI/portable-summary completion readback are implemented in Judgement format 74, with the approved pager/tooltip and unchanged totals, captured-evidence distinctions, bindings and answers.

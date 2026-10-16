@@ -165,6 +165,8 @@ public sealed class ControlEdgeLayoutTests
         [73] = "76E349329750AC10D516D3CAAA35D6FD34071EB1319CEF380404E3A618EEBBF1",
         // Observed native LAPS domain-filter metadata; every earlier checkpoint remains frozen.
         [74] = "0D70D8708CE5EEF272B5D9BF69481DED2F458D2A7A15FCD3B48011646695438B",
+        // Observed compact Groups/Tier 0 serving layout; original proof and earlier checkpoints stay separate.
+        [75] = "6DD365895EC3F435F2A835A9ED40445CD73A6D653CC07F680661E2436C07067C",
     };
 
     [Fact]

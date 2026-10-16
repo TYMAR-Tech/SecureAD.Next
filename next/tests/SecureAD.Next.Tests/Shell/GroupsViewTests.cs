@@ -158,7 +158,7 @@ public sealed class GroupsViewTests
         });
     });
 
-    private static UserControl View(AssetsViewModel model)
+    internal static UserControl View(AssetsViewModel model)
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";

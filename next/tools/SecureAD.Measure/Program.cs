@@ -108,10 +108,14 @@ internal static class Program
         to.WriteLine();
         to.WriteLine("  --requester-generate | --requester | --permission-storage");
         to.WriteLine("      Older measurement workloads, each with its own arguments.");
+        to.WriteLine("  --enterprise-baseline control NEW_OUTPUT BUILD_RECORD");
+        to.WriteLine("      Current-format synthetic producer/readback control, not enterprise or complete-UI acceptance.");
     }
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--enterprise-baseline")
+            return EnterpriseBaseline.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--requester-generate")
             return RequesterWorkload.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--requester")
@@ -448,4 +452,3 @@ internal static class Program
         new("groupType", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("-2147483646")]);
 
 }
-
