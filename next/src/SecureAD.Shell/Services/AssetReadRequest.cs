@@ -3,6 +3,7 @@ using SecureAD.Evidence;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Schema;
 using SecureAD.Shell.ViewModels;
 
@@ -58,8 +59,7 @@ internal sealed partial class AssetReadRequest(
                 .GetString("InvalidEvidence", System.Globalization.CultureInfo.CurrentUICulture)
                 ?? throw new System.Resources.MissingManifestResourceException("InvalidEvidence"));
 
-    private Result<T> ReadProduct<T>(string bundleDirectory, Func<JudgementReader, T> read, string code, string message,
-        bool lightweight = false)
+    private Result<T> ReadProduct<T>(string bundleDirectory, Func<JudgementReader, T> read, string code, string message)
     {
         Result<T> Read(JudgementReader reader)
         {
@@ -71,9 +71,7 @@ internal sealed partial class AssetReadRequest(
                     message + " " + error.Message, bundleDirectory));
             }
         }
-        return Flatten(WithRun(bundleDirectory, run => lightweight
-            ? run.ReadFindings(Read, _readCancellation)
-            : run.ReadJudgement(Read, _readCancellation)));
+        return Flatten(WithRun(bundleDirectory, run => run.ReadFindings(Read, _readCancellation)));
     }
 
     /// <inheritdoc/>
@@ -94,12 +92,12 @@ internal sealed partial class AssetReadRequest(
 
     public Result<CapturedMembershipPage?> ReadCapturedMembership(string bundleDirectory, string distinguishedName,
         bool parents, CapturedMembershipMark? after) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader =>
-            reader.ReadCapturedMembership(distinguishedName, parents, after, _readCancellation), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadRequestedCapture(reader =>
+            reader.ReadCapturedMembership(distinguishedName, parents, after), _readCancellation));
 
     public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
         IReadOnlyCollection<string> attributes) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader =>
+        WithRun(bundleDirectory, run => run.ReadRequestedCapture(reader =>
             reader.ReadObjectAttributes(distinguishedName, attributes), _readCancellation));
 
     /// <inheritdoc/>
@@ -108,11 +106,12 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<ObjectPermissions?> ReadPermissions(string bundleDirectory, string distinguishedName) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadPermissions(distinguishedName), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadRequestedCapture(reader => reader.ReadPermissions(distinguishedName), _readCancellation));
 
     /// <inheritdoc/>
     public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadObjectAttributes(distinguishedName), _readCancellation));
+        WithRun(bundleDirectory, run => run.ReadRequestedCapture(reader => reader.ReadObjectAttributes(distinguishedName,
+            CapturedAttributeCatalog.All.Select(attribute => attribute.LdapDisplayName).ToArray()), _readCancellation));
 
     /// <inheritdoc/>
     public Result<ForestInventory> ReadInventory(string bundleDirectory) =>

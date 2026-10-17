@@ -62,9 +62,9 @@ public sealed partial class OpenedRunResultsTests
         source.ReadPermissionClassification(directory, TargetDn);
         source.ReadObjectAttributes(directory, UserDn);
 
-        Assert.Equal((1L, 1L, 1L, 0L), (counts.EvidenceVerifications, counts.JudgementVerifications,
+        Assert.Equal((0L, 1L, 0L, 0L), (counts.EvidenceVerifications, counts.JudgementVerifications,
             counts.EvidenceFormatChecks, counts.AnalyticalReads));
-        Assert.Equal((1L, 1L, 0L), (counts.PermissionProofVerifications, counts.FactsVerifications, counts.PathProofVerifications));
+        Assert.Equal((0L, 0L, 0L), (counts.PermissionProofVerifications, counts.FactsVerifications, counts.PathProofVerifications));
     }
 
     [Fact]
@@ -79,8 +79,8 @@ public sealed partial class OpenedRunResultsTests
 
         source.ReadPermissionClassification(directory, UserDn);
 
-        Assert.Equal((2L, 2L), (counts.EvidenceVerifications, counts.JudgementVerifications));
-        Assert.Equal((2L, 2L), (counts.PermissionProofVerifications, counts.FactsVerifications));
+        Assert.Equal((0L, 2L), (counts.EvidenceVerifications, counts.JudgementVerifications));
+        Assert.Equal((0L, 0L), (counts.PermissionProofVerifications, counts.FactsVerifications));
     }
 
     [Fact]

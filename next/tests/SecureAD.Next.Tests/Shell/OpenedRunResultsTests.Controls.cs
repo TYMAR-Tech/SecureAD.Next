@@ -40,9 +40,9 @@ public sealed partial class OpenedRunResultsTests
         ReadControlList(source, directory, list);
         ReadControlList(source, directory, list);
 
-        Assert.Equal((1L, 1L, 1L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
+        Assert.Equal((0L, 0L, 1L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
             counts.JudgementVerifications, counts.AnalyticalReads));
-        Assert.Equal((list == 1 ? 0L : 1L, list == 1 ? 1L : 0L, 0L),
+        Assert.Equal((0L, 0L, 0L),
             (counts.PermissionProofVerifications, counts.PathProofVerifications, counts.FactsVerifications));
     }
 
@@ -244,6 +244,11 @@ public sealed partial class OpenedRunResultsTests
 
     private static void MutateControlRun(string directory, string sql) => SelfMembershipCoverageTests.Mutate(directory, connection =>
     {
+        if (TestSealing.TryMutateSavedText(connection, sql, out var changed))
+        {
+            Assert.True(changed > 0);
+            return;
+        }
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
@@ -259,13 +264,7 @@ public sealed partial class OpenedRunResultsTests
     /// </remarks>
     private static void RepairReadingFingerprints(string directory) => SelfMembershipCoverageTests.Mutate(directory, connection =>
     {
-        var payloads = new Dictionary<long, string>();
-        using (var read = connection.CreateCommand())
-        {
-            read.CommandText = "SELECT id,payload FROM permission_classification_reading";
-            using var rows = read.ExecuteReader();
-            while (rows.Read()) payloads[rows.GetInt64(0)] = rows.GetString(1);
-        }
+        var payloads = TestSealing.ReadSavedTexts(connection, "permission_classification_reading", "payload");
 
         foreach (var (id, payload) in payloads)
         {
@@ -327,7 +326,7 @@ public sealed partial class OpenedRunResultsTests
             using var rows = command.ExecuteReader();
             while (rows.Read())
             {
-                var entry = SharedPermissionStorage.ReadShared(rows, generation);
+                var entry = SharedPermissionStorage.ReadShared(connection, rows, generation);
                 repaired.Add((rows.GetInt64(offset), SharedPermissionStorage.ValueFingerprint(
                     generation, entry, (byte[])rows.GetValue(offset + 4), rows.GetInt32(offset + 1),
                     rows.IsDBNull(offset + 2) ? null : rows.GetString(offset + 2),

@@ -1,3 +1,4 @@
+using SecureAD.Evidence;
 using Microsoft.Data.Sqlite;
 
 namespace SecureAD.Judgement;
@@ -31,6 +32,9 @@ internal sealed class PreparedStatements(SqliteConnection connection) : IDisposa
 {
     private readonly Dictionary<string, SqliteCommand> _commands = new(StringComparer.Ordinal);
     private bool _disposed;
+    private RequestedDetailRecordWriter? _records;
+
+    internal RequestedDetailRecordWriter Records => _records ??= new(connection);
 
     /// <summary>Returns the compiled statement for this SQL, bound to these values.</summary>
     /// <param name="sql">The statement text, which also identifies it.</param>
@@ -74,6 +78,7 @@ internal sealed class PreparedStatements(SqliteConnection connection) : IDisposa
     {
         if (_disposed) return;
         _disposed = true;
+        _records?.Dispose();
         foreach (var command in _commands.Values) command.Dispose();
         _commands.Clear();
     }

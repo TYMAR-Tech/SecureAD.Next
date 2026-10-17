@@ -6,7 +6,7 @@ namespace SecureAD.Judgement;
 
 internal static class JudgementStoreLayout
 {
-    private sealed record Access(Action<StoreSegmentRole> Open);
+    private sealed record Access(Action<StoreSegmentRole> Open, Func<StoreSegmentRole, RequestedDetailReader>? Requested);
     private sealed record Reference(string Child, StoreSegmentRole ChildRole, string Column,
         string Parent, StoreSegmentRole ParentRole, string ParentColumn, bool DeferredCalculation = false);
     private static readonly ConditionalWeakTable<SqliteConnection, Access> Readers = new();
@@ -36,8 +36,50 @@ internal static class JudgementStoreLayout
         new("tier0_path_node", StoreSegmentRole.PathProof, "target", "ownership_target", StoreSegmentRole.PermissionProof, "target"),
     ];
 
-    internal static void RegisterReader(SqliteConnection connection, Action<StoreSegmentRole> open) =>
-        Readers.Add(connection, new(open));
+    internal static void RegisterReader(SqliteConnection connection, Action<StoreSegmentRole> open,
+        Func<StoreSegmentRole, RequestedDetailReader>? requested = null) =>
+        Readers.Add(connection, new(open, requested));
+
+    internal static RequestedDetailReader? Requested(SqliteConnection connection, StoreSegmentRole role) =>
+        Readers.TryGetValue(connection, out var access) && access.Requested is { } requested ? requested(role) : null;
+
+    internal static IReadOnlyList<RequestedDetailIndex.PayloadLayout> RequestedPayloads(StoreSegmentRole role) => role switch
+    {
+        StoreSegmentRole.PathProof => PathProofStorage.RequestedPayloads,
+        StoreSegmentRole.JudgementFacts => SavedTextPayloadStorage.Classifications.RequestedPayloads,
+        StoreSegmentRole.PermissionProof => SavedTextPayloadStorage.Permissions.RequestedPayloads,
+        _ => [],
+    };
+
+    internal static IReadOnlyList<RequestedDetailIndex.RecordLayout> RequestedRecords(StoreSegmentRole role) =>
+        role == StoreSegmentRole.PermissionProof ? PermissionProofRecordStorage.All : [];
+
+    internal static RequestedDetailRow? VerifySelected(SqliteConnection connection, StoreSegmentRole role,
+        string table, object owner)
+    {
+        var row = Requested(connection, role)?.ReadSingle(table, owner);
+        row?.VerifyValues();
+        return row;
+    }
+
+    internal static void VerifyScope(SqliteConnection connection, StoreSegmentRole role, string table, object owner)
+    {
+        if (Requested(connection, role) is not { } requested) return;
+        foreach (var row in requested.ReadCompleteScope(table, owner)) row.VerifyValues();
+    }
+
+    internal static void VerifyPermission(SqliteConnection connection, long id)
+    {
+        if (Requested(connection, StoreSegmentRole.PermissionProof) is not { } requested) return;
+        var entry = requested.ReadSingle("permission_entry", id) ?? throw FullControlEvaluator.InvalidProof();
+        entry.VerifyValues();
+        if (!entry.IsNull("meaning"))
+        {
+            var meaning = requested.ReadSingle("shared_proof_value", entry.Integer("meaning"))
+                ?? throw FullControlEvaluator.InvalidProof();
+            meaning.VerifyValues();
+        }
+    }
 
     internal static void Ensure(SqliteConnection connection, StoreSegmentRole role)
     {

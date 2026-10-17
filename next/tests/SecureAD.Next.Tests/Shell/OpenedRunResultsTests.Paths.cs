@@ -30,7 +30,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(captured.Find("displayName")?.OnlyValue?.Text ?? SecureAD.Kernel.Naming.DnHelper.ExtractNameFromDn(UserDn), account.Name);
         Assert.Empty(empty.Page.Questions);
         Assert.Null(empty.Account);
-        Assert.Equal((0L, 1L, 1L, 1L), (counts.AnalyticalReads, counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
+        Assert.Equal((0L, 0L, 0L, 1L), (counts.AnalyticalReads, counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
         Assert.Equal(before, Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal).Select(path => (path, Hash: Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(path))))).ToArray());
     }
@@ -45,7 +45,7 @@ public sealed partial class OpenedRunResultsTests
         var first = source.ReadSavedTier0Path(directory, UserDn);
         var second = source.ReadSavedTier0Path(directory, CoreDn);
 
-        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, true, 1L, 1L, 1L, 0L), (first.Value!.Page.Verdict, second.Value!.Page.IsFixedTarget,
+        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, true, 0L, 0L, 1L, 0L), (first.Value!.Page.Verdict, second.Value!.Page.IsFixedTarget,
             counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications, counts.AnalyticalReads));
     }
 
@@ -61,7 +61,7 @@ public sealed partial class OpenedRunResultsTests
 
         var saved = source.ReadSavedTier0Path(directory, UserDn).Value!;
 
-        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, 2L, 2L, 2L), (saved.Page.Verdict,
+        Assert.Equal((PathRiskReadVerdict.RecordedQuestions, 0L, 0L, 2L), (saved.Page.Verdict,
             counts.EvidenceVerifications, counts.DerivationVerifications, counts.JudgementVerifications));
     }
 
@@ -69,7 +69,7 @@ public sealed partial class OpenedRunResultsTests
     [InlineData("Evidence")]
     [InlineData("Derivation")]
     [InlineData("Judgement")]
-    public void P248SavedPathsRefuseCorruptRequiredFiles(string kind)
+    public void P248SavedPathsKeepWholeFileCorruptionChecksExplicit(string kind)
     {
         var directory = CreatePathRun();
         var path = kind == "Evidence" ? Path.Combine(directory, BundleLayout.EvidenceFileName)
@@ -78,7 +78,16 @@ public sealed partial class OpenedRunResultsTests
         File.AppendAllText(path, "corrupt");
         using var source = new BundleAssetSource();
 
-        Assert.Equal("Evidence.ProtectedStoreMismatch", source.ReadSavedTier0Path(directory, UserDn).Error?.Code);
+        var selected = source.ReadSavedTier0Path(directory, UserDn);
+        if (kind == "Judgement")
+        {
+            Assert.Equal("Evidence.ProtectedStoreMismatch", selected.Error?.Code);
+            return;
+        }
+        Assert.True(selected.IsSuccess, selected.Error?.Description);
+        using var session = new OpenedRunResults(directory);
+        var whole = kind == "Evidence" ? session.ReadEvidence(_ => true) : session.ReadDerivation(_ => true);
+        Assert.Equal("Evidence.ProtectedStoreMismatch", whole.Error?.Code);
     }
 
     [Theory]

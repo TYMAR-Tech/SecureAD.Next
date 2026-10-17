@@ -554,7 +554,14 @@ public sealed class SavedPermissionClassificationTests
     {
         using var command = connection.CreateCommand();
         // Fabricate corrupt saved data rather than testing SQLite's write-time FK enforcement.
-        command.CommandText = "PRAGMA foreign_keys=OFF; " + sql;
+        command.CommandText = "PRAGMA foreign_keys=OFF";
+        command.ExecuteNonQuery();
+        if (TestSealing.TryMutateSavedText(connection, sql, out var changed))
+        {
+            Assert.True(changed > 0);
+            return;
+        }
+        command.CommandText = sql;
         command.ExecuteNonQuery();
     });
 
@@ -569,13 +576,7 @@ public sealed class SavedPermissionClassificationTests
     /// </remarks>
     private static void Refingerprint(string directory) => SelfMembershipCoverageTests.Mutate(directory, connection =>
     {
-        var payloads = new Dictionary<long, string>();
-        using (var read = connection.CreateCommand())
-        {
-            read.CommandText = "SELECT id,payload FROM permission_classification_reading";
-            using var rows = read.ExecuteReader();
-            while (rows.Read()) payloads[rows.GetInt64(0)] = rows.GetString(1);
-        }
+        var payloads = TestSealing.ReadSavedTexts(connection, "permission_classification_reading", "payload");
 
         foreach (var (id, payload) in payloads)
         {

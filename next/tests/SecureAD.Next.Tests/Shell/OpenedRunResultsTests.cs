@@ -375,7 +375,7 @@ public sealed partial class OpenedRunResultsTests
     }
 
     [Fact]
-    public void MatchingManifestIdentifiersDoNotReplaceEvidenceIntegrityChecking()
+    public void SavedControlProofDoesNotReplaceExplicitWholeEvidenceIntegrityChecking()
     {
         var directory = CreateRun();
         File.AppendAllText(BundleLayout.EvidencePath(directory), "corruption");
@@ -383,7 +383,10 @@ public sealed partial class OpenedRunResultsTests
 
         var read = source.ReadControlEdges(directory, FirstDn, null, null, true, 0);
 
-        Assert.Equal("Evidence.ProtectedStoreMismatch", read.Error?.Code);
+        Assert.True(read.IsSuccess, read.Error?.Description);
+        using var session = new OpenedRunResults(directory);
+        var whole = session.ReadEvidence(reader => reader.Description);
+        Assert.Equal("Evidence.ProtectedStoreMismatch", whole.Error?.Code);
     }
 
     [Fact]
@@ -451,7 +454,7 @@ public sealed partial class OpenedRunResultsTests
     }
 
     [Fact]
-    public void ACorruptRequiredDerivationCannotBeAcceptedByItsIdentifier()
+    public void SavedControlProofDoesNotReplaceExplicitWholeDerivationIntegrityChecking()
     {
         var directory = CreateRun();
         var generation = WriteDerivation(directory);
@@ -461,7 +464,10 @@ public sealed partial class OpenedRunResultsTests
 
         var read = source.ReadControlEdges(directory, FirstDn, null, null, true, 0);
 
-        Assert.Equal("Evidence.ProtectedStoreMismatch", read.Error?.Code);
+        Assert.True(read.IsSuccess, read.Error?.Description);
+        using var session = new OpenedRunResults(directory);
+        var whole = session.ReadDerivation(reader => reader.Description);
+        Assert.Equal("Evidence.ProtectedStoreMismatch", whole.Error?.Code);
     }
 
     private static Guid WriteDerivation(string directory)

@@ -8,6 +8,35 @@ internal static class SelfMembershipCoverageStorage
 {
     internal static SelfMembershipSummary? Read(SqliteConnection connection, JudgementDescription description)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PathProof) is { } requested)
+        {
+            var row = requested.ReadSingle("detail_self_summary", 1L);
+            if (row is null)
+            {
+                Require(requested.ReadRowCount("self_membership_product") == 0
+                    && requested.ReadRowCount("self_membership_assessment") == 0
+                    && requested.ReadRowCount("self_membership_discovery") == 0, "requester summary is absent but source rows remain");
+                return null;
+            }
+            var saved = JsonSerializer.Deserialize<SelfMembershipSummary>(row.CompleteText("payload"), ProofSerialization.Options)
+                ?? throw new InvalidDataException("The saved requester summary is null.");
+            Require(saved.GenerationId == description.GenerationId && saved.EvidenceSeal == description.EvidenceSeal
+                && saved.EvaluatorVersion == 1 && saved.AssessmentsStored == requested.ReadRowCount("self_membership_assessment")
+                && saved.AuthorizationUnknown >= 0 && saved.AuthorizationUnknown <= saved.AssessmentsStored
+                && saved.ReadinessUnknown >= 0 && saved.ReadinessUnknown <= saved.AssessmentsStored,
+                "requester summary has contradictory source binding or counts");
+            var savedStatus = requested.ReadSingle("self_membership_product", 1L);
+            var source = requested.ReadSingle("self_membership_discovery", 1L);
+            if (savedStatus is null || source is null || saved.Discovery is not { } discovery)
+                throw new InvalidDataException("Self-Membership coverage or its product is missing.");
+            Require(savedStatus.Integer("evaluator_version") == saved.EvaluatorVersion && savedStatus.Integer("completed") == 1,
+                "requester product is incomplete or its evaluator version is unsupported");
+            var sourceCoverage = DecodeCoverage(source.CompleteText("coverage_json"));
+            Validate(discovery);
+            Require(JsonSerializer.Serialize(sourceCoverage, ProofSerialization.Options)
+                == JsonSerializer.Serialize(discovery, ProofSerialization.Options), "requester summary contradicts its source coverage");
+            return saved;
+        }
         using var product = connection.CreateCommand();
         product.CommandText = "SELECT evaluator_version,completed FROM self_membership_product WHERE id=1";
         using var status = product.ExecuteReader();
@@ -24,17 +53,7 @@ internal static class SelfMembershipCoverageStorage
         command.CommandText = "SELECT coverage_json FROM self_membership_discovery WHERE id=1";
         var encoded = command.ExecuteScalar();
         Require(encoded is string, "discovery record is missing");
-        SelfMembershipDiscoveryCoverage coverage;
-        try
-        {
-            coverage = JsonSerializer.Deserialize<SelfMembershipDiscoveryCoverage>((string)encoded!, ProofSerialization.Options)
-                ?? throw new InvalidDataException("Self-Membership coverage is null.");
-        }
-        catch (JsonException error)
-        {
-            throw new InvalidDataException("Self-Membership coverage could not be decoded.", error);
-        }
-        Validate(coverage);
+        var coverage = DecodeCoverage((string)encoded!);
         command.CommandText = "SELECT COUNT(*),COALESCE(SUM(authorization='Unknown'),0),COALESCE(SUM(readiness='Unknown'),0) FROM self_membership_assessment";
         using var counts = command.ExecuteReader();
         Require(counts.Read(), "assessment counts are unavailable");
@@ -51,6 +70,21 @@ internal static class SelfMembershipCoverageStorage
             Require((long)pairs.ExecuteScalar()! == 0, "automatic questions are not complete own-account Add/Remove pairs");
         }
         return new(description.GenerationId, description.EvidenceSeal, 1, stored, counts.GetInt64(1), counts.GetInt64(2), coverage);
+    }
+
+    private static SelfMembershipDiscoveryCoverage DecodeCoverage(string encoded)
+    {
+        try
+        {
+            var coverage = JsonSerializer.Deserialize<SelfMembershipDiscoveryCoverage>(encoded, ProofSerialization.Options)
+                ?? throw new InvalidDataException("Self-Membership coverage is null.");
+            Validate(coverage);
+            return coverage;
+        }
+        catch (JsonException error)
+        {
+            throw new InvalidDataException("Self-Membership coverage could not be decoded.", error);
+        }
     }
 
     internal static void Validate(SelfMembershipDiscoveryCoverage value)

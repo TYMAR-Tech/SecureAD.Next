@@ -13,7 +13,13 @@ public sealed record CapturedMemberReferences(IReadOnlyList<CapturedMemberRefere
 }
 
 /// <summary>A position in one original ordered member/memberOf attribute, bound to its protected evidence.</summary>
-public sealed record CapturedMembershipMark(string Fingerprint, string DistinguishedName, bool Parents, int Ordinal);
+public sealed record CapturedMembershipMark(string Fingerprint, string DistinguishedName, bool Parents, int Ordinal)
+{
+    /// <summary>The next authenticated native page, when read through the requested-detail boundary.</summary>
+    public RequestedDetailMark? RequestedPage { get; init; }
+    /// <summary>The next row within that bounded native page.</summary>
+    public int RequestedRow { get; init; }
+}
 
 /// <summary>An independently counted page of original values; unloaded values are not missing captured evidence.</summary>
 public sealed record CapturedMembershipPage(IReadOnlyList<AttributeValue> Values, int Total,

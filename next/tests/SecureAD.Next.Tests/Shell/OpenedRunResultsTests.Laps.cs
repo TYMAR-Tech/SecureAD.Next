@@ -207,7 +207,7 @@ public sealed partial class OpenedRunResultsTests
         var second = source.ListLapsComputers(directory, new(LapsDn, ListingScope.Base, "", null), null);
         source.ReadObjectAttributes(directory, LapsDn);
 
-        Assert.Equal((1, 1L, 1L, 0L),
+        Assert.Equal((1, 0L, 1L, 0L),
             (second.Value.Computers.Count, counts.EvidenceVerifications, counts.JudgementVerifications, counts.AnalyticalReads));
         Assert.Equal((0L, 0L, 0L), (counts.FactsVerifications, counts.PermissionProofVerifications, counts.PathProofVerifications));
     }

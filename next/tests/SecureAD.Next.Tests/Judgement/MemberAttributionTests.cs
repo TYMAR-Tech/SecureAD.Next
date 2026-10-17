@@ -165,6 +165,7 @@ public sealed class MemberAttributionTests
     [InlineData("DELETE FROM member_attribution_context")]
     [InlineData("DELETE FROM member_attribution_permission")]
     [InlineData("UPDATE member_attribution_root SET proof='{}'")]
+    [InlineData("UPDATE member_attribution_root SET is_complete=1-is_complete")]
     [InlineData("UPDATE member_attribution_member SET sid='S-1-1-0'")]
     [InlineData("UPDATE member_attribution_product SET root_count=0")]
     public void CorruptMemberProofIsRefusedWithoutChangingHolderCounts(string mutation)
@@ -175,7 +176,14 @@ public sealed class MemberAttributionTests
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA foreign_keys=OFF; " + mutation;
+            command.CommandText = "PRAGMA foreign_keys=OFF";
+            command.ExecuteNonQuery();
+            if (TestSealing.TryMutateSavedText(connection, mutation, out var changed))
+            {
+                Assert.True(changed > 0);
+                return;
+            }
+            command.CommandText = mutation;
             command.ExecuteNonQuery();
         });
         using var reader = FullControlStorageTests.Open(directory);

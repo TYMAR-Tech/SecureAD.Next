@@ -169,6 +169,8 @@ public sealed class ControlEdgeLayoutTests
         [75] = "6DD365895EC3F435F2A835A9ED40445CD73A6D653CC07F680661E2436C07067C",
         // Observed format-76 LAPS serving index; no historical layout checkpoint is changed.
         [76] = "46A7B9EF398A4F904B15471A37B8ADC441AD055A877E7E6122F0DFC17AC1AC9E",
+        // Observed source-owned saved-text layout; no earlier checkpoint is replaced.
+        [80] = "4D146F77323F25072B6DE1EA65571B8C2D5210560D3987FB68B6376985A09839",
     };
 
     [Fact]

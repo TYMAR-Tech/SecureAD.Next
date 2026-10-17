@@ -286,6 +286,7 @@ internal sealed class PathSharedProofStorage
         var previous = _resource;
         try
         {
+            JudgementStoreLayout.VerifySelected(_connection, StoreSegmentRole.PathProof, "path_shared_proof", link.Id);
             using var command = _connection.CreateCommand();
             command.CommandText = """
                 SELECT kind,generation,derivation_generation,evidence_seal,resource,fingerprint

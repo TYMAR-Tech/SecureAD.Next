@@ -99,7 +99,7 @@ public sealed partial class Tier0PathTests
         Derive(directory);
         Judge(directory);
         Mutate(directory, $"UPDATE tier0_distance SET fingerprint=zeroblob(32) WHERE target='{TargetDn}'");
-        Mutate(directory, "UPDATE path_proof_chunk SET data=x'00'");
+        Mutate(directory, "UPDATE path_proof_chunk SET data=x'00',byte_length=1");
         using var reader = Open(directory);
         var before = Snapshot(directory);
         Tier0ObjectDistance? selected = null;

@@ -891,7 +891,19 @@ internal sealed class DerivationWriter : IDisposable
 
         DerivationSchema.CreateDeferredIndexes(_connection);
         MembershipBrowseStorage.Write(_connection, _bundleDirectory, GenerationId, cancellationToken);
-        Pragma(_connection, "wal_checkpoint(TRUNCATE)");
+        var requestedDetails = new Dictionary<StoreSegmentRole, RequestedDetailManifest>
+        {
+            [StoreSegmentRole.Derivation] = RequestedDetailIndex.Prepare(_connection, "main",
+                StoreSegmentRole.Derivation, DerivationSchema.Version, GenerationId, _evidenceSeal, cancellationToken),
+            [StoreSegmentRole.Membership] = RequestedDetailIndex.Prepare(_connection, "membership",
+                StoreSegmentRole.Membership, DerivationSchema.Version, GenerationId, _evidenceSeal, cancellationToken),
+        };
+        using (var checkpoint = _connection.CreateCommand())
+        {
+            checkpoint.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";
+            if ((long)checkpoint.ExecuteScalar()! != 0)
+                throw new InvalidOperationException("The derived products could not be fully checkpointed and were not published.");
+        }
         _connection.Close();
         SqliteConnection.ClearPool(_connection);
 
@@ -899,7 +911,7 @@ internal sealed class DerivationWriter : IDisposable
         var summary = new DerivationBrowseSummary(1, _evidenceSeal, GenerationId, nestingWasDerived,
             nestingWasDerived ? _groupsWithUnidentifiedMembers.Count : null);
         AnalysisStoreLifecycle.PublishBound(_bundleDirectory, AnalysisStoreKind.Derivation, GenerationId,
-            DerivationSchema.Version, _evidenceSeal, summary, cancellationToken, log);
+            DerivationSchema.Version, _evidenceSeal, summary, cancellationToken, log, requestedDetails);
         _finished = true;
         return state;
     }

@@ -1,3 +1,5 @@
+using SecureAD.Evidence;
+
 namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
@@ -25,8 +27,56 @@ public sealed partial class JudgementReader
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (Description.State is not (JudgementRunState.Completed or JudgementRunState.CompletedDegraded))
             throw new InvalidOperationException(PermissionClassificationStorage.Message("Unavailable"));
-        OpenPart(Evidence.StoreSegmentRole.JudgementFacts);
-        OpenPart(Evidence.StoreSegmentRole.PermissionProof);
+        VerifyRequestedClassification(distinguishedName, carriedDescriptor);
         return PermissionClassificationStorage.Read(_connection, Description, distinguishedName, carriedDescriptor, cancellationToken);
+    }
+
+    private void VerifyRequestedClassification(string target, long? carriedDescriptor)
+    {
+        var facts = RequestedPart(StoreSegmentRole.JudgementFacts);
+        RequestedPart(StoreSegmentRole.PermissionProof);
+        var product = facts.ReadSingle("permission_classification_product", 1L)
+            ?? throw new InvalidOperationException(PermissionClassificationStorage.Message("Unavailable"));
+        product.VerifyValues();
+        var selected = Required(facts, "permission_classification_object", target);
+        var descriptor = selected.IsNull("descriptor_id") ? null : (long?)selected.Integer("descriptor_id");
+        if (descriptor != carriedDescriptor) throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid"));
+        if (descriptor is null) return;
+        Required(facts, "permission_classification_descriptor", descriptor.Value);
+        var entries = new HashSet<long>();
+        var readings = new HashSet<long>();
+        var schema = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var occurrence in facts.ReadCompleteScope("permission_classification_entry", descriptor.Value))
+        {
+            occurrence.VerifyValues();
+            var id = occurrence.Integer("entry_id");
+            if (!entries.Add(id)) continue;
+            try { JudgementStoreLayout.VerifyPermission(_connection, id); }
+            catch (InvalidOperationException error)
+            {
+                throw new InvalidDataException(PermissionClassificationStorage.Message("Invalid"), error);
+            }
+            var value = Required(facts, "permission_classification_value", id);
+            var reading = value.Integer("reading_id");
+            if (readings.Add(reading)) Required(facts, "permission_classification_reading", reading);
+            Support("object_schema");
+            Support("inherited_schema");
+
+            void Support(string column)
+            {
+                if (value.IsNull(column)) return;
+                var guid = value.CompleteText(column);
+                if (schema.Add(guid)) Required(facts, "permission_classification_schema", guid);
+            }
+        }
+
+    }
+
+    private static RequestedDetailRow Required(RequestedDetailReader reader, string table, object owner)
+    {
+        var row = reader.ReadSingle(table, owner)
+            ?? throw new InvalidDataException("The selected saved proof has a missing source record.");
+        row.VerifyValues();
+        return row;
     }
 }

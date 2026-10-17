@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
@@ -5,7 +6,7 @@ using SecureAD.Judgement;
 
 namespace SecureAD.Next.Tests;
 
-internal static class TestSealing
+internal static partial class TestSealing
 {
     internal static string AnalysisInputPath(string directory, AnalysisStoreKind kind, Guid generation) =>
         kind == AnalysisStoreKind.Derivation ? AnalysisStoreLifecycle.StagingPath(directory, kind)
@@ -39,6 +40,47 @@ internal static class TestSealing
         var segments = root.Segments.Select(segment =>
         {
             var path = BundleLayout.AnalysisSegmentDataPath(directory, generation, segment.Role);
+            if (segment.RequestedDetails is not null)
+            {
+                using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+                {
+                    DataSource = path, Mode = SqliteOpenMode.ReadWrite, Pooling = false,
+                }.ToString());
+                connection.Open();
+                foreach (var payload in JudgementStoreLayout.RequestedPayloads(segment.Role))
+                {
+                    // These alterations re-authenticate the fixture to test proof semantics,
+                    // not rejection caused only by a stale payload-piece fingerprint.
+                    using var read = connection.CreateCommand();
+                    read.CommandText = $"SELECT rowid FROM \"{payload.Table}\" ORDER BY rowid";
+                    var ids = new List<long>();
+                    using (var rows = read.ExecuteReader())
+                        while (rows.Read()) ids.Add(rows.GetInt64(0));
+                    read.CommandText = $"SELECT \"{payload.Data}\" FROM \"{payload.Table}\" WHERE rowid=$id";
+                    read.Parameters.Add("$id", SqliteType.Integer);
+                    using var update = connection.CreateCommand();
+                    update.CommandText = $"UPDATE \"{payload.Table}\" SET \"{payload.Fingerprint}\"=$hash WHERE rowid=$id";
+                    update.Parameters.Add("$hash", SqliteType.Blob);
+                    update.Parameters.Add("$id", SqliteType.Integer);
+                    foreach (var id in ids)
+                    {
+                        read.Parameters["$id"].Value = id;
+                        var bytes = read.ExecuteScalar() as byte[]
+                            ?? throw new InvalidDataException("A fixture payload piece is missing.");
+                        update.Parameters["$hash"].Value = SHA256.HashData(bytes);
+                        update.Parameters["$id"].Value = id;
+                        if (update.ExecuteNonQuery() != 1) throw new InvalidDataException("A fixture payload piece was not re-authenticated.");
+                    }
+                }
+                using (var drop = connection.CreateCommand())
+                {
+                    drop.CommandText = "DROP TABLE requested_detail_node";
+                    drop.ExecuteNonQuery();
+                }
+                segment = segment with { RequestedDetails = RequestedDetailIndex.Prepare(connection, "main",
+                    segment.Role, segment.SchemaVersion, root.GenerationId, root.EvidenceSeal, CancellationToken.None,
+                    JudgementStoreLayout.RequestedPayloads(segment.Role)) };
+            }
             BundleSealing.Seal(path, path + ".seal");
             return segment with { Hash = BundleSealing.ReadSeal(path + ".seal")!.Hash, ByteLength = new FileInfo(path).Length };
         }).ToArray();

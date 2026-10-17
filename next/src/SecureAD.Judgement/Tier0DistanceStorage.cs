@@ -148,6 +148,7 @@ internal static class Tier0DistanceStorage
     internal static Tier0ObjectDistance? ReadObject(SqliteConnection connection, JudgementDescription description,
         string target, CancellationToken cancellationToken)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "ownership_target", target);
         var summary = ReadSummary(connection, description, cancellationToken);
         if (summary is null) return null;
         using var command = connection.CreateCommand();

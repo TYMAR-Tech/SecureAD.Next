@@ -190,6 +190,7 @@ public sealed class BundleReaderTests : IDisposable
 
         using var opening = Open();
 
+        Assert.True(opening.IsSuccess, opening.Error?.Description);
         Assert.False(opening.Value.Description.EveryDeclaredUnitRecordedAsRead);
     }
 

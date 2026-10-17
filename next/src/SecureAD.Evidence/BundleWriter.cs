@@ -1678,6 +1678,13 @@ public sealed class BundleWriter : IDisposable
         var navigationObjects = NavigationStorage.Write(_connection, _bundleDirectory, _captureGeneration, cancellationToken);
         var libraryHeader = DashboardOverviewStorage.Write(_connection, _bundleDirectory, navigationObjects, cancellationToken);
         CapturedDelegationStorage.Write(_connection, _bundleDirectory, _captureGeneration, navigationObjects, cancellationToken);
+        var requestedDetails = new Dictionary<StoreSegmentRole, RequestedDetailManifest>
+        {
+            [StoreSegmentRole.Evidence] = RequestedDetailIndex.Prepare(_connection, "main",
+                StoreSegmentRole.Evidence, BundleSchema.Version, _captureGeneration, "", cancellationToken),
+            [StoreSegmentRole.Delegations] = RequestedDetailIndex.Prepare(_connection, "delegations",
+                StoreSegmentRole.Delegations, CapturedDelegationStorage.Version, _captureGeneration, "", cancellationToken),
+        };
 
         var backfill = clock.Elapsed;
         clock.Restart();
@@ -1705,7 +1712,7 @@ public sealed class BundleWriter : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (Interlocked.CompareExchange(ref publication, 2, 0) != 0)
                 throw new OperationCanceledException(cancellationToken);
-        }, files);
+        }, files, requestedDetails);
         _completed = true;
 
         return new BundleSealTimings(commit, indexes, backfill, checkpoint, clock.Elapsed);

@@ -8,7 +8,7 @@ using Xunit;
 
 namespace SecureAD.Next.Tests.Judgement;
 
-public sealed class PathProofStorageTests
+public sealed partial class PathProofStorageTests
 {
     private sealed record Witness(int Ordinal, string? Value, PathUncertaintyCause Cause);
     private sealed record Proof(Guid Generation, string EvidenceSeal, IReadOnlyList<Witness> Witnesses);

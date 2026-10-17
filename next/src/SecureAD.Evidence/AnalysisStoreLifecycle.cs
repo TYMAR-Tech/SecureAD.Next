@@ -182,14 +182,16 @@ public static class AnalysisStoreLifecycle
     /// <summary>Publishes one analysis product and its small, generation-bound browse summary.</summary>
     public static AnalysisStoreGeneration PublishBound(string bundleDirectory, AnalysisStoreKind kind,
         Guid generationId, int schemaVersion, string evidenceSeal, DerivationBrowseSummary? summary,
-        CancellationToken cancellationToken, IRunLog? log) =>
+        CancellationToken cancellationToken, IRunLog? log,
+        IReadOnlyDictionary<StoreSegmentRole, RequestedDetailManifest>? requestedDetails = null) =>
         Publish(bundleDirectory, kind, generationId, cancellationToken, null, log, schemaVersion, evidenceSeal, summary,
-            kind == AnalysisStoreKind.Derivation ? BundleLayout.DerivationParts : null);
+            kind == AnalysisStoreKind.Derivation ? BundleLayout.DerivationParts : null, requestedDetails);
 
     internal static AnalysisStoreGeneration Publish(string bundleDirectory, AnalysisStoreKind kind,
         Guid generationId, CancellationToken cancellationToken, Action<AnalysisPublicationPart>? beginPart,
         IRunLog? log, int schemaVersion, string evidenceSeal, DerivationBrowseSummary? summary,
-        IReadOnlyList<StoreSegmentRole>? additionalParts)
+        IReadOnlyList<StoreSegmentRole>? additionalParts,
+        IReadOnlyDictionary<StoreSegmentRole, RequestedDetailManifest>? requestedDetails = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -232,9 +234,9 @@ public static class AnalysisStoreLifecycle
             {
                 if (product.Source != product.Data) File.Move(product.Source, product.Data);
                 protection.Add(new FileStream(product.Data, FileMode.Open, FileAccess.Read, FileShare.Read));
-                if (kind == AnalysisStoreKind.Judgement && File.Exists(product.Data + "-wal")
+                if (File.Exists(product.Data + "-wal")
                     && new FileInfo(product.Data + "-wal").Length != 0)
-                    throw new InvalidDataException("A judgement product still has uncheckpointed write-ahead-log bytes.");
+                    throw new InvalidDataException("An analysis product still has uncheckpointed write-ahead-log bytes.");
             }
             beginPart?.Invoke(AnalysisPublicationPart.SealData);
             var segments = new List<SealedStoreSegment>();
@@ -243,7 +245,10 @@ public static class AnalysisStoreLifecycle
                 // Only the final root selects these files; a failed seal must leave the previous selection intact.
                 if (log is null) BundleSealing.Seal(product.Data, product.Data + ".seal");
                 else BundleSealing.SealWithDiagnostics(product.Data, product.Data + ".seal", CancellationToken.None, log, kind, generationId);
-                segments.Add(SealedSegment(product.Data, product.Data + ".seal", product.Role, schemaVersion, generationId));
+                segments.Add(SealedSegment(product.Data, product.Data + ".seal", product.Role, schemaVersion, generationId) with
+                {
+                    RequestedDetails = requestedDetails?.GetValueOrDefault(product.Role),
+                });
             }
             var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generationId, evidenceSeal, segments, summary, "");
             WritePendingManifest(stagedManifestPath, root with { Hash = root.ComputeHash() });
@@ -369,7 +374,8 @@ public static class AnalysisStoreLifecycle
 
     internal static StoreRootManifest PublishCapture(string directory, string stagedEvidence, Guid generation, long objects,
         CapturedLibraryHeader libraryHeader, CancellationToken token,
-        Func<string, string, CancellationToken, BundleSealContents> seal, Action claimPublication, ProtectedRunFiles files)
+        Func<string, string, CancellationToken, BundleSealContents> seal, Action claimPublication, ProtectedRunFiles files,
+        IReadOnlyDictionary<StoreSegmentRole, RequestedDetailManifest>? requestedDetails = null)
     {
         var manifestPath = BundleLayout.CaptureManifestPath(directory);
         if (File.Exists(manifestPath)) throw new InvalidOperationException("Captured generations are never replaced.");
@@ -414,7 +420,10 @@ public static class AnalysisStoreLifecycle
                     || BundleSealing.ReadSeal(product.Data + ".seal") != contents)
                     throw new InvalidDataException("A capture seal changed before publication protection was acquired.");
                 segments.Add(new(product.Role, product.Version, generation, Path.GetFileName(product.Data),
-                    hashing.Length, contents.Hash));
+                    hashing.Length, contents.Hash)
+                {
+                    RequestedDetails = requestedDetails?.GetValueOrDefault(product.Role),
+                });
             }
             var root = new StoreRootManifest(StoreRootManifest.CurrentVersion, generation, segments[0].Hash,
                 Array.AsReadOnly(segments.ToArray()), null, "") { CapturedObjects = objects, LibraryHeader = libraryHeader };
@@ -496,7 +505,12 @@ public static class AnalysisStoreLifecycle
         && root.Segments.Select(segment => segment.Role).SequenceEqual(roles)
         && IsHash(root.Hash) && root.Hash == root.ComputeHash()
         && root.Segments.All(segment => segment.GenerationId == root.GenerationId && segment.SchemaVersion > 0
-            && segment.ByteLength >= 0 && IsHash(segment.Hash));
+            && segment.ByteLength >= 0 && IsHash(segment.Hash)
+            && (segment.RequestedDetails is null
+                || segment.RequestedDetails is { Version: RequestedDetailIndex.Version } details
+                    && details.Role == segment.Role && details.GenerationId == segment.GenerationId
+                    && details.SchemaVersion == segment.SchemaVersion && details.Items >= 0
+                    && RequestedDetailMap.ValidHash(details.Root)));
 
     private static void RequireDeclaration(SealedStoreSegment segment, string expectedPath)
     {

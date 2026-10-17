@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -33,14 +34,19 @@ internal static class PathProofVerification
         command.CommandText = "DELETE FROM path_proof_chunk WHERE proof_id=$id";
         command.Parameters.AddWithValue("$id", id);
         command.ExecuteNonQuery();
-        command.CommandText = "INSERT INTO path_proof_chunk VALUES ($id,$ordinal,$data)";
+        command.CommandText = "INSERT INTO path_proof_chunk(proof_id,ordinal,data,byte_length,fingerprint) VALUES ($id,$ordinal,$data,$length,$hash)";
         command.Parameters.Add("$ordinal", SqliteType.Integer);
         command.Parameters.Add("$data", SqliteType.Blob);
+        command.Parameters.Add("$length", SqliteType.Integer);
+        command.Parameters.Add("$hash", SqliteType.Blob);
         var chunks = 0;
         for (var offset = 0; offset < bytes.Length; offset += PathProofStorage.ChunkSize)
         {
             command.Parameters["$ordinal"].Value = chunks++;
-            command.Parameters["$data"].Value = bytes.AsSpan(offset, Math.Min(PathProofStorage.ChunkSize, bytes.Length - offset)).ToArray();
+            var piece = bytes.AsSpan(offset, Math.Min(PathProofStorage.ChunkSize, bytes.Length - offset)).ToArray();
+            command.Parameters["$data"].Value = piece;
+            command.Parameters["$length"].Value = piece.Length;
+            command.Parameters["$hash"].Value = SHA256.HashData(piece);
             command.ExecuteNonQuery();
         }
         command.Parameters.Clear();

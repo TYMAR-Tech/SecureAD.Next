@@ -184,8 +184,8 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(saved.Description.GenerationId, saved.Page.Coverage.GenerationId);
         Assert.Equal(UserDn, saved.Account!.DistinguishedName);
         Assert.NotEmpty(saved.Page.Questions);
-        Assert.True(counts.Count("permission") > 0);
-        Assert.True(counts.Count("path") > 0);
+        Assert.Equal(0L, counts.Count("permission"));
+        Assert.Equal(0L, counts.Count("path"));
         screen.CloseObject();
         await screen.ReadCompletion;
         Assert.Equal(before, screen.Findings.Select(FindingDisplaySnapshot));

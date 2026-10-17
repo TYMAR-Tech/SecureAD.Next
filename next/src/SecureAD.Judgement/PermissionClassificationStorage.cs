@@ -56,17 +56,21 @@ internal static class PermissionClassificationStorage
     //
     // WITHOUT ROWID on (descriptor_id, ordinal), so the primary-key b-tree is the table: one stored
     // copy of the key and no separate index, against three copies and two indexes before.
-    internal static void CreateTables(SqliteConnection connection) => Execute(connection, null, $"""
+    internal static void CreateTables(SqliteConnection connection)
+    {
+        SavedTextPayloadStorage.Classifications.CreateTables(connection);
+        Execute(connection, null, $"""
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_product (
             singleton INTEGER PRIMARY KEY CHECK(singleton=1), generation TEXT NOT NULL,
             state TEXT NOT NULL CHECK(state IN ('Writing','Complete')),
             producer_version INTEGER NOT NULL, schema_version INTEGER NOT NULL,
             has_captured_schema INTEGER NOT NULL CHECK(has_captured_schema IN (0,1)),
             object_count INTEGER NULL CHECK(object_count>=0));
-        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_schema (guid TEXT PRIMARY KEY COLLATE BINARY, payload TEXT NOT NULL);
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_schema (
+            guid TEXT PRIMARY KEY COLLATE BINARY, payload_id INTEGER NOT NULL REFERENCES classification_payload(id));
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_descriptor (
             descriptor_id INTEGER PRIMARY KEY,
-            descriptor TEXT NOT NULL, entry_count INTEGER NOT NULL CHECK(entry_count>=0),
+            descriptor_payload_id INTEGER NOT NULL REFERENCES classification_payload(id), entry_count INTEGER NOT NULL CHECK(entry_count>=0),
             fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32));
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_object (
             target TEXT PRIMARY KEY COLLATE NOCASE,
@@ -75,7 +79,7 @@ internal static class PermissionClassificationStorage
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_reading (
             id INTEGER PRIMARY KEY,
             fingerprint BLOB NOT NULL UNIQUE CHECK(length(fingerprint)=32),
-            payload TEXT NOT NULL);
+            payload_id INTEGER NOT NULL REFERENCES classification_payload(id));
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.JudgementFacts)}.permission_classification_value (
             entry_id INTEGER PRIMARY KEY,
             right_count INTEGER NOT NULL CHECK(right_count>=0),
@@ -89,6 +93,7 @@ internal static class PermissionClassificationStorage
             entry_id INTEGER NOT NULL,
             PRIMARY KEY(descriptor_id,ordinal)) WITHOUT ROWID;
         """);
+    }
 
     internal static void Start(SqliteConnection connection, Guid generation, bool hasCapturedSchema) =>
         Execute(connection, null, "INSERT INTO permission_classification_product VALUES (1,$generation,'Writing',$producer,$schema,$captured,NULL)",
@@ -167,12 +172,13 @@ internal static class PermissionClassificationStorage
                 work.DescriptorRow.Start();
                 statements.Bind("INSERT INTO permission_classification_descriptor VALUES ($id,$descriptor,$count,$hash)", transaction,
                     ("$id", descriptor),
-                    ("$descriptor", JsonSerializer.Serialize(result.Permissions with
+                    ("$descriptor", SavedTextPayloadStorage.Classifications.Write(connection, transaction, statements,
+                        JsonSerializer.Serialize(result.Permissions with
                     {
                         Entries = [], DescriptorId = null, DistinguishedName = null!,
                         Availability = default, UnreadableReason = null,
                         Owner = result.Permissions.Owner?.Shared(),
-                    })),
+                    }), token)),
                     ("$count", result.Entries.Count), ("$hash", fingerprint)).ExecuteNonQuery();
                 work.DescriptorRow.Stop();
 
@@ -289,11 +295,14 @@ internal static class PermissionClassificationStorage
             var (fingerprint, key) = PermissionWriteSession.Fingerprint(payload);
             if (session.TryGetReading(key, out var known)) return (known, fingerprint);
 
-            statements.Bind("INSERT OR IGNORE INTO permission_classification_reading(fingerprint,payload) VALUES ($fingerprint,$payload)",
-                transaction, ("$fingerprint", fingerprint), ("$payload", payload)).ExecuteNonQuery();
-            var found = statements.Bind("SELECT id,payload FROM permission_classification_reading WHERE fingerprint=$fingerprint",
+            var found = statements.Bind("SELECT id,payload_id FROM permission_classification_reading WHERE fingerprint=$fingerprint",
                 transaction, ("$fingerprint", fingerprint));
-            using var read = found.ExecuteReader();
+            (long Id, long Payload)? existing = null;
+            using (var read = found.ExecuteReader())
+                if (read.Read())
+                {
+                    existing = (read.GetInt64(0), read.GetInt64(1));
+                }
             // THE STORED PAYLOAD IS COMPARED, NOT ASSUMED. Sharing by digest means a collision would
             // quietly give two different readings one row, and every entry pointing at it would then
             // report a verdict nothing produced.
@@ -302,8 +311,21 @@ internal static class PermissionClassificationStorage
             // report a verdict nothing produced. Mutation-tested 2026-09-22: dropping the comparison
             // let the second object adopt another reading's words and
             // P249SharedReadingIsNotAdoptedWhenTheStoredWordsDiffer failed with no exception thrown.
-            if (!read.Read() || read.GetString(1) != payload) throw Invalid();
-            var id = read.GetInt64(0);
+            long id;
+            if (existing is { } saved)
+            {
+                if (SavedTextPayloadStorage.Classifications.Read(connection, saved.Payload, transaction, token) != payload)
+                    throw Invalid();
+                id = saved.Id;
+            }
+            else
+            {
+                var payloadId = SavedTextPayloadStorage.Classifications.Write(connection, transaction, statements, payload, token);
+                id = (long)statements.Bind("""
+                    INSERT INTO permission_classification_reading(fingerprint,payload_id) VALUES ($fingerprint,$payload);
+                    SELECT last_insert_rowid();
+                    """, transaction, ("$fingerprint", fingerprint), ("$payload", payloadId)).ExecuteScalar()!;
+            }
             session.AddReading(key, id);
             return (id, fingerprint);
         }
@@ -320,11 +342,18 @@ internal static class PermissionClassificationStorage
                 && string.Equals(known, payload, StringComparison.Ordinal))
                 return;
 
-            statements.Bind("INSERT OR IGNORE INTO permission_classification_schema VALUES ($guid,$payload)", transaction,
-                ("$guid", support.Guid), ("$payload", payload)).ExecuteNonQuery();
-            var check = statements.Bind("SELECT payload FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY",
+            var check = statements.Bind("SELECT payload_id FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY",
                 transaction, ("$guid", support.Guid));
-            if (check.ExecuteScalar() as string != payload) throw Invalid();
+            if (check.ExecuteScalar() is long existing)
+            {
+                if (SavedTextPayloadStorage.Classifications.Read(connection, existing, transaction, token) != payload) throw Invalid();
+            }
+            else
+            {
+                var payloadId = SavedTextPayloadStorage.Classifications.Write(connection, transaction, statements, payload, token);
+                statements.Bind("INSERT INTO permission_classification_schema VALUES ($guid,$payload)", transaction,
+                    ("$guid", support.Guid), ("$payload", payloadId)).ExecuteNonQuery();
+            }
             session.AddSchema(support.Guid, payload);
         }
     }
@@ -411,7 +440,7 @@ internal static class PermissionClassificationStorage
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
-                SELECT o.target,o.descriptor_id,o.availability,o.unreadable_reason,d.descriptor,d.entry_count,d.fingerprint
+                SELECT o.target,o.descriptor_id,o.availability,o.unreadable_reason,d.descriptor_payload_id,d.entry_count,d.fingerprint
                 FROM permission_classification_object o
                 LEFT JOIN permission_classification_descriptor d ON d.descriptor_id=o.descriptor_id
                 WHERE o.target=$target COLLATE NOCASE
@@ -442,7 +471,8 @@ internal static class PermissionClassificationStorage
 
             descriptorId = stored.Value;
             if (read.IsDBNull(4)) throw Invalid();
-            permissions = JsonSerializer.Deserialize<ObjectPermissions>(read.GetString(4)) ?? throw Invalid();
+            permissions = JsonSerializer.Deserialize<ObjectPermissions>(
+                SavedTextPayloadStorage.Classifications.Read(connection, read.GetInt64(4), token: token)) ?? throw Invalid();
             expected = read.GetInt32(5);
             listFingerprint = (byte[])read.GetValue(6);
 
@@ -473,7 +503,7 @@ internal static class PermissionClassificationStorage
             //
             // The value table is aliased c rather than v: MeaningJoin already binds v, and SQLite
             // reports a duplicate alias only when a column name happens to exist on both sides.
-            command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",e.ordinal,c.right_count,r.payload,c.object_schema,c.inherited_schema,r.fingerprint,c.fingerprint"
+            command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",e.ordinal,c.right_count,r.payload_id,c.object_schema,c.inherited_schema,r.fingerprint,c.fingerprint"
                 + " FROM permission_classification_entry e LEFT JOIN permission_entry p ON p.id=e.entry_id"
                 + " LEFT JOIN permission_classification_value c ON c.entry_id=e.entry_id"
                 + " LEFT JOIN permission_classification_reading r ON r.id=c.reading_id"
@@ -485,7 +515,7 @@ internal static class PermissionClassificationStorage
                 token.ThrowIfCancellationRequested();
                 const int offset = SharedPermissionStorage.ProjectionColumns + 1;
                 if (read.IsDBNull(offset) || read.IsDBNull(offset + 1)) throw Invalid();
-                var payload = read.GetString(offset + 1);
+                var payload = SavedTextPayloadStorage.Classifications.Read(connection, read.GetInt64(offset + 1), token: token);
 
                 // THE READING IS VERIFIED BEFORE IT IS USED TO VERIFY ANYTHING ELSE. Its own digest
                 // is checked here, and only then does it enter the value fingerprint below - a
@@ -500,7 +530,7 @@ internal static class PermissionClassificationStorage
                         .SequenceEqual(readingFingerprint)) throw Invalid();
 
                 PermissionEntry entry;
-                try { entry = SharedPermissionStorage.ReadShared(read, description.GenerationId); }
+                try { entry = SharedPermissionStorage.ReadShared(connection, read, description.GenerationId, token); }
                 catch (InvalidOperationException error) { throw new InvalidDataException(Message("Invalid"), error); }
                 raw.Add(entry);
 
@@ -550,9 +580,10 @@ internal static class PermissionClassificationStorage
             if (guid is null) return null;
             if (supports.TryGetValue(guid, out var found)) return found;
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT payload FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY";
+            command.CommandText = "SELECT payload_id FROM permission_classification_schema WHERE guid=$guid COLLATE BINARY";
             command.Parameters.AddWithValue("$guid", guid);
-            if (command.ExecuteScalar() is not string json) throw Invalid();
+            if (command.ExecuteScalar() is not long payloadId) throw Invalid();
+            var json = SavedTextPayloadStorage.Classifications.Read(connection, payloadId, token: token);
             var support = JsonSerializer.Deserialize<PermissionSchemaSupport>(json) ?? throw Invalid();
             if (support.Guid != guid) throw Invalid();
             supports.Add(guid, support);

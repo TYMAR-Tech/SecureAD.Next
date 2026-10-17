@@ -232,7 +232,7 @@ public sealed class SharedProofStorageTests
         var second = ControlOnly("OU=Second,DC=contoso,DC=com", Routes(), "second explanation");
         var mutation = kind switch
         {
-            "meaning" => "UPDATE permission_entry SET meaning=(SELECT id FROM shared_proof_value WHERE kind='Meaning' AND payload='second explanation')",
+            "meaning" => "UPDATE permission_entry SET meaning=(SELECT MAX(id) FROM shared_proof_value WHERE kind='Meaning')",
             "control" => "UPDATE control_membership_route SET value_id=(SELECT MAX(id) FROM shared_proof_value WHERE kind='MembershipRoutes')",
             "full-control" => "UPDATE full_control_assessment SET route_value_id=(SELECT MAX(id) FROM shared_proof_value WHERE kind='MembershipRoutes')",
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
@@ -260,8 +260,10 @@ public sealed class SharedProofStorageTests
                 derived = read.IsDBNull(2) ? null : Guid.Parse(read.GetString(2)); catalogue = read.GetInt32(3);
             }
             var payload = JsonSerializer.Serialize(new MembershipRouteSummary([], MembershipRouteIncompleteReason.None));
-            command.CommandText = "UPDATE shared_proof_value SET payload=$payload,fingerprint=$hash WHERE id=$id";
-            command.Parameters.AddWithValue("$payload", payload);
+            Assert.True(TestSealing.TryMutateSavedText(connection,
+                $"UPDATE shared_proof_value SET payload='{payload}' WHERE id={id}", out var changed));
+            Assert.Equal(1, changed);
+            command.CommandText = "UPDATE shared_proof_value SET fingerprint=$hash WHERE id=$id";
             command.Parameters.AddWithValue("$hash", SharedProofStorage.ValueFingerprint("MembershipRoutes", generation, derived, catalogue, payload));
             command.Parameters.AddWithValue("$id", id);
             Assert.Equal(1, command.ExecuteNonQuery());
@@ -319,6 +321,11 @@ public sealed class SharedProofStorageTests
     {
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA foreign_keys=OFF"; command.ExecuteNonQuery();
+        if (TestSealing.TryMutateSavedText(connection, sql, out var changed))
+        {
+            Assert.True(changed > 0);
+            return;
+        }
         command.CommandText = sql; Assert.True(command.ExecuteNonQuery() > 0);
     }
 

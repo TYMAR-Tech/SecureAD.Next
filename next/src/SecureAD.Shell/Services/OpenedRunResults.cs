@@ -73,6 +73,10 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
     internal Result<T> ReadEvidence<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenEvidence, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
+    internal Result<T> ReadRequestedCapture<T>(Func<RequestedDetailLease, T> read, CancellationToken cancellationToken = default) =>
+        Read(OpenRequestedCapture, (reader, _) => read(reader),
+            _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+
     internal Result<T> ReadNavigation<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
         Read(OpenNavigation, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
@@ -153,9 +157,9 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
     internal Result<SavedPermissionClassification> ReadPermissionClassification(string distinguishedName,
         CancellationToken cancellationToken = default)
     {
-        var carried = ReadEvidence(evidence => evidence.ReadDescriptorId(distinguishedName), cancellationToken);
+        var carried = ReadRequestedCapture(evidence => evidence.ReadDescriptorId(distinguishedName), cancellationToken);
         if (!carried.IsSuccess) return Result<SavedPermissionClassification>.Failure(carried.Error);
-        var read = ReadJudgement((reader, token) => reader.ReadPermissionClassification(distinguishedName, carried.Value, token), cancellationToken);
+        var read = ReadFindings(reader => reader.ReadPermissionClassification(distinguishedName, carried.Value, cancellationToken), cancellationToken);
         if (!read.IsSuccess && read.Error.Code == "Evidence.judgementManifestAbsent")
             return Result<SavedPermissionClassification>.Failure(AuditError.Create(ErrorCategory.Shell, "PermissionClassificationUnavailable",
                 ErrorSeverity.Failed, PermissionClassificationText.Get("Unavailable"), Directory));
@@ -238,6 +242,20 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
         }
         NavigationDiagnostics.Identity("evidenceSeal", _evidence.Fingerprint);
         return BundleReader.Open(_evidence, cancellationToken);
+    }
+
+    private Result<RequestedDetailLease> OpenRequestedCapture(CancellationToken cancellationToken)
+    {
+        var opened = _files.RequestedCapture(StoreSegmentRole.Evidence, cancellationToken);
+        if (!opened.IsSuccess) return opened;
+        var lease = opened.Value;
+        if (_findingsCapture is not null && _findingsCapture.Hash != lease.Root.Hash || !CaptureIsCurrent())
+        {
+            lease.Dispose();
+            return Result<RequestedDetailLease>.Failure(Unavailable("GenerationChanged"));
+        }
+        _findingsCapture = lease.Root;
+        return lease;
     }
 
     private Result<BundleReader> OpenNavigation(CancellationToken cancellationToken)

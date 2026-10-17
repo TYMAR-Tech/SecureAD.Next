@@ -49,6 +49,18 @@ later the same day: *"i will be making it so the user can run the audit and it c
 via CLI, so it can run overnight."* So the command line is not capture-only forever; it is the
 unattended path, and the GUI is the worked path.
 
+**"Demo" means a working application - owner clarification, 2026-10-16.**
+The owner needs a working SecureAD application, not a reduced-feature presentation or a
+hand-picked walkthrough through a partly working product.
+The missed demonstration deadline is not permission to narrow Stage 6/7, disable analysis or
+substitute a smaller product for correcting avoidable audit and browsing costs; any actual
+scope change remains an explicit owner decision.
+
+**Integrity means catching accidental damage; no earlier decision binds - owner direction, 2026-10-17.**
+The owner is the only developer and stated that no earlier decision is immutable: his only integrity concern is data being *corrupted* (damaged, truncated, bit-rotted or wrongly copied), not deliberate tampering, and he would remove sealing completely if that made the application usable.
+This supersedes any wording that treats hashing every file at every open, per-record proof, tamper-evidence or "skipping proof is rejected" (PERF-01 below) as a requirement; decision `0020` already called the seal a corruption control and said its open-time cost had to be measured in production before being accepted, where it was 246 seconds for 38.6 GB.
+It is not a decision to stop detecting damage: a 2026-10-17 synthetic test found SQLite itself reported none of 200 random one-bit changes inside stored values, silently returned wrong data for 174 of them, and `PRAGMA quick_check` said "ok" for all 174, so some checksum is still needed, and when it runs, whether results may be browsed while it finishes, and whether RESP-05's per-record proof is kept or replaced remain a recommendation awaiting his approval.
+
 ## What a finding means
 
 **Verification recommendations from captured evidence - owner clarification supplied with the
@@ -161,6 +173,58 @@ while continuing the remaining responsiveness work rather than making this a new
 The implemented functional startup changes and measurement-host controls do not accept actual
 application loading time, and the report is not a direction to restart the completed batch or a new
 general measurement campaign.
+
+**Joined-up requested-detail boundary approved 2026-10-16; implementation authorised.**
+The owner confirmed one RESP-05 implementation covering original attributes/member values, original
+descriptors/permission entries, saved per-right classifications/schema support and requested
+control/member/path proof together.
+Keep SQLite and shared source payloads, using logical payload pages of at most 64 KiB and a
+hierarchical SHA-256 index anchored in the publication root: small index pieces fingerprint their
+children so a read checks only its selected branch, payload pages and necessary shared support.
+The page size is an internal reading unit, not a limit on retained evidence or analysis; oversized
+values continue without truncation, and index/support work must not hide whole-object reconstruction.
+This approves application-level requested-data verification, not a custom SQLite block reader/VFS,
+another database engine, compact-encoding experiment or file per object.
+Retain independent whole-file seals and full-file verification as a distinct operation, never
+presenting a checked page as verification of unrequested bytes.
+Preserve original bytes/order/duplicates, complete saved counts and qualifications, all existing
+security-claim distinctions, evidence-owned descriptor associations and exact source/resource/
+generation binding through the existing protected-run owner and publication handoffs.
+Replace superseded browser read paths without returning partial objects from whole-object APIs;
+keep screen wording/layout and explicitly whole-collection cards unchanged, with new presentation
+remaining RESP-07 work and general query completion remaining RESP-06 work.
+Approval includes necessary native-format/read-contract changes and focused offline verification
+of all four families, actual requested work, large values, corrupt/foreign inputs, cancellation and
+reopen, with rebuilt isolated defects/restored controls, fresh short TEMP/TMP before discovery and a
+final correct-source Release rebuild with new source/binary provenance.
+Added preparation, validation and storage costs stay inside reported producing/publication work;
+the approval does not assume those costs are small or establish enterprise response-budget acceptance.
+Scope was confirmed before application coding; the owner subsequently requested beginning
+implementation on the same day, without reopening the confirmed batch or RESP-02/03/04 approval.
+The dedicated RESP queue records the implementation checkpoint and unfinished consumers.
+Existing sealed inputs and historical evidence remain untouched; no general measurement campaign,
+migration/legacy reader, live AD, recapture, production export, discovery/budget/SYSVOL change,
+deployment, commit or push is authorised.
+RESP-03-F01 remains open without becoming a prerequisite to this implementation.
+
+**Source-owned verified payload replacement approved to try - owner direction, 2026-10-16.**
+After reviewing the measured lab slowdown and the researched alternative, the owner agreed to
+try replacing the costly generic field-by-field preparation with source-owned bounded payload
+pieces, fingerprints produced as final payloads are written, and compact authenticated lookup
+records rather than another full payload copy.
+Keep SQLite, the existing at-most-64-KiB logical reading unit and hierarchical publication-root
+binding, shared original descriptors/proof components, independent whole-file seals, original
+bytes/order/duplicates, complete saved answers/counts and exact source/resource/generation binding.
+Reuse the sound requested-detail consumers and protected-run lifetime; replace superseded
+production representations/read paths rather than retaining competing implementations or fallbacks.
+This is permission to develop and verify the proposed replacement, not proof that it will be fast
+or permission to reduce Stage 6/7, change rules/scope/budgets, alter wording/layout, introduce a
+custom SQLite VFS/another database/compact-encoding experiment or rewrite sealed inputs.
+Preserve the present uncommitted application and its binaries/logs as the comparison baseline,
+with replacement work isolated; do not roll back sound earlier responsiveness or correctness work.
+Focused offline time/storage and correctness comparisons support, rather than replace, acceptance
+of the complete real application in the owner's lab; another live audit, deployment/package
+overwrite, production access, commit and push remain separately authorised.
 
 **Fast saved-result UI takes priority over small judging-time increases - owner clarification,
 2026-10-15.**

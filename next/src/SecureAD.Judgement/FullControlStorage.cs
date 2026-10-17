@@ -44,13 +44,14 @@ internal static class FullControlStorage
         if (result.FullControlAssessments.Count == 0) return;
         var sourceEntries = prepared.Source ?? throw FullControlEvaluator.InvalidProof();
         var entries = sourceEntries.Entries;
-        Execute(connection, transaction, "INSERT INTO full_control_source VALUES ($target,$count,$fingerprint)",
+        sharedEntries.InsertRecord(PermissionProofRecordStorage.FullSource, "INSERT INTO full_control_source VALUES (CAST($target AS TEXT),$count,$fingerprint)",
             ("$target", result.Target), ("$count", entries.Length), ("$fingerprint", sourceEntries.Fingerprint));
         for (var position = 0; position < entries.Length; position++)
         {
             var entry = entries[position];
             var reference = sharedEntries.Write(result.Target, result.FullControlAssessments[0].GenerationId, entry);
-            Execute(connection, transaction, "INSERT INTO full_control_source_entry VALUES ($target,$position,$ordinal,$entry,$fingerprint)",
+            sharedEntries.InsertRecord(PermissionProofRecordStorage.FullSourceEntry,
+                "INSERT INTO full_control_source_entry VALUES (CAST($target AS TEXT),$position,$ordinal,$entry,$fingerprint)",
                 ("$target", result.Target), ("$position", position), ("$ordinal", entry.Ordinal), ("$entry", reference.Id),
                 ("$fingerprint", reference.Fingerprint));
         }
@@ -61,17 +62,15 @@ internal static class FullControlStorage
             var routes = sharedEntries.Proofs.WriteFullControlRoutes(assessment, item.Routes);
             var stored = JsonSerializer.SerializeToNode(assessment with { Id = 0, Source = assessment.Source with { Entries = [] } }, ProofSerialization.Options)!;
             if (stored["Source"] is not JsonObject source || !source.Remove("MembershipRoutes")) throw FullControlEvaluator.InvalidProof();
-            Execute(connection, transaction, """
+            var id = sharedEntries.InsertRecord(PermissionProofRecordStorage.FullAssessment, """
                 INSERT INTO full_control_assessment(target,holder_sid,holder_scope,evaluation,expectedness,generation,derivation_generation,support_count,proof,route_value_id,route_fingerprint)
-                VALUES ($target,$sid,$scope,$state,$expected,$generation,$derivation,$count,$proof,$routes,$routehash)
+                VALUES (CAST($target AS TEXT),CAST($sid AS TEXT),CAST($scope AS TEXT),CAST($state AS TEXT),
+                    CAST($expected AS TEXT),CAST($generation AS TEXT),CAST($derivation AS TEXT),$count,
+                    CAST($proof AS TEXT),$routes,$routehash)
                 """, ("$target", result.Target), ("$sid", assessment.Source.Holder.Sid), ("$scope", assessment.Source.HolderScope),
                 ("$state", assessment.EvaluationState.ToString()), ("$expected", assessment.Expectedness.ToString()),
                 ("$generation", assessment.GenerationId.ToString("D")), ("$derivation", assessment.DerivationGenerationId?.ToString("D")),
                 ("$count", supports.Length), ("$proof", stored.ToJsonString()), ("$routes", routes.Id), ("$routehash", routes.Fingerprint));
-            using var identity = connection.CreateCommand();
-            identity.Transaction = transaction;
-            identity.CommandText = "SELECT last_insert_rowid()";
-            var id = (long)identity.ExecuteScalar()!;
             foreach (var edge in supports)
                 Execute(connection, transaction, "INSERT INTO full_control_support VALUES ($summary,$edge)", ("$summary", id), ("$edge", edge.Id));
         }
@@ -79,6 +78,20 @@ internal static class FullControlStorage
 
     internal static FullControlAssessment Read(SqliteConnection connection, JudgementDescription description, long id)
     {
+        var selected = JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "full_control_assessment", id);
+        if (selected is not null)
+        {
+            var target = selected.CompleteText("target");
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "full_control_source", target);
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_object", target);
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "shared_proof_value", selected.Integer("route_value_id"));
+            if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+                foreach (var link in requested.ReadCompleteScope("full_control_support", id))
+                {
+                    link.VerifyValues();
+                    JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_edge", link.Integer("edge_id"));
+                }
+        }
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT a.target,a.holder_sid,a.holder_scope,a.evaluation,a.expectedness,a.generation,a.derivation_generation,a.support_count,a.proof,s.ace_count,s.fingerprint,o.is_complete,a.route_value_id,a.route_fingerprint
@@ -132,6 +145,12 @@ internal static class FullControlStorage
 
     private static IReadOnlyList<PermissionEntry> ReadEntries(SqliteConnection connection, JudgementDescription description, string target)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            foreach (var occurrence in requested.ReadCompleteScope("full_control_source_entry", target))
+            {
+                occurrence.VerifyValues();
+                JudgementStoreLayout.VerifyPermission(connection, occurrence.Integer("entry_id"));
+            }
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",a.ordinal,a.fingerprint,a.position FROM full_control_source_entry a LEFT JOIN permission_entry p ON p.id=a.entry_id"
             + SharedPermissionStorage.MeaningJoin + "WHERE a.target=$target ORDER BY a.position";
@@ -141,7 +160,7 @@ internal static class FullControlStorage
         while (read.Read())
         {
             if (read.GetInt32(SharedPermissionStorage.ProjectionColumns + 2) != entries.Count) throw FullControlEvaluator.InvalidProof();
-            entries.Add(SharedPermissionStorage.Read(read, target, description.GenerationId));
+            entries.Add(SharedPermissionStorage.Read(connection, read, target, description.GenerationId));
         }
         return entries;
     }
@@ -149,6 +168,13 @@ internal static class FullControlStorage
     internal static IReadOnlyDictionary<long, long> Supports(SqliteConnection connection, IEnumerable<ControlEdge> edges)
     {
         var result = new Dictionary<long, long>();
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+        {
+            foreach (var edge in edges)
+                if (requested.ReadSingle("detail_control_support", edge.Id) is { } support)
+                    result.Add(edge.Id, support.Integer("assessment_id"));
+            return result;
+        }
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT assessment_id FROM full_control_support WHERE edge_id=$edge";
         var parameter = command.Parameters.Add("$edge", SqliteType.Integer);

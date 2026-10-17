@@ -56,8 +56,10 @@ public sealed class ProtectedRunFiles : IDisposable, IAsyncDisposable
                 StoreSegmentRole.Delegations => ProtectedStoreFile.OpenDelegations(Directory, token),
                 _ => throw new ArgumentOutOfRangeException(nameof(role)),
             });
-            if (file.IsSuccess) _captureRootHash = selected.Value.Hash;
-            return file;
+            if (!file.IsSuccess) return file;
+            var verified = file.Value.RequireWholeVerification(token);
+            if (verified.IsSuccess) _captureRootHash = selected.Value.Hash;
+            return verified;
         }
     }
 
@@ -79,10 +81,69 @@ public sealed class ProtectedRunFiles : IDisposable, IAsyncDisposable
                 return Failure("The selected analysis belongs to another capture.");
             var file = Get(role, selected.Value, () => ProtectedStoreFile.OpenAnalysisSegment(Directory,
                 new(kind, selected.Value.GenerationId), role, token));
-            if (file.IsSuccess) _captureRootHash = capture.Value.Hash;
-            return file;
+            if (!file.IsSuccess) return file;
+            var verified = file.Value.RequireWholeVerification(token);
+            if (verified.IsSuccess) _captureRootHash = capture.Value.Hash;
+            return verified;
         }
     }
+
+    /// <summary>Acquires requested capture data without claiming verification of unrequested file bytes.</summary>
+    public Result<RequestedDetailLease> RequestedCapture(StoreSegmentRole role, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _closing) != 0, this);
+            var selected = AnalysisStoreLifecycle.ResolveCapture(Directory);
+            if (!selected.IsSuccess) return Result<RequestedDetailLease>.Failure(selected.Error);
+            if (_captureRootHash is not null && _captureRootHash != selected.Value.Hash)
+                return RequestedFailure("The selected capture changed.");
+            var file = Get(role, selected.Value, () => ProtectedStoreFile.OpenCaptureRequested(Directory, role, cancellationToken));
+            if (!file.IsSuccess) return Result<RequestedDetailLease>.Failure(file.Error);
+            var root = selected.Value;
+            _captureRootHash = root.Hash;
+            return new RequestedDetailLease(file.Value, cancellationToken, _stopping.Token, () =>
+            {
+                var current = AnalysisStoreLifecycle.ResolveCapture(Directory);
+                return current.IsSuccess && current.Value.Hash == root.Hash && file.Value.MayReadRequested;
+            });
+        }
+    }
+
+    /// <summary>Acquires requested saved proof under this run's exact capture and analysis generation.</summary>
+    public Result<RequestedDetailLease> RequestedAnalysis(AnalysisStoreKind kind, StoreSegmentRole role,
+        CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _closing) != 0, this);
+            var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+            if (!capture.IsSuccess) return Result<RequestedDetailLease>.Failure(capture.Error);
+            if (_captureRootHash is not null && _captureRootHash != capture.Value.Hash)
+                return RequestedFailure("The selected capture changed.");
+            var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, kind);
+            if (!selected.IsSuccess) return Result<RequestedDetailLease>.Failure(selected.Error);
+            if (selected.Value.EvidenceSeal != capture.Value.EvidenceSeal)
+                return RequestedFailure("The saved proof belongs to another capture.");
+            var root = selected.Value;
+            var file = Get(role, root, () => ProtectedStoreFile.OpenAnalysisRequested(Directory,
+                new(kind, root.GenerationId), role, cancellationToken));
+            if (!file.IsSuccess) return Result<RequestedDetailLease>.Failure(file.Error);
+            _captureRootHash = capture.Value.Hash;
+            return new RequestedDetailLease(file.Value, cancellationToken, _stopping.Token, () =>
+            {
+                var currentCapture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+                var current = AnalysisStoreLifecycle.ResolveRoot(Directory, kind);
+                return currentCapture.IsSuccess && currentCapture.Value.Hash == capture.Value.Hash
+                    && current.IsSuccess && current.Value.Hash == root.Hash && file.Value.MayReadRequested;
+            });
+        }
+    }
+
+    private Result<RequestedDetailLease> RequestedFailure(string detail) => Result<RequestedDetailLease>.Failure(
+        AuditError.Create(ErrorCategory.Evidence, "RequestedDetailGenerationChanged", ErrorSeverity.Failed, detail, Directory));
 
     private Result<ProtectedStoreFile> Get(StoreSegmentRole role, StoreRootManifest root,
         Func<Result<ProtectedStoreFile>> open)

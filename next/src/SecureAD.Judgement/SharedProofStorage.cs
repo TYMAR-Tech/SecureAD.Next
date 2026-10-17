@@ -35,12 +35,13 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
 
     internal static void CreateTables(SqliteConnection connection)
     {
+        SavedTextPayloadStorage.Permissions.CreateTables(connection);
         using var command = connection.CreateCommand();
         command.CommandText = $"""
             CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.shared_proof_value (id INTEGER PRIMARY KEY,
                 kind TEXT NOT NULL CHECK(kind IN ('Meaning','MembershipRoutes')), format_version INTEGER NOT NULL,
                 generation TEXT NOT NULL, derivation_generation TEXT NULL, catalogue_version INTEGER NOT NULL,
-                payload TEXT NOT NULL, fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
+                payload_id INTEGER NOT NULL REFERENCES permission_payload(id), fingerprint BLOB NOT NULL CHECK(length(fingerprint)=32),
                 lookup_hash BLOB NOT NULL CHECK(length(lookup_hash)=32));
             CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.ix_shared_proof_lookup ON shared_proof_value(lookup_hash);
             CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_membership_route (edge_id INTEGER PRIMARY KEY REFERENCES control_edge(id),
@@ -172,9 +173,9 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             return cached;
         }
         var bucket = lookup(key);
-        const string select = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
+        const string select = "SELECT id,kind,format_version,generation,derivation_generation,catalogue_version,payload_id,fingerprint FROM shared_proof_value WHERE lookup_hash=$lookup ORDER BY id";
         const string insert = """
-            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint,lookup_hash)
+            INSERT INTO shared_proof_value(kind,format_version,generation,derivation_generation,catalogue_version,payload_id,fingerprint,lookup_hash)
             VALUES ($kind,$version,$generation,$derived,$catalogue,$payload,$hash,$lookup);
             SELECT last_insert_rowid();
             """;
@@ -184,7 +185,8 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             while (read.Read())
             {
                 var storedKey = ValueKey(read.GetString(1), Guid.Parse(read.GetString(3)),
-                    read.IsDBNull(4) ? null : Guid.Parse(read.GetString(4)), read.GetInt32(5), read.GetString(6));
+                    read.IsDBNull(4) ? null : Guid.Parse(read.GetString(4)), read.GetInt32(5),
+                    SavedTextPayloadStorage.Permissions.Read(connection, read.GetInt64(6), transaction: transaction));
                 if (read.GetInt32(2) != FormatVersion || !Hash(storedKey).AsSpan().SequenceEqual((byte[])read.GetValue(7)))
                     throw FullControlEvaluator.InvalidProof();
                 // The bucket is an index, not identity: compare complete, ordinal values after a hash collision.
@@ -200,7 +202,8 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
         [
             ("$kind", kind), ("$version", FormatVersion), ("$generation", generation.ToString("D")),
             ("$derived", derived is { } source ? source.ToString("D") : null), ("$catalogue", catalogue),
-            ("$payload", payload), ("$hash", preparedFingerprint ?? Hash(key)), ("$lookup", bucket),
+            ("$payload", SavedTextPayloadStorage.Permissions.Write(connection, transaction, statements, payload)),
+            ("$hash", preparedFingerprint ?? Hash(key)), ("$lookup", bucket),
         ];
         created = true;
         return (long)statements.Bind(insert, transaction, values).ExecuteScalar()!;
@@ -209,6 +212,9 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge,
         ControlEvidenceReadScope? scope)
     {
+        var selected = JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_membership_route", edge.Id);
+        if (selected is not null)
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "shared_proof_value", selected.Integer("value_id"));
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT value_id,fingerprint FROM control_membership_route WHERE edge_id=$edge";
         command.Parameters.AddWithValue("$edge", edge.Id);
@@ -245,7 +251,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     {
         ControlEvidencePreparation.ReadingRoutes(generation);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT kind,format_version,generation,derivation_generation,catalogue_version,payload,fingerprint FROM shared_proof_value WHERE id=$id";
+        command.CommandText = "SELECT kind,format_version,generation,derivation_generation,catalogue_version,payload_id,fingerprint FROM shared_proof_value WHERE id=$id";
         command.Parameters.AddWithValue("$id", id);
         string payload;
         using (var read = command.ExecuteReader())
@@ -253,7 +259,7 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
             if (!read.Read() || read.GetString(0) != "MembershipRoutes" || read.GetInt32(1) != FormatVersion
                 || read.GetString(2) != generation.ToString("D") || Text(read, 3) != derived?.ToString("D")
                 || read.GetInt32(4) != catalogue) throw FullControlEvaluator.InvalidProof();
-            payload = read.GetString(5);
+            payload = SavedTextPayloadStorage.Permissions.Read(connection, read.GetInt64(5));
             if (!ValueFingerprint("MembershipRoutes", generation, derived, catalogue, payload).AsSpan().SequenceEqual((byte[])read.GetValue(6)))
                 throw FullControlEvaluator.InvalidProof();
         }

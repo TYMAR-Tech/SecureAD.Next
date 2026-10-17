@@ -49,7 +49,7 @@ internal sealed class ControlEvidenceReadScope : IDisposable
         }
         if (!_values.TryGetValue(id, out var value))
         {
-            value = SharedPermissionStorage.ReadShared(read, edge.GenerationId);
+            value = SharedPermissionStorage.ReadShared(_connection, read, edge.GenerationId);
             _values.Add(id, value);
         }
         var entry = SharedPermissionStorage.ReadOccurrence(read, edge.Target, edge.GenerationId, value);

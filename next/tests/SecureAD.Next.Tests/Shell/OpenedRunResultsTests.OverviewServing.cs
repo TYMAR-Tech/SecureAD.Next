@@ -144,7 +144,7 @@ public sealed partial class OpenedRunResultsTests
             Assert.True(detail.Value!.IsBound);
             Assert.Equal(2, detail.Value.Routes!.Distance.SupportedDistance);
             Assert.Equal(2, detail.Value.Routes.ShortestSteps.Count);
-            Assert.Equal((1L, 1L), (counts.Count("permission"), counts.Count("path")));
+            Assert.Equal((0L, 0L), (counts.Count("permission"), counts.Count("path")));
             screen.CloseObject();
             await screen.ReadCompletion;
             Assert.Null(screen.ViewRefusal);

@@ -606,6 +606,9 @@ public sealed class JudgementWriter : IDisposable
         LapsInventoryStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-permission-classifications");
         PermissionClassificationStorage.RequirePublishable(_connection);
+        diagnostic?.Part("validate-saved-payloads");
+        SavedTextPayloadStorage.Classifications.RequirePublishable(_connection, cancellationToken);
+        SavedTextPayloadStorage.Permissions.RequirePublishable(_connection, cancellationToken);
         diagnostic?.Part("validate-path-fragments");
         PathProofStorage.RequirePublishable(_connection, cancellationToken);
         diagnostic?.Part("validate-path-questions");
@@ -647,6 +650,16 @@ public sealed class JudgementWriter : IDisposable
         diagnostic?.Part("build-indexes");
         JudgementSchema.CreateDeferredIndexes(_connection);
         cancellationToken.ThrowIfCancellationRequested();
+        diagnostic?.Part("prepare-requested-selections");
+        RequestedProofSelectionStorage.Prepare(_connection, JudgementReader.ReadDescription(_connection)
+            ?? throw new InvalidDataException("The completed judgement header is absent."), cancellationToken);
+        diagnostic?.Part("prepare-requested-details");
+        var requestedDetails = new Dictionary<StoreSegmentRole, RequestedDetailManifest>();
+        foreach (var role in BundleLayout.JudgementParts)
+            requestedDetails.Add(role, RequestedDetailIndex.Prepare(_connection, JudgementStoreLayout.Schema(role),
+                role, JudgementSchema.Version, GenerationId, _evidenceSeal, cancellationToken,
+                JudgementStoreLayout.RequestedPayloads(role), JudgementStoreLayout.RequestedRecords(role)));
+        RequestedDetailRecordWriter.RequireAllConsumed(_connection);
         diagnostic?.Part("checkpoint-database");
         JudgementStoreLayout.Checkpoint(_connection);
         diagnostic?.Part("close-database");
@@ -666,7 +679,7 @@ public sealed class JudgementWriter : IDisposable
                 AnalysisPublicationPart.SealData => "seal-generation",
                 AnalysisPublicationPart.SelectManifest => "select-generation",
                 _ => throw new ArgumentOutOfRangeException(nameof(part)),
-            }), sealingLog, JudgementSchema.Version, _evidenceSeal, null, BundleLayout.JudgementParts);
+            }), sealingLog, JudgementSchema.Version, _evidenceSeal, null, BundleLayout.JudgementParts, requestedDetails);
         _finished = true;
         diagnostic?.Part("release-write-lock");
         _writeLock.Dispose();

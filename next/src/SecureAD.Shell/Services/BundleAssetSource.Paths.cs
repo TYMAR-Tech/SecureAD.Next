@@ -92,7 +92,7 @@ internal sealed partial class AssetReadRequest
         Tier0OverviewScope scope,
         Tier0OverviewMark? after) =>
         ReadProduct(bundleDirectory, reader => reader.ReadTier0Overview(scope, after, _readCancellation),
-            "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:", lightweight: true);
+            "Tier0OverviewUnreadable", "Saved Tier 0 results could not be read:");
 
     /// <inheritdoc/>
     public Result<SavedTier0Path?> ReadSavedTier0Path(string bundleDirectory, string distinguishedName) =>
@@ -107,15 +107,15 @@ internal sealed partial class AssetReadRequest
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var read = Flatten(WithRun(bundleDirectory, run => run.ReadJudgement((reader, token) =>
+            var read = Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader =>
             {
+                var token = cancellationToken;
                 var page = reader.ReadPathRiskPage(distinguishedName, group, after, token);
                 var summary = reader.ReadTier0FindingSummary(token);
                 Finding? finding = null;
                 if (summary is not null)
                 {
-                    var findings = reader.ReadPage(new FindingsQuery(null, UnexpectedTier0Route.RuleId,
-                        null, null, distinguishedName, null, 1));
+                    var findings = reader.ReadTier0FindingPage(distinguishedName);
                     if (!findings.IsSuccess) return Result<SavedTier0Path?>.Failure(findings.Error);
                     if (findings.Value.HasMore) throw new InvalidDataException(SavedPathText.Get("InvalidEvidence"));
                     finding = findings.Value.Findings.SingleOrDefault();
@@ -133,7 +133,8 @@ internal sealed partial class AssetReadRequest
                 if (page.Questions.Count > 0)
                 {
                     // Names come from this protected run and this account only, not a directory lookup.
-                    var account = run.ReadEvidence(evidence => evidence.ReadObjectAttributes(distinguishedName), token);
+                    var account = run.ReadRequestedCapture(evidence => evidence.ReadObjectAttributes(distinguishedName,
+                        ["displayName", "sAMAccountName"]), token);
                     if (!account.IsSuccess) return Result<SavedTier0Path?>.Failure(account.Error);
                     if (account.Value is null && page.Questions.Any(value => value.Risk.Authorization == ControlEvaluationState.Established))
                         return PathFailure("InvalidEvidence", bundleDirectory, null);

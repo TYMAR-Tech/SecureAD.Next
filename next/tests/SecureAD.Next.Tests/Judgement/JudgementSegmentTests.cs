@@ -277,8 +277,18 @@ public sealed class JudgementSegmentTests
         pragma.CommandText = "PRAGMA temp_store=FILE";
         pragma.ExecuteNonQuery();
         using var insert = connection.CreateCommand();
-        insert.CommandText = "INSERT INTO permission_classification_descriptor VALUES(1,'{}',1,zeroblob(32))";
-        Assert.Equal(1, insert.ExecuteNonQuery());
+        using (var transaction = connection.BeginTransaction())
+        {
+            using var statements = new PreparedStatements(connection);
+            var payload = SavedTextPayloadStorage.Classifications.Write(connection, transaction, statements, "{}");
+            insert.Transaction = transaction;
+            insert.CommandText = "INSERT INTO permission_classification_descriptor VALUES(1,$payload,1,zeroblob(32))";
+            insert.Parameters.AddWithValue("$payload", payload);
+            Assert.Equal(1, insert.ExecuteNonQuery());
+            transaction.Commit();
+        }
+        insert.Transaction = null;
+        insert.Parameters.Clear();
         insert.CommandText = "INSERT INTO permission_classification_entry VALUES(1,0,999)";
         Assert.Throws<SqliteException>(() => insert.ExecuteNonQuery());
         insert.CommandText = "SELECT COUNT(*) FROM permission_classification_entry";

@@ -16,7 +16,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
 
     internal const int ProjectionColumns = 29;
     internal const string Projection = """
-        p.id,p.generation,p.entry_hash,p.ace_type,p.sid,p.name,p.dn,p.domain,p.unresolved_reason,p.role,v.payload AS meaning,
+        p.id,p.generation,p.entry_hash,p.ace_type,p.sid,p.name,p.dn,p.domain,p.unresolved_reason,p.role,v.payload_id AS meaning,
         p.mask,p.object_type,p.inherited_object_type,p.inherited,p.inheritance_flags,p.propagation_flags,p.has_object_type,
         p.has_inherited_object_type,p.application_data,p.meaning AS meaning_id,p.meaning_binding,
         v.id AS resolved_meaning_id,v.kind,v.format_version,v.generation AS meaning_generation,
@@ -176,9 +176,9 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         const string insert = """
             INSERT INTO permission_entry(generation,entry_hash,ace_type,sid,name,dn,domain,unresolved_reason,role,meaning,
                 mask,object_type,inherited_object_type,inherited,inheritance_flags,propagation_flags,has_object_type,has_inherited_object_type,application_data,meaning_binding)
-            VALUES ($generation,$hash,$type,$sid,$name,$dn,$domain,$unresolved,$role,$meaning,
-                $mask,$object,$inheritedobject,$inherited,$inheritance,$propagation,$hasobject,$hasinheritedobject,$data,$meaningbinding);
-            SELECT last_insert_rowid();
+            VALUES (CAST($generation AS TEXT),CAST($hash AS TEXT),CAST($type AS TEXT),CAST($sid AS TEXT),
+                CAST($name AS TEXT),CAST($dn AS TEXT),CAST($domain AS TEXT),CAST($unresolved AS TEXT),CAST($role AS TEXT),$meaning,
+                $mask,CAST($object AS TEXT),CAST($inheritedobject AS TEXT),$inherited,$inheritance,$propagation,$hasobject,$hasinheritedobject,$data,$meaningbinding)
             """;
         (string Name, object? Value)[] values =
         [
@@ -191,10 +191,29 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
             ("$hasobject", entry.HasObjectType), ("$hasinheritedobject", entry.HasInheritedObjectType), ("$data", entry.ApplicationData),
             ("$meaningbinding", meaning.Fingerprint),
         ];
-        var id = Convert.ToInt64(statements.Bind(insert, transaction, values).ExecuteScalar());
+        var id = InsertRecord(PermissionProofRecordStorage.Entry, insert, values);
         session.AddEntry(hash, id);
         return id;
     }
+
+    internal long InsertRecord(RequestedDetailIndex.RecordLayout layout, string sql,
+        params (string Name, object? Value)[] values)
+    {
+        // Explicit UTF-8 BLOB-to-TEXT binding retains embedded NULs even in large strings.
+        var fields = values.Select(value => value.Value is string text
+            ? new RequestedDetailRecordWriter.EncodedText(text, Encoding.UTF8.GetBytes(text)) : value.Value).ToArray();
+        var bound = values.Select((value, index) => (value.Name,
+            Value: fields[index] is RequestedDetailRecordWriter.EncodedText text ? text.Utf8 : fields[index])).ToArray();
+        var id = (long)statements.Bind(sql + "; SELECT last_insert_rowid();", transaction, bound).ExecuteScalar()!;
+        if (fields.Length + 1 == layout.Columns.Length && layout.Columns[0] == "id")
+            fields = [id, .. fields];
+        Record(layout, id, fields);
+        return id;
+    }
+
+    private void Record(RequestedDetailIndex.RecordLayout layout, long rowId, object?[] values) =>
+        statements.Records.Write(transaction, JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof),
+            layout, rowId, values);
 
     // Queries append the occurrence's own ordinal and fingerprint after the checked projection. The
     // ordinal is now the only place the position is recorded, and the fingerprint is what proves it:
@@ -209,10 +228,10 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     // fingerprint has established that this target really carried this entry. Resolved before, the
     // name would be taken from a target nothing had yet proved.
     internal static PermissionEntry Read(
-        SqliteDataReader read, string target, Guid generation, ReadOnlySpan<byte> boundTo = default)
+        SqliteConnection connection, SqliteDataReader read, string target, Guid generation, ReadOnlySpan<byte> boundTo = default)
     {
         if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
-        var entry = ReadValue(read, generation, read.GetInt32(ProjectionColumns));
+        var entry = ReadValue(connection, read, generation, read.GetInt32(ProjectionColumns));
         var fingerprint = SHA256.HashData(Encoding.UTF8.GetBytes(Key(target, generation, entry, boundTo)));
         if (!fingerprint.AsSpan().SequenceEqual((byte[])read.GetValue(ProjectionColumns + 1))) throw FullControlEvaluator.InvalidProof();
         return entry with { Trustee = entry.Trustee.DisplayedAgainst(target) };
@@ -221,6 +240,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     internal static PermissionEntry ReadReference(SqliteConnection connection, string target, Guid generation,
         long id, int ordinal, byte[] fingerprint)
     {
+        JudgementStoreLayout.VerifyPermission(connection, id);
         JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PermissionProof);
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT {Projection},$ordinal,$fingerprint FROM permission_entry p {MeaningJoin} WHERE p.id=$id";
@@ -229,13 +249,15 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
         command.Parameters.AddWithValue("$fingerprint", fingerprint);
         using var read = command.ExecuteReader();
         if (!read.Read()) throw FullControlEvaluator.InvalidProof();
-        return Read(read, target, generation);
+        return Read(connection, read, target, generation);
     }
 
-    private static PermissionEntry ReadValue(SqliteDataReader read, Guid generation, int ordinal)
+    private static PermissionEntry ReadValue(SqliteConnection connection, SqliteDataReader read, Guid generation, int ordinal,
+        CancellationToken cancellationToken = default)
     {
         ControlEvidencePreparation.ReadingPermission(generation);
-        var meaning = Text(read, 10);
+        var meaning = read.IsDBNull(10) ? null
+            : SavedTextPayloadStorage.Permissions.Read(connection, read.GetInt64(10), token: cancellationToken);
         if (read.IsDBNull(20))
         {
             if (meaning is not null || !read.IsDBNull(22)) throw FullControlEvaluator.InvalidProof();
@@ -296,11 +318,12 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     /// that the object's descriptor really holds these entries.
     /// </para>
     /// </remarks>
-    internal static PermissionEntry ReadShared(SqliteDataReader read, Guid generation)
+    internal static PermissionEntry ReadShared(SqliteConnection connection, SqliteDataReader read, Guid generation,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(read);
         if (read.IsDBNull(0) || read.GetString(1) != generation.ToString("D")) throw FullControlEvaluator.InvalidProof();
-        return ReadValue(read, generation, read.GetInt32(ProjectionColumns));
+        return ReadValue(connection, read, generation, read.GetInt32(ProjectionColumns), cancellationToken);
     }
 
     internal static string ValueKey(PermissionEntry entry) => JsonSerializer.Serialize(entry);

@@ -14,6 +14,7 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     private readonly FileStream _seal;
     private int _readers;
     private bool _closing;
+    private bool _verificationFailed;
     private readonly Dictionary<StoreSegmentRole, ProtectedStoreFile> _related = [];
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal object EvidenceDescriptionGate { get; } = new();
@@ -85,6 +86,14 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     /// <summary>The verified fingerprint, retained only while the files are protected.</summary>
     public string Fingerprint { get; private set; } = "";
 
+    /// <summary>Whether every file byte was verified during this continuously protected lifetime.</summary>
+    public bool WholeFileVerified => Fingerprint.Length != 0;
+
+    internal bool MayReadRequested
+    {
+        get { lock (_gate) return !_verificationFailed; }
+    }
+
     /// <summary>Protects and verifies the evidence without opening an analytical reader.</summary>
     public static Result<ProtectedStoreFile> OpenEvidence(string directory, CancellationToken cancellationToken = default) =>
         OpenCapture(directory, StoreSegmentRole.Evidence, cancellationToken);
@@ -101,7 +110,11 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     public static Result<ProtectedStoreFile> OpenDelegations(string directory, CancellationToken cancellationToken = default) =>
         OpenCapture(directory, StoreSegmentRole.Delegations, cancellationToken);
 
-    private static Result<ProtectedStoreFile> OpenCapture(string directory, StoreSegmentRole role, CancellationToken token)
+    internal static Result<ProtectedStoreFile> OpenCaptureRequested(string directory, StoreSegmentRole role, CancellationToken token) =>
+        OpenCapture(directory, role, token, requested: true);
+
+    private static Result<ProtectedStoreFile> OpenCapture(string directory, StoreSegmentRole role, CancellationToken token,
+        bool requested = false)
     {
         token.ThrowIfCancellationRequested();
         var selected = AnalysisStoreLifecycle.ResolveCapture(directory);
@@ -115,7 +128,8 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(role)),
         };
         return Open(directory, null, path, path + ".seal",
-            () => BundleSealing.VerifySegment(path, path + ".seal", role.ToString(), token), token, selected.Value, role);
+            () => BundleSealing.VerifySegment(path, path + ".seal", role.ToString(), token), token, selected.Value, role,
+            verifyWholeFile: !requested);
     }
 
     /// <summary>Protects and verifies the specified immutable analysis generation.</summary>
@@ -127,7 +141,14 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
 
     /// <summary>Verifies only the declared analysis product, retaining its exact publication root.</summary>
     public static Result<ProtectedStoreFile> OpenAnalysisSegment(string directory, AnalysisStoreGeneration generation,
-        StoreSegmentRole role, CancellationToken cancellationToken = default)
+        StoreSegmentRole role, CancellationToken cancellationToken = default) =>
+        OpenAnalysisSegmentCore(directory, generation, role, cancellationToken, requested: false);
+
+    internal static Result<ProtectedStoreFile> OpenAnalysisRequested(string directory, AnalysisStoreGeneration generation,
+        StoreSegmentRole role, CancellationToken token) => OpenAnalysisSegmentCore(directory, generation, role, token, requested: true);
+
+    private static Result<ProtectedStoreFile> OpenAnalysisSegmentCore(string directory, AnalysisStoreGeneration generation,
+        StoreSegmentRole role, CancellationToken cancellationToken, bool requested)
     {
         ArgumentNullException.ThrowIfNull(generation);
         var selected = AnalysisStoreLifecycle.ResolveRoot(directory, generation.Kind);
@@ -139,18 +160,27 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
         var path = BundleLayout.AnalysisSegmentDataPath(directory, generation, role);
         return Open(directory, generation, path, path + ".seal",
             () => BundleSealing.VerifySegment(path, path + ".seal", role.ToString(), cancellationToken),
-            cancellationToken, selected.Value, role);
+            cancellationToken, selected.Value, role, verifyWholeFile: !requested);
     }
 
-    private ProtectedStoreFile Related(StoreSegmentRole role, CancellationToken cancellationToken)
+    private ProtectedStoreFile Related(StoreSegmentRole role, CancellationToken cancellationToken, bool requested = false)
     {
         lock (_gate)
         {
             if (Generation is not { Kind: AnalysisStoreKind.Judgement } generation
                 || Role != StoreSegmentRole.Judgement || !BundleLayout.JudgementParts.Contains(role))
                 throw new ArgumentException("This product cannot acquire a judgement proof part.", nameof(role));
-            if (_related.TryGetValue(role, out var existing)) return existing;
-            var opened = OpenAnalysisSegment(BundleDirectory, generation, role, cancellationToken);
+            if (_related.TryGetValue(role, out var existing))
+            {
+                if (!requested)
+                {
+                    var verified = existing.RequireWholeVerification(cancellationToken);
+                    if (!verified.IsSuccess) throw new InvalidDataException(verified.Error.Description);
+                }
+                return existing;
+            }
+            var opened = requested ? OpenAnalysisRequested(BundleDirectory, generation, role, cancellationToken)
+                : OpenAnalysisSegment(BundleDirectory, generation, role, cancellationToken);
             if (!opened.IsSuccess) throw new InvalidDataException(opened.Error.Description);
             var file = opened.Value;
             if (file.Root.Hash != Root.Hash)
@@ -165,7 +195,7 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
 
     private static Result<ProtectedStoreFile> Open(string directory, AnalysisStoreGeneration? generation,
         string dataPath, string sealPath, Func<SealVerdict> verify, CancellationToken cancellationToken,
-        StoreRootManifest root, StoreSegmentRole role)
+        StoreRootManifest root, StoreSegmentRole role, bool verifyWholeFile = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         cancellationToken.ThrowIfCancellationRequested();
@@ -180,16 +210,29 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             // that protection until the last connection releases its lease.
             data = new FileStream(dataPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             seal = new FileStream(sealPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var verdict = verify();
-            if (!verdict.MayBeOpened)
-                return Failure(verdict.State.ToString(), verdict.Detail, dataPath);
+            if (verifyWholeFile)
+            {
+                var verdict = verify();
+                if (!verdict.MayBeOpened)
+                    return Failure(verdict.State.ToString(), verdict.Detail, dataPath);
+            }
             cancellationToken.ThrowIfCancellationRequested();
             var contents = BundleSealing.ReadSeal(sealPath) ?? throw new InvalidDataException(sealPath);
             var declaration = root.Segment(role);
-            if (data.Length != declaration.ByteLength || contents.Hash != declaration.Hash)
+            if (contents.Algorithm != BundleSealing.Algorithm
+                || data.Length != declaration.ByteLength || contents.Hash != declaration.Hash)
                 return Failure("Mismatch", "The selected store bytes or seal contradict the publication root.", dataPath);
+            if (!verifyWholeFile)
+            {
+                RequireNoSidecars(dataPath);
+                var details = declaration.RequestedDetails;
+                if (details is null || details.Role != role || details.GenerationId != root.GenerationId
+                    || details.SchemaVersion != declaration.SchemaVersion
+                    || details.EvidenceSeal != (generation is null ? "" : root.EvidenceSeal))
+                    return Failure("Unsupported", "The selected product has no compatible requested-detail commitment.", dataPath);
+            }
             var result = new ProtectedStoreFile(Path.GetFullPath(directory), generation, data, seal, root, role)
-                { Fingerprint = contents.Hash };
+                { Fingerprint = verifyWholeFile ? contents.Hash : "" };
             data = null;
             seal = null;
             return result;
@@ -208,10 +251,26 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     /// <summary>Acquires an independent connection; disposal of the store waits for this lease's release.</summary>
     public Lease Acquire(CancellationToken cancellationToken = default)
     {
+        var verified = RequireWholeVerification(cancellationToken);
+        if (!verified.IsSuccess) throw new InvalidDataException(verified.Error.Description);
+        return AcquireCore(cancellationToken);
+    }
+
+    internal Lease AcquireRequested(CancellationToken cancellationToken)
+    {
+        RequireNoSidecars(_data.Name);
+        if (Root.Segment(Role).RequestedDetails is null)
+            throw new InvalidDataException("The selected product has no requested-detail index.");
+        return AcquireCore(cancellationToken);
+    }
+
+    private Lease AcquireCore(CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_closing, this);
+            if (_verificationFailed) throw new InvalidDataException("The selected file failed whole-file verification.");
             _readers++;
         }
         SqliteConnection? connection = null;
@@ -234,6 +293,32 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             Release();
             throw;
         }
+    }
+
+    internal Result<ProtectedStoreFile> RequireWholeVerification(CancellationToken token)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_closing, this);
+            token.ThrowIfCancellationRequested();
+            if (_verificationFailed) return Failure("Mismatch", "The selected file failed whole-file verification.", _data.Name);
+            if (WholeFileVerified) return this;
+            var verdict = BundleSealing.VerifySegment(_data.Name, _seal.Name, Role.ToString(), token);
+            if (!verdict.MayBeOpened)
+            {
+                _verificationFailed = true;
+                return Failure(verdict.State.ToString(), verdict.Detail, _data.Name);
+            }
+            Fingerprint = Root.Segment(Role).Hash;
+            return this;
+        }
+    }
+
+    private static void RequireNoSidecars(string path)
+    {
+        foreach (var suffix in new[] { "-wal", "-journal" })
+            if (File.Exists(path + suffix) && new FileInfo(path + suffix).Length != 0)
+                throw new InvalidDataException("Requested detail cannot use uncheckpointed journal or write-ahead-log bytes.");
     }
 
     /// <summary>Prevents new acquisitions; existing readers retain protection until they finish.</summary>
@@ -304,13 +389,34 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
         public SqliteConnection Connection { get; }
 
         /// <summary>Attaches a separately verified immutable part without opening an unprotected file.</summary>
-        public string Attach(StoreSegmentRole role, CancellationToken cancellationToken = default)
+        public string Attach(StoreSegmentRole role, CancellationToken cancellationToken = default) =>
+            AttachCore(role, cancellationToken, requested: false);
+
+        /// <summary>Attaches source-bound requested pages, not a verdict about all proof-file bytes.</summary>
+        public RequestedDetailReader AttachRequested(StoreSegmentRole role, CancellationToken cancellationToken = default)
+        {
+            var owner = _owner ?? throw new ObjectDisposedException(nameof(Lease));
+            var schema = AttachCore(role, cancellationToken, requested: true);
+            var file = _attachments[role];
+            RequireNoSidecars(file._data.Name);
+            var reader = RequestedDetailIndex.Open(Connection, schema,
+                file.Root.Segment(role).RequestedDetails ?? throw RequestedDetailMap.Invalid(), cancellationToken);
+            reader.RequireCurrent(() =>
+            {
+                if (_owner is null || !owner.MayReadRequested || !file.MayReadRequested) return false;
+                var current = AnalysisStoreLifecycle.ResolveRoot(owner.BundleDirectory, AnalysisStoreKind.Judgement);
+                return current.IsSuccess && current.Value.Hash == owner.Root.Hash;
+            });
+            return reader;
+        }
+
+        private string AttachCore(StoreSegmentRole role, CancellationToken cancellationToken, bool requested)
         {
             var owner = _owner ?? throw new ObjectDisposedException(nameof(Lease));
             cancellationToken.ThrowIfCancellationRequested();
             var schema = role.ToString();
+            var file = owner.Related(role, cancellationToken, requested);
             if (_attachments.ContainsKey(role)) return schema;
-            var file = owner.Related(role, cancellationToken);
             lock (file._gate)
             {
                 ObjectDisposedException.ThrowIf(file._closing, file);

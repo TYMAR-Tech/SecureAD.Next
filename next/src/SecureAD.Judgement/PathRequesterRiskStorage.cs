@@ -302,6 +302,7 @@ internal static class PathRequesterRiskStorage
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "path_risk_product", 1L);
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT r.proof,r.fingerprint,p.fingerprint FROM path_risk_product r
@@ -351,6 +352,7 @@ internal static class PathRequesterRiskStorage
     private static PathRequesterRiskAssessment ReadAssessment(SqliteConnection connection, SqliteDataReader read,
         JudgementDescription description, PathRiskCoverage coverage, long id, CancellationToken cancellationToken)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "path_requester_risk", id);
         var value = PathProofStorage.Read<PathRequesterRiskAssessment>(connection, read.GetInt64(2),
             Convert.ToHexString((byte[])read.GetValue(3)), cancellationToken);
             if (value.GenerationId != description.GenerationId || value.DerivationGenerationId != description.DerivationGenerationId
@@ -392,6 +394,8 @@ internal static class PathRequesterRiskStorage
         if (after is not null && (after.GenerationId != description.GenerationId || after.Verdict != verdict
             || !string.Equals(after.RequesterDn, requesterDn, StringComparison.OrdinalIgnoreCase) || after.AfterId <= 0))
             throw Tier0PathStorage.InvalidProof();
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PathProof) is { } requested)
+            return ReadRequestedPage(connection, requested, description, requesterDn, verdict, after, cancellationToken);
         var coverage = ReadCoverage(connection, description, cancellationToken);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT verdict,COUNT(*) FROM path_requester_risk WHERE requester=$requester GROUP BY verdict";
@@ -548,6 +552,41 @@ internal static class PathRequesterRiskStorage
             if (question.Steps.Count == 0 || current != reached) throw Tier0PathStorage.InvalidProof();
         }
         return question;
+    }
+
+    private static PathRiskPage ReadRequestedPage(SqliteConnection connection, RequestedDetailReader requested,
+        JudgementDescription description, string requesterDn, PathRiskVerdict verdict, PathRiskPageMark? after, CancellationToken token)
+    {
+        var coverage = ReadCoverage(connection, description, token);
+        var count = requested.ReadSingle("detail_path_count", requesterDn);
+        var counts = count is null ? new PathRiskQuestionCounts(0, 0, 0, 0)
+            : new PathRiskQuestionCounts(checked((int)count.Integer("unexpected")), checked((int)count.Integer("expected")),
+                checked((int)count.Integer("not_established")), checked((int)count.Integer("unknown")));
+        var values = RequestedProofSelectionStorage.ReadPage(requested,
+            RequestedProofSelectionStorage.Question("path-risk", requesterDn, verdict.ToString()),
+            after?.AfterId ?? 0, PathRiskPage.PageSize + 1, out var total);
+        if (total != counts.For(verdict)) throw Tier0PathStorage.InvalidProof();
+        var questions = new List<PathRiskQuestion>();
+        var shared = new PathSharedProofStorage(connection, description, token);
+        using var scope = shared.BeginRead();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT requester,question_key,proof,fingerprint,verdict,source_proof,id FROM path_requester_risk WHERE id=$id";
+        command.Parameters.Add("$id", SqliteType.Integer);
+        foreach (var id in values.Take(PathRiskPage.PageSize))
+        {
+            token.ThrowIfCancellationRequested();
+            command.Parameters["$id"].Value = id;
+            using var read = command.ExecuteReader();
+            if (!read.Read()) throw Tier0PathStorage.InvalidProof();
+            var risk = ReadAssessment(connection, read, description, coverage, id, token);
+            if (!string.Equals(risk.RequesterDn, requesterDn, StringComparison.OrdinalIgnoreCase) || risk.Verdict != verdict)
+                throw Tier0PathStorage.InvalidProof();
+            questions.Add(ReadQuestion(connection, description, id, risk, read.GetInt64(5), token, shared));
+        }
+        var anchor = requested.ReadSingle("path_anchor", requesterDn);
+        var next = values.Count > PathRiskPage.PageSize
+            ? new PathRiskPageMark(description.GenerationId, requesterDn, verdict, questions[^1].Id) : null;
+        return new(coverage, requesterDn, verdict, counts, questions, next, anchor is not null);
     }
 
     internal static PathRequesterProofs ReadProofs(SqliteConnection connection, JudgementDescription description,

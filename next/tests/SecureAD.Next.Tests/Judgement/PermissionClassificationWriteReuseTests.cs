@@ -322,9 +322,9 @@ public sealed class PermissionClassificationWriteReuseTests
         /// </remarks>
         public void StageCollidingReading()
         {
-            using var command = Connection.CreateCommand();
-            command.CommandText = "UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','someone else''s words')";
-            command.ExecuteNonQuery();
+            Assert.True(TestSealing.TryMutateSavedText(Connection,
+                "UPDATE permission_classification_reading SET payload=json_set(payload,'$.Summary','someone else''s words')", out var changed));
+            Assert.True(changed > 0);
         }
 
         public void Write(PermissionClassification value, CancellationToken token = default)
