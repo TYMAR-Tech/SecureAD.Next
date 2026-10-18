@@ -17,7 +17,7 @@ public enum ProtectedFileCheckOutcome
 /// <param name="Role">Which product.</param>
 /// <param name="FileName">The product's file, relative to the run's folder.</param>
 /// <param name="Bytes">The size of the file.</param>
-/// <param name="Hashed">How long verifying its bytes took, or null when no verification happened in this lifetime.</param>
+/// <param name="Hashed">How long this pass spent verifying its bytes, or null when it verified nothing because the file was already verified.</param>
 /// <param name="Started">When the pass began waiting for this product, measured from the pass's start.</param>
 /// <param name="Finished">When the product's outcome was known, measured from the pass's start.</param>
 /// <param name="Outcome">How the check ended.</param>
@@ -31,7 +31,7 @@ public sealed record ProtectedFileCheck(StoreSegmentRole Role, string FileName, 
 /// <param name="Unverified">How many did not verify, because they were damaged or could not be read.</param>
 /// <param name="Bytes">The bytes of every product.</param>
 /// <param name="Elapsed">Wall-clock time for the whole pass; the checks overlap, so this is far less than their sum.</param>
-/// <param name="Hashed">The sum of every file's own verification time.</param>
+/// <param name="Hashed">The sum of the time this pass spent verifying the files it verified.</param>
 /// <param name="Problems">Roots that could not be selected, which no check could report.</param>
 public sealed record ProtectedRunVerification(int Files, int Verified, int Unverified, long Bytes, TimeSpan Elapsed,
     TimeSpan Hashed, IReadOnlyList<string> Problems);

@@ -138,6 +138,33 @@ public sealed class SavedRunOpeningTests
     }
 
     [Fact]
+    public async Task AClickWhileTheOpeningPassIsWritingItsLogLeavesBothAccountsWhole()
+    {
+        var directory = Published();
+        var judgement = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value.Segment(StoreSegmentRole.Judgement).FileName;
+        using var checks = new Checks(directory, name => name == judgement);
+        using var results = new OpenedRunResults(directory);
+        results.BeginVerification();
+        Assert.True(checks.WaitUntilBlocked(judgement), "The judgement check never started.");
+
+        // The pass has its log open and four files still to report. A click now opens a second log on the same file.
+        using (var navigation = NavigationDiagnostics.Begin(directory, "open Dashboard"))
+        {
+            NavigationDiagnostics.Mark("query", TimeSpan.FromMilliseconds(1));
+            navigation.Complete("success", null);
+        }
+        checks.Release();
+        await results.Verification!;
+
+        var log = LogLines(directory).Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0 && !line.StartsWith("====", StringComparison.Ordinal)).ToArray();
+        Assert.All(log, line => Assert.Matches(@"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ  (INFO |WARN |ERROR)", line));
+        Assert.DoesNotContain(log, line => Regex.Count(line, @"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ") > 1);
+        Assert.Equal(10, log.Count(line => Regex.IsMatch(line, @"\sVerify\s+file verified\s")));
+        Assert.Single(log, line => line.Contains("navigation started", StringComparison.Ordinal) && line.Contains("action=\"open Dashboard\"", StringComparison.Ordinal));
+        Assert.Single(log, line => line.Contains("navigation finished", StringComparison.Ordinal) && line.Contains("outcome=success", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task AFileTheAuditJustVerifiedIsNotVerifiedAgainWhenTheFinishedRunIsOpened()
     {
         var directory = Published();
@@ -154,6 +181,8 @@ public sealed class SavedRunOpeningTests
         Assert.Equal(10, checks.Started.Count);
         var evidence = Assert.Single(LogLines(directory), line => Regex.IsMatch(line, @"\sVerify\s+file verified\s") && line.Contains("role=Evidence"));
         Assert.Contains("outcome=AlreadyVerified", evidence);
+        // A file this pass did not verify reports no hashing time, so the log's times are only what opening cost.
+        Assert.DoesNotContain("hashMs=", evidence);
         source.CloseRun();
     }
 

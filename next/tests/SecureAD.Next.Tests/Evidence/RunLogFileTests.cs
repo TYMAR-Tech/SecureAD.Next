@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using SecureAD.Evidence;
 using SecureAD.Kernel;
 using Xunit;
@@ -20,7 +22,7 @@ namespace SecureAD.Next.Tests.Evidence;
 /// the two characters that make <c>name=value</c> ambiguous.
 /// </para>
 /// </remarks>
-public sealed class RunLogFileTests : IDisposable
+public sealed partial class RunLogFileTests : IDisposable
 {
     private static readonly DateTimeOffset Noon =
         new(2026, 8, 28, 11, 6, 2, TimeSpan.Zero);
@@ -292,6 +294,105 @@ public sealed class RunLogFileTests : IDisposable
         Assert.False(BundleSealing.Verify(_directory).MayBeOpened);
     }
 
+    /// <summary>
+    /// Two logs open on one run each append after what the other wrote, and neither overwrites it.
+    /// </summary>
+    /// <remarks>
+    /// <b>The first lab run of the verify-once build found this.</b> A click's navigation log stays open
+    /// until the click's result is on screen, and the opening pass keeps its own log open while it checks
+    /// the files, so several logs are open on one <c>run.log</c> at once. Each remembered its own end of
+    /// the file, so what it wrote next landed on top of another log's lines: that run lost three of the
+    /// ten per-file verification records and cut the first click's lines in two.
+    /// </remarks>
+    [Fact]
+    public void TwoLogsOpenOnOneRunAppendAfterEachOtherAndNeverOverwrite()
+    {
+        using (var first = Opened("first"))
+        using (var second = Opened("second"))
+        {
+            first.Note("Browse", "a long line the first log wrote, which a stale write from the second log would overwrite", []);
+            second.Note("Browse", "short", []);
+            first.Note("Browse", "the first log again", []);
+            second.Note("Browse", "the second log again", []);
+        }
+
+        var lines = Written();
+        Assert.Equal(4, lines.Count);
+        Assert.EndsWith("which a stale write from the second log would overwrite", lines[0], StringComparison.Ordinal);
+        Assert.EndsWith("short", lines[1], StringComparison.Ordinal);
+        Assert.EndsWith("the first log again", lines[2], StringComparison.Ordinal);
+        Assert.EndsWith("the second log again", lines[3], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Logs opened, written and closed from many threads at once keep every record whole, in each writer's own order.
+    /// </summary>
+    /// <remarks>
+    /// The application opens a log per click, so opening is part of the race: the moment between a log
+    /// opening the file and writing its banner is exposed to every other writer, which is why each writer
+    /// opens and closes many logs. Every fifth record is an error, which is two lines - a headline and its
+    /// description - and the description must stay beside its headline. The run is named three ways, because
+    /// the logs open on one file must share one lock however its path is spelled.
+    /// </remarks>
+    [Fact]
+    public async Task LogsOpenedWrittenAndClosedFromManyThreadsAtOnceKeepEveryRecordWhole()
+    {
+        const int Writers = 6;
+        const int Sessions = 40;
+        const int RecordsPerSession = 6;
+        const int Records = Sessions * RecordsPerSession;
+        string[] spellings = [_directory, Path.Combine(_directory, "."), _directory.ToUpperInvariant()];
+        using var together = new Barrier(Writers);
+        await Task.WhenAll(Enumerable.Range(0, Writers).Select(writer => Task.Factory.StartNew(() =>
+        {
+            together.SignalAndWait();
+            var n = 0;
+            for (var session = 0; session < Sessions; session++)
+            {
+                var opened = RunLogFile.Open(spellings[writer % spellings.Length], "writer " + writer, new FixedTime(Noon));
+                Assert.True(opened.IsSuccess);
+                using var log = opened.Value!;
+                for (var record = 0; record < RecordsPerSession; record++, n++)
+                {
+                    RunLogDetail[] detail =
+                    [
+                        new("writer", writer.ToString(CultureInfo.InvariantCulture)),
+                        new("n", n.ToString(CultureInfo.InvariantCulture)),
+                    ];
+                    if (n % 5 == 0) log.Record("Stress", Error(ErrorSeverity.Degraded), detail);
+                    else log.Note("Stress", "a record", detail);
+                }
+            }
+        }, TaskCreationOptions.LongRunning)));
+
+        var seen = new List<(int Writer, int N)>();
+        var description = new string(' ', 53) + "it did not work";
+        var expectDescription = false;
+        foreach (var line in Written())
+        {
+            if (expectDescription)
+            {
+                Assert.Equal(description, line);
+                expectDescription = false;
+                continue;
+            }
+
+            var headline = StressHeadline().Match(line);
+            Assert.True(headline.Success, "A line was damaged or out of place: " + line);
+            seen.Add((int.Parse(headline.Groups["writer"].Value, CultureInfo.InvariantCulture),
+                int.Parse(headline.Groups["n"].Value, CultureInfo.InvariantCulture)));
+            expectDescription = headline.Groups["level"].Value == "WARN";
+        }
+
+        Assert.False(expectDescription);
+        Assert.Equal(Writers * Records, seen.Count);
+        for (var writer = 0; writer < Writers; writer++)
+            Assert.Equal(Enumerable.Range(0, Records), seen.Where(s => s.Writer == writer).Select(s => s.N));
+    }
+
+    [GeneratedRegex(@"^\S+Z  (?<level>INFO|WARN)\s+Stress\s+(a record|Evidence\.SomethingBroke) writer=(?<writer>\d+) n=(?<n>\d+)$")]
+    private static partial Regex StressHeadline();
+
     private static AuditError Error(ErrorSeverity severity) => AuditError.Create(
         ErrorCategory.Evidence,
         "SomethingBroke",
@@ -312,13 +413,16 @@ public sealed class RunLogFileTests : IDisposable
         using (var log = Opened("test"))
             writing(log);
 
-        return
-        [
-            .. File.ReadAllLines(BundleLayout.RunLogPath(_directory))
-                .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Where(l => !l.StartsWith("====", StringComparison.Ordinal)),
-        ];
+        return Written();
     }
+
+    /// <summary>Every line in the run's log now, banners and blanks removed.</summary>
+    private IReadOnlyList<string> Written() =>
+    [
+        .. File.ReadAllLines(BundleLayout.RunLogPath(_directory))
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Where(l => !l.StartsWith("====", StringComparison.Ordinal)),
+    ];
 
     private string Single(Action<RunLogFile> writing) => Lines(writing)[0];
 

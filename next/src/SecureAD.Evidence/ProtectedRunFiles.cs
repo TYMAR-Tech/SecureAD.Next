@@ -183,7 +183,7 @@ public sealed class ProtectedRunFiles : IDisposable, IAsyncDisposable
 
     private static ProtectedFileCheck Report(SealedStoreSegment segment, ProtectedStoreFile file, TimeSpan started,
         TimeSpan finished, bool already) =>
-        new(segment.Role, segment.FileName, file.VerifiedBytes, file.VerificationTime, started, finished,
+        new(segment.Role, segment.FileName, file.VerifiedBytes, already ? null : file.VerificationTime, started, finished,
             already ? ProtectedFileCheckOutcome.AlreadyVerified : ProtectedFileCheckOutcome.Verified, null);
 
     private static ProtectedFileCheck Refused(SealedStoreSegment segment, string reason, TimeSpan started, TimeSpan finished) =>

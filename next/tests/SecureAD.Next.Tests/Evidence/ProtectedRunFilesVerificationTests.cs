@@ -72,6 +72,9 @@ public sealed class ProtectedRunFilesVerificationTests
         Assert.Equal(10, again.Files);
         Assert.Equal(0, again.Verified);
         Assert.All(reported, check => Assert.Equal(ProtectedFileCheckOutcome.AlreadyVerified, check.Outcome));
+        // This pass hashed nothing, so it reports no hashing time; the first pass's times are not its cost.
+        Assert.All(reported, check => Assert.Null(check.Hashed));
+        Assert.Equal(TimeSpan.Zero, again.Hashed);
         Assert.Equal(10, checks.Started.Count);
     }
 

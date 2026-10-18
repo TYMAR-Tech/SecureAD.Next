@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
 using SecureAD.Kernel;
@@ -19,7 +20,7 @@ namespace SecureAD.Evidence;
 /// <para>
 /// <b>Every line is flushed as it is written.</b> The run this logs may take hours and may be
 /// killed part way through, and a log that buffered would lose exactly the lines explaining why. The
-/// cost is a write per line against a file nothing else is contending for.
+/// cost is a write per line.
 /// </para>
 /// <para>
 /// <b>The file is shared for reading while it is open.</b> An operator watching a long capture can
@@ -29,6 +30,16 @@ namespace SecureAD.Evidence;
 /// <b>Opening appends and announces itself.</b> One bundle's log is written by the capture, then the
 /// derivation, then the judging, and a bundle may be derived again later - so each session opens
 /// with a banner naming itself and the time, and a reader can tell one from the next.
+/// </para>
+/// <para>
+/// <b>Several logs can be open on one run's file at once, and every write goes to the file's current
+/// end.</b> A saved run's browsing keeps one log open per click until the click's result is on screen,
+/// and the pass that checks the run's files keeps another open while it works, so they overlap. Each
+/// log used to remember its own end of the file, and what it wrote next landed on top of another
+/// log's lines: a lab run lost three of its ten per-file verification records and cut a click's lines
+/// in two. The logs open on one file in this process now share one lock and seek to the end under it,
+/// so a record - a headline and its description - is written whole and in order. Two processes
+/// writing one run's log at once are not covered; the stages that write it run one after another.
 /// </para>
 /// </remarks>
 public sealed class RunLogFile : IRunLog, IDisposable
@@ -45,13 +56,19 @@ public sealed class RunLogFile : IRunLog, IDisposable
     /// <summary>Where a continued line starts, so wrapped detail lines up under the message.</summary>
     private const int Continuation = 20 + 2 + LevelWidth + 2 + PhaseWidth + 2;
 
+    /// <summary>The lock every log open on one file shares, found by the file's full path.</summary>
+    private static readonly ConcurrentDictionary<string, Lock> AppendGates = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly FileStream _stream;
     private readonly StreamWriter _writer;
     private readonly TimeProvider _time;
-    private readonly Lock _gate = new();
+    private readonly Lock _gate;
 
-    private RunLogFile(StreamWriter writer, TimeProvider time)
+    private RunLogFile(FileStream stream, StreamWriter writer, Lock gate, TimeProvider time)
     {
+        _stream = stream;
         _writer = writer;
+        _gate = gate;
         _time = time;
     }
 
@@ -78,8 +95,9 @@ public sealed class RunLogFile : IRunLog, IDisposable
         {
             Directory.CreateDirectory(bundleDirectory);
 
+            var path = Path.GetFullPath(BundleLayout.RunLogPath(bundleDirectory));
             var stream = new FileStream(
-                BundleLayout.RunLogPath(bundleDirectory),
+                path,
                 FileMode.Append,
                 FileAccess.Write,
                 FileShare.ReadWrite);
@@ -89,7 +107,7 @@ public sealed class RunLogFile : IRunLog, IDisposable
                 AutoFlush = true,
             };
 
-            var log = new RunLogFile(writer, time);
+            var log = new RunLogFile(stream, writer, AppendGates.GetOrAdd(path, static _ => new Lock()), time);
             log.Banner(session);
             return log;
         }
@@ -141,6 +159,7 @@ public sealed class RunLogFile : IRunLog, IDisposable
     {
         lock (_gate)
         {
+            AtEndOfFile();
             _writer.WriteLine();
             _writer.WriteLine($"==== {Stamp()}  {session} ====");
         }
@@ -172,12 +191,19 @@ public sealed class RunLogFile : IRunLog, IDisposable
 
         lock (_gate)
         {
+            AtEndOfFile();
             _writer.WriteLine(line);
 
             if (!string.IsNullOrWhiteSpace(further))
                 _writer.WriteLine(new string(' ', Continuation) + further);
         }
     }
+
+    /// <summary>
+    /// Moves to where the file ends now, which another log open on this run may have moved since this one
+    /// last wrote. Called under the shared lock, so nothing is written between the move and the write.
+    /// </summary>
+    private void AtEndOfFile() => _stream.Seek(0, SeekOrigin.End);
 
     private string Stamp() =>
         _time.GetUtcNow().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
