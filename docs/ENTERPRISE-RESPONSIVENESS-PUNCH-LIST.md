@@ -222,7 +222,7 @@ Current native formats are capture root 4, Navigation 3, overview 1, captured De
 
 ### RESP-05 - Implement one requested-detail read and integrity boundary
 
-**Status:** open - concrete native format/public-contract scope must be confirmed. **Dependencies:** RESP-02, RESP-04.
+**Status:** superseded on branch `perf02/verify-once-at-open` - the owner approved on 2026-10-17 a build that verifies each file once when a run is opened instead of new per-record proof; the requested-detail work stays only in the unmerged save point `87d8284` and is reopened only if he asks or a production measurement of this build shows a click that needs it. **Dependencies:** RESP-02, RESP-04.
 
 Define and implement one coherent boundary spanning captured attributes/member values, original descriptors/entries, saved per-right classifications/schema support and requested path/control/member proof, selecting only the object/family/page the consumer needs.
 Choose the native storage/integrity mechanism from RESP-01's costs, retain shared descriptors/proof components and exact original bytes/occurrences, and prove requested data independently without silently weakening existing seal/WAL checks or returning partial objects from whole-object APIs.
@@ -250,7 +250,7 @@ Retain the failed control observations and treat this return journey as unaccept
 
 ### RESP-08 - Reduce the dominant judgement/requester/path workload
 
-**Status:** open; batch 3 priority. **Dependencies:** RESP-01.
+**Status:** not pursued - the owner accepted the 4 h 37 m production judging time on 2026-10-17 (see [WHAT-THE-PRODUCT-IS.md](WHAT-THE-PRODUCT-IS.md)); reopen only if he reverses this or a browsing change regresses judging beyond repeat variability. **Dependencies:** RESP-01.
 
 Use current phase/source measurements to remove remaining repeated requester/target/context preparation, permission evaluation, proof assembly/serialisation and database work in the dominant path-processing envelope.
 Extend the existing unique-question work plan, shared proof/descriptor representation, prepared commands and batching, with reuse keyed to exact generation/resource/requester/membership assumptions rather than another planner or reused authorisation verdict.
@@ -357,14 +357,17 @@ serving, including required native serving table/index/version changes, with all
 qualifications/bindings preserved and current wording/layout unchanged
 
 **Next action:** the approved RESP-02/03/04 application correction is implemented and focused
-offline behaviour-verified; the next unfinished implementation is RESP-05's requested-detail
-boundary, whose concrete native/public-contract scope still requires its stated confirmation.
-Continue the programme's supporting RESP-01/12 evidence and budget work without restarting
-launch/Home, ordinary LAPS/Delegations or general measurement preparation as an implementation gate.
+offline behaviour-verified, and on 2026-10-17 the owner approved the change that replaces RESP-05: from the clean commit `c690b357`, branch `perf02/verify-once-at-open`, each file of a saved run is verified once, in the background, when the run is selected, and nothing verifies a whole file again while it is browsed.
+The capture, derivation and judgement products (and the judgement's three proof parts) are checked together on below-normal-priority threads; a screen waits only for the products it reads, in the existing loading state, and a click that gives up no longer abandons a multi-minute check; each file's size, check time and megabytes per second are written to the run's `run.log` as `Verify` lines, with a `waiting for file verification` work item when a click had to wait.
+No file format, rule, budget, wording or layout changed, and the fingerprints checked on the rows a screen reads remain; the control-edge page reader recomputes the control-edge totals over the whole table on every page read (found by reading the code, not measured; RESP-06's scope), so it is the first candidate for a measured change once a production log shows what a click costs.
+The owner runs the package, a fresh capture being needed unless the capture came from a build with Evidence 17 and capture root 4, and returns only `run.log` and `run-summary.txt`; production browsing of a clean-base build has never been measured, and complete real-application lab acceptance still needs separate authorisation.
 Retain the RESP-03-F01 startup-delay follow-up, coarse first original-descriptor verification,
 RESP-07-F01, the known null-default gate and unperformed physical-display checks as explicit
-limitations; no custom checksum adapter, unapproved detail contract, live work, deployment,
-commit or push is implied.
+limitations; no live work, deployment or push is authorised by this record.
+
+**Gate result, 2026-10-17 - passed:** the owner's fresh lab audit on the clean `c690b357` package (bundle `ad.lab-20261018-000147`; its own log records that commit and executable `383AF08B…`, and all 10 segments match their manifests) took 15.2 s to capture, 2.2 s to derive and 49.5 s to judge, against 76.2, 23.3 and 163 s on the unmerged RESP-05 build and 1 m 28 s judging on the pre-branch 2026-10-11 build, with all 32 rules' outcomes and counts and the finding totals (6/12,624/8/11) identical to the RESP-05 run and no warnings or errors.
+RESP-05's own steps were about 197 of that run's roughly 262 seconds (capture sealing 60 s against 2 s, a 22 s derivation gap, 118 s of requested-detail preparation) and its capture bundle peaked at 310 MB against 29 MB; `move-generation-file` took 11.6 s on the clean build, the one-time first read of freshly written files that the pre-branch build paid as 13.3 s inside `seal-generation`, and its cause on the lab VM (Defender real-time protection with no exclusions is the suspect) is unproven.
+Browsing that 8,444-object lab run took 19-449 ms per click over 23 clicks (first Dashboard 882 ms including drawing; opening/checking never over 64 ms) and the final click was refused by the closed-run guard as designed; this lab scale says nothing about 38 GB, where the open-time check is the cost being moved.
 
 **Historical approval handoff:** [approved application implementation](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/approved-implementation-handoff/next-session-handoff.md) - authority and arrival-state preservation record; the implementation checkpoint above supersedes its unimplemented next-action state
 

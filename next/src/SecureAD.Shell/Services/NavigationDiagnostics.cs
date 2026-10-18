@@ -33,16 +33,25 @@ internal sealed class NavigationDiagnostics : IDisposable
         _file = opened.IsSuccess ? opened.Value : null;
         _log = _file ?? RunLog.Discarded;
         Active.Value = this;
-        var assembly = typeof(NavigationDiagnostics).Assembly;
         _log.Note("Browse", "navigation started",
         [
             new("action", action),
             new("run", Path.GetFullPath(bundleDirectory)),
+            .. BuildIdentity(),
+        ]);
+    }
+
+    /// <summary>Which program and build is writing this log, so a returned log can be tied to the build that ran.</summary>
+    internal static IReadOnlyList<RunLogDetail> BuildIdentity()
+    {
+        var assembly = typeof(NavigationDiagnostics).Assembly;
+        return
+        [
             new("process", Environment.ProcessPath ?? "unavailable"),
             new("processSha256", ProcessFingerprint()),
             new("shellMvid", assembly.ManifestModule.ModuleVersionId.ToString("D")),
             new("shellVersion", assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unavailable"),
-        ]);
+        ];
     }
 
     internal string Action { get; }

@@ -15,10 +15,20 @@ namespace SecureAD.Shell.Services;
 internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 {
     private readonly RunProtectionSessions? _protection;
+    private readonly bool _verifyOnSelect;
     /// <summary>Creates the owner of a selected run's protected reading lifetime.</summary>
     public BundleAssetSource() { }
-    internal BundleAssetSource(RunProtectionSessions protection) => _protection =
-        protection ?? throw new ArgumentNullException(nameof(protection));
+    /// <summary>Creates the owner of a selected run's protected reading lifetime, sharing run lifetimes with producers.</summary>
+    /// <param name="protection">Where completed runs are handed over and shared.</param>
+    /// <param name="verifyOnSelect">
+    /// True to verify every file of a run as soon as it is selected, once, so that browsing afterwards reads
+    /// from files that are already verified; the application opens runs this way.
+    /// </param>
+    internal BundleAssetSource(RunProtectionSessions protection, bool verifyOnSelect = false)
+    {
+        _protection = protection ?? throw new ArgumentNullException(nameof(protection));
+        _verifyOnSelect = verifyOnSelect;
+    }
 
     private OpenedRunResults OpenResults(string path) => new(path, _protection?.TakeForViewing(path));
 
@@ -227,15 +237,17 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         var path = Path.GetFullPath(bundleDirectory);
         OpenedRunResults? previous;
+        OpenedRunResults selected;
         lock (_sessionGate)
         {
             if (_results is { } current && string.Equals(current.Directory, path, StringComparison.OrdinalIgnoreCase)
                 && current.IsCurrent) return;
             previous = _results;
-            _results = OpenResults(path);
+            selected = _results = OpenResults(path);
             _closed = false;
         }
         previous?.Dispose();
+        if (_verifyOnSelect) selected.BeginVerification();
     }
 
     private Result<T> WithRun<T>(string bundleDirectory, Func<IAssetReader, Result<T>> read)

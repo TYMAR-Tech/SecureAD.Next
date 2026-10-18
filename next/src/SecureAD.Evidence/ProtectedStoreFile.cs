@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Data.Sqlite;
 using Microsoft.Win32.SafeHandles;
@@ -14,7 +15,10 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     private readonly FileStream _seal;
     private int _readers;
     private bool _closing;
-    private readonly Dictionary<StoreSegmentRole, ProtectedStoreFile> _related = [];
+    // Proof parts verify on their own threads, owned by this file rather than by whichever reader asked first.
+    private readonly object _relatedGate = new();
+    private readonly Dictionary<StoreSegmentRole, Task<ProtectedStoreFile>> _related = [];
+    private readonly CancellationTokenSource _relatedLifetime = new();
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal object EvidenceDescriptionGate { get; } = new();
     internal BundleDescription? EvidenceDescription { get; set; }
@@ -70,7 +74,8 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
 
     internal static ProtectedStoreFile FromPublishedCapture(string directory, FileStream data, FileStream seal,
         StoreRootManifest root, StoreSegmentRole role) =>
-        new(Path.GetFullPath(directory), null, data, seal, root, role) { Fingerprint = root.Segment(role).Hash };
+        new(Path.GetFullPath(directory), null, data, seal, root, role)
+            { Fingerprint = root.Segment(role).Hash, VerifiedBytes = root.Segment(role).ByteLength };
 
     /// <summary>The bundle owning the protected file.</summary>
     public string BundleDirectory { get; }
@@ -84,6 +89,12 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
 
     /// <summary>The verified fingerprint, retained only while the files are protected.</summary>
     public string Fingerprint { get; private set; } = "";
+
+    /// <summary>The size of the file whose bytes were verified.</summary>
+    public long VerifiedBytes { get; private set; }
+
+    /// <summary>How long verifying the bytes took, or null when sealing at capture already vouched for them.</summary>
+    public TimeSpan? VerificationTime { get; private set; }
 
     /// <summary>Protects and verifies the evidence without opening an analytical reader.</summary>
     public static Result<ProtectedStoreFile> OpenEvidence(string directory, CancellationToken cancellationToken = default) =>
@@ -142,25 +153,59 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             cancellationToken, selected.Value, role);
     }
 
-    private ProtectedStoreFile Related(StoreSegmentRole role, CancellationToken cancellationToken)
+    private ProtectedStoreFile Related(StoreSegmentRole role, CancellationToken cancellationToken) =>
+        RelatedAsync(role).WaitAsync(cancellationToken).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Starts verifying one proof part of this judgement, or joins the verification already running.
+    /// </summary>
+    /// <remarks>
+    /// The part is verified once for this file's lifetime, on a thread this file owns. A reader that stops
+    /// waiting does not abandon the check, and no other reader of the file waits behind it: a proof part
+    /// can be most of the judgement's bytes, so holding the file's lock for the hash would stall every
+    /// unrelated query. A failed check is forgotten so a later request verifies again.
+    /// </remarks>
+    internal Task<ProtectedStoreFile> RelatedAsync(StoreSegmentRole role)
     {
-        lock (_gate)
+        if (Generation is not { Kind: AnalysisStoreKind.Judgement } generation
+            || Role != StoreSegmentRole.Judgement || !BundleLayout.JudgementParts.Contains(role))
+            throw new ArgumentException("This product cannot acquire a judgement proof part.", nameof(role));
+        lock (_relatedGate)
         {
-            if (Generation is not { Kind: AnalysisStoreKind.Judgement } generation
-                || Role != StoreSegmentRole.Judgement || !BundleLayout.JudgementParts.Contains(role))
-                throw new ArgumentException("This product cannot acquire a judgement proof part.", nameof(role));
             if (_related.TryGetValue(role, out var existing)) return existing;
-            var opened = OpenAnalysisSegment(BundleDirectory, generation, role, cancellationToken);
-            if (!opened.IsSuccess) throw new InvalidDataException(opened.Error.Description);
-            var file = opened.Value;
-            if (file.Root.Hash != Root.Hash)
+            // Read first: on a closed file this throws before anything is registered.
+            var token = _relatedLifetime.Token;
+            var verified = new TaskCompletionSource<ProtectedStoreFile>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _related.Add(role, verified.Task);
+            VerificationThread.Start($"Verify {role}", () =>
             {
-                file.Dispose();
-                throw new InvalidDataException("The selected judgement root changed before its proof part opened.");
-            }
-            _related.Add(role, file);
-            return file;
+                try
+                {
+                    var opened = OpenAnalysisSegment(BundleDirectory, generation, role, token);
+                    if (!opened.IsSuccess) throw new InvalidDataException(opened.Error.Description);
+                    var file = opened.Value;
+                    if (file.Root.Hash != Root.Hash)
+                    {
+                        file.Dispose();
+                        throw new InvalidDataException("The selected judgement root changed before its proof part opened.");
+                    }
+                    verified.TrySetResult(file);
+                }
+                catch (Exception error)
+                {
+                    ForgetRelated(role, verified.Task);
+                    if (error is OperationCanceledException) verified.TrySetCanceled(token);
+                    else verified.TrySetException(error);
+                }
+            });
+            return verified.Task;
         }
+    }
+
+    private void ForgetRelated(StoreSegmentRole role, Task<ProtectedStoreFile> task)
+    {
+        lock (_relatedGate)
+            if (_related.TryGetValue(role, out var current) && ReferenceEquals(current, task)) _related.Remove(role);
     }
 
     private static Result<ProtectedStoreFile> Open(string directory, AnalysisStoreGeneration? generation,
@@ -180,7 +225,9 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             // that protection until the last connection releases its lease.
             data = new FileStream(dataPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             seal = new FileStream(sealPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var verifying = Stopwatch.StartNew();
             var verdict = verify();
+            verifying.Stop();
             if (!verdict.MayBeOpened)
                 return Failure(verdict.State.ToString(), verdict.Detail, dataPath);
             cancellationToken.ThrowIfCancellationRequested();
@@ -189,7 +236,7 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
             if (data.Length != declaration.ByteLength || contents.Hash != declaration.Hash)
                 return Failure("Mismatch", "The selected store bytes or seal contradict the publication root.", dataPath);
             var result = new ProtectedStoreFile(Path.GetFullPath(directory), generation, data, seal, root, role)
-                { Fingerprint = contents.Hash };
+                { Fingerprint = contents.Hash, VerifiedBytes = data.Length, VerificationTime = verifying.Elapsed };
             data = null;
             seal = null;
             return result;
@@ -267,9 +314,17 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
     {
         try
         {
-            foreach (var file in _related.Values) file.Dispose();
+            // Stop and join the proof-part checks first: each owns file handles until it observes the cancellation.
+            _relatedLifetime.Cancel();
+            Task<ProtectedStoreFile>[] related;
+            lock (_relatedGate) related = _related.Values.ToArray();
+            try { Task.WaitAll(related); }
+            catch (AggregateException) { /* A cancelled or failed check has already released its files. */ }
+            foreach (var part in related)
+                if (part.IsCompletedSuccessfully) part.Result.Dispose();
             _seal.Dispose();
             _data.Dispose();
+            _relatedLifetime.Dispose();
             _closed.TrySetResult();
         }
         catch (IOException error)

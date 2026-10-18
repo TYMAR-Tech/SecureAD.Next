@@ -131,7 +131,7 @@ internal partial class App : Application
         var judging = new JudgingLauncher(
             discoveryBudget: null, requesterPolicy: JudgingRun.ProductionPathRequesterPolicy, protections);
 
-        var assets = new BundleAssetSource(protections);
+        var assets = new BundleAssetSource(protections, verifyOnSelect: true);
         Task CloseOpenedRun()
         {
             protections.ReleaseHandoff();

@@ -71,28 +71,29 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
     }, cancellationToken);
 
     internal Result<T> ReadEvidence<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenEvidence, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+        Read(Products.Evidence, OpenEvidence, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
     internal Result<T> ReadNavigation<T>(Func<BundleReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenNavigation, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+        Read(Products.Navigation, OpenNavigation, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
     internal Result<T> ReadCapturedDelegations<T>(Func<BundleReader, T> read, CancellationToken cancellationToken) =>
-        Read(OpenCapturedDelegations, (reader, _) => read(reader),
+        Read(Products.Delegations, OpenCapturedDelegations, (reader, _) => read(reader),
             _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
     private Result<T> ReadMembership<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken) =>
-        Read(OpenMembership, (reader, _) => read(reader),
+        Read(Products.Membership, OpenMembership, (reader, _) => read(reader),
             reader => CurrentDerivation(reader.Description.GenerationId)
                 ?? (!CaptureIsCurrent() || !BrowseDerivationIsCurrent() ? Unavailable("GenerationChanged") : null), cancellationToken);
 
     internal Result<T> ReadOverview<T>(Func<DashboardOverviewReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenOverview, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
+        Read(Products.Overview, OpenOverview, (reader, _) => read(reader), _ => CaptureIsCurrent() ? null : Unavailable("GenerationChanged"), cancellationToken);
 
     internal Result<int?> ReadGroupsWithUnidentifiedMembers(CancellationToken cancellationToken)
     {
         using var stopping = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
         var token = stopping.Token;
         token.ThrowIfCancellationRequested();
+        AwaitVerification(Products.Overview, token);
         _gate.Wait(token);
         try
         {
@@ -131,13 +132,13 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
         ReadJudgement((reader, _) => read(reader), cancellationToken);
 
     internal Result<T> ReadJudgement<T>(Func<JudgementReader, CancellationToken, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenJudgement, read, reader => Current(reader.Description), cancellationToken);
+        Read(Products.Judgement | Products.Evidence | Products.Derivation, OpenJudgement, read, reader => Current(reader.Description), cancellationToken);
 
     internal Result<T> ReadFindings<T>(Func<JudgementReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenFindings, (reader, _) => read(reader), reader => CurrentFindings(reader.Description), cancellationToken);
+        Read(Products.Judgement, OpenFindings, (reader, _) => read(reader), reader => CurrentFindings(reader.Description), cancellationToken);
 
     internal Result<T> ReadDerivation<T>(Func<DerivationReader, T> read, CancellationToken cancellationToken = default) =>
-        Read(OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
+        Read(Products.Evidence | Products.Derivation, OpenDerivation, (reader, _) => read(reader), reader => CurrentDerivation(reader.Description.GenerationId), cancellationToken);
 
     /// <summary>Reads one object's saved permission interpretations, against the evidence's own descriptor.</summary>
     /// <param name="distinguishedName">The object to read.</param>
@@ -175,7 +176,7 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
         return read;
     }
 
-    private Result<T> Read<TReader, T>(Func<CancellationToken, Result<TReader>> open, Func<TReader, CancellationToken, T> read,
+    private Result<T> Read<TReader, T>(Products needed, Func<CancellationToken, Result<TReader>> open, Func<TReader, CancellationToken, T> read,
         Func<TReader, AuditError?> current, CancellationToken cancellationToken) where TReader : IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -184,6 +185,7 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
             using var stopping = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _stopping.Token);
             var token = stopping.Token;
             Result<TReader> opened;
+            AwaitVerification(needed, token);
             _gate.Wait(token);
             try
             {
@@ -434,6 +436,65 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
         || AnalysisStoreLifecycle.HasUnpublishedChanges(Directory, AnalysisStoreKind.Judgement)
             ? Unavailable("Unfinished") : null;
 
+    /// <summary>The products a read needs verified before it can open them.</summary>
+    [Flags]
+    private enum Products
+    {
+        Evidence = 1, Navigation = 2, Overview = 4, Delegations = 8, Membership = 16, Derivation = 32, Judgement = 64,
+    }
+
+    private static readonly (Products Product, StoreSegmentRole Role)[] ProductRoles =
+    [
+        (Products.Evidence, StoreSegmentRole.Evidence), (Products.Navigation, StoreSegmentRole.Navigation),
+        (Products.Overview, StoreSegmentRole.Overview), (Products.Delegations, StoreSegmentRole.Delegations),
+        (Products.Membership, StoreSegmentRole.Membership), (Products.Derivation, StoreSegmentRole.Derivation),
+        (Products.Judgement, StoreSegmentRole.Judgement),
+    ];
+
+    /// <summary>
+    /// Waits for any check of the needed files that is already running, before this read takes the opening gate.
+    /// </summary>
+    /// <remarks>
+    /// A multi-gigabyte file can take minutes to verify. Waiting for it while holding the gate would stall
+    /// every other screen's opening, including the Dashboard's, so the wait happens first and the gate is
+    /// then taken only to open files that are already verified.
+    /// </remarks>
+    private void AwaitVerification(Products needed, CancellationToken token)
+    {
+        var waiting = Stopwatch.GetTimestamp();
+        foreach (var (product, role) in ProductRoles)
+            if (needed.HasFlag(product)) _files.WaitForPending(role, token);
+        var waited = Stopwatch.GetElapsedTime(waiting);
+        if (waited > TimeSpan.FromMilliseconds(5)) NavigationDiagnostics.Mark("waiting for file verification", waited);
+    }
+
+    private Task? _verification;
+    private int _verificationStarted;
+
+    /// <summary>
+    /// Starts verifying every file of this run in the background, once, and writes what each cost to the run's log.
+    /// </summary>
+    /// <remarks>
+    /// This is how a saved run is opened. The files are checked together, up front, and every screen then
+    /// reads from files that are already verified; a screen that needs a file still being checked waits for
+    /// that one check rather than starting another.
+    /// </remarks>
+    internal void BeginVerification()
+    {
+        if (Volatile.Read(ref _disposeRequested) != 0 || Interlocked.Exchange(ref _verificationStarted, 1) != 0) return;
+        var token = _stopping.Token;
+        _verification = Task.Run(async () =>
+        {
+            using var log = new RunVerificationLog(Directory);
+            try { log.Finished(await _files.VerifyAllAsync(log.Checked, token).ConfigureAwait(false)); }
+            catch (OperationCanceledException) { log.Stopped(); }
+            catch (Exception error) when (error is ObjectDisposedException or InvalidOperationException or IOException) { log.Unavailable(error); }
+        });
+    }
+
+    /// <summary>Completes when the background verification has finished or been stopped; null before it starts.</summary>
+    internal Task? Verification => Volatile.Read(ref _verification);
+
     private AuditError? CurrentDerivation(Guid generation)
     {
         if (Pending() is { } pending) return pending;
@@ -481,6 +542,9 @@ internal sealed partial class OpenedRunResults : IDisposable, IAsyncDisposable
         // Cancellation precedes waiting: an opener holding the gate may be hashing a large file.
         if (Interlocked.Exchange(ref _disposeRequested, 1) != 0) return;
         _stopping.Cancel();
+        // The pass writes to this run's log; wait for it to stop so the run's files can be released and removed.
+        try { _verification?.Wait(TimeSpan.FromSeconds(10)); }
+        catch (AggregateException) { /* The pass reports its own end in the log. */ }
         _gate.Wait();
         try
         {
