@@ -13,8 +13,7 @@ internal sealed class NavigationDiagnostics : IDisposable
 {
     private static readonly Meter NavigationMeter = new("SecureAD.Shell.Navigation");
     private static readonly Counter<long> ExecutableHashReads = NavigationMeter.CreateCounter<long>("navigation.executable_hash_reads");
-    private static readonly object FingerprintGate = new();
-    private static string? _processFingerprint;
+    private static readonly ProgramFingerprint RunningProgram = new(ReadRunningProgram);
     private static readonly AsyncLocal<NavigationDiagnostics?> Active = new();
     private readonly NavigationDiagnostics? _previous;
     private readonly RunLogFile? _file;
@@ -48,11 +47,14 @@ internal sealed class NavigationDiagnostics : IDisposable
         return
         [
             new("process", Environment.ProcessPath ?? "unavailable"),
-            new("processSha256", ProcessFingerprint()),
+            new("processSha256", RunningProgram.Value()),
             new("shellMvid", assembly.ManifestModule.ModuleVersionId.ToString("D")),
             new("shellVersion", assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unavailable"),
         ];
     }
+
+    /// <summary>Starts hashing the running program file in the background, so no click has to wait for it.</summary>
+    internal static void BeginProgramFingerprint() => RunningProgram.Begin();
 
     internal string Action { get; }
 
@@ -94,17 +96,13 @@ internal sealed class NavigationDiagnostics : IDisposable
         _file?.Dispose();
     }
 
-    private static string ProcessFingerprint()
+    private static string? ReadRunningProgram()
     {
-        // The executable identifies the process, not the selected run. Retain only a successful calculation.
-        lock (FingerprintGate)
-        {
-            if (_processFingerprint is { } fingerprint) return fingerprint;
-            var path = Environment.ProcessPath;
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return "unavailable";
-            using var stream = File.OpenRead(path);
-            ExecutableHashReads.Add(1);
-            return _processFingerprint = Convert.ToHexString(SHA256.HashData(stream));
-        }
+        // The program file identifies the process, not the selected run.
+        var path = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+        using var stream = File.OpenRead(path);
+        ExecutableHashReads.Add(1);
+        return Convert.ToHexString(SHA256.HashData(stream));
     }
 }

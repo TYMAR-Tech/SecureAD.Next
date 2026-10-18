@@ -202,5 +202,10 @@ internal partial class App : Application
         _startup(AppStartupPoint.LibraryRefreshStarting);
         await library.RefreshAsync();
         _startup(AppStartupPoint.LibraryRefreshCompleted);
+
+        // Every log names the program file's hash, which a slow disk takes seconds to read. Start it now,
+        // with Home listed and no run chosen yet, so the first click does not wait for it and start-up
+        // reads are not competing with it.
+        NavigationDiagnostics.BeginProgramFingerprint();
     }
 }
