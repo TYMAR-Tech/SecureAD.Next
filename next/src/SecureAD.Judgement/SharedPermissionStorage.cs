@@ -221,6 +221,7 @@ internal sealed class SharedPermissionStorage(SqliteConnection connection, Sqlit
     internal static PermissionEntry ReadReference(SqliteConnection connection, string target, Guid generation,
         long id, int ordinal, byte[] fingerprint)
     {
+        JudgementStoreLayout.VerifyPermission(connection, id);
         JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PermissionProof);
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT {Projection},$ordinal,$fingerprint FROM permission_entry p {MeaningJoin} WHERE p.id=$id";

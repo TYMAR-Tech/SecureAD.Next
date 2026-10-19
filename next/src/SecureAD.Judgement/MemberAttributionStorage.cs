@@ -8,10 +8,10 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Judgement;
 
-internal static class MemberAttributionStorage
+internal static partial class MemberAttributionStorage
 {
     private sealed record Configuration(MemberAttributionBudget Budget, string Forest, IReadOnlyDictionary<string, NamingContextKind> NamingContexts);
-    private const string SourceSql = """
+    internal const string SourceSql = """
         SELECT e.id*2 AS display_id,e.target,e.holder_sid,COALESCE(e.holder_scope,'') AS holder_scope,
             e.capability,e.expectedness,(e.counted=1 AND NOT EXISTS(SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id)) AS counted,
             e.evaluation AS source_evaluation,EXISTS(SELECT 1 FROM full_control_support s WHERE s.edge_id=e.id) AS included,
@@ -106,6 +106,8 @@ internal static class MemberAttributionStorage
         string sid, string? scope, string target)
     {
         if (!ReadManifest(connection)) return new(false, null, []);
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            return ReadRequested(connection, requested, description, sid, scope, target);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT r.id,p.context,p.display_id FROM member_attribution_root r JOIN member_attribution_permission p ON p.root_id=r.id "
             + "WHERE r.holder_sid=$sid COLLATE NOCASE AND r.holder_scope=$scope COLLATE NOCASE AND p.target=$target COLLATE NOCASE LIMIT 1";
@@ -128,6 +130,8 @@ internal static class MemberAttributionStorage
         string memberSid, string? memberScope, bool includeExpected, long afterId)
     {
         if (!ReadManifest(connection)) return new(false, false, description.GenerationId, [], false, afterId);
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            return ReadRequestedReverse(connection, requested, description, memberSid, memberScope, includeExpected, afterId);
         using var command = connection.CreateCommand();
         // Every incomplete source can hide an unvisited member; absence from its index is not non-membership.
         command.CommandText = "SELECT NOT EXISTS(SELECT 1 FROM member_attribution_root WHERE COALESCE(json_extract(proof,'$.IsComplete'),0)<>1)";
@@ -197,11 +201,20 @@ internal static class MemberAttributionStorage
             || (reader.IsDBNull(4) ? null : reader.GetString(4)) != description.DerivationGenerationId?.ToString("D")) throw Invalid();
     }
 
-    private static bool ReadManifest(SqliteConnection connection)
+    private static bool ReadManifest(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
+        var requested = JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT configuration,root_count,permission_count,(SELECT COUNT(*) FROM member_attribution_root),"
-            + "(SELECT COUNT(*) FROM member_attribution_permission) FROM member_attribution_product WHERE id=1";
+        command.Transaction = transaction;
+        command.CommandText = requested is null
+            ? "SELECT configuration,root_count,permission_count,(SELECT COUNT(*) FROM member_attribution_root),"
+                + "(SELECT COUNT(*) FROM member_attribution_permission) FROM member_attribution_product WHERE id=1"
+            : "SELECT configuration,root_count,permission_count,$roots,$permissions FROM member_attribution_product WHERE id=1";
+        if (requested is not null)
+        {
+            command.Parameters.AddWithValue("$roots", requested.ReadRowCount("member_attribution_root"));
+            command.Parameters.AddWithValue("$permissions", requested.ReadRowCount("member_attribution_permission"));
+        }
         using var reader = command.ExecuteReader();
         if (!reader.Read() || reader.GetInt64(1) != reader.GetInt64(3) || reader.GetInt64(2) != reader.GetInt64(4)) throw Invalid();
         var ran = !reader.IsDBNull(0);
@@ -209,9 +222,13 @@ internal static class MemberAttributionStorage
         return ran;
     }
 
-    private static MemberAttribution ReadRoot(SqliteConnection connection, JudgementDescription description, int id)
+    private static MemberAttribution ReadRoot(SqliteConnection connection, JudgementDescription description, int id,
+        SqliteTransaction? transaction = null)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "member_attribution_root", id);
+        JudgementStoreLayout.VerifyScope(connection, StoreSegmentRole.PermissionProof, "member_attribution_member", id);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT holder_sid,holder_scope,proof,proof_hash FROM member_attribution_root WHERE id=$id";
         command.Parameters.AddWithValue("$id", id);
         using var reader = command.ExecuteReader();
@@ -224,7 +241,7 @@ internal static class MemberAttributionStorage
             || result.Budget is null || !Enum.IsDefined(result.Stop)) throw Invalid();
         reader.Close();
         result.Budget.Validate();
-        if (result.Budget != ReadConfiguration(connection).Budget || result.Members is null || result.Links is null || result.Routes is null
+        if (result.Budget != ReadConfiguration(connection, transaction).Budget || result.Members is null || result.Links is null || result.Routes is null
             || result.Limitations is null || result.VisitedNodes < 0 || result.TraversedLinks < 0 || result.StoredRecords < 0
             || result.VisitedNodes > result.Budget.MaxNodes || result.TraversedLinks > result.Budget.MaxLinks
             || result.StoredRecords > result.Budget.MaxRecords) throw Invalid();
@@ -249,9 +266,17 @@ internal static class MemberAttributionStorage
         return result;
     }
 
-    private static IReadOnlyList<MemberResourceApplicability> ReadContext(SqliteConnection connection, int id, string context, MemberAttribution expansion)
+    private static IReadOnlyList<MemberResourceApplicability> ReadContext(SqliteConnection connection, int id, string context,
+        MemberAttribution expansion, SqliteTransaction? transaction = null)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+        {
+            var selected = requested.ReadCompleteScope("member_attribution_context", id)
+                .SingleOrDefault(row => row.CompleteText("context") == context) ?? throw Invalid();
+            selected.VerifyValues();
+        }
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT proof,proof_hash FROM member_attribution_context WHERE root_id=$id AND context=$context";
         command.Parameters.AddWithValue("$id", id);
         command.Parameters.AddWithValue("$context", context);
@@ -266,9 +291,10 @@ internal static class MemberAttributionStorage
         return result;
     }
 
-    private static Configuration ReadConfiguration(SqliteConnection connection)
+    private static Configuration ReadConfiguration(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT configuration,configuration_hash FROM member_attribution_product WHERE id=1";
         using var reader = command.ExecuteReader();
         if (!reader.Read() || reader.IsDBNull(0) || reader.IsDBNull(1)) throw Invalid();

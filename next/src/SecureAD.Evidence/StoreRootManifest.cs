@@ -9,7 +9,11 @@ public enum StoreSegmentRole { Evidence, Navigation, Derivation, Judgement, Perm
 
 /// <summary>Exact sealed bytes, schema and generation for one independently readable product.</summary>
 public sealed record SealedStoreSegment(StoreSegmentRole Role, int SchemaVersion, Guid GenerationId,
-    string FileName, long ByteLength, string Hash);
+    string FileName, long ByteLength, string Hash)
+{
+    /// <summary>The independently checked logical data index, not a whole-file verification verdict.</summary>
+    public RequestedDetailManifest? RequestedDetails { get; init; }
+}
 
 /// <summary>A saved derivation counter, not a request to expand membership while browsing.</summary>
 public sealed record DerivationBrowseSummary(int Version, string EvidenceSeal, Guid GenerationId,
@@ -22,7 +26,7 @@ public sealed record StoreRootManifest(int Version, Guid GenerationId, string Ev
     [System.Text.Json.Serialization.JsonInclude]
     internal IReadOnlyList<SealedStoreSegment> Segments { get; init; } = Segments;
 
-    internal const int CurrentVersion = 4;
+    internal const int CurrentVersion = 5;
     /// <summary>The captured-object count maintained by the capture projection write, not by a loaded page.</summary>
     public long? CapturedObjects { get; init; }
     /// <summary>Scope for the library list, without opening any captured database.</summary>

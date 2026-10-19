@@ -474,6 +474,7 @@ internal static class Tier0PathStorage
     internal static Tier0PathNode? ReadNode(SqliteConnection connection, string target, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "tier0_path_node", target);
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT target,outcome,proof,fingerprint FROM tier0_path_node WHERE target=$target COLLATE NOCASE";
         query.Parameters.AddWithValue("$target", target);

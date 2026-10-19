@@ -135,7 +135,8 @@ public sealed class SelfMembershipStorageTests
     [InlineData("UPDATE self_membership_product SET evaluator_version=999")]
     public void OrphanedOrIncompleteRequesterProductCannotLookComplete(string sql)
     {
-        var directory = Store(connection => Execute(connection, sql));
+        var directory = Store(mutate: null);
+        SelfMembershipCoverageTests.Mutate(directory, connection => Execute(connection, sql));
         using var reader = Open(directory);
         Assert.Throws<InvalidDataException>(() => reader.ReadSelfMembershipAssessments(Target, null));
         Assert.Throws<InvalidDataException>(() => reader.ReadSelfMembershipAssessments(null, Requester));

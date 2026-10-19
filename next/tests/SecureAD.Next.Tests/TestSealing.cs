@@ -39,6 +39,21 @@ internal static class TestSealing
         var segments = root.Segments.Select(segment =>
         {
             var path = BundleLayout.AnalysisSegmentDataPath(directory, generation, segment.Role);
+            if (segment.RequestedDetails is not null)
+            {
+                using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+                {
+                    DataSource = path, Mode = SqliteOpenMode.ReadWrite, Pooling = false,
+                }.ToString());
+                connection.Open();
+                using (var drop = connection.CreateCommand())
+                {
+                    drop.CommandText = "DROP TABLE requested_detail_node";
+                    drop.ExecuteNonQuery();
+                }
+                segment = segment with { RequestedDetails = RequestedDetailIndex.Prepare(connection, "main",
+                    segment.Role, segment.SchemaVersion, root.GenerationId, root.EvidenceSeal, CancellationToken.None) };
+            }
             BundleSealing.Seal(path, path + ".seal");
             return segment with { Hash = BundleSealing.ReadSeal(path + ".seal")!.Hash, ByteLength = new FileInfo(path).Length };
         }).ToArray();

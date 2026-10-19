@@ -223,6 +223,8 @@ internal static class ControlEdgeStorage
     public static ControlEdgePage Read(SqliteConnection connection, JudgementDescription description,
         string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            return ReadRequested(connection, requested, description, target, holderSid, holderScope, includeExpected, afterId);
         using var product = connection.CreateCommand();
         product.CommandText = "SELECT capture_complete, completed, discovery_scoped FROM control_product WHERE id=1 AND engine_version=$version";
         product.Parameters.AddWithValue("$version", EngineVersion);
@@ -294,6 +296,7 @@ internal static class ControlEdgeStorage
 
     internal static ControlEdge ReadExact(SqliteConnection connection, JudgementDescription description, string target, long id)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_product", 1L);
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT e.id FROM control_edge e JOIN control_product p ON p.id=1 "
             + "WHERE e.id=$id AND e.target=$target COLLATE NOCASE AND p.completed=1 AND p.engine_version=$version";
@@ -320,6 +323,9 @@ internal static class ControlEdgeStorage
     private static ControlEdge ReadStoredEdge(SqliteConnection connection, JudgementDescription description, long id,
         ControlEvidenceReadScope? scope)
     {
+        var selected = JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_edge", id);
+        if (selected is not null)
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_object", selected.CompleteText("target"));
         using var query = connection.CreateCommand();
         // Seek with the parent's NOCASE key; the separate BINARY comparison preserves the old
         // join's exact target binding rather than accepting differently spelled stored references.
@@ -367,6 +373,12 @@ internal static class ControlEdgeStorage
     internal static IReadOnlyList<PermissionEntry> ReadExactAces(SqliteConnection connection, ControlEdge edge,
         ControlEvidenceReadScope? scope)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            foreach (var occurrence in requested.ReadCompleteScope("control_ace", edge.Id))
+            {
+                occurrence.VerifyValues();
+                JudgementStoreLayout.VerifyPermission(connection, occurrence.Integer("entry_id"));
+            }
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",a.ordinal,a.fingerprint FROM control_ace a LEFT JOIN permission_entry p ON p.id=a.entry_id"
             + SharedPermissionStorage.MeaningJoin + "WHERE a.edge_id=$id ORDER BY a.ordinal";
@@ -386,6 +398,7 @@ internal static class ControlEdgeStorage
 
     private static IReadOnlyList<ControlPrecondition> ReadConditions(SqliteConnection connection, long id)
     {
+        JudgementStoreLayout.VerifyScope(connection, StoreSegmentRole.PermissionProof, "control_precondition", id);
         using var query = connection.CreateCommand();
         query.CommandText = "SELECT name,state,evidence FROM control_precondition WHERE edge_id=$id ORDER BY ordinal";
         query.Parameters.AddWithValue("$id", id);
@@ -396,6 +409,38 @@ internal static class ControlEdgeStorage
     }
 
     private static string? Text(SqliteDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+
+    private static ControlEdgePage ReadRequested(SqliteConnection connection, RequestedDetailReader requested,
+        JudgementDescription description, string? target, string? holder, string? scope, bool includeExpected, long after)
+    {
+        var product = requested.ReadSingle("control_product", 1L);
+        product?.VerifyValues();
+        var compatible = product is not null && product.Integer("engine_version") == EngineVersion;
+        var captured = compatible && product!.Integer("capture_complete") == 1;
+        if (!compatible || product!.Integer("completed") != 1) return new([], 0, 0, 0, 0, false, captured, false, after);
+        var counts = requested.ReadSingle("detail_control_count", RequestedProofSelectionStorage.ControlQuestion(target, holder, scope));
+        if (counts is null && target is not null) return new([], 0, 0, 0, 1, false, captured, false, after);
+        var global = counts ?? requested.ReadSingle("detail_control_count", RequestedProofSelectionStorage.ControlQuestion(null, null, null))
+            ?? throw FullControlEvaluator.InvalidProof();
+        var unexpected = counts?.Integer("unexpected") ?? 0;
+        var unknown = counts?.Integer("unknown") ?? 0;
+        var expected = counts?.Integer("expected") ?? 0;
+        var incomplete = global.Integer("incomplete");
+        if (unexpected < 0 || unknown < 0 || expected < 0 || incomplete < 0) throw FullControlEvaluator.InvalidProof();
+        var ids = RequestedProofSelectionStorage.ReadPage(requested,
+            RequestedProofSelectionStorage.ControlQuestion(target, holder, scope, includeExpected), after, 101, out _).ToList();
+        var more = ids.Count > 100;
+        if (more) ids.RemoveAt(100);
+        if (ids.Any(id => id <= 0)) throw FullControlEvaluator.InvalidProof();
+        var edges = ids.Where(id => id % 2 == 0).Select(id => ReadStoredEdge(connection, description, id / 2)).ToArray();
+        var assessments = ids.Where(id => id % 2 != 0).Select(id => FullControlStorage.Read(connection, description, (id + 1) / 2)).ToArray();
+        return new(edges, unexpected, unknown, expected, incomplete, true, captured, more, ids.Count == 0 ? after : ids[^1])
+        {
+            FullControlAssessments = assessments,
+            FullControlSupports = FullControlStorage.Supports(connection, edges),
+            IsScopedToDiscovery = product.Integer("discovery_scoped") == 1,
+        };
+    }
     internal static void BindFilter(SqliteCommand command, string? target, string? sid, string? scope)
     {
         if (target is not null || sid is not null) command.Parameters.AddWithValue("$value", target ?? sid!);

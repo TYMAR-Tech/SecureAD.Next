@@ -218,7 +218,8 @@ public sealed class FullControlStorageTests
     [InlineData(21)]
     public void EarlierSchemasCannotClaimFullControlCoverage(int version)
     {
-        var directory = Store([], connection => Execute(connection, $"UPDATE judgement SET schema_version={version}"));
+        var directory = Store([]);
+        SelfMembershipCoverageTests.Mutate(directory, connection => Execute(connection, $"UPDATE judgement SET schema_version={version}"));
         Assert.False(JudgementReader.Open(directory).IsSuccess);
     }
 

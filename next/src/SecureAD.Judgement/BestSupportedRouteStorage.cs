@@ -67,6 +67,8 @@ internal static class BestSupportedRouteStorage
     internal static BestRouteSelection ReadSelection(SqliteConnection connection, JudgementDescription description,
         Tier0ObjectDistance distance, CancellationToken cancellationToken)
     {
+        JudgementStoreLayout.VerifySelected(connection, SecureAD.Evidence.StoreSegmentRole.PathProof,
+            "tier0_best_route", distance.Subject.DistinguishedName);
         BestRouteSelection selection;
         using (var command = connection.CreateCommand())
         {

@@ -222,11 +222,43 @@ Current native formats are capture root 4, Navigation 3, overview 1, captured De
 
 ### RESP-05 - Implement one requested-detail read and integrity boundary
 
-**Status:** open - concrete native format/public-contract scope must be confirmed. **Dependencies:** RESP-02, RESP-04.
+**Status:** open - the approved original-permission, saved-classification/schema-support and control/member/path consumers now use the existing requested-detail boundary and are offline behaviour-verified; generic oversized `WITHOUT ROWID` sources and preparation/storage-cost acceptance remain unfinished. **Dependencies:** RESP-02, RESP-04.
 
 Define and implement one coherent boundary spanning captured attributes/member values, original descriptors/entries, saved per-right classifications/schema support and requested path/control/member proof, selecting only the object/family/page the consumer needs.
 Choose the native storage/integrity mechanism from RESP-01's costs, retain shared descriptors/proof components and exact original bytes/occurrences, and prove requested data independently without silently weakening existing seal/WAL checks or returning partial objects from whole-object APIs.
 Complete with all four detail families integrated through the same protected selected-run ownership, strict missing/corrupt/foreign/oversized-data refusals and rebuilt end-to-end controls, leaving no parallel obsolete production reader or unapproved custom block adapter.
+
+**Owner-approved scope, 2026-10-16:** implement the single four-family native requested-detail boundary recorded in [product orientation](WHAT-THE-PRODUCT-IS.md#fix-and-feature-priority), using publication-root-anchored logical-page verification rather than a custom SQLite VFS.
+Approval includes the necessary native-format/read-contract changes and focused offline boundary/corruption/binding/large-value/cancellation/reopen verification, rebuilt isolated defects/restored controls and a final fresh-provenance Release rebuild, with added preparation/storage costs reported honestly and current wording/layout and explicitly whole-collection cards retained.
+This is scope confirmation, not application implementation or performance acceptance; RESP-06/07 and enterprise budgets remain open, and no general measurement campaign, existing-input rewriting, live work, recapture, discovery/budget/SYSVOL change, deployment, commit or push is authorised.
+
+**Foundation checkpoint, 2026-10-16:** [preserved state and exact evidence](C:/Users/jistrand/.copilot/session-state/81f37a59-afea-4c08-a978-b289e4063a0e/files/resp05/current-state.json) records source-owned payloads with bounded logical metadata/value pages, hierarchical SHA-256 commitments in existing atomic roots and requested leases in the existing run owner, with selected captured fields/original membership and the evidence-owned classification descriptor lookup wired through them.
+Native formats are capture root 5, Evidence/Derivation/Membership 18 and Judgement 77, with Navigation 3, overview 1, captured Delegations 1 and 32 rules unchanged; the final correct-live-source Release rebuild has 0 errors/892 warnings, 627 of 628 affected cases pass with the explicit no-domain refusal below, all 28 new plus three adapted cases detect rebuilt defects across 21 qualified variants/63 failing and 651 rebuilt restored observations, and the real-source 900/1300 drawing controls pass.
+RESP-05 is not complete: original descriptor/entry, saved classification/schema-support and control/member/path application consumers still need the requested boundary, the generic oversized WITHOUT ROWID case still explicitly refuses rather than streams, and preparation/storage cost, whole-journey response budgets and physical-display acceptance remain unaccepted, without live work, migration, deployment, commit or push.
+
+**Consumer continuation checkpoint, 2026-10-16:** [current state and exact evidence](C:/Users/jistrand/.copilot/session-state/80a0c8d8-c171-4c40-abb8-e4a17be33f73/files/resp05-continuation/current-state.json) records original DACLs, saved per-right classifications/schema support and selected control/Self-Membership/member/path consumers using the existing protected logical-page boundary, with saved selection references/counts, complete source/resource/generation binding, separate whole-file checks and unchanged wording/layout; capture root 5, Evidence 19, Derivation/Membership 18 and Judgement 78 are current, while Navigation 3, overview 1, captured Delegations 1 and 32 rules are unchanged.
+The final correct-live-source Release rebuild has 0 errors/895 warnings, 933 of 936 affected cases passing with exactly RESP-05-F01 and the two baseline-reproduced RESP-05-F03 fixture failures retained, all 13 new cases detecting rebuilt defects across 20 qualified variants/46 failing and 68 rebuilt restored observations, and 53 focused controls including real-source 900/1300 drawing passing; rejected SQL-slice and stale-binary-staging attempts remain preserved rather than counted as verification.
+RESP-05 remains open for the generic oversized native-source limitation below and changed-boundary producing/storage-cost verification, with ordinary Delegations' first shared-descriptor product verification, enterprise budgets, physical displays, RESP-03-F01, RESP-07-F01 and the known null-default gate still unaccepted and no live work, migration, deployment, commit or push authorised.
+
+**Finding RESP-05-F01 - MEDIUM, open:** the existing `ASealedBundleThatReachedNoDomainStillOpensAndSaysSo` check fails because captured-library coverage validation refuses its all-unread-domain run as contradictory.
+That validation is unchanged in this correction and the failed result is retained, but an earlier executable was not rebuilt to establish baseline behaviour, so the failure is neither attributed to nor claimed fixed by the new index.
+Keep this explicit refusal unaccepted while continuing the approved requested-detail work, without changing coverage semantics or diverting into RESP-03-F01.
+
+**Finding RESP-05-F02 - MEDIUM, open:** generic text/binary values above 64 KiB in a `WITHOUT ROWID` source still explicitly refuse during requested-index preparation rather than publishing truncated evidence.
+The retained SQL-slice attempt was rejected because a bounded returned buffer does not establish bounded SQLite internal reads or allocations; the rebuilt refusal controls preserve the complete original value and prevent a partial index from being published.
+Resolve the genuinely streamable native source representation before claiming unrestricted large-value coverage, without silently adding a VFS, encoding experiment, sealed-input rewrite or evidence limit.
+
+**Finding RESP-05-F03 - MEDIUM, open:** broader readback verification found two completion controls failing during fixture setup: the GUI completion control requests an exclusive evidence lock during a protected handoff, and the shell derivation control tries to change the protected derivation database.
+Both failures reproduce against the hash-matched pre-continuation Release binaries, with the original and current results retained, so neither is attributed to the requested-detail consumer changes or relabelled as a passing check.
+Keep these controls unaccepted alongside RESP-05-F01 without changing protected handoffs, restarting RESP-02/03/04 or making their repair a prerequisite to the remaining RESP-05 correction.
+
+**Finding RESP-05-F04 - HIGH, open:** the owner's supplied 2026-10-16 lab log identifies a Release engine module matching the final local build and records requested-detail index preparation at 117.852 seconds out of roughly 163 seconds of judging for 8,444 objects, versus a 9.276-second object-analysis pass and 264 ms of saved-selection preparation.
+Source confirms whole-product preparation, per-cell source reopening/hashing and a fresh 64-KiB buffer for every nonempty text/binary value; [fingerprinted existing-log analysis](C:/Users/jistrand/.copilot/session-state/80a0c8d8-c171-4c40-abb8-e4a17be33f73/files/resp05-lab-cost/analysis.json) retains the separate 50.3-second capture-backfill interval, 22.141 GiB of cumulative process allocation during publication rather than peak RAM, and 1.850 seconds of actual judgement-file sealing, without attributing every interval or allocation to one function.
+Prioritize the owner-approved source-owned payload replacement below and focused time/storage validation before adoption, preserving original evidence and open findings rather than accepting this build for production, linearly projecting lab runtime, restarting RESP-02/03/04 or beginning another live audit/general measurement campaign.
+
+**Replacement approved to try, 2026-10-16:** the owner agreed to the source-owned verified payload/compact lookup replacement described in [product orientation](WHAT-THE-PRODUCT-IS.md#fix-and-feature-priority), retaining the full working-application requirement, the four detail families and the existing integrity/security-claim boundaries rather than merely tuning the generic catalogue or reducing Stage 6/7.
+Use `perf02/source-owned-blocks` in a separate local worktree seeded with the complete current uncommitted sources, leaving `perf02/responsive-browsing` and its existing application binaries intact as the baseline, with [exact preservation and setup evidence](C:/Users/jistrand/.copilot/session-state/80a0c8d8-c171-4c40-abb8-e4a17be33f73/files/resp05-replacement/setup.json).
+No improvement or adoption is accepted until focused producing/storage/readback verification and the complete real-application lab journey establish it; all original inputs, failed attempts, frozen anchors and RESP-03-F01/RESP-05-F01/F02/F03/F04 remain preserved, with no rollback, new live audit, production access, deployment/package overwrite, commit or push authorised.
 
 ### RESP-06 - Make search, filters, counts and continuation match the requested scope
 
@@ -356,15 +388,18 @@ land on the existing Dashboard; safe run-protection handoffs and lightweight ord
 serving, including required native serving table/index/version changes, with all evidence/answers/counts/
 qualifications/bindings preserved and current wording/layout unchanged
 
-**Next action:** the approved RESP-02/03/04 application correction is implemented and focused
-offline behaviour-verified; the next unfinished implementation is RESP-05's requested-detail
-boundary, whose concrete native/public-contract scope still requires its stated confirmation.
+**Next action:** implement the owner-approved source-owned verified payload replacement in the
+isolated `perf02/source-owned-blocks` worktree, addressing RESP-05-F04's measured preparation cost
+and the genuinely streamable oversized-value representation while retaining the existing requested
+integrity boundary and sound consumers; verify producing time/storage as well as requested reads.
+The replacement scope was confirmed on 2026-10-16 and is not to be requested again.
+The RESP-02/03/04 application correction remains implemented and focused offline behaviour-verified.
 Continue the programme's supporting RESP-01/12 evidence and budget work without restarting
 launch/Home, ordinary LAPS/Delegations or general measurement preparation as an implementation gate.
-Retain the RESP-03-F01 startup-delay follow-up, coarse first original-descriptor verification,
-RESP-07-F01, the known null-default gate and unperformed physical-display checks as explicit
-limitations; no custom checksum adapter, unapproved detail contract, live work, deployment,
-commit or push is implied.
+Retain the RESP-03-F01 startup-delay follow-up, RESP-05-F01/F02/F03/F04, ordinary Delegations' coarse first
+shared-descriptor product verification, RESP-07-F01, the known null-default gate and unperformed physical-display checks as explicit
+limitations; this application-level detail approval does not authorise a custom SQLite VFS,
+new screen wording/layout, live work, deployment, commit or push.
 
 **Historical approval handoff:** [approved application implementation](C:/Users/jistrand/.copilot/session-state/4ea6589b-ca69-49ce-88bf-295f68d91d87/files/approved-implementation-handoff/next-session-handoff.md) - authority and arrival-state preservation record; the implementation checkpoint above supersedes its unimplemented next-action state
 

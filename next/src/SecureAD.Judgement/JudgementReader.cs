@@ -155,6 +155,8 @@ public sealed partial class JudgementReader : IDisposable
     private StoreRootManifest? _publicationRoot;
     private CancellationToken _readCancellation;
     private readonly HashSet<StoreSegmentRole> _openedParts = [];
+    private readonly HashSet<StoreSegmentRole> _wholeParts = [];
+    private readonly Dictionary<StoreSegmentRole, RequestedDetailReader> _requestedParts = [];
     private bool _disposed;
 
     private JudgementReader(
@@ -263,7 +265,7 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(requesterDn);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PathProof);
         return PathRequesterRiskStorage.ReadPage(_connection, Description, requesterDn, verdict, after, cancellationToken);
     }
 
@@ -292,8 +294,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return Tier0DistanceStorage.ReadObject(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -304,8 +306,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return BestSupportedRouteStorage.Read(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -326,8 +328,8 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        OpenPart(StoreSegmentRole.PathProof);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return Tier0Browsing.ReadObject(_connection, Description, distinguishedName, cancellationToken);
     }
 
@@ -359,7 +361,7 @@ public sealed partial class JudgementReader : IDisposable
         if (target is not null && holderSid is not null)
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
             with { GenerationId = Description.GenerationId,
                 OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
@@ -374,7 +376,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return ControlEdgeStorage.ReadExact(_connection, Description, target, id);
     }
 
@@ -382,7 +384,7 @@ public sealed partial class JudgementReader : IDisposable
     public SelfMembershipAssessmentSet ReadSelfMembershipAssessments(string? target, string? requester)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        OpenPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PathProof);
         return SelfMembershipStorage.Read(_connection, Description, target, requester);
     }
 
@@ -390,7 +392,7 @@ public sealed partial class JudgementReader : IDisposable
     public SelfMembershipSummary? ReadSelfMembershipSummary()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        OpenPart(StoreSegmentRole.PathProof);
+        RequestedPart(StoreSegmentRole.PathProof);
         return SelfMembershipCoverageStorage.Read(_connection, Description);
     }
 
@@ -400,7 +402,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(holderSid);
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return MemberAttributionStorage.Read(_connection, Description, holderSid, holderScope, target)
             with { GenerationId = Description.GenerationId };
     }
@@ -411,7 +413,7 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(memberSid);
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
-        OpenPart(StoreSegmentRole.PermissionProof);
+        RequestedPart(StoreSegmentRole.PermissionProof);
         return MemberAttributionStorage.ReadReverse(_connection, Description, memberSid, memberScope, includeExpected, afterId);
     }
 
@@ -489,7 +491,7 @@ public sealed partial class JudgementReader : IDisposable
                 reader._protection = lease;
                 reader._publicationRoot = store.Root;
                 reader._readCancellation = cancellationToken;
-                JudgementStoreLayout.RegisterReader(reader._connection, reader.OpenPart);
+                JudgementStoreLayout.RegisterReader(reader._connection, reader.EnsurePart, reader.RequestedPart);
                 lease = null;
             }
             return opened;
@@ -501,7 +503,7 @@ public sealed partial class JudgementReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();
-        if (_openedParts.Contains(role)) return;
+        if (_wholeParts.Contains(role)) return;
         var protection = _protection ?? throw new InvalidOperationException("The judgement reader has no protected publication.");
         var schema = protection.Attach(role, _readCancellation);
         using var query = _connection.CreateCommand();
@@ -513,6 +515,31 @@ public sealed partial class JudgementReader : IDisposable
             || header.Read())
             throw new InvalidDataException("The saved proof part does not match its role, source or generation.");
         _openedParts.Add(role);
+        _wholeParts.Add(role);
+    }
+
+    private void EnsurePart(StoreSegmentRole role)
+    {
+        if (!_openedParts.Contains(role)) OpenPart(role);
+    }
+
+    private RequestedDetailReader RequestedPart(StoreSegmentRole role)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _readCancellation.ThrowIfCancellationRequested();
+        if (_requestedParts.TryGetValue(role, out var existing)) return existing;
+        var protection = _protection ?? throw new InvalidOperationException("The judgement reader has no protected publication.");
+        var reader = protection.AttachRequested(role, _readCancellation);
+        var header = reader.ReadSingle("judgement_part", 1L) ?? throw new InvalidDataException("The saved proof header is absent.");
+        if (header.Integer("schema_version") != JudgementSchema.Version || header.CompleteText("role") != role.ToString()
+            || header.CompleteText("generation") != Description.GenerationId.ToString("D")
+            || header.CompleteText("evidence_seal") != Description.EvidenceSeal
+            || (header.IsNull("derivation_generation") ? null : header.CompleteText("derivation_generation"))
+                != Description.DerivationGenerationId?.ToString("D"))
+            throw new InvalidDataException("The requested proof does not match its role, source or generation.");
+        _requestedParts.Add(role, reader);
+        _openedParts.Add(role);
+        return reader;
     }
 
     private static Result<JudgementReader> OpenConnection(string bundleDirectory, AnalysisStoreGeneration generation, SqliteConnection connection)
@@ -632,6 +659,21 @@ public sealed partial class JudgementReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(query);
         OpenPart(StoreSegmentRole.PermissionProof);
+        return ReadFindingPage(query);
+    }
+
+    /// <summary>Reads one account's published Tier-0 finding and selected proof, not other finding families.</summary>
+    public Result<FindingsPage> ReadTier0FindingPage(string distinguishedName)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        RequireCurrentPathGeneration();
+        RequestedPart(StoreSegmentRole.PermissionProof);
+        return ReadFindingPage(new FindingsQuery(null, UnexpectedTier0Route.RuleId, null, null, distinguishedName, null, 1));
+    }
+
+    private Result<FindingsPage> ReadFindingPage(FindingsQuery query)
+    {
         var versions = ReadRuleVersions();
         var page = ReadPageRows(query, FindingColumns, EvidenceJoins, row => ReadFinding(row, versions));
         return page.IsSuccess
@@ -1246,6 +1288,8 @@ public sealed partial class JudgementReader : IDisposable
         }
         else if (ruleId == UnexpectedTier0Route.RuleId)
         {
+            JudgementStoreLayout.VerifySelected(_connection, StoreSegmentRole.PermissionProof, "finding_tier0_route",
+                reader.GetInt64(reader.GetOrdinal("finding_id")));
             var proof = reader.GetOrdinal("z_proof");
             var calculation = reader.GetOrdinal("z_calculation_fingerprint");
             if (reader.IsDBNull(proof) || reader.IsDBNull(calculation)) throw Tier0PathStorage.InvalidProof();
@@ -1643,7 +1687,7 @@ public sealed partial class JudgementReader : IDisposable
                 + $"'{current.Value.GenerationId:D}'. Judge the bundle again from its current inputs.";
     }
 
-    private static JudgementDescription? ReadDescription(SqliteConnection connection)
+    internal static JudgementDescription? ReadDescription(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText =

@@ -209,6 +209,9 @@ internal sealed class SharedProofStorage(SqliteConnection connection, SqliteTran
     internal static MembershipRouteSummary ReadControlRoutes(SqliteConnection connection, ControlEdge edge,
         ControlEvidenceReadScope? scope)
     {
+        var selected = JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_membership_route", edge.Id);
+        if (selected is not null)
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "shared_proof_value", selected.Integer("value_id"));
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT value_id,fingerprint FROM control_membership_route WHERE edge_id=$edge";
         command.Parameters.AddWithValue("$edge", edge.Id);

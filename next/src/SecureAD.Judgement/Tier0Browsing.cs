@@ -128,6 +128,8 @@ internal static class Tier0Browsing
             if (step.From != endpoint || !Enum.IsDefined(step.Kind)) throw Tier0PathStorage.InvalidProof();
             endpoint = step.To;
         }
+        JudgementStoreLayout.VerifySelected(connection, SecureAD.Evidence.StoreSegmentRole.PathProof,
+            "path_anchor", endpoint.DistinguishedName);
         using var anchor = connection.CreateCommand();
         anchor.CommandText = "SELECT COUNT(*) FROM path_anchor WHERE target=$target";
         anchor.Parameters.AddWithValue("$target", endpoint.DistinguishedName);

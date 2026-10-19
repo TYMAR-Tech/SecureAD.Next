@@ -251,6 +251,7 @@ internal static class OwnershipAuditStorage
 
     internal static Header? ReadHeader(SqliteConnection connection, bool requireComplete)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "ownership_audit", 1L);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT header,fingerprint,completed FROM ownership_audit WHERE id=1";
         using var read = command.ExecuteReader();
@@ -300,6 +301,7 @@ internal static class OwnershipAuditStorage
         if (target is null) return new(header.Generation, null, header.Input is not null, null, null, header.Coverage,
             OwnershipAuditCount.Unmeasured(OwnershipCountLimit.NoTargetRequested),
             OwnershipAuditCount.Unmeasured(OwnershipCountLimit.NoTargetRequested));
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "ownership_target", target);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT target,selection,execution,candidate_count,transition_count FROM ownership_target WHERE target=$target COLLATE NOCASE";
         command.Parameters.AddWithValue("$target", target);

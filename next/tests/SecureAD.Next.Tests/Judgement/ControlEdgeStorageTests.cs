@@ -21,17 +21,15 @@ public sealed class ControlEdgeStorageTests
         File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
         using (var writer = JudgementWriter.Create(directory, Seal, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch))
         {
-            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + TestSealing.PendingJudgementPath(directory) + ";Pooling=False"))
-            {
-                connection.Open();
-                TestSealing.AttachJudgementParts(connection, directory, writer.GenerationId, staged: true);
-                using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE judgement SET schema_version=$version";
-                command.Parameters.AddWithValue("$version", version);
-                command.ExecuteNonQuery();
-            }
             writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));
         }
+        SelfMembershipCoverageTests.Mutate(directory, connection =>
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE judgement SET schema_version=$version";
+            command.Parameters.AddWithValue("$version", version);
+            command.ExecuteNonQuery();
+        });
         var opened = JudgementReader.Open(directory);
         Assert.False(opened.IsSuccess);
         Assert.Contains(version.ToString(), opened.Error.Description);

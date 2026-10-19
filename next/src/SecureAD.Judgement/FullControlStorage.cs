@@ -79,6 +79,20 @@ internal static class FullControlStorage
 
     internal static FullControlAssessment Read(SqliteConnection connection, JudgementDescription description, long id)
     {
+        var selected = JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "full_control_assessment", id);
+        if (selected is not null)
+        {
+            var target = selected.CompleteText("target");
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "full_control_source", target);
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_object", target);
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "shared_proof_value", selected.Integer("route_value_id"));
+            if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+                foreach (var link in requested.ReadCompleteScope("full_control_support", id))
+                {
+                    link.VerifyValues();
+                    JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_edge", link.Integer("edge_id"));
+                }
+        }
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT a.target,a.holder_sid,a.holder_scope,a.evaluation,a.expectedness,a.generation,a.derivation_generation,a.support_count,a.proof,s.ace_count,s.fingerprint,o.is_complete,a.route_value_id,a.route_fingerprint
@@ -132,6 +146,12 @@ internal static class FullControlStorage
 
     private static IReadOnlyList<PermissionEntry> ReadEntries(SqliteConnection connection, JudgementDescription description, string target)
     {
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+            foreach (var occurrence in requested.ReadCompleteScope("full_control_source_entry", target))
+            {
+                occurrence.VerifyValues();
+                JudgementStoreLayout.VerifyPermission(connection, occurrence.Integer("entry_id"));
+            }
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT " + SharedPermissionStorage.Projection + ",a.ordinal,a.fingerprint,a.position FROM full_control_source_entry a LEFT JOIN permission_entry p ON p.id=a.entry_id"
             + SharedPermissionStorage.MeaningJoin + "WHERE a.target=$target ORDER BY a.position";
@@ -149,6 +169,13 @@ internal static class FullControlStorage
     internal static IReadOnlyDictionary<long, long> Supports(SqliteConnection connection, IEnumerable<ControlEdge> edges)
     {
         var result = new Dictionary<long, long>();
+        if (JudgementStoreLayout.Requested(connection, StoreSegmentRole.PermissionProof) is { } requested)
+        {
+            foreach (var edge in edges)
+                if (requested.ReadSingle("detail_control_support", edge.Id) is { } support)
+                    result.Add(edge.Id, support.Integer("assessment_id"));
+            return result;
+        }
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT assessment_id FROM full_control_support WHERE edge_id=$edge";
         var parameter = command.Parameters.Add("$edge", SqliteType.Integer);

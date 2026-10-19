@@ -413,6 +413,50 @@ internal static class ObjectPermissionsReader
         var entries = EntriesOf(stored);
         var trustees = ResolveTrustees(connection, descriptor, entries, dn);
 
+        return Assemble(dn, descriptor, entries, trustees, ErrorsOf(connection, descriptor.DescriptorId, stored));
+    }
+
+    internal static ObjectPermissions ReadAt(RequestedDetailReader reader, long objectId, string dn)
+    {
+        var association = reader.ReadSingle("object_security_descriptor", objectId);
+        if (association is null)
+        {
+            var absent = reader.ReadSingle("unreadable_security_descriptor", objectId);
+            return Absent(dn, absent?.CompleteText("reason"));
+        }
+        var id = association.Integer("descriptor_id");
+        var row = reader.ReadSingle("security_descriptor", id) ?? throw RequestedDetailMap.Invalid();
+        var descriptor = new StoredDescriptor(id, row.IsNull("owner_sid") ? null : row.CompleteText("owner_sid"),
+            Enum.Parse<DaclState>(row.CompleteText("dacl_state")),
+            Enum.Parse<DaclCompleteness>(row.CompleteText("dacl_completeness")),
+            row.Integer("dacl_was_canonical") != 0, row.Integer("is_dacl_protected") != 0,
+            row.CompleteBytes("raw_bytes"));
+        var parsed = SecurityDescriptorParser.Parse(descriptor.RawBytes);
+        var entries = EntriesOf(parsed);
+        var sids = entries.Select(entry => entry.TrusteeSid).ToHashSet(StringComparer.Ordinal);
+        if (descriptor.OwnerSid is not null) sids.Add(descriptor.OwnerSid);
+        var trustees = sids.ToDictionary(sid => sid, sid =>
+        {
+            var trustee = reader.ReadAlias("trustee", "sid", sid);
+            var reason = trustee is null || trustee.IsNull("unresolved_reason")
+                ? null : trustee.CompleteText("unresolved_reason");
+            return Lookup(sid, reason, dn, bytes =>
+            {
+                var principal = reader.ReadAlias("captured_object", "objectsid", Convert.ToHexString(bytes));
+                return principal is null ? null : (principal.CompleteText("distinguished_name"),
+                    principal.CompleteText("domain_fqdn"));
+            });
+        }, StringComparer.Ordinal);
+        var errors = reader.ReadCompleteScope("security_descriptor_error", id)
+            .Select(error => error.CompleteText("message")).ToList();
+        AppendParseErrors(errors, parsed);
+        return Assemble(dn, descriptor, entries, trustees, errors);
+    }
+
+    private static ObjectPermissions Assemble(string dn, StoredDescriptor descriptor,
+        IReadOnlyList<StoredEntry> entries, IReadOnlyDictionary<string, PermissionTrustee> trustees,
+        IReadOnlyList<string> errors)
+    {
         return new ObjectPermissions(
             dn,
             DescriptorAvailability.Read,
@@ -423,7 +467,7 @@ internal static class ObjectPermissionsReader
             descriptor.DaclWasCanonical,
             descriptor.IsDaclProtected,
             [.. entries.Select(e => e.WithTrustee(trustees[e.TrusteeSid]))],
-            ErrorsOf(connection, descriptor.DescriptorId, stored))
+            errors)
         {
             DescriptorId = descriptor.DescriptorId,
         };
@@ -532,6 +576,11 @@ internal static class ObjectPermissionsReader
 
         var reason = command.ExecuteScalar() as string;
 
+        return Absent(distinguishedName, reason);
+    }
+
+    private static ObjectPermissions Absent(string distinguishedName, string? reason)
+    {
         return new ObjectPermissions(
             distinguishedName,
             reason is null ? DescriptorAvailability.NotAttempted : DescriptorAvailability.Unreadable,
@@ -633,13 +682,18 @@ internal static class ObjectPermissionsReader
         while (reader.Read())
             errors.Add(reader.GetString(0));
 
+        AppendParseErrors(errors, stored);
+        return errors;
+    }
+
+    private static void AppendParseErrors(List<string> errors, ParsedSecurityDescriptor stored)
+    {
         foreach (var error in stored.Errors)
         {
             if (!errors.Contains(error, StringComparer.Ordinal))
                 errors.Add($"Re-reading the stored descriptor reported: {error}");
         }
 
-        return errors;
     }
 
     /// <summary>
@@ -732,7 +786,15 @@ internal static class ObjectPermissionsReader
     /// </remarks>
     private static PermissionTrustee Lookup(
         SqliteCommand command, SqliteParameter parameter, string sid, string? unresolvedReason,
-        string objectDn)
+        string objectDn) => Lookup(sid, unresolvedReason, objectDn, bytes =>
+        {
+            parameter.Value = bytes;
+            using var reader = command.ExecuteReader();
+            return reader.Read() ? (reader.GetString(0), reader.GetString(1)) : null;
+        });
+
+    private static PermissionTrustee Lookup(string sid, string? unresolvedReason, string objectDn,
+        Func<byte[], (string DistinguishedName, string Domain)?> find)
     {
         var wellKnown = WellKnownSidCatalog.FindBySid(sid);
         if (wellKnown is not null)
@@ -746,15 +808,13 @@ internal static class ObjectPermissionsReader
         if (bytes is null)
             return NotWellKnown(sid, null, null, null, reason);
 
-        parameter.Value = bytes;
-
-        using var reader = command.ExecuteReader();
-        if (!reader.Read())
+        var captured = find(bytes);
+        if (captured is null)
             return NotWellKnown(sid, null, null, null, reason);
 
-        var dn = reader.GetString(0);
+        var dn = captured.Value.DistinguishedName;
         return NotWellKnown(
-            sid, DnHelper.ExtractFirstRdn(dn), dn, reader.GetString(1), reason);
+            sid, DnHelper.ExtractFirstRdn(dn), dn, captured.Value.Domain, reason);
     }
 
     /// <summary>

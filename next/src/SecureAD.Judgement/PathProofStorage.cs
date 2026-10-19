@@ -209,6 +209,8 @@ internal static class PathProofStorage
     private static ChunkStream Open(SqliteConnection connection, long id, string fingerprint, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var requested = JudgementStoreLayout.Requested(connection, StoreSegmentRole.PathProof);
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "path_proof", id);
         JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PathProof);
         var query = connection.CreateCommand();
         try
@@ -225,7 +227,8 @@ internal static class PathProofStorage
                 if (length <= 0 || chunks != (length - 1) / ChunkSize + 1) throw Tier0PathStorage.InvalidProof();
             }
             query.CommandText = "SELECT ordinal,length(data),rowid FROM path_proof_chunk WHERE proof_id=$id ORDER BY ordinal";
-            return new(connection, query, query.ExecuteReader(), length, chunks, fingerprint, cancellationToken);
+            return new(connection, query, query.ExecuteReader(), length, chunks, fingerprint, cancellationToken,
+                requested?.ReadCompleteScope("path_proof_chunk", id).GetEnumerator());
         }
         catch
         {
@@ -235,7 +238,7 @@ internal static class PathProofStorage
     }
 
     private sealed class ChunkStream(SqliteConnection connection, SqliteCommand command, SqliteDataReader rows, long length, long chunks, string fingerprint,
-        CancellationToken cancellationToken) : Stream
+        CancellationToken cancellationToken, IEnumerator<RequestedDetailRow>? requestedRows = null) : Stream
     {
         private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         private readonly byte[] _current = new byte[ChunkSize];
@@ -276,7 +279,7 @@ internal static class PathProofStorage
             if (_finished) return false;
             if (!rows.Read())
             {
-                if (_next != chunks || _position != length
+                if (requestedRows?.MoveNext() == true || _next != chunks || _position != length
                     || Convert.ToHexString(_hash.GetHashAndReset()) != fingerprint) throw Tier0PathStorage.InvalidProof();
                 _finished = true;
                 return false;
@@ -287,9 +290,18 @@ internal static class PathProofStorage
             _available = checked((int)expectedLength);
             // GetBytes materializes a provider-owned byte array. Incremental BLOB I/O
             // fills our reusable fragment buffer without that extra copy.
-            using (var blob = new SqliteBlob(connection, JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof),
-                "path_proof_chunk", "data", rows.GetInt64(2), readOnly: true))
+            if (requestedRows is null)
+            {
+                using var blob = new SqliteBlob(connection, JudgementStoreLayout.Schema(connection, StoreSegmentRole.PathProof),
+                    "path_proof_chunk", "data", rows.GetInt64(2), readOnly: true);
                 blob.ReadExactly(_current, 0, _available);
+            }
+            else
+            {
+                if (!requestedRows.MoveNext() || requestedRows.Current.Integer("ordinal") != _next
+                    || requestedRows.Current.Value("data").ByteLength != expectedLength) throw Tier0PathStorage.InvalidProof();
+                requestedRows.Current.CompleteBytes("data").CopyTo(_current, 0);
+            }
             _offset = 0;
             _hash.AppendData(_current.AsSpan(0, _available));
             _next++;
@@ -308,6 +320,7 @@ internal static class PathProofStorage
 
         protected override void Dispose(bool disposing)
         {
+            if (disposing) requestedRows?.Dispose();
             if (disposing)
             {
                 _hash.Dispose();

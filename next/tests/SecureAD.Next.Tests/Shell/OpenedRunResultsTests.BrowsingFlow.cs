@@ -122,7 +122,7 @@ public sealed partial class OpenedRunResultsTests
             Assert.Null(screen.Opened.Refusal);
             Assert.IsType<OverviewSectionViewModel>(screen.Opened.Content);
             DrawBrowsing(ObjectNavigationViewTests.ObjectView(screen), width);
-            Assert.Equal(1, counts.Count("evidence"));
+            Assert.Equal(0, counts.Count("evidence"));
             screen.CloseObject();
             await screen.ReadCompletion;
             Assert.Null(screen.ViewRefusal);

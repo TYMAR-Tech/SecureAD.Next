@@ -40,9 +40,9 @@ public sealed partial class OpenedRunResultsTests
         ReadControlList(source, directory, list);
         ReadControlList(source, directory, list);
 
-        Assert.Equal((1L, 1L, 1L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
+        Assert.Equal((0L, 0L, 1L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
             counts.JudgementVerifications, counts.AnalyticalReads));
-        Assert.Equal((list == 1 ? 0L : 1L, list == 1 ? 1L : 0L, 0L),
+        Assert.Equal((0L, 0L, 0L),
             (counts.PermissionProofVerifications, counts.PathProofVerifications, counts.FactsVerifications));
     }
 

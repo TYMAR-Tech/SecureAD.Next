@@ -65,6 +65,11 @@ internal static class SelfMembershipStorage
     {
         var summary = SelfMembershipCoverageStorage.Read(connection, description);
         if (summary is null) return new([], false, null);
+        var requested = JudgementStoreLayout.Requested(connection, StoreSegmentRole.PathProof);
+        var selected = requested?.ReadCompleteScope("detail_selection", RequestedProofSelectionStorage.Question(
+            target is null ? requester is null ? "self-all" : "self-requester" : requester is null ? "self-target" : "self-both",
+            target ?? requester, target is not null && requester is not null ? requester : null))
+            .Select(row => row.Integer("source")).ToArray();
         using var command = connection.CreateCommand();
         var predicates = new List<string>();
         if (target is not null) { predicates.Add("target_dn=$target COLLATE NOCASE"); command.Parameters.AddWithValue("$target", target); }
@@ -75,6 +80,12 @@ internal static class SelfMembershipStorage
         var results = new List<SelfMembershipAssessment>();
         while (reader.Read())
         {
+            if (selected is not null)
+            {
+                Require(results.Count < selected.Length && selected[results.Count] == reader.GetInt64(0),
+                    "Requester selection contradicts its saved index.");
+                JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "self_membership_assessment", reader.GetInt64(0));
+            }
             Field(reader, 0, () => Positive(Integer(reader, 0)));
             var generation = Field(reader, 5, () => Guid.Parse(RequiredText(reader, 5)));
             var seal = Field(reader, 7, () => RequiredText(reader, 7));
@@ -109,6 +120,7 @@ internal static class SelfMembershipStorage
             Field(reader, 23, () => ValidateReferences(connection, assessment));
             results.Add(assessment);
         }
+        if (selected is not null) Require(results.Count == selected.Length, "Requester selection is missing saved answers.");
         return new(results, true, description.GenerationId) { Summary = summary };
     }
 
@@ -139,6 +151,7 @@ internal static class SelfMembershipStorage
     private static bool ValidateReferences(SqliteConnection connection, SelfMembershipAssessment assessment)
     {
         if (assessment.HolderEdgeIds.Count == 0) return true;
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_product", 1L);
         JudgementStoreLayout.Ensure(connection, StoreSegmentRole.PermissionProof);
         using var product = connection.CreateCommand();
         product.CommandText = "SELECT engine_version,completed FROM control_product WHERE id=1";
@@ -155,6 +168,7 @@ internal static class SelfMembershipStorage
         var id = command.Parameters.Add("$id", SqliteType.Integer);
         foreach (var edgeId in assessment.HolderEdgeIds)
         {
+            JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PermissionProof, "control_edge", edgeId);
             id.Value = edgeId;
             using var edge = command.ExecuteReader();
             try

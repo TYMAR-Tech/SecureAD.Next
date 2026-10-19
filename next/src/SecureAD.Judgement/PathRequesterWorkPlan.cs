@@ -224,6 +224,7 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
     internal static void RequireQuestion(SqliteConnection connection, JudgementDescription description, long id,
         PathRequesterRiskAssessment value)
     {
+        JudgementStoreLayout.VerifySelected(connection, StoreSegmentRole.PathProof, "path_requester_work", id);
         using var command = connection.CreateCommand();
         command.CommandText = Columns + " WHERE id=$id";
         command.Parameters.AddWithValue("$id", id);
