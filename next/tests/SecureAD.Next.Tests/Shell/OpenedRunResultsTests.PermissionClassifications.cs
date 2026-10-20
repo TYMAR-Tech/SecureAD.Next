@@ -57,13 +57,14 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateControlRun();
         using var counts = new ReadbackCounts(directory);
         using var source = new BundleAssetSource();
-        source.ReadPermissionClassification(directory, UserDn);
+        Assert.True(source.ReadPermissionClassification(directory, UserDn).IsSuccess);
 
-        source.ReadPermissionClassification(directory, TargetDn);
-        source.ReadObjectAttributes(directory, UserDn);
+        Assert.True(source.ReadPermissionClassification(directory, TargetDn).IsSuccess);
+        Assert.True(source.ReadObjectAttributes(directory, UserDn).IsSuccess);
 
-        Assert.Equal((1L, 1L, 1L, 0L), (counts.EvidenceVerifications, counts.JudgementVerifications,
+        Assert.Equal((1L, 1L, 2L, 0L), (counts.EvidenceVerifications, counts.JudgementVerifications,
             counts.EvidenceFormatChecks, counts.AnalyticalReads));
+        Assert.Equal(1L, counts.NavigationVerifications);
         Assert.Equal((1L, 1L, 0L), (counts.PermissionProofVerifications, counts.FactsVerifications, counts.PathProofVerifications));
     }
 

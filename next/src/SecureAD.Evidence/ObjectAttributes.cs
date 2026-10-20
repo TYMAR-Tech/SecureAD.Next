@@ -226,6 +226,10 @@ internal static class ObjectAttributesReader
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId) =>
         ReadCore(connection, null, objectId);
 
+    internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId,
+        IReadOnlyCollection<string>? selected) =>
+        ReadCore(connection, null, objectId, selected);
+
     private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId,
         IReadOnlyCollection<string>? selected = null)
     {
@@ -375,7 +379,7 @@ internal static class ObjectAttributesReader
         var objectClass = navigation ? "o.most_specific_class"
             : "(SELECT v.value FROM objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1)";
         query.CommandText = $"""
-            SELECT o.distinguished_name,o.object_guid,{objectClass},o.domain_fqdn,o.objectsid
+            SELECT o.distinguished_name,o.object_guid,{objectClass},o.domain_fqdn,o.objectsid,o.object_id
             FROM captured_object o WHERE o.distinguished_name=$dn COLLATE NOCASE LIMIT 1
             """;
         query.Parameters.AddWithValue("$dn", distinguishedName);
@@ -384,7 +388,7 @@ internal static class ObjectAttributesReader
             row.IsDBNull(1) ? null : Guid.Parse(row.GetString(1)),
             row.IsDBNull(2) ? null : row.GetString(2),
             row.IsDBNull(3) ? null : row.GetString(3),
-            row.IsDBNull(4) ? null : Sid.ToText(row.GetFieldValue<byte[]>(4)));
+            row.IsDBNull(4) ? null : Sid.ToText(row.GetFieldValue<byte[]>(4))) { ObjectId = row.GetInt64(5) };
     }
 
     internal static AttributeValue ValueAt(

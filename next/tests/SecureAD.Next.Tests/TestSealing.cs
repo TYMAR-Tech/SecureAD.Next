@@ -31,6 +31,14 @@ internal static class TestSealing
         Rebind(directory, BundleLayout.CaptureManifestPath(directory), path);
     }
 
+    internal static void ResealNavigation(string directory)
+    {
+        var root = AnalysisStoreLifecycle.ResolveCapture(directory).Value;
+        var path = BundleLayout.NavigationPath(directory, root.GenerationId);
+        BundleSealing.Seal(path, path + ".seal");
+        Rebind(directory, BundleLayout.CaptureManifestPath(directory), path);
+    }
+
     internal static void ResealAnalysis(string directory, AnalysisStoreGeneration generation)
     {
         var manifest = AnalysisStoreLifecycle.ManifestPath(directory, generation.Kind);

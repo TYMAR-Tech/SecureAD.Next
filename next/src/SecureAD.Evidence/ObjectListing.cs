@@ -49,7 +49,12 @@ public sealed record ListedObject(
 
 /// <summary>Captured identity used to enter an object without loading its attributes or permissions.</summary>
 public sealed record CapturedObjectIdentity(string DistinguishedName, Guid? ObjectGuid, string? ObjectClass,
-    string? DomainFqdn, string? PrincipalSid);
+    string? DomainFqdn, string? PrincipalSid)
+{
+    /// <summary>The row position is usable only in this exact immutable capture.</summary>
+    public long ObjectId { get; init; }
+    public Guid CaptureGenerationId { get; init; }
+}
 
 /// <summary>The last ordered row of an exact protected directory-listing question.</summary>
 public sealed record ObjectPageMark(string Fingerprint, string ContainerDn, ListingScope Scope,
@@ -117,6 +122,8 @@ public sealed record ListingCoverage(bool IsComplete, string? Shortfall);
 /// </remarks>
 internal static class ObjectListingReader
 {
+    internal sealed record ScopeSummary(int Total, bool Complete, string? Shortfall);
+
     /// <summary>How many objects one page holds.</summary>
     internal const int PageSize = 100;
 
@@ -158,41 +165,33 @@ internal static class ObjectListingReader
     /// <param name="scope">How much of what is beneath it to include.</param>
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public static ObjectPage Read(
-        SqliteConnection connection, string containerDn, ListingScope scope, int pageNumber, bool navigation = false)
+        SqliteConnection connection, string containerDn, ListingScope scope, int pageNumber, bool navigation,
+        ScopeSummary? summary, long navigationObjects)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
         ArgumentOutOfRangeException.ThrowIfLessThan(pageNumber, 1);
 
         var where = WhereFor(scope);
-        var total = CountOf(connection, where, containerDn);
-        var objects = PageOf(connection, where, containerDn, pageNumber, navigation);
-        var (complete, shortfall) = CoverageOf(connection, containerDn, scope);
+        summary ??= Summarize(connection, containerDn, scope);
+        var objects = navigation
+            ? NavigationPage(connection, containerDn, scope, summary.Total, navigationObjects, pageNumber)
+            : PageOf(connection, where, containerDn, pageNumber, false);
 
-        return new ObjectPage(objects, total, complete, shortfall);
+        return new ObjectPage(objects, summary.Total, summary.Complete, summary.Shortfall);
     }
 
     internal static ObjectPage ReadNext(SqliteConnection connection, string fingerprint, string containerDn,
-        ListingScope scope, ObjectPageMark? after, CancellationToken token)
+        ListingScope scope, ObjectPageMark? after, CancellationToken token, ScopeSummary summary, long navigationObjects)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
         token.ThrowIfCancellationRequested();
         if (after is not null && (after.Fingerprint != fingerprint || after.ContainerDn != containerDn
             || after.Scope != scope || after.ObjectId <= 0 || after.Name is null))
             throw new ArgumentException("This object page belongs to another capture or listing scope.", nameof(after));
-        var where = WhereFor(scope);
-        var total = CountOf(connection, where, containerDn);
-        var (complete, shortfall) = CoverageOf(connection, containerDn, scope);
         var continuation = after is null ? ""
             : "AND (o.name_sort COLLATE NOCASE,o.object_id) > ($name,$id)";
         using var command = connection.CreateCommand();
-        command.CommandText = $"""
-            SELECT o.object_id,o.distinguished_name,o.object_guid,o.parent_dn,o.most_specific_class,o.name_sort
-            FROM captured_object o
-            WHERE {where}
-              {continuation}
-            ORDER BY o.name_sort COLLATE NOCASE,o.object_id
-            LIMIT $take
-            """;
+        command.CommandText = NavigationQuery(scope, summary.Total, navigationObjects, continuation);
         Bind(command, containerDn);
         if (after is not null)
         {
@@ -207,7 +206,7 @@ internal static class ObjectListingReader
         {
             token.ThrowIfCancellationRequested();
             if (objects.Count == PageSize)
-                return new(objects, total, complete, shortfall) { Next = next };
+                return new(objects, summary.Total, summary.Complete, summary.Shortfall) { Next = next };
             var dn = rows.GetString(1);
             objects.Add(new(dn, DnHelper.ExtractFirstRdn(dn),
                 rows.IsDBNull(2) ? null : Guid.Parse(rows.GetString(2)),
@@ -215,7 +214,59 @@ internal static class ObjectListingReader
                 rows.IsDBNull(3) ? null : rows.GetString(3)));
             next = new(fingerprint, containerDn, scope, rows.GetString(5), rows.GetInt64(0));
         }
-        return new(objects, total, complete, shortfall);
+        return new(objects, summary.Total, summary.Complete, summary.Shortfall);
+    }
+
+    internal static ScopeSummary Summarize(SqliteConnection connection, string containerDn, ListingScope scope)
+    {
+        var total = CountOf(connection, WhereFor(scope), containerDn, scope);
+        var (complete, shortfall) = CoverageOf(connection, containerDn, scope);
+        return new(total, complete, shortfall);
+    }
+
+    private static string NavigationQuery(ListingScope scope, int matches, long navigationObjects, string continuation)
+    {
+        const string projection = "o.object_id,o.distinguished_name,o.object_guid,o.parent_dn,o.most_specific_class,o.name_sort";
+        var select = $"SELECT {projection} FROM captured_object o";
+        if (scope == ListingScope.OneLevel)
+            return $"""
+                {select} WHERE distinguished_name=$dn COLLATE NOCASE {continuation}
+                UNION ALL
+                {select} INDEXED BY ix_navigation_parent_order
+                WHERE parent_dn=$dn COLLATE NOCASE AND distinguished_name<>$dn COLLATE NOCASE {continuation}
+                ORDER BY name_sort COLLATE NOCASE,object_id LIMIT $take
+                """;
+
+        // A wide branch is cheaper to walk in display order; a small branch is cheaper to select
+        // before sorting. Compare expected ordered-walk visits with the selected row count.
+        var ordered = scope == ListingScope.Subtree && matches > PageSize
+            && (long)matches * matches >= navigationObjects * PageSize;
+        return $"""
+            {select} {(ordered ? "INDEXED BY ix_navigation_name_order" : "")}
+            WHERE {WhereFor(scope)} {continuation}
+            ORDER BY name_sort COLLATE NOCASE,object_id LIMIT $take
+            """;
+    }
+
+    private static List<ListedObject> NavigationPage(SqliteConnection connection, string containerDn,
+        ListingScope scope, int matches, long navigationObjects, int pageNumber)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = NavigationQuery(scope, matches, navigationObjects, "") + " OFFSET $skip";
+        Bind(command, containerDn);
+        command.Parameters.AddWithValue("$take", PageSize);
+        command.Parameters.AddWithValue("$skip", checked((pageNumber - 1) * PageSize));
+        var objects = new List<ListedObject>();
+        using var rows = command.ExecuteReader();
+        while (rows.Read())
+        {
+            var dn = rows.GetString(1);
+            objects.Add(new(dn, DnHelper.ExtractFirstRdn(dn),
+                rows.IsDBNull(2) ? null : Guid.Parse(rows.GetString(2)),
+                rows.IsDBNull(4) ? null : rows.GetString(4),
+                rows.IsDBNull(3) ? null : rows.GetString(3)));
+        }
+        return objects;
     }
 
     /// <summary>
@@ -252,10 +303,16 @@ internal static class ObjectListingReader
     private static string EscapeForLike(string value) =>
         value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
-    private static int CountOf(SqliteConnection connection, string where, string containerDn)
+    private static int CountOf(SqliteConnection connection, string where, string containerDn, ListingScope scope)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT COUNT(*) FROM captured_object WHERE {where}";
+        command.CommandText = scope == ListingScope.OneLevel
+            ? """
+              SELECT (SELECT COUNT(*) FROM captured_object WHERE distinguished_name=$dn COLLATE NOCASE)
+                  + (SELECT COUNT(*) FROM captured_object WHERE parent_dn=$dn COLLATE NOCASE
+                      AND distinguished_name<>$dn COLLATE NOCASE)
+              """
+            : $"SELECT COUNT(*) FROM captured_object WHERE {where}";
         Bind(command, containerDn);
 
         return Convert.ToInt32(command.ExecuteScalar());

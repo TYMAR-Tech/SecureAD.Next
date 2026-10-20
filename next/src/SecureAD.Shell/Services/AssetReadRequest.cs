@@ -98,9 +98,12 @@ internal sealed partial class AssetReadRequest(
             reader.ReadCapturedMembership(distinguishedName, parents, after, _readCancellation), _readCancellation));
 
     public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName,
-        IReadOnlyCollection<string> attributes) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader =>
-            reader.ReadObjectAttributes(distinguishedName, attributes), _readCancellation));
+        IReadOnlyCollection<string> attributes)
+    {
+        ArgumentNullException.ThrowIfNull(attributes);
+        return ReadCapturedObject(bundleDirectory, distinguishedName, (reader, identity) =>
+            reader.ReadObjectAttributesAt(identity, attributes));
+    }
 
     /// <inheritdoc/>
     public Result<LapsPage> ListLapsComputers(string bundleDirectory, LapsQuery query, LapsPageMark? after) =>
@@ -108,11 +111,21 @@ internal sealed partial class AssetReadRequest(
 
     /// <inheritdoc/>
     public Result<ObjectPermissions?> ReadPermissions(string bundleDirectory, string distinguishedName) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadPermissions(distinguishedName), _readCancellation));
+        ReadCapturedObject(bundleDirectory, distinguishedName, (reader, identity) => reader.ReadPermissionsAt(identity));
 
     /// <inheritdoc/>
     public Result<ObjectAttributes?> ReadObjectAttributes(string bundleDirectory, string distinguishedName) =>
-        WithRun(bundleDirectory, run => run.ReadEvidence(reader => reader.ReadObjectAttributes(distinguishedName), _readCancellation));
+        ReadCapturedObject(bundleDirectory, distinguishedName, (reader, identity) => reader.ReadObjectAttributesAt(identity));
+
+    private Result<T?> ReadCapturedObject<T>(string bundleDirectory, string distinguishedName,
+        Func<BundleReader, CapturedObjectIdentity, T> read) where T : class =>
+        WithRun(bundleDirectory, run =>
+        {
+            var identity = run.ReadNavigation(reader => reader.ReadObjectIdentity(distinguishedName), _readCancellation);
+            if (!identity.IsSuccess) return Result<T?>.Failure(identity.Error);
+            if (identity.Value is not { } selected) return Result<T?>.Success(null);
+            return run.ReadEvidence(reader => (T?)read(reader, selected), _readCancellation);
+        });
 
     /// <inheritdoc/>
     public Result<ForestInventory> ReadInventory(string bundleDirectory) =>

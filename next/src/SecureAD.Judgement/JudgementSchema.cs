@@ -139,7 +139,8 @@ public static class JudgementSchema
     // Format 73 creates product-owned schemas directly and saves the final Findings display answers.
     // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
     // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
-    public const int Version = 76;
+    // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
+    public const int Version = 77;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [

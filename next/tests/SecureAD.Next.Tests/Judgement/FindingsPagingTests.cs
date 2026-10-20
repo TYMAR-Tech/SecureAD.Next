@@ -667,7 +667,7 @@ public sealed class FindingsPagingTests
             .Select(i => AFinding($"CN=svc-{i:D3},OU=Service Accounts,DC=contoso,DC=com"))
             .Reverse()];
 
-    private static Finding AFinding(string distinguishedName) =>
+    internal static Finding AFinding(string distinguishedName) =>
         new(
             "SEC-010",
             1,
@@ -682,7 +682,7 @@ public sealed class FindingsPagingTests
             new UnconstrainedDelegationEvidence(
                 0x80000, false, new DomainControllerSignals(false, false, false)));
 
-    private static string ABundleWith(IReadOnlyList<Finding> findings)
+    internal static string ABundleWith(IReadOnlyList<Finding> findings)
     {
         var directory = ADirectory();
 

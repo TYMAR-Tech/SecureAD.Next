@@ -155,7 +155,7 @@ public sealed class GroupInventoryTests
         Assert.Null(Assert.Single(reader.ReadGroupInventory(All with { Search = "GRP-003" }, null).Groups).HasCycle);
     }
 
-    private static string Captured() => Bundle(users: 0, members: [], writeAdditional: (writer, partition) =>
+    internal static string Captured() => Bundle(users: 0, members: [], writeAdditional: (writer, partition) =>
     {
         for (var index = 0; index < 123; index++)
         {
@@ -171,7 +171,7 @@ public sealed class GroupInventoryTests
     private static EvidenceAttribute Text(string name, params string[] values) =>
         new(name, StoredAttributeCompleteness.Complete, values.Select(EvidenceValue.OfText).ToArray());
 
-    private static void Judge(string directory)
+    internal static void Judge(string directory)
     {
         var result = JudgingRun.Judge(directory, [], Started, Started, JudgingRun.NobodyIsWatching, RunLog.Discarded, CancellationToken.None);
         Assert.True(result.IsSuccess, result.Error?.Description);

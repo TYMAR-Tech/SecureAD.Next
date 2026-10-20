@@ -12,6 +12,6 @@ public sealed partial class JudgementReader
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (Description.State is not (JudgementRunState.Completed or JudgementRunState.CompletedDegraded))
             throw new InvalidOperationException(LapsInventoryStorage.Message("Unavailable"));
-        return LapsInventoryStorage.Read(_connection, Description, query, after, coverage, cancellationToken);
+        return LapsInventoryStorage.Read(_connection, Description, query, after, coverage, cancellationToken, _browsing.Laps);
     }
 }

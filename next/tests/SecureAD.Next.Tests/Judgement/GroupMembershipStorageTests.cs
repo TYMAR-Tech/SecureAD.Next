@@ -34,7 +34,8 @@ public sealed class GroupMembershipStorageTests
     {
         using var connection = Saved();
         Execute(connection, $"UPDATE group_inventory SET {column}=NULL");
-        Assert.Throws<InvalidDataException>(() => GroupInventoryStorage.Read(connection, Description, All, null, CancellationToken.None));
+        Assert.Throws<InvalidDataException>(() => GroupInventoryStorage.Read(connection, Description, All, null,
+            CancellationToken.None, new Dictionary<GroupInventoryQuery, int>()));
     }
 
     [Theory]
@@ -47,7 +48,8 @@ public sealed class GroupMembershipStorageTests
     {
         using var connection = Saved();
         Execute(connection, $"UPDATE group_inventory SET {change}");
-        Assert.Throws<InvalidDataException>(() => GroupInventoryStorage.Read(connection, Description, All, null, CancellationToken.None));
+        Assert.Throws<InvalidDataException>(() => GroupInventoryStorage.Read(connection, Description, All, null,
+            CancellationToken.None, new Dictionary<GroupInventoryQuery, int>()));
     }
 
     [Fact]
@@ -55,7 +57,8 @@ public sealed class GroupMembershipStorageTests
     {
         using var connection = Saved();
         Execute(connection, "UPDATE group_inventory_product SET capture_complete=0; UPDATE group_inventory SET membership_limitations=7,unresolved_members=2,unreadable_members=3");
-        var page = GroupInventoryStorage.Read(connection, Description, All, null, CancellationToken.None);
+        var page = GroupInventoryStorage.Read(connection, Description, All, null, CancellationToken.None,
+            new Dictionary<GroupInventoryQuery, int>());
         Assert.False(page.Coverage.IsComplete);
         Assert.Equal(new(17, 2, 3, GroupMembershipLimitations.CaptureIncomplete | GroupMembershipLimitations.UnresolvedReferences
             | GroupMembershipLimitations.UnreadableReferences), Assert.Single(page.Groups).MembershipTotal);

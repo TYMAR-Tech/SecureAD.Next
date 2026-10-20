@@ -70,6 +70,11 @@ The owner said he was more than happy with the 4 h 37 m 25 s production judging 
 That time is an accepted baseline, not something to reduce: RESP-08 is not pursued unless he reverses this, work added to judging for browsing is still reported against it (the PERF-02 non-regression gate stands), and responsiveness effort goes to what a person waits for when opening and browsing a saved run.
 He named no other stage as a problem; this does not by itself change the status of capture (RESP-09) or derivation (RESP-10).
 
+**Saved-run browsing corrections - owner direction, 2026-10-20.**
+The owner approved query and cache corrections across saved browsing, with judging-time saved answers or indexes where needed, accepting that older completed results need re-judging while unchanged-format captures can be reused.
+He also approved a session-only PowerShell query-timing runner using the existing generator and real SQLite layouts at 532,078 invented objects across nine domains and approximately 102,000 findings; it establishes relative offline costs, not production acceptance.
+This approval changes no UI wording or layout, authorises no live access or recapture, and excludes SYSVOL concurrency and the separate production-rules session.
+
 ## What a finding means
 
 **Verification recommendations from captured evidence - owner clarification supplied with the

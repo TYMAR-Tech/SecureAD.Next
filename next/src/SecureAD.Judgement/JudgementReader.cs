@@ -155,6 +155,16 @@ public sealed partial class JudgementReader : IDisposable
     private StoreRootManifest? _publicationRoot;
     private CancellationToken _readCancellation;
     private readonly HashSet<StoreSegmentRole> _openedParts = [];
+    private sealed class BrowseCache
+    {
+        internal readonly Dictionary<ControlEdgeStorage.Question, ControlEdgeStorage.Counts> Controls = [];
+        internal readonly Dictionary<GroupInventoryQuery, int> Groups = [];
+        internal readonly Dictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsManagement, int>> Laps = [];
+        internal FindingsFilterValues? Filters;
+    }
+    // A new connection must not repeat counts already answered under the same file protection.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ProtectedStoreFile, BrowseCache> BrowseCaches = new();
+    private BrowseCache _browsing = new();
     private bool _disposed;
 
     private JudgementReader(
@@ -339,7 +349,7 @@ public sealed partial class JudgementReader : IDisposable
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
         RequireCurrentPathGeneration();
-        return GroupInventoryStorage.Read(_connection, Description, query, after, cancellationToken);
+        return GroupInventoryStorage.Read(_connection, Description, query, after, cancellationToken, _browsing.Groups);
     }
 
     private void RequireCurrentPathGeneration()
@@ -360,7 +370,7 @@ public sealed partial class JudgementReader : IDisposable
             throw new ArgumentException("Choose an object or a holder, not both.");
         ArgumentOutOfRangeException.ThrowIfNegative(afterId);
         OpenPart(StoreSegmentRole.PermissionProof);
-        return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId)
+        return ControlEdgeStorage.Read(_connection, Description, target, holderSid, holderScope, includeExpected, afterId, _browsing.Controls)
             with { GenerationId = Description.GenerationId,
                 OwnershipCoverage = OwnershipAuditStorage.ReadCoverage(_connection, Description, target) };
     }
@@ -487,6 +497,7 @@ public sealed partial class JudgementReader : IDisposable
                     return Failure("JudgementIsNotForThisEvidence", "The judgement header contradicts its publication root.", store.BundleDirectory);
                 }
                 reader._protection = lease;
+                reader._browsing = BrowseCaches.GetValue(store, static _ => new());
                 reader._publicationRoot = store.Root;
                 reader._readCancellation = cancellationToken;
                 JudgementStoreLayout.RegisterReader(reader._connection, reader.OpenPart);
@@ -767,14 +778,27 @@ public sealed partial class JudgementReader : IDisposable
     public FindingsFilterValues ReadFilterValues()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_browsing) return ReadFilterValuesCore();
+    }
+
+    private FindingsFilterValues ReadFilterValuesCore()
+    {
+        if (_browsing.Filters is { } saved) return saved;
 
         var severities = new List<Severity>();
         var rules = new List<string>();
 
         using (var command = _connection.CreateCommand())
         {
-            command.CommandText =
-                "SELECT DISTINCT severity, severity_rank FROM finding ORDER BY severity_rank DESC";
+            command.CommandText = """
+                WITH RECURSIVE ranks(rank) AS (
+                    SELECT MAX(severity_rank) FROM finding
+                    UNION ALL
+                    SELECT (SELECT MAX(severity_rank) FROM finding WHERE severity_rank<r.rank)
+                    FROM ranks r WHERE rank IS NOT NULL)
+                SELECT (SELECT severity FROM finding WHERE severity_rank=r.rank LIMIT 1)
+                FROM ranks r WHERE rank IS NOT NULL ORDER BY rank DESC
+                """;
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -783,14 +807,21 @@ public sealed partial class JudgementReader : IDisposable
 
         using (var command = _connection.CreateCommand())
         {
-            command.CommandText = "SELECT DISTINCT rule_id FROM finding ORDER BY rule_id";
+            command.CommandText = """
+                WITH RECURSIVE rules(rule_id) AS (
+                    SELECT MIN(rule_id) FROM finding
+                    UNION ALL
+                    SELECT (SELECT MIN(rule_id) FROM finding WHERE rule_id>r.rule_id)
+                    FROM rules r WHERE rule_id IS NOT NULL)
+                SELECT rule_id FROM rules WHERE rule_id IS NOT NULL ORDER BY rule_id
+                """;
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
                 rules.Add(reader.GetString(0));
         }
 
-        return new FindingsFilterValues(severities, rules, ReadExecutions().Count);
+        return _browsing.Filters = new FindingsFilterValues(severities.AsReadOnly(), rules.AsReadOnly(), ReadExecutions().Count);
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ internal static class CircularMembershipStorage
             CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.finding_circular_group (finding_id INTEGER NOT NULL REFERENCES finding(finding_id),
                 object_guid TEXT NOT NULL, distinguished_name TEXT NOT NULL, domain_fqdn TEXT NOT NULL,
                 PRIMARY KEY(finding_id,object_guid));
-            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_circular_group_object ON finding_circular_group(distinguished_name,finding_id);
+            CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_finding_circular_group_object ON finding_circular_group(distinguished_name COLLATE NOCASE,finding_id);
             """;
         command.ExecuteNonQuery();
     }

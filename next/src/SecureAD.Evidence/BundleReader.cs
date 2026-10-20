@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
@@ -120,6 +121,14 @@ public sealed class BundleReader : IDisposable
     private Dictionary<string, long>? _bulkObjectIds;
     private string? _verifiedFingerprint;
     private (SchemaGuidCatalog Schema, DelegationCoverage Coverage)? _delegationPreparation;
+    private sealed class BrowseCache
+    {
+        internal readonly Dictionary<(string Container, ListingScope Scope), ObjectListingReader.ScopeSummary> Scopes = [];
+        internal long? Objects;
+    }
+    // Connections are per request; totals belong to this exact continuously protected file.
+    private static readonly ConditionalWeakTable<ProtectedStoreFile, BrowseCache> BrowseCaches = new();
+    private BrowseCache _browsing = new();
 
     private BundleReader(
         string bundleDirectory, SqliteConnection connection, BundleDescription description, bool navigation = false)
@@ -275,6 +284,7 @@ public sealed class BundleReader : IDisposable
                 opened.Value._delegations = store.Role == StoreSegmentRole.Delegations;
                 opened.Value._verifiedFingerprint = store.Root.EvidenceSeal;
                 opened.Value._protection = lease;
+                opened.Value._browsing = BrowseCaches.GetValue(store, static _ => new());
                 lease = null;
             }
             return opened;
@@ -615,19 +625,86 @@ public sealed class BundleReader : IDisposable
     /// <param name="scope">How much of what is beneath it to include.</param>
     /// <param name="pageNumber">The page to fetch, counting from one.</param>
     public ObjectPage ListObjects(string containerDn, ListingScope scope, int pageNumber) =>
-        ObjectListingReader.Read(Connection, containerDn, scope, pageNumber, _navigation);
+        ObjectListingReader.Read(Connection, containerDn, scope, pageNumber, _navigation,
+            _navigation ? ListingSummary(containerDn, scope) : null, _navigation ? NavigationObjects() : 0);
 
     /// <summary>Reads the next ordered navigation page without revisiting earlier result rows.</summary>
     public ObjectPage ListObjects(string containerDn, ListingScope scope, ObjectPageMark? after,
         CancellationToken cancellationToken = default)
     {
         if (!_navigation) throw new InvalidOperationException("Ordered browse continuation requires the captured navigation product.");
-        return ObjectListingReader.ReadNext(Connection, ProtectedQueryFingerprint(), containerDn, scope, after, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return ObjectListingReader.ReadNext(Connection, ProtectedQueryFingerprint(), containerDn, scope, after,
+            cancellationToken, ListingSummary(containerDn, scope), NavigationObjects());
+    }
+
+    private ObjectListingReader.ScopeSummary ListingSummary(string containerDn, ListingScope scope)
+    {
+        var connection = Connection;
+        ArgumentException.ThrowIfNullOrWhiteSpace(containerDn);
+        lock (_browsing)
+        {
+            if (_browsing.Scopes.TryGetValue((containerDn, scope), out var saved)) return saved;
+            var summary = ObjectListingReader.Summarize(connection, containerDn, scope);
+            _browsing.Scopes.Add((containerDn, scope), summary);
+            return summary;
+        }
+    }
+
+    private long NavigationObjects()
+    {
+        lock (_browsing)
+        {
+            if (_browsing.Objects is { } saved) return saved;
+            using var command = Connection.CreateCommand();
+            command.CommandText = "SELECT objects FROM navigation_product WHERE id=1";
+            return (_browsing.Objects = (long)command.ExecuteScalar()!).Value;
+        }
     }
 
     /// <summary>Reads captured identity only, without attributes, permissions or analysis.</summary>
     public CapturedObjectIdentity? ReadObjectIdentity(string distinguishedName) =>
-        ObjectAttributesReader.ReadIdentity(Connection, distinguishedName, _navigation);
+        ObjectAttributesReader.ReadIdentity(Connection, distinguishedName, _navigation) is { } identity
+            ? identity with { CaptureGenerationId = Description.CaptureGenerationId } : null;
+
+    /// <summary>Reads original permissions at an identity resolved by this capture's navigation index.</summary>
+    public ObjectPermissions ReadPermissionsAt(CapturedObjectIdentity identity)
+    {
+        RequireIdentity(identity);
+        return ObjectPermissionsReader.ReadAt(Connection, identity.ObjectId, identity.DistinguishedName);
+    }
+
+    /// <summary>Reads original requested values at an identity resolved by this capture's navigation index.</summary>
+    public ObjectAttributes ReadObjectAttributesAt(CapturedObjectIdentity identity) =>
+        ReadObjectAttributesAt(identity, null);
+
+    /// <summary>Reads original selected values; an explicit null requests the complete catalogue.</summary>
+    public ObjectAttributes ReadObjectAttributesAt(CapturedObjectIdentity identity,
+        IReadOnlyCollection<string>? attributes)
+    {
+        RequireIdentity(identity);
+        return ObjectAttributesReader.ReadAt(Connection, identity.ObjectId, attributes)
+            ?? throw new InvalidDataException("The captured object identity no longer exists.");
+    }
+
+    private void RequireIdentity(CapturedObjectIdentity identity)
+    {
+        var connection = Connection;
+        ArgumentNullException.ThrowIfNull(identity);
+        if (_navigation || identity.CaptureGenerationId == Guid.Empty
+            || identity.CaptureGenerationId != Description.CaptureGenerationId || identity.ObjectId <= 0)
+            throw new InvalidDataException("The selected identity belongs to another capture.");
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT 1 FROM captured_object WHERE object_id=$id
+                AND distinguished_name=$dn COLLATE BINARY AND object_guid IS $guid
+            """;
+        command.Parameters.AddWithValue("$id", identity.ObjectId);
+        command.Parameters.AddWithValue("$dn", identity.DistinguishedName);
+        command.Parameters.AddWithValue("$guid", (object?)identity.ObjectGuid?.ToString("D") ?? DBNull.Value);
+        if (command.ExecuteScalar() is null)
+            throw new InvalidDataException("The selected identity does not match the captured object row.");
+    }
 
     /// <summary>Resolves only a displayed page of original membership names to captured object identities.</summary>
     public CapturedMemberReferences ResolveMembershipReferences(IReadOnlyList<string> names, CancellationToken cancellationToken = default)

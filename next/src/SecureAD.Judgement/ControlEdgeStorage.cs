@@ -8,18 +8,21 @@ namespace SecureAD.Judgement;
 
 internal static class ControlEdgeStorage
 {
-    internal const int EngineVersion = 10;
+    internal const int EngineVersion = 11;
+    internal readonly record struct Question(string? Target, string? HolderSid, string? HolderScope);
+    internal sealed record Counts(long Unexpected, long Unknown, long Expected, long Unanswered, bool Observed);
 
     public static void CreateTables(SqliteConnection connection)
     {
         Execute(connection, null, $"""
             CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_product (id INTEGER PRIMARY KEY CHECK(id = 1), engine_version INTEGER NOT NULL,
                 capture_complete INTEGER NOT NULL CHECK(capture_complete IN (0,1)), completed INTEGER NOT NULL CHECK(completed IN (0,1)),
-                discovery_scoped INTEGER NOT NULL DEFAULT 0 CHECK(discovery_scoped IN (0,1)));
+                discovery_scoped INTEGER NOT NULL DEFAULT 0 CHECK(discovery_scoped IN (0,1)),
+                unfinished_objects INTEGER NULL CHECK(unfinished_objects>=0));
             CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_object (target TEXT PRIMARY KEY COLLATE NOCASE, principal_sid TEXT NULL, principal_scope TEXT NULL,
                 descriptor_outcome TEXT NOT NULL, uncertainty INTEGER NOT NULL, is_complete INTEGER NOT NULL CHECK(is_complete IN (0,1)));
-            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_edge (id INTEGER PRIMARY KEY, target TEXT NOT NULL REFERENCES control_object(target), target_guid TEXT NULL,
-                target_class TEXT NULL, holder_sid TEXT NOT NULL, holder_name TEXT NULL, holder_scope TEXT NULL,
+            CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.control_edge (id INTEGER PRIMARY KEY, target TEXT NOT NULL COLLATE NOCASE REFERENCES control_object(target), target_guid TEXT NULL,
+                target_class TEXT NULL, holder_sid TEXT NOT NULL COLLATE NOCASE, holder_name TEXT NULL, holder_scope TEXT NULL COLLATE NOCASE,
                 capability TEXT NOT NULL, edge_class TEXT NOT NULL, evaluation TEXT NOT NULL, uncertainty INTEGER NOT NULL,
                 expectedness TEXT NOT NULL, expectedness_reason TEXT NOT NULL, catalogue_version INTEGER NOT NULL,
                 generation TEXT NOT NULL, derivation_generation TEXT NULL, counted INTEGER NOT NULL CHECK(counted IN (0,1)),
@@ -46,9 +49,12 @@ internal static class ControlEdgeStorage
     /// a forest-wide one and would present the first as the second.
     /// </summary>
     public static void Start(SqliteConnection connection, bool captureComplete, bool discoveryScoped = false) => Execute(connection, null,
-        "INSERT INTO control_product VALUES (1, $version, $complete, 0, $scoped)", ("$version", EngineVersion),
+        "INSERT INTO control_product VALUES (1, $version, $complete, 0, $scoped, NULL)", ("$version", EngineVersion),
         ("$complete", captureComplete), ("$scoped", discoveryScoped));
-    public static void Complete(SqliteConnection connection) => Execute(connection, null, "UPDATE control_product SET completed = 1 WHERE id = 1");
+    public static void Complete(SqliteConnection connection) => Execute(connection, null, """
+        UPDATE control_product SET completed=1,
+            unfinished_objects=(SELECT COUNT(*) FROM control_object WHERE is_complete=0) WHERE id=1
+        """);
 
     public static IReadOnlyList<long> SelfMembershipEdgeIds(SqliteConnection connection, string target,
         IEnumerable<string> trusteeSids)
@@ -221,22 +227,69 @@ internal static class ControlEdgeStorage
     }
 
     public static ControlEdgePage Read(SqliteConnection connection, JudgementDescription description,
-        string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId)
+        string? target, string? holderSid, string? holderScope, bool includeExpected, long afterId,
+        IDictionary<Question, Counts> savedCounts)
     {
+        ArgumentNullException.ThrowIfNull(savedCounts);
         using var product = connection.CreateCommand();
-        product.CommandText = "SELECT capture_complete, completed, discovery_scoped FROM control_product WHERE id=1 AND engine_version=$version";
+        product.CommandText = "SELECT capture_complete, completed, discovery_scoped, unfinished_objects FROM control_product WHERE id=1 AND engine_version=$version";
         product.Parameters.AddWithValue("$version", EngineVersion);
         bool derived, capture, scoped;
+        long unfinished = 0;
         using (var read = product.ExecuteReader())
         {
             derived = read.Read();
             capture = derived && read.GetBoolean(0);
             scoped = derived && read.GetBoolean(2);
             derived = derived && read.GetBoolean(1);
+            if (derived)
+            {
+                if (read.IsDBNull(3) || read.GetInt64(3) < 0) throw OwnershipAuditStorage.InvalidProof();
+                unfinished = read.GetInt64(3);
+            }
         }
         if (!derived) return new([], 0, 0, 0, 0, false, capture, false, afterId);
         var predicate = target is not null ? "target = $value COLLATE NOCASE"
             : holderSid is not null ? "holder_sid = $value COLLATE NOCASE AND COALESCE(holder_scope,'') = $scope COLLATE NOCASE" : "1=1";
+        var question = new Question(target, holderSid, holderScope);
+        Counts totals;
+        lock (savedCounts)
+        {
+            if (!savedCounts.TryGetValue(question, out totals!))
+            {
+                totals = ReadCounts(connection, target, holderSid, holderScope, predicate, unfinished);
+                savedCounts.Add(question, totals);
+            }
+        }
+        if (!totals.Observed) return new([], 0, 0, 0, 1, false, capture, false, afterId);
+        using var query = connection.CreateCommand();
+        query.CommandText = $"""
+            SELECT display_id,edge_id,assessment_id FROM (
+                SELECT id*2 AS display_id,id AS edge_id,NULL AS assessment_id,target,holder_sid,holder_scope,expectedness FROM control_edge
+                UNION ALL
+                SELECT id*2-1,NULL,id,target,holder_sid,holder_scope,expectedness FROM full_control_assessment
+            ) WHERE {predicate} AND display_id > $after
+            """ + (includeExpected ? "" : " AND expectedness <> 'Expected'") + " ORDER BY display_id LIMIT 101";
+        BindFilter(query, target, holderSid, holderScope);
+        query.Parameters.AddWithValue("$after", afterId);
+        var items = new List<(long Display, long? Edge, long? Assessment)>();
+        using (var read = query.ExecuteReader())
+            while (read.Read()) items.Add((read.GetInt64(0), read.IsDBNull(1) ? null : read.GetInt64(1), read.IsDBNull(2) ? null : read.GetInt64(2)));
+        var more = items.Count > 100;
+        if (more) items.RemoveAt(100);
+        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadStoredEdge(connection, description, item.Edge!.Value)).ToArray();
+        var assessments = items.Where(item => item.Assessment.HasValue).Select(item => FullControlStorage.Read(connection, description, item.Assessment!.Value)).ToArray();
+        return new(rows, totals.Unexpected, totals.Unknown, totals.Expected, totals.Unanswered, true, capture, more, items.Count == 0 ? afterId : items[^1].Display)
+        {
+            FullControlAssessments = assessments,
+            FullControlSupports = FullControlStorage.Supports(connection, rows),
+            IsScopedToDiscovery = scoped,
+        };
+    }
+
+    private static Counts ReadCounts(SqliteConnection connection, string? target, string? holderSid,
+        string? holderScope, string predicate, long unfinished)
+    {
         using var counts = connection.CreateCommand();
         counts.CommandText = $"""
             SELECT expectedness,COUNT(*) FROM (
@@ -256,40 +309,15 @@ internal static class ControlEdgeStorage
                     case ControlExpectedness.Unexpected: unexpected = read.GetInt64(1); break;
                     case ControlExpectedness.Unknown: unknown = read.GetInt64(1); break;
                 }
-        using var gaps = connection.CreateCommand();
-        gaps.CommandText = "SELECT COUNT(*) FROM control_object WHERE is_complete=0" + (target is null ? "" : " AND target=$target COLLATE NOCASE");
-        if (target is not null) gaps.Parameters.AddWithValue("$target", target);
-        var unanswered = (long)gaps.ExecuteScalar()!;
         if (target is not null)
         {
             using var observed = connection.CreateCommand();
-            observed.CommandText = "SELECT COUNT(*) FROM control_object WHERE target=$target COLLATE NOCASE";
+            observed.CommandText = "SELECT is_complete FROM control_object WHERE target=$target COLLATE NOCASE";
             observed.Parameters.AddWithValue("$target", target);
-            if ((long)observed.ExecuteScalar()! == 0) return new([], 0, 0, 0, 1, false, capture, false, afterId);
+            if (observed.ExecuteScalar() is not long complete) return new(0, 0, 0, 1, false);
+            return new(unexpected, unknown, expected, complete == 0 ? 1 : 0, true);
         }
-        using var query = connection.CreateCommand();
-        query.CommandText = $"""
-            SELECT display_id,edge_id,assessment_id FROM (
-                SELECT id*2 AS display_id,id AS edge_id,NULL AS assessment_id,target,holder_sid,holder_scope,expectedness FROM control_edge
-                UNION ALL
-                SELECT id*2-1,NULL,id,target,holder_sid,holder_scope,expectedness FROM full_control_assessment
-            ) WHERE {predicate} AND display_id > $after
-            """ + (includeExpected ? "" : " AND expectedness <> 'Expected'") + " ORDER BY display_id LIMIT 101";
-        BindFilter(query, target, holderSid, holderScope);
-        query.Parameters.AddWithValue("$after", afterId);
-        var items = new List<(long Display, long? Edge, long? Assessment)>();
-        using (var read = query.ExecuteReader())
-            while (read.Read()) items.Add((read.GetInt64(0), read.IsDBNull(1) ? null : read.GetInt64(1), read.IsDBNull(2) ? null : read.GetInt64(2)));
-        var more = items.Count > 100;
-        if (more) items.RemoveAt(100);
-        var rows = items.Where(item => item.Edge.HasValue).Select(item => ReadStoredEdge(connection, description, item.Edge!.Value)).ToArray();
-        var assessments = items.Where(item => item.Assessment.HasValue).Select(item => FullControlStorage.Read(connection, description, item.Assessment!.Value)).ToArray();
-        return new(rows, unexpected, unknown, expected, unanswered, true, capture, more, items.Count == 0 ? afterId : items[^1].Display)
-        {
-            FullControlAssessments = assessments,
-            FullControlSupports = FullControlStorage.Supports(connection, rows),
-            IsScopedToDiscovery = scoped,
-        };
+        return new(unexpected, unknown, expected, unfinished, true);
     }
 
     internal static ControlEdge ReadExact(SqliteConnection connection, JudgementDescription description, string target, long id)

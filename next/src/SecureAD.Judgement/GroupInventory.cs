@@ -136,8 +136,10 @@ internal static class GroupInventoryStorage
     }
 
     internal static GroupInventoryPage Read(SqliteConnection connection, JudgementDescription description,
-        GroupInventoryQuery query, GroupInventoryMark? after, CancellationToken token)
+        GroupInventoryQuery query, GroupInventoryMark? after, CancellationToken token,
+        IDictionary<GroupInventoryQuery, int> savedCounts)
     {
+        ArgumentNullException.ThrowIfNull(savedCounts);
         token.ThrowIfCancellationRequested();
         if (!Enum.IsDefined(query.Scope) || !Enum.IsDefined(query.GroupScope) || !Enum.IsDefined(query.Kind)
             || !Enum.IsDefined(query.Sort) || query.Search is null) throw new ArgumentException("Invalid group inventory filters.", nameof(query));
@@ -197,8 +199,17 @@ internal static class GroupInventoryStorage
         command.Parameters.AddWithValue("$scope", query.GroupScope switch { GroupInventoryScope.Global => 2, GroupInventoryScope.Universal => 8, GroupInventoryScope.DomainLocal => 4, _ => 0 });
         command.Parameters.AddWithValue("$kind", (int)query.Kind);
         command.Parameters.AddWithValue("$cycles", query.CyclesOnly);
-        command.CommandText = $"SELECT COUNT(*) FROM group_inventory g WHERE {where}";
-        var total = checked((int)(long)command.ExecuteScalar()!);
+        var countQuestion = query with { Sort = GroupInventorySort.Name };
+        int total;
+        lock (savedCounts)
+        {
+            if (!savedCounts.TryGetValue(countQuestion, out total))
+            {
+                command.CommandText = $"SELECT COUNT(*) FROM group_inventory g WHERE {where}";
+                total = checked((int)(long)command.ExecuteScalar()!);
+                savedCounts.Add(countQuestion, total);
+            }
+        }
         var numeric = query.Sort is GroupInventorySort.Direct or GroupInventorySort.DirectDescending;
         var descending = query.Sort is GroupInventorySort.NameDescending or GroupInventorySort.DirectDescending;
         var key = numeric ? "g.direct_members" : "g.name COLLATE NOCASE";

@@ -15,6 +15,7 @@ public sealed class ControlEdgeStorageTests
     [InlineData(15)]
     [InlineData(16)]
     [InlineData(24)]
+    [InlineData(76)]
     public void OlderSchemasAreRefusedWithBothVersionNumbers(int version)
     {
         var directory = TempDirectories.Create("control-edge-old-schema");
@@ -228,7 +229,7 @@ public sealed class ControlEdgeStorageTests
         Assert.True(opened.IsSuccess, opened.Error?.Description);
         return opened.Value!;
     }
-    private static string Store(Action<JudgementWriter> write)
+    internal static string Store(Action<JudgementWriter> write)
     {
         var directory = TempDirectories.Create("control-edge-store");
         File.WriteAllText(BundleLayout.SealPath(directory), JsonSerializer.Serialize(new BundleSealContents(BundleSealing.Algorithm, Seal)));
