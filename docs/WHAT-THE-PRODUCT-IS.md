@@ -2478,6 +2478,25 @@ its existing separate action, and already-sealed evidence remains available afte
 Lab packages were not replaced; representative lab, physical-display and production acceptance
 remain outstanding, and no capture behavior, scope default, protection requirement or budget changed.
 
+**Owner-requested compact New audit readiness mockup, 2026-10-20.**
+While re-judging production with `000d1fe7`, the owner requested a visual mockup of only the first New audit screen: remove the large "Review domain readiness" panel and show compact per-domain readiness, with a green check for ready and a clickable details control where attention is needed.
+Keep warnings, failures, unestablished checks and exclusions distinct, preserve the existing readiness decisions and Next/recheck recovery behavior, and use illustrative statuses rather than claim fresh controller results; this approves a mockup, not application implementation or capture/judging/format changes.
+Warn before any later change could make the in-use production run or its results incompatible, or change current performance; standalone visual mockups do not replace or affect that running build.
+In the same mockup review, the owner requested removing the redundant top-right stage label while retaining the domain count, removing the numbers from both step boxes, and marking the current step with a blue underline.
+He also requested removing the "What would this run read?" heading and its two introductory explanatory sentences, with that guidance intended for a future built-in how-to guide; this is still mockup direction rather than application implementation approval.
+The owner then approved implementing this first-screen design, with similarly sized readiness controls, for his next lab test; this supersedes the mockup-only restriction for that bounded screen, not for the later Review & run screen's content.
+Keep the existing readiness checks, exclusions, Next/recheck recovery and saved formats unchanged, so the production re-judgement already running on `000d1fe7` and its results remain usable.
+Lab confirmation is still required, and this approval does not authorize replacing the in-use production build, live access, commit or push.
+The subsequent lab test showed white text on the pale-blue "Next: review run" button; the owner requested fixing that button's contrast only, then continuing the Review & run screen in a new session.
+
+**Owner-guided Review & run mockup, 2026-10-20.**
+The owner requested removing "Is this run ready to start?", restoring the missing text beside both run-option radio buttons, and making the selected domains under "Scope you are authorizing" easy to see at a glance.
+Replace the dense scope presentation with a focused mockup; the text beneath the domains may be shortened or removed, and concurrency/disk-limit explanations belong in Help rather than this screen.
+Do not display the "Worth knowing before you start" block, including the single-controller fallback explanation, and match the Start audit button's colors to the corrected Domains & readiness screen.
+After reviewing the standalone mockup, the owner explicitly approved implementation: "Domains to audit" with Domain/Domain controller columns and a selected count, visible run-option labels with short descriptions, compact optional controls, and dark text on the pale-blue Start button.
+Preserve readiness decisions, explicit exclusions and their authorization details, optional capture choices, backend behavior and saved formats; this does not authorize changing the run-progress or saved-results screens.
+The owner is still re-judging production with `000d1fe7`; warn before a later change could affect its performance or invalidate or incompatibly alter its results, and do not replace that build, access a live directory, commit or push without a new request.
+
 **Owner-requested Groups browsing mockup, 2026-10-06.**
 After SEC-052, the owner requested a Groups view like the predecessor's inventory to help an
 administrator see their groups, with double-click opening the corresponding object.

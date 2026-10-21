@@ -27,8 +27,7 @@ public sealed class NewAuditPresentationTests
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
         model.Screen = AuditScreen.Domains;
         await model.OpenAsync();
-        Assert.True(model.ShowsPreparationAttention);
-        Assert.Contains("Recorded DNS failure", model.PreparationAttentionDetail);
+        Assert.True(model.HasReadinessIssues);
         Assert.Contains("Recorded DNS failure", model.FooterStatus);
         Assert.False(model.CanStart);
         Assert.True(model.ReviewCommand.CanExecute(null));

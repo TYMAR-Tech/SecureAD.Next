@@ -19,17 +19,26 @@ internal sealed partial class DomainDetailsViewModel : ObservableObject
     /// <summary>Creates the panel's state over the rows the table carries.</summary>
     /// <param name="domains">The rows, as the audit surface holds them.</param>
     /// <param name="close">What to do when the operator has finished reading.</param>
-    public DomainDetailsViewModel(IReadOnlyList<DomainRowViewModel> domains, Action close)
+    public DomainDetailsViewModel(IReadOnlyList<DomainRowViewModel> domains,
+        IReadOnlyList<ExclusionView> exclusions, Action close)
     {
         ArgumentNullException.ThrowIfNull(domains);
+        ArgumentNullException.ThrowIfNull(exclusions);
         ArgumentNullException.ThrowIfNull(close);
 
         Domains = domains;
+        Exclusions = exclusions;
+        var names = domains.Select(domain => domain.Domain).Concat(exclusions.Select(domain => domain.Domain))
+            .Distinct(StringComparer.Ordinal).Take(2).ToArray();
+        Heading = names.Length == 1 ? names[0] : "Domain details";
         _close = close;
     }
 
     /// <summary>Every domain, with everything it answered.</summary>
     public IReadOnlyList<DomainRowViewModel> Domains { get; }
+
+    public IReadOnlyList<ExclusionView> Exclusions { get; }
+    public string Heading { get; }
 
     /// <summary>Puts the panel away.</summary>
     /// <remarks>

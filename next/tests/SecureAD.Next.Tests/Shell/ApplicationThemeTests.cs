@@ -275,7 +275,7 @@ public sealed class ApplicationThemeTests
 
     private static Color ColorOf(Brush brush) => Assert.IsType<SolidColorBrush>(brush).Color;
 
-    private static void AssertContrast(IReadOnlyDictionary<string, Color> colors, string foreground, string background)
+    internal static void AssertContrast(IReadOnlyDictionary<string, Color> colors, string foreground, string background)
     {
         static double Luminance(Color color)
         {

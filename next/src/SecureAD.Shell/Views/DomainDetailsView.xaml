@@ -9,14 +9,8 @@
         A PANEL OVER THE TABLE, not a window over the shell - 0071. It covers the surface it came
         from, which is what a window did, without a second title bar the product does not draw.
 
-        ONE PANEL FOR EVERY DOMAIN, not one button per row. An operator opening this is comparing
-        domains, and something he has to open and close nine times makes him hold the last one in
-        his head.
-
-        NOTHING WAS DELETED WHEN THE COLUMNS WERE TRIMMED - it moved here. Four of those columns
-        said the same thing on every row, and a column that always agrees with itself is a column
-        nobody reads. What stops the move being a way of hiding something is the warning on the
-        button that opens this, which lights whenever any domain has something worth attention.
+        A row shortcut supplies only the selected domain; the general details action still
+        supplies every domain. Both use recorded answers, without new checks.
 
         EVERY FACT KEEPS ITS MARK. The three states of 0056 travel with the sentence, so a question
         nobody could answer still reads differently from an answer of no.
@@ -30,8 +24,8 @@
                 BorderThickness="0,0,0,1"
                 Padding="20,16">
             <StackPanel>
-                <TextBlock Text="Domain details" Style="{StaticResource ScreenTitle}" />
-                <TextBlock Text="What each domain answered when it was asked."
+                <TextBlock Text="{Binding Heading}" Style="{StaticResource ScreenTitle}" />
+                <TextBlock Text="Recorded readiness and scope. Viewing details does not run new checks."
                            Foreground="{DynamicResource SecondaryTextBrush}"
                            Margin="0,2,0,0" />
             </StackPanel>
@@ -49,6 +43,7 @@
         </Border>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,16">
+          <StackPanel>
             <ItemsControl ItemsSource="{Binding Domains}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -160,11 +155,35 @@
                                                TextWrapping="Wrap" />
                                 </StackPanel>
 
+                                <TextBox Text="{Binding Problem,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                         Foreground="{DynamicResource CriticalFindingBrush}" Margin="0,8,0,0"
+                                         Visibility="{Binding HasProblem,Converter={StaticResource Shown}}" />
+                                <ItemsControl ItemsSource="{Binding Faults}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <TextBox Text="{Binding Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0" />
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
                             </StackPanel>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <ItemsControl ItemsSource="{Binding Exclusions}">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                    <StackPanel Margin="0,8,0,14">
+                        <TextBlock Text="{Binding Domain}" Style="{StaticResource RowTitle}" />
+                        <TextBlock Text="{Binding Why}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding Stated}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding AuthorisedBy}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Visibility="{Binding IsAttested,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding Note,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,4,0,0"
+                                 Visibility="{Binding HasNote,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

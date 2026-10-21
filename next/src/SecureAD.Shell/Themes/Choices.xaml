@@ -12,8 +12,8 @@
          at and is right, and restyling it to fix a different screen is how a reviewed thing
          quietly breaks.
 
-         THE COLOUR IS SET ON THE TEXTBLOCK THAT DRAWS THE TEXT. A ContentPresenter may or may not
-         pass an inherited Foreground to whatever it builds, and the XAML will not tell you which.
+         LABEL CONTENT CAN BE TEXT OR A TITLE WITH A DESCRIPTION. Present the content itself:
+         converting it to Text loses the wizard's composed labels.
 
          WHAT WAS HERE BEFORE. This held a pill-shaped style, ChoiceButton, drawing each option as
          a filled rectangle. It went on 2026-09-03 with its last user. The level control moved into
@@ -57,10 +57,10 @@
                                      Fill="{DynamicResource AccentBrush}"
                                      Visibility="Collapsed" />
                         </Grid>
-                        <TextBlock x:Name="Label"
-                                   Text="{TemplateBinding Content}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource PrimaryTextBrush}" />
+                        <ContentPresenter x:Name="Label"
+                                          ContentSource="Content"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{DynamicResource PrimaryTextBrush}" />
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">

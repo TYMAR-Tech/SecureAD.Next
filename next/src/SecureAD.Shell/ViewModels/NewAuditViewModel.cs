@@ -159,9 +159,17 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     public override bool MayNameAController => true;
 
     public override string ReadinessText => !IsIncluded ? base.ReadinessText
-        : Problem is not null ? "Validation refused"
+        : Problem is not null || PreflightBlocked ? "Validation refused"
         : !Plan.WasPreflighted ? "Not checked"
-        : HasSomethingToSay ? "Review details" : "Checks recorded";
+        : NeedsAttention ? "Review details" : "Checks recorded";
+
+    public override AuditReadinessStatus ReadinessStatus => !IsIncluded ? base.ReadinessStatus
+        : Problem is not null || PreflightBlocked ? AuditReadinessStatus.Blocked
+        : !Plan.WasPreflighted || !string.IsNullOrWhiteSpace(NamedController) && ControllerCheck != Established.Yes
+            ? AuditReadinessStatus.NotChecked
+        : NeedsAttention ? AuditReadinessStatus.Review : AuditReadinessStatus.Ready;
+
+    public bool HasProblem => Problem is not null;
 
     /// <summary>Whether this domain has been left out with nothing stated for it.</summary>
     public bool IsExcludedWithoutAttestationRow =>
@@ -203,6 +211,7 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
         OnPropertyChanged(nameof(Attestation));
         OnPropertyChanged(nameof(IsIncluded));
         OnPropertyChanged(nameof(IsExcludedWithoutAttestation));
+        RefreshReadiness();
     }
 
 
@@ -591,6 +600,7 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
         OnPropertyChanged(nameof(ServesThePartitionState));
         OnPropertyChanged(nameof(PasswordSettingsState));
         OnPropertyChanged(nameof(PdcEmulatorState));
+        RefreshReadiness();
     }
 
     private const string NotAskedYet = "Not asked yet.";
@@ -613,8 +623,11 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
 
     /// <summary>The sentence moves with the state it describes.</summary>
     /// <param name="value">What became of the check.</param>
-    partial void OnControllerCheckChanged(Established value) =>
+    partial void OnControllerCheckChanged(Established value)
+    {
         OnPropertyChanged(nameof(ControllerCheckText));
+        RefreshReadiness();
+    }
 
     /// <summary>
     /// Editing the name withdraws whatever was established about the old one.
@@ -630,6 +643,7 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     {
         ControllerCheck = Established.NotEstablished;
         Problem = null;
+        RefreshReadiness();
     }
 
     /// <summary>
@@ -639,6 +653,7 @@ internal sealed partial class DomainRowViewModel : AuditRowViewModel
     partial void OnProblemChanged(string? value)
     {
         OnPropertyChanged(nameof(HasSomethingToSay));
+        OnPropertyChanged(nameof(HasProblem));
         RefreshReadiness();
     }
 
@@ -1477,22 +1492,22 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             ],
             _concurrency.Effective);
 
-    /// <summary>Shows everything the table no longer carries, for every domain at once.</summary>
-    /// <remarks>
-    /// <para>
-    /// One button rather than one per row, because an operator opening this is comparing domains,
-    /// and something he has to open and close nine times makes him hold the last one in his head.
-    /// </para>
-    /// <para>
-    /// <b>A panel over this surface rather than a window over it</b> -
-    /// <c>docs/decisions/0071-the-audit-is-modal-in-effect-not-in-its-own-window.md</c>. Held here
-    /// as state, because there is no longer a window whose existence is the answer to "is it
-    /// showing".
-    /// </para>
-    /// </remarks>
+    /// <summary>Shows recorded readiness and scope for all domains without running checks.</summary>
     [RelayCommand]
     public void ShowDetails() =>
-        Details = new DomainDetailsViewModel([.. Domains], CloseDetails);
+        Details = new DomainDetailsViewModel([.. Domains], [.. Exclusions], CloseDetails);
+
+    [RelayCommand]
+    public void ShowRowDetails(AuditRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        if (!Rows.Contains(row))
+            throw new ArgumentException("The readiness row does not belong to this audit.", nameof(row));
+        Details = new DomainDetailsViewModel(
+            row is DomainRowViewModel domain ? [domain] : [],
+            row.Inclusion == DomainInclusion.Included ? [] : [new(row.Domain, row.Inclusion, row.Attestation)],
+            CloseDetails);
+    }
 
     /// <summary>Puts the details panel away.</summary>
     /// <remarks>
@@ -1776,7 +1791,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         // panel becoming visible on HasExclusions already has its contents behind it.
         RefreshExclusions();
         RefreshRows();
-        foreach (var row in Rows) row.RefreshReadiness();
+        foreach (var row in Rows)
+            row.RefreshReadiness(_blockingDomains.Contains(row.NamingContext, StringComparer.OrdinalIgnoreCase));
 
         OnPropertyChanged(nameof(HasExclusions));
         OnPropertyChanged(nameof(HasNoExclusions));

@@ -3,6 +3,8 @@ using SecureAD.Shell.Services;
 
 namespace SecureAD.Shell.ViewModels;
 
+internal enum AuditReadinessStatus { NotChecked, Ready, Review, Blocked, Excluded, ExclusionNeedsAuthorization }
+
 /// <summary>
 /// One row of the New Audit table, whatever kind of domain it is about.
 /// </summary>
@@ -29,6 +31,8 @@ namespace SecureAD.Shell.ViewModels;
 /// </remarks>
 internal abstract partial class AuditRowViewModel : ObservableObject
 {
+    protected bool PreflightBlocked { get; private set; }
+
     /// <summary>The domain partition this row is about.</summary>
     public abstract string NamingContext { get; }
 
@@ -78,5 +82,38 @@ internal abstract partial class AuditRowViewModel : ObservableObject
     public virtual string ReadinessText => IsExcludedWithoutAttestation
         ? "Exclusion needs authorization" : Inclusion != DomainInclusion.Included ? "Excluded" : "Not checked";
 
-    internal void RefreshReadiness() => OnPropertyChanged(nameof(ReadinessText));
+    public virtual AuditReadinessStatus ReadinessStatus => IsExcludedWithoutAttestation
+        ? AuditReadinessStatus.ExclusionNeedsAuthorization
+        : Inclusion != DomainInclusion.Included ? AuditReadinessStatus.Excluded : AuditReadinessStatus.NotChecked;
+
+    public string ReadinessActionText => ReadinessStatus switch
+    {
+        AuditReadinessStatus.Blocked => "Not ready: details",
+        AuditReadinessStatus.Excluded => "Excluded: details",
+        AuditReadinessStatus.ExclusionNeedsAuthorization => "Review exclusion",
+        AuditReadinessStatus.NotChecked => "Not checked",
+        _ => "Review details",
+    };
+
+    public string ReadinessSymbol => ReadinessStatus switch
+    {
+        AuditReadinessStatus.Blocked => "\u00d7",
+        AuditReadinessStatus.Review or AuditReadinessStatus.ExclusionNeedsAuthorization => "!",
+        AuditReadinessStatus.Excluded => "\u2014",
+        _ => "?",
+    };
+
+    internal void RefreshReadiness(bool blocked)
+    {
+        PreflightBlocked = blocked;
+        RefreshReadiness();
+    }
+
+    internal void RefreshReadiness()
+    {
+        OnPropertyChanged(nameof(ReadinessText));
+        OnPropertyChanged(nameof(ReadinessStatus));
+        OnPropertyChanged(nameof(ReadinessActionText));
+        OnPropertyChanged(nameof(ReadinessSymbol));
+    }
 }

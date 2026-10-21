@@ -114,6 +114,7 @@ internal sealed partial class ExcludedDomainViewModel : AuditRowViewModel
         OnPropertyChanged(nameof(Attestation));
         OnPropertyChanged(nameof(IsExcludedWithoutAttestation));
         OnPropertyChanged(nameof(IsAttested));
+        RefreshReadiness();
     }
 }
 

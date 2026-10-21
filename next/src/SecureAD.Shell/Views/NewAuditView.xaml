@@ -27,6 +27,34 @@
                 <Setter.Value><DataTemplate><TextBlock Text="{Binding}" Foreground="{DynamicResource AttributeLabelBrush}" TextWrapping="Wrap" /></DataTemplate></Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="ReadinessAction" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Width" Value="170" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Foreground" Value="{DynamicResource NotEstablishedBrush}" />
+            <Setter Property="Background" Value="{DynamicResource NotEstablishedSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource NotEstablishedBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ReadinessStatus}" Value="{x:Static vm:AuditReadinessStatus.Ready}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ReadinessStatus}" Value="{x:Static vm:AuditReadinessStatus.Review}">
+                    <Setter Property="Foreground" Value="{DynamicResource FaultBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource FaultBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource FaultSubtleBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ReadinessStatus}" Value="{x:Static vm:AuditReadinessStatus.ExclusionNeedsAuthorization}">
+                    <Setter Property="Foreground" Value="{DynamicResource FaultBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource FaultBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource FaultSubtleBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ReadinessStatus}" Value="{x:Static vm:AuditReadinessStatus.Blocked}">
+                    <Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource CriticalFindingBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource CriticalFindingSubtleBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <DockPanel Margin="20,14,20,0">
@@ -38,32 +66,34 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding DomainCountLabel}" Style="{StaticResource WizardText}" HorizontalAlignment="Right" />
-                    <TextBlock Text="{Binding WizardStep}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" />
                 </StackPanel>
             </Grid>
 
             <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                <Border Padding="10,6" CornerRadius="5" Margin="0,0,10,0">
+                <Border x:Name="DomainsStep" Padding="10,6,10,3" CornerRadius="5,5,0,0" Margin="0,0,10,0" BorderThickness="0,0,0,3">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
-                            <Style.Triggers><DataTrigger Binding="{Binding IsOnDomains}" Value="True"><Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
+                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsOnDomains}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Text="1  Domains &amp; readiness" FontWeight="SemiBold" />
+                    <TextBlock Text="Domains &amp; readiness" FontWeight="SemiBold" />
                 </Border>
-                <Border Padding="10,6" CornerRadius="5">
+                <Border x:Name="ReviewStep" Padding="10,6,10,3" CornerRadius="5,5,0,0" BorderThickness="0,0,0,3">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{DynamicResource AssetNavigationBackground}" />
-                            <Style.Triggers><DataTrigger Binding="{Binding IsOnReview}" Value="True"><Setter Property="Background" Value="{DynamicResource AttributeHeaderBackground}" /></DataTrigger></Style.Triggers>
+                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsOnReview}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></DataTrigger></Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <TextBlock Text="2  Review &amp; run" FontWeight="SemiBold" />
+                    <TextBlock Text="Review &amp; run" FontWeight="SemiBold" />
                 </Border>
             </WrapPanel>
 
-            <TextBlock DockPanel.Dock="Top" Text="{Binding StepQuestion}" Style="{StaticResource SectionTitle}" Margin="0,0,0,10" />
+            <TextBlock DockPanel.Dock="Top" Text="{Binding StepQuestion}" Style="{StaticResource SectionTitle}" Margin="0,0,0,10"
+                       Visibility="{Binding ShowsRunHeading,Converter={StaticResource Shown}}" />
 
             <!-- Kept outside the scrolling body so a long report cannot hide current activity. -->
             <Border x:Name="AuditPhaseProgress" DockPanel.Dock="Top" Style="{StaticResource WizardCard}" Padding="10"
@@ -80,22 +110,6 @@
                     </WrapPanel>
                     <TextBlock Text="{Binding Progress.Caveat}" Style="{StaticResource Caption}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
-            </Border>
-
-            <Border x:Name="WizardPreparationAttention" DockPanel.Dock="Top" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="3,1,1,1"
-                    Background="{DynamicResource FaultSubtleBrush}" CornerRadius="6" Padding="12,8" Margin="0,0,0,10"
-                    Visibility="{Binding ShowsPreparationAttention,Converter={StaticResource Shown}}">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Command="{Binding ShowDetailsCommand}" VerticalAlignment="Top" Margin="12,0,0,0">
-                        <TextBlock Text="Review issue &amp; domain details" TextWrapping="Wrap" />
-                    </Button>
-                    <StackPanel>
-                        <TextBlock Text="{Binding PreparationAttentionTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                        <TextBox Text="{Binding PreparationAttentionDetail,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
-                                 MaxHeight="70" VerticalScrollBarVisibility="Auto" />
-                        <TextBlock Text="No capture has started. Next rechecks the domains after you address the issue." TextWrapping="Wrap" />
-                    </StackPanel>
-                </DockPanel>
             </Border>
 
             <Border DockPanel.Dock="Top" Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
@@ -115,10 +129,14 @@
                     <WrapPanel DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center">
                         <Button Content="{Binding LeaveLabel}" Command="{Binding LeaveCommand}" Margin="0,0,8,0" Visibility="{Binding CanLeave,Converter={StaticResource Shown}}" />
                         <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" Visibility="{Binding CanGoBack,Converter={StaticResource Shown}}" />
-                        <Button Content="Next: review run" Command="{Binding ReviewCommand}" Style="{StaticResource PrimaryButton}"
-                                Visibility="{Binding IsOnDomains,Converter={StaticResource Shown}}" />
-                        <Button Content="{Binding StartLabel}" Command="{Binding StartCommand}" Style="{StaticResource PrimaryButton}"
-                                Visibility="{Binding ShowsStartAction,Converter={StaticResource Shown}}" />
+                        <Button Command="{Binding ReviewCommand}" Style="{StaticResource PrimaryButton}"
+                                Visibility="{Binding IsOnDomains,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Next: review run" Foreground="{DynamicResource OnAccentTextBrush}" />
+                        </Button>
+                        <Button Command="{Binding StartCommand}" Style="{StaticResource PrimaryButton}"
+                                Visibility="{Binding ShowsStartAction,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding StartLabel}" Foreground="{DynamicResource OnAccentTextBrush}" />
+                        </Button>
                         <Button Content="Stop audit" Command="{Binding RequestAuditStopCommand}" Style="{StaticResource DangerButton}"
                                 Visibility="{Binding CanRequestAuditStop,Converter={StaticResource Shown}}" />
                     </WrapPanel>
@@ -130,8 +148,6 @@
             <Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding IsOnDomains,Converter={StaticResource Shown}}">
                     <StackPanel>
-                        <TextBlock Text="The forest and controllers are discovered for you. Review any issue before continuing; no directory modifications are performed."
-                                   Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" />
                         <WrapPanel Margin="0,4,0,10">
                             <TextBlock Text="This machine's site: " Style="{StaticResource FieldLabel}" />
                             <TextBlock Text="{Binding SiteDescription}" TextWrapping="Wrap" Foreground="{DynamicResource NotEstablishedBrush}" />
@@ -156,7 +172,7 @@
                                           Background="Transparent" BorderBrush="{DynamicResource DividerBrush}"
                                           HorizontalGridLinesBrush="{DynamicResource DividerBrush}">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Include" Width="Auto">
+                                        <DataGridTemplateColumn Header="Include" MinWidth="72" Width="72">
                                             <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                 <CheckBox IsChecked="{Binding IsIncluded,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                                                           IsEnabled="{Binding MayChangeInclusion}" Margin="8" />
@@ -164,7 +180,48 @@
                                         </DataGridTemplateColumn>
                                         <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" IsReadOnly="True" MinWidth="150" Width="*" />
                                         <DataGridTextColumn Header="Read from" Binding="{Binding Controller}" IsReadOnly="True" MinWidth="190" Width="*" />
-                                        <DataGridTextColumn Header="Readiness / scope" Binding="{Binding ReadinessText}" IsReadOnly="True" MinWidth="140" Width="Auto" />
+                                        <DataGridTemplateColumn Header="Readiness" MinWidth="190" Width="Auto">
+                                            <DataGridTemplateColumn.CellStyle>
+                                                <Style TargetType="DataGridCell" BasedOn="{StaticResource TableCell}">
+                                                    <Setter Property="Padding" Value="0" />
+                                                </Style>
+                                            </DataGridTemplateColumn.CellStyle>
+                                            <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                                <Grid Width="170" Height="34" Margin="8,4" ToolTip="{Binding ReadinessText}">
+                                                    <Path x:Name="ReadyToReadMark" Width="23" Height="20" Stretch="Uniform"
+                                                          Data="M 1,10 L 8,17 L 22,1" Stroke="{DynamicResource EstablishedGoodBrush}"
+                                                          StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <Path.Style>
+                                                            <Style TargetType="Path">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ReadinessStatus}" Value="{x:Static vm:AuditReadinessStatus.Ready}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Path.Style>
+                                                        <AutomationProperties.Name>
+                                                            <MultiBinding StringFormat="{}{0}: ready to read"><Binding Path="Domain" /></MultiBinding>
+                                                        </AutomationProperties.Name>
+                                                    </Path>
+                                                    <Button Style="{StaticResource ReadinessAction}"
+                                                            Command="{Binding DataContext.ShowRowDetailsCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}">
+                                                        <AutomationProperties.Name>
+                                                            <MultiBinding StringFormat="{}{0}: {1}"><Binding Path="Domain" /><Binding Path="ReadinessText" /></MultiBinding>
+                                                        </AutomationProperties.Name>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding ReadinessSymbol}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                       FontWeight="SemiBold" FontSize="16" Width="19" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding ReadinessActionText}" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                       VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+                                            </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                         <DataGridTemplateColumn Header="Controller choice" MinWidth="240" Width="*">
                                             <DataGridTemplateColumn.CellTemplate><DataTemplate>
                                                 <Expander Header="Change controller" Margin="6"
@@ -195,71 +252,94 @@
                                     <TextBlock Text="What this run will do" Style="{StaticResource SectionTitle}" Margin="0,0,0,10" />
                                     <RadioButton Style="{StaticResource ChoiceRadio}" GroupName="Intent"
                                                  IsChecked="{Binding CaptureAndAnalyse,Mode=TwoWay}" IsEnabled="{Binding MayChangeObjectScope}">
-                                        <StackPanel><TextBlock Text="Capture and analyse" FontWeight="SemiBold" />
-                                            <TextBlock Text="Read and seal evidence, derive reusable facts, then judge and save findings. Analysis does not reconnect to AD."
+                                        <StackPanel><TextBlock Text="Capture and analyse" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                            <TextBlock Text="Capture evidence, then analyse it and save findings."
                                                        TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
                                     </RadioButton>
                                     <RadioButton Style="{StaticResource ChoiceRadio}" GroupName="Intent" Margin="0,12,0,0"
                                                  IsChecked="{Binding CaptureOnly,Mode=TwoWay}" IsEnabled="{Binding MayChangeObjectScope}">
-                                        <StackPanel><TextBlock Text="Capture only" FontWeight="SemiBold" />
-                                            <TextBlock Text="Read and seal evidence, then stop. Derive facts and Judge remain available on the saved run in Home."
+                                        <StackPanel><TextBlock Text="Capture only" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                                            <TextBlock Text="Capture evidence now; analyse the saved run later."
                                                        TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" MaxWidth="680" /></StackPanel>
                                     </RadioButton>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource WizardCard}">
-                                <StackPanel>
-                                    <TextBlock Text="Scope you are authorizing" Style="{StaticResource SectionTitle}" />
-                                    <TextBlock Text="{Binding Review.ReadHeading}" Style="{StaticResource WizardText}" Margin="0,10,0,6" />
-                                    <ItemsControl ItemsSource="{Binding Review.WillBeRead}">
-                                        <ItemsControl.ItemTemplate><DataTemplate>
-                                            <WrapPanel Margin="0,2"><TextBlock Text="{Binding Domain}" FontWeight="SemiBold" Margin="0,0,12,0" />
-                                                <TextBlock Text="{Binding Controller}" Foreground="{DynamicResource SecondaryTextBrush}" /></WrapPanel>
-                                        </DataTemplate></ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Text="{Binding Review.ConcurrencyStatement}" Style="{StaticResource WizardText}" Margin="0,12,0,0" />
-                                    <TextBlock Text="{Binding Review.ConcurrencyCaveat,Mode=OneTime}" Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" />
-                                    <TextBlock Text="{Binding UnestablishedFactSummary}" Style="{StaticResource WizardText}" />
+                                <StackPanel x:Name="ReviewScope">
+                                    <DockPanel Margin="0,0,0,12">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Review.ReadCount,StringFormat='{}{0} selected'}"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        <TextBlock Text="Domains to audit" Style="{StaticResource SectionTitle}" />
+                                    </DockPanel>
+                                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4">
+                                        <StackPanel>
+                                            <Grid x:Name="ReviewDomainHeader" Background="{DynamicResource AttributeHeaderBackground}">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="0.44*" /><ColumnDefinition Width="0.56*" /></Grid.ColumnDefinitions>
+                                                <TextBlock Text="Domain" Margin="12,7" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
+                                                <TextBlock Grid.Column="1" Text="Domain controller" Margin="12,7" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
+                                            </Grid>
+                                            <ItemsControl x:Name="ReviewDomains" ItemsSource="{Binding Review.WillBeRead}">
+                                                <ItemsControl.ItemTemplate><DataTemplate>
+                                                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions><ColumnDefinition Width="0.44*" /><ColumnDefinition Width="0.56*" /></Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{Binding Domain}" Style="{StaticResource BaseTextBlock}" Margin="12,8" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource PrimaryTextBrush}" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding Controller}" Style="{StaticResource BaseTextBlock}" Margin="12,8"
+                                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate></ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
                                     <TextBlock Text="{Binding UnattestedExclusionNote}" Style="{StaticResource WizardText}" Foreground="{DynamicResource FaultBrush}" Visibility="{Binding HasUnattestedExclusions,Converter={StaticResource Shown}}" />
-                                    <TextBlock Text="{Binding Review.NotReadHeading}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,6" />
+                                    <TextBlock TextWrapping="Wrap" Margin="0,10,0,12">
+                                        <TextBlock.Style><Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{Binding Review.NotReadHeading}" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Review.NotReadCount}" Value="0">
+                                                    <Setter Property="Text" Value="No domains excluded." />
+                                                    <Setter Property="FontWeight" Value="Normal" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style></TextBlock.Style>
+                                    </TextBlock>
                                     <ItemsControl ItemsSource="{Binding Exclusions}">
                                         <ItemsControl.ItemTemplate><DataTemplate>
                                             <StackPanel Margin="0,0,0,8">
-                                                <TextBlock Text="{Binding Domain}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding Why}" TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding Stated}" TextWrapping="Wrap" />
-                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap" Visibility="{Binding HasNote,Converter={StaticResource Shown}}" />
-                                                <TextBlock Text="{Binding AuthorisedBy,StringFormat='Authorised by {0}, as typed.'}" TextWrapping="Wrap" Visibility="{Binding IsAttested,Converter={StaticResource Shown}}" />
+                                                <TextBlock Text="{Binding Domain}" Style="{StaticResource BaseTextBlock}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Why}" Style="{StaticResource BaseTextBlock}" />
+                                                <TextBlock Text="{Binding Stated}" Style="{StaticResource BaseTextBlock}" />
+                                                <TextBlock Text="{Binding Note}" Style="{StaticResource BaseTextBlock}" Visibility="{Binding HasNote,Converter={StaticResource Shown}}" />
+                                                <TextBlock Text="{Binding AuthorisedBy,StringFormat='Authorised by {0}, as typed.'}" Style="{StaticResource BaseTextBlock}" Visibility="{Binding IsAttested,Converter={StaticResource Shown}}" />
                                             </StackPanel>
                                         </DataTemplate></ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Expander Header="Object scope and optional inclusion" Margin="0,10,0,0">
-                                        <StackPanel Margin="8">
-                                            <TextBlock Text="{Binding ObjectClassesHeading}" Style="{StaticResource WizardText}" FontWeight="SemiBold" />
-                                            <CheckBox x:Name="IncludeEnatelSsoCheckBox" Content="{Binding IncludeEnatelSsoLabel}"
-                                                      IsChecked="{Binding IncludeEnatelSso,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding MayChangeObjectScope}" />
-                                            <TextBlock Text="{Binding ObjectScopeHelp}" Style="{StaticResource WizardText}" />
-                                            <TextBlock Text="{Binding ExcludedClassesHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                            <ItemsControl ItemsSource="{Binding ExcludedObjectClasses}" />
-                                        </StackPanel>
-                                    </Expander>
-                                    <Expander Header="Optional SYSVOL check" Margin="0,10,0,0">
-                                        <StackPanel Margin="8">
-                                            <CheckBox Content="{Binding ScanGppPasswordsLabel}"
-                                                      IsChecked="{Binding ScanGppPasswords,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                                                      IsEnabled="{Binding MayChangeObjectScope}" />
-                                            <TextBlock Text="{Binding ScanGppPasswordsHelp}" Style="{StaticResource WizardText}"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                    </Expander>
-                                    <TextBlock Text="No directory modifications or remediation. A successful read can still contain limitations."
-                                               Style="{StaticResource WizardText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,12,0,0" />
-                                </StackPanel>
-                            </Border>
-                            <Border Background="{DynamicResource FaultSubtleBrush}" Padding="12" Margin="0,0,0,12"
-                                    Visibility="{Binding Review.HasWarnings,Converter={StaticResource Shown}}">
-                                <StackPanel><TextBlock Text="Worth knowing before you start" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <ItemsControl ItemsSource="{Binding Review.Warnings}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,4,0,0" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                                    <WrapPanel x:Name="ReviewOptions">
+                                        <Expander Header="Object scope and optional inclusion" Margin="0,0,10,0" MaxWidth="680" VerticalAlignment="Top">
+                                            <StackPanel Margin="8">
+                                                <TextBlock Text="{Binding ObjectClassesHeading}" Style="{StaticResource WizardText}" FontWeight="SemiBold" />
+                                                <CheckBox x:Name="IncludeEnatelSsoCheckBox" Content="{Binding IncludeEnatelSsoLabel}"
+                                                          IsChecked="{Binding IncludeEnatelSso,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding MayChangeObjectScope}" />
+                                                <TextBlock Text="{Binding ObjectScopeHelp}" Style="{StaticResource WizardText}" />
+                                                <TextBlock Text="{Binding ExcludedClassesHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                <ItemsControl ItemsSource="{Binding ExcludedObjectClasses}" />
+                                            </StackPanel>
+                                        </Expander>
+                                        <Expander Header="Optional SYSVOL check" MaxWidth="680" VerticalAlignment="Top">
+                                            <StackPanel Margin="8">
+                                                <CheckBox Content="{Binding ScanGppPasswordsLabel}"
+                                                          IsChecked="{Binding ScanGppPasswords,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+                                                          IsEnabled="{Binding MayChangeObjectScope}" />
+                                                <TextBlock Text="{Binding ScanGppPasswordsHelp}" Style="{StaticResource WizardText}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Expander>
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

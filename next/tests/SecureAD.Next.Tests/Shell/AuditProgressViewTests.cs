@@ -100,19 +100,21 @@ public sealed partial class AuditProgressViewTests
         Assert.False(Assert.Single(Descendants<ProgressBar>(panel)).IsIndeterminate);
     }
 
-    private static FrameworkElement LoadView()
+    private static FrameworkElement LoadView() => LoadView("NewAuditView.xaml");
+
+    private static FrameworkElement LoadView(string fileName)
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
         var shell = Path.Combine(Architecture.RebuildTree.Root(), "src", "SecureAD.Shell");
-        var root = XDocument.Load(Path.Combine(shell, "Views", "NewAuditView.xaml")).Root!;
+        var root = XDocument.Load(Path.Combine(shell, "Views", fileName)).Root!;
         root.Attribute(xaml + "Class")!.Remove();
         root.Attribute(xaml + "ClassModifier")!.Remove();
         // The unused details dialog template requires compiled internal types. The audit surface
         // and all its progress/outcome bindings are loaded from the unmodified production XAML.
-        var resources = root.Element(wpf + "UserControl.Resources")!;
-        var styles = resources.Elements(wpf + "Style").ToArray();
-        resources.Remove();
+        var resources = root.Element(wpf + "UserControl.Resources");
+        var styles = resources?.Elements(wpf + "Style").ToArray() ?? [];
+        resources?.Remove();
         var assembly = typeof(NewAuditViewModel).Assembly.GetName().Name;
         root.SetAttributeValue(XNamespace.Xmlns + "vm", "clr-namespace:SecureAD.Shell.ViewModels;assembly=" + assembly);
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
