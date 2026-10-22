@@ -200,6 +200,14 @@ Continue from the main workspace on the fresh branch after consolidation; this G
 authorize another implementation batch, new performance measurements, analysis changes, live access
 or re-judgement while he tests the existing lab package.
 
+**Retire old standalone benchmark projects without a large cleanup programme - owner direction, 2026-10-22.**
+The owner approved a quick, bounded cleanup of the old benchmark projects rather than keeping them
+compatible with the current application.
+Remove BenchmarkSuite1/2/6/7 from the everyday build, preserve their exact historical source and
+existing results/inputs, and retain the current application, correctness tests and tools those tests use.
+This does not authorize new benchmark runs, performance tooling, analysis changes or replacement
+of the lab build being tested.
+
 **Complete LAPS analysis review at the end - owner direction, 2026-10-21.**
 During the Findings review the owner deferred both the proposed expiry-reference-time choice and
 the choice of reporting either overdue LAPS signal rather than the existing combined predicate.
