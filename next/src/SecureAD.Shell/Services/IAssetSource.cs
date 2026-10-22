@@ -196,7 +196,7 @@ internal interface IAssetReader
     /// </remarks>
     Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query);
 
-    /// <summary>Reads the existing Findings display without opening original proof stores.</summary>
+    /// <summary>Reads saved Findings display values and selected completeness headers, without reconstructing full proof.</summary>
     Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query);
 
     /// <summary>Reads what the findings grid's filters may offer.</summary>

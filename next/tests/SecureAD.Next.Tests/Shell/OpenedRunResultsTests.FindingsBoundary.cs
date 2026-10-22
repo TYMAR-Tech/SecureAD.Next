@@ -37,8 +37,10 @@ public sealed partial class OpenedRunResultsTests
             }
         }
         var expected = original.Findings.Select(finding => FindingDisplaySnapshot(new(finding))).ToArray();
+        var permissionHeaders = original.Findings.Any(finding => finding.Evidence is PrivilegedSidHistoryEvidence
+            or ObjectOwnershipEvidence or ObjectTakeoverEvidence or LapsPasswordReaderEvidence or LapsDecryptorEvidence);
         using var counts = new FindingsVerificationCounts(directory);
-        using var locks = new FindingsHeavyLocks(directory);
+        using var locks = new FindingsHeavyLocks(directory, permissionHeaders: permissionHeaders);
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         screen.Show(directory, aCaptureIsRunning: false);
@@ -61,6 +63,11 @@ public sealed partial class OpenedRunResultsTests
                 ServiceAccountFindingEvidence value => value.IsComplete,
                 AttributeWritePermissionEvidence value => value.IsComplete,
                 ReplicationPermissionEvidence value => value.IsComplete,
+                PrivilegedSidHistoryEvidence value => value.IsComplete,
+                ObjectOwnershipEvidence value => value.IsComplete,
+                ObjectTakeoverEvidence value => value.IsComplete,
+                LapsPasswordReaderEvidence value => value.IsComplete,
+                LapsDecryptorEvidence value => value.IsComplete,
                 _ => true,
             });
             Assert.Equal(complete ? "Complete" : "May be incomplete", screen.Findings[index].Coverage);
@@ -73,13 +80,17 @@ public sealed partial class OpenedRunResultsTests
         screen.Pane = AssetsPane.Findings;
         await screen.ReadCompletion;
         Assert.Equal(expected, screen.Findings.Select(FindingDisplaySnapshot));
-        Assert.Equal((1L, 0L), (counts.Count("judgement"), counts.Heavy));
+        Assert.Equal((1L, permissionHeaders ? 1L : 0L, 0L, 0L, 0L, 0L),
+            (counts.Count("judgement"), counts.Count("permission"), counts.Count("path"),
+                counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
         screen.Suspend();
         source.CloseRun();
         screen.Show(directory, aCaptureIsRunning: false);
         await screen.ReadCompletion;
         Assert.Equal(expected, screen.Findings.Select(FindingDisplaySnapshot));
-        Assert.Equal((2L, 0L), (counts.Count("judgement"), counts.Heavy));
+        Assert.Equal((2L, permissionHeaders ? 2L : 0L, 0L, 0L, 0L, 0L),
+            (counts.Count("judgement"), counts.Count("permission"), counts.Count("path"),
+                counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
         FindingsViewTests.VerifySavedRowsRender(screen);
     }
 
@@ -511,9 +522,11 @@ public sealed partial class OpenedRunResultsTests
     private sealed class FindingsHeavyLocks : IDisposable
     {
         private readonly List<FileStream> _files = [];
-        internal FindingsHeavyLocks(string directory, bool capture = true, StoreRootManifest? publication = null)
+        internal FindingsHeavyLocks(string directory, bool capture = true, StoreRootManifest? publication = null,
+            bool permissionHeaders = false)
         {
-            var paths = (publication ?? FindingsPublication(directory)).Segments.Where(segment => segment.Role != StoreSegmentRole.Judgement)
+            var paths = (publication ?? FindingsPublication(directory)).Segments.Where(segment => segment.Role != StoreSegmentRole.Judgement
+                    && (!permissionHeaders || segment.Role != StoreSegmentRole.PermissionProof))
                 .Select(segment => Path.Combine(directory, segment.FileName)).ToList();
             if (capture)
             {

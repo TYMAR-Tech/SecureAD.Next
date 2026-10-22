@@ -57,6 +57,11 @@ public sealed record FindingListItem(
         ServiceAccountFindingEvidence value => value.IsComplete,
         AttributeWritePermissionEvidence value => value.IsComplete,
         ReplicationPermissionEvidence value => value.IsComplete,
+        PrivilegedSidHistoryEvidence value => value.IsComplete,
+        ObjectTakeoverEvidence value => value.IsComplete,
+        ObjectOwnershipEvidence value => value.IsComplete,
+        LapsPasswordReaderEvidence value => value.IsComplete,
+        LapsDecryptorEvidence value => value.IsComplete,
         _ => true,
     };
 }

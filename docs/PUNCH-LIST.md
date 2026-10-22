@@ -180,7 +180,7 @@ Propose exact disagreement wording before UI edits, and obtain an owner decision
 **SCOUT-06 - legacy permission calculation - HIGH, open.**
 SEC-060 reports complete takeover for the reproduced ordered Everyone WRITE_DAC deny followed by an Authenticated Users allow, and the shared legacy calculator also credits unsupported callback entries as unconditional rights.
 Reuse the stronger ordered, operation-aware proof machinery for cross-trustee denies, unsupported entries, scope and inheritance, preserving independently established WRITE_DAC rather than importing uncertainty from a hypothetical owner transition.
-Verify deny and independent-grant controls through saved output, and label full control only when the separate stronger assessment establishes it rather than when a whole-object mask summary hides a scoped restriction.
+Verify deny and independent-grant controls through saved output, label full control only when the separate stronger assessment establishes it rather than when a whole-object mask summary hides a scoped restriction, and do not claim the inherited source container is known from SEC-060's inherited-class/scope marker.
 
 **SCOUT-07 - accepted-owner authorization and target partition - HIGH, open.**
 SEC-031/032 accept distribution/unknown-type nesting as administration, omit primary-group authorization, and can treat a principal's unreadable SID as a genuinely SID-less nonprincipal.
@@ -194,7 +194,7 @@ Verify the complete saved requester/finding path and an ordinary no-history cont
 
 **SCOUT-09 - LAPS password-attribute permission proof - HIGH, open.**
 SEC-090 omits class/property-set scope, always requires confidentiality control access regardless of captured flags, loses known descriptor incompleteness on positive output and suppresses review when the AD computer account is disabled.
-Use existing scoped read/proof infrastructure and captured confidentiality flags, keep named-holder grants distinct from combined concrete requester authorization, and do not equate directory-account disablement with absence of stored secrets or a local account.
+Use existing scoped read/proof infrastructure and captured confidentiality flags, keep named-holder grants distinct from combined concrete requester authorization, do not equate directory-account disablement with absence of stored secrets or a local account, and do not present the saved inherited-class/scope marker as an originating container.
 Preserve encrypted attribute read versus decryption, explicit short/unsupported-descriptor uncertainty and all relevant supporting exposures at the existing finding grain without assuming that removing one representative route closes every path.
 
 **SCOUT-10 - unreturned optional attributes and shared completeness - HIGH, open.**
@@ -210,12 +210,12 @@ Verify captured zero-valued catalogue entries and malformed inputs, preserve est
 **SCOUT-12 - membership totals, cycles and invisible routes - MEDIUM, open.**
 SEC-050's nested Known total can lack a source limitation for an empty nested member list, SEC-052 can overstate no-cycle completeness, and SEC-100/requester selection can miss invisible membership without an assessed unknown question.
 Preserve Direct counts and their strict thresholds, qualify captured totals/graphs and separate never-selected scope from unresolved assessed questions and whole-run capture limitations.
-Retain the already present SEC-050/051/061/062 safeguards for empty visited target/group lists and verify hidden forward-plus-backward relationships, independent positive witnesses and saved completeness across inventory and findings.
+Retain the already present SEC-050/051/061/062 safeguards for empty visited target/group lists and verify hidden forward-plus-backward relationships, independent positive witnesses and saved completeness across inventory and findings; the shared finding-summary projection omission is tracked separately as RESP-07-F05 in [the responsiveness queue](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md).
 
-**SCOUT-13 - historical LAPS time and separate account signals - HIGH, open; scope decision.**
+**SCOUT-13 - historical LAPS time and separate account signals - HIGH, open; scope decision deferred to the owner's complete LAPS analysis review at the end.**
 SEC-092 rejudges old captured expiry against the production hosts' current clock and claims later nonrotation, while one fresh product timestamp suppresses another stale one even though Microsoft supports coexistence on different local accounts.
 Retain both timestamp observations and explicit capture/evaluation times, correct the unsupported no-change/current-outage claim, and recommend capture-relative historical review with the existing 24-hour grace and Medium severity.
-Obtain approval before changing the existing nothing-here-rotated predicate into independent signal/account findings, then verify both hosts, boundary conditions, old evidence, residue and side-by-side controls without inventing local-account mapping.
+The owner deferred comparison-time and separate-signal decisions until a complete LAPS analysis review at the end; obtain approval before changing the existing nothing-here-rotated predicate, then verify both hosts, boundary conditions, old evidence, residue and side-by-side controls without inventing local-account mapping.
 
 **SCOUT-14 - timestamp quality and LAPS inventory state - MEDIUM, open.**
 Malformed and zero/reset expiration values can leave SEC-091/092/094 complete and empty, while saved inventory calls raw presence management, both values migration and mere eligibility IsJudged.
@@ -233,7 +233,7 @@ Apply documented Registry.pol operations at the exact root, preserve raw values 
 Verify all deletion forms, overwrite/blank/type cases, wrong prefixes and partial positives through storage/readback, leaving exact unsupported Windows blank/type behavior explicitly lab-bound rather than guessing it.
 
 **SCOUT-17 - operator claims and conditional remediation - MEDIUM, open.**
-SEC-010/011/021/022/027/029/030/031/032/033 guidance overstates eligible ticket issuance, current reversible storage, historical privilege, unconditional owner power or a fixed one-hour/two-cause SDProp diagnosis.
+SEC-010/011/021/022/027/029/030/031/032/033 guidance overstates eligible ticket issuance, current reversible storage, historical privilege, unconditional owner power or a fixed one-hour/two-cause SDProp diagnosis, and SEC-027 offers a user-only removal command for its computer/group subjects.
 Update affected title, detail, WhyItMatters, About, WhatToDo and typed convenience properties together using observed evidence, review reason, limitations, verification and conditional remediation with dependency risks.
 Preserve setting-based dormant findings, historical-sensitive-identifier review, existing SEC-100/101 association/nonrotation wording and SEC-012/013 configuration-only limits, with explicit approval before displayed wording changes.
 

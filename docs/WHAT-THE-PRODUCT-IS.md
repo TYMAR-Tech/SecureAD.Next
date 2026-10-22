@@ -103,6 +103,114 @@ current credential exposure, historical authority or effective device policy.
 Captured ownership findings, named-holder permission proofs, concrete requester authorization,
 successful operations and completed paths to Tier 0 remain distinct.
 
+**Risk and practical mitigation rather than derivation proof - owner direction, 2026-10-21.**
+The owner clarified that end users need to understand the risk and how to address it, not inspect
+the evidence SecureAD used to derive the finding, particularly when preparing that evidence for
+display can make the application unresponsive.
+This revises the earlier requirement to expose full supporting membership chains on ordinary
+finding screens; it does not discard the saved evidence or the independent membership information
+needed to avoid misleading action guidance.
+The owner further clarified that showing nesting is useful when it makes the issue and the action
+understandable: review all user-visible areas for unnecessary evidence versus information needed
+to understand and address the issue, rather than removing relationships indiscriminately.
+Recommend concise risk, the specific objects or settings an administrator must review, and practical
+verification and conditional remediation, while retaining relevant uncertainty and the distinction
+between protected-account status and actual authorization.
+The exact actionable facts, wording and implementation scope still need owner approval; the later
+Findings workflow direction below reuses the liked mockup rather than requiring another mockup for
+each rule.
+No analysis change, saved-format change, deletion of proof or complete-remediation claim is
+authorized by this direction.
+The owner requires a deliberate screen-by-screen approach, starting with Findings: explain each
+proposed change, its performance implications and non-regression checks before implementation,
+using the accepted visual direction where it already covers the choice.
+Less text is not itself evidence of faster browsing; compare actual before/after screen usability
+and preserve existing correctness, saved results and performance rather than assuming improvement.
+The owner clarified that Findings means the generic presentation for every implemented rule, not
+a SEC-021-specific redesign, and requires evaluation of every rule and every tab.
+Use a consistent presentation with rule-specific facts, relationships and conditional actions;
+nesting is one applicable case, not a required shape for account settings, duplicate SPNs,
+ownership, policy observations or other findings.
+Track each current rule and each user-visible area explicitly: a few illustrative mockup cases
+or the earlier source inventory do not constitute acceptance of all rules or screens.
+The owner agreed to this review approach on 2026-10-21; individual content, mockup,
+implementation and measurement approvals remain separate.
+
+**Finding grids and rule-specific pop-outs - owner-approved design direction, 2026-10-21.**
+The object Findings tab should list its findings in a grid rather than display multiple complete
+finding cards together, and double-clicking a finding should open its rule-specific detail window.
+The owner selected the same direct finding-window action for the main Findings grid, rather than
+opening the object first, and selected no main-screen preview: the explanation belongs in the
+pop-out, not in a second inline presentation.
+Offer an action in the finding window to open the affected object for context, preserve the grid's
+selection/filter/page state on return, and retain bounded object-finding paging.
+Use a common window frame with content appropriate to each rule; this does not force all rules
+into a membership layout or replace their individual information reviews.
+Remove the old eager full-preview/card path as part of the approved future correction rather than
+leaving it preparing unused details, and measure both grid responsiveness and the complete
+finding-window opening/read/draw/input path so the cost is not merely moved into the pop-out.
+This approves the direction for the next mockup and plan update, not application implementation,
+new measurement runs, changed saved formats or analysis, live access, re-judgement, commit or push.
+After viewing the interactive Findings mockup, the owner said he liked it; retain the shown grid
+design and charcoal styling, without treating that feedback as approval of every pop-out, all 32
+rule contents or application implementation.
+
+**Do not repeat Findings mockups once the direction is settled - owner direction, 2026-10-21.**
+The owner questioned further mockups as a waste of time when he already knows the direction he
+wants, then requested that the review be documented for likely implementation in a new session.
+Use the liked two-grid/direct-pop-out/no-preview design and charcoal styling as the visual baseline,
+with the individual rule-content proposals, rather than requiring more pictures for routine
+rule-specific variations.
+Present a concise bounded implementation scope for approval, then build in small complete batches
+and review the actual working screens; obtain a new design decision only for a material departure
+from the settled direction, not as a prerequisite to applying it.
+This supersedes the earlier requirement for another per-rule Findings mockup round, not the
+requirement for truthful content, explicit implementation approval or real before/after usability
+verification.
+The owner has not authorized application implementation or new measurement tools/runs by requesting
+documentation and a new-session handoff, and calculation corrections, changed saved formats and
+the deferred complete LAPS analysis remain separate decisions.
+
+**Owner testing between Findings implementation batches - owner direction, 2026-10-22.**
+The owner rejected implementing the shared Findings redesign and all 32 rule presentations at once,
+preferring small batches that he can test as the work proceeds.
+Present one small, self-contained implementation scope for approval, validate it, and wait for his
+testing feedback before beginning the next batch; retain the settled visual direction and completed
+content review rather than restarting either.
+The first approved correction is saved-finding completeness for SID history, ownership, broad
+control, LAPS readers and LAPS decryptors only, preserving existing current-format results without
+rewriting them or changing calculations, wording, layout or paging.
+The owner accepted that selected metadata may need the permission-proof file's once-per-open
+integrity check; circular-membership completeness remains a separate batch because its original
+flag is stored only inside the full proof record.
+This approval includes focused offline correctness checks and isolated rebuilt negative controls,
+not new performance measurements, re-judgement, a package, commit or push.
+After validation, the owner separately authorized a self-contained Windows x64 lab ZIP of this
+first correction for testing, without replacing the earlier lab package or production build/results.
+That packaging request does not authorize another implementation batch, new performance
+measurements, live access, re-judgement, commit or push.
+
+**Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
+The owner requested committing the approved pending work, bringing the tested line into `main`,
+pushing it and retiring the old work branches before continuing on a fresh Findings branch.
+He approved preserving the two superseded storage experiments and their historical notes as archive
+tags rather than restoring their code, replacing the inaccessible old remote connection with the
+working TYMAR-Tech repository as `origin`, and retaining every worktree folder and its builds/evidence.
+Continue from the main workspace on the fresh branch after consolidation; this Git request does not
+authorize another implementation batch, new performance measurements, analysis changes, live access
+or re-judgement while he tests the existing lab package.
+
+**Complete LAPS analysis review at the end - owner direction, 2026-10-21.**
+During the Findings review the owner deferred both the proposed expiry-reference-time choice and
+the choice of reporting either overdue LAPS signal rather than the existing combined predicate.
+Revisit those questions "at the very end" in a complete review of how SecureAD analyzes LAPS;
+neither capture-relative assessment nor either-signal reporting was approved by that discussion.
+Continue the current information/presentation review without silently changing LAPS analysis,
+finding grain, reference times, thresholds or severities, and retain the known limitations for
+that full review rather than treating clearer pop-outs as corrected calculations.
+This does not authorize code changes, new measurements, password collection, endpoint access,
+changed saved results or re-judging the existing production run.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility
@@ -2496,6 +2604,14 @@ Do not display the "Worth knowing before you start" block, including the single-
 After reviewing the standalone mockup, the owner explicitly approved implementation: "Domains to audit" with Domain/Domain controller columns and a selected count, visible run-option labels with short descriptions, compact optional controls, and dark text on the pale-blue Start button.
 Preserve readiness decisions, explicit exclusions and their authorization details, optional capture choices, backend behavior and saved formats; this does not authorize changing the run-progress or saved-results screens.
 The owner is still re-judging production with `000d1fe7`; warn before a later change could affect its performance or invalidate or incompatibly alter its results, and do not replace that build, access a live directory, commit or push without a new request.
+
+**Owner-requested progress and Results mockup, 2026-10-21.**
+The owner requested replacing "What this audit produced" with "Results", reducing repeated explanatory text, and showing clearer, more useful progress without predicting time remaining.
+Use the supplied predecessor progress screenshot as an alternative presentation to evaluate, while preserving the distinction between sealed evidence, saved or limited analysis, work not requested or not assessed, and stopped or failed work.
+After reviewing the interactive mockup and the stated need for additional capture and work-specific analysis reports, the owner explicitly approved implementing the proposed progress and Results presentation.
+This covers the compact three-stage strip, reported work and per-scope capture counts, elapsed and last-work-report values, concise saved outcomes with expandable reasons and coverage, and existing stop confirmation; it does not authorize extra directory queries, guessed totals or ETA, changed analysis decisions, saved formats or processing limits.
+Keep the current lab package and production run unchanged, verify the reporting and its cost offline, and obtain a new request before live access, packaging, commit or push.
+After trying the revised New audit screens, the owner reported on 2026-10-21 that he liked them much better; this confirms the presentation direction, not production-scale reporting performance or acceptance of unrelated browsing journeys.
 
 **Owner-requested Groups browsing mockup, 2026-10-06.**
 After SEC-052, the owner requested a Groups view like the predecessor's inventory to help an

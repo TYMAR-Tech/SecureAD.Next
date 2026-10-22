@@ -9,7 +9,7 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    /// <summary>Reads only saved display values and this page's membership support, never original proof.</summary>
+    /// <summary>Reads saved display values, this page's membership support and selected completeness headers, never full proof.</summary>
     public Result<FindingListPage> ReadListPage(FindingsQuery query)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -24,10 +24,56 @@ public sealed partial class JudgementReader
             f.distinguished_name,f.detail,f.coverage,f.domain_fqdn,f.object_class,f.principal_name,
             r.rule_version,f.list_kind,f.evidence_complete,f.protection_catalogue_version,
             f.direct_protection_entry_id,f.direct_protection_name
-            """, "JOIN rule_execution r ON r.rule_id=f.rule_id", ReadListItem);
-        return page.IsSuccess
-            ? Result<FindingListPage>.Success(new(page.Value.Rows, page.Value.Next, page.Value.RulesRan))
-            : Result<FindingListPage>.Failure(page.Error);
+            """, "JOIN rule_execution r ON r.rule_id=f.rule_id",
+            row => (Id: row.GetInt64(0), Item: ReadListItem(row)));
+        if (!page.IsSuccess)
+            return Result<FindingListPage>.Failure(page.Error);
+        var findings = new List<FindingListItem>(page.Value.Rows.Count);
+        foreach (var (id, item) in page.Value.Rows)
+        {
+            var complete = ReadListCompleteness(id, item);
+            findings.Add(complete == item.EvidenceIsComplete ? item : item with { EvidenceIsComplete = complete });
+        }
+        return Result<FindingListPage>.Success(new(findings, page.Value.Next, page.Value.RulesRan));
+    }
+
+    private bool ReadListCompleteness(long findingId, FindingListItem item)
+    {
+        _readCancellation.ThrowIfCancellationRequested();
+        // Existing same-format summaries defaulted these families to complete. Their original
+        // scalar headers remain authoritative; no values, membership paths or proof JSON are read.
+        var sql = item.RuleId switch
+        {
+            "SEC-027" => """
+                SELECT CASE WHEN typeof(unreadable_values)='integer' AND unreadable_values>=0
+                    THEN unreadable_values=0 END
+                FROM finding_privileged_sid_history WHERE finding_id=$id
+                """,
+            "SEC-031" or "SEC-032" => """
+                SELECT membership_was_complete FROM finding_object_ownership WHERE finding_id=$id
+                """,
+            "SEC-060" => """
+                SELECT expansion_was_complete FROM finding_object_takeover WHERE finding_id=$id
+                """,
+            "SEC-090" => """
+                SELECT expansion_was_complete FROM finding_laps_password_reader WHERE finding_id=$id
+                """,
+            "SEC-093" => """
+                SELECT CASE WHEN typeof(expansion_was_complete)='integer' AND expansion_was_complete IN (0,1)
+                    THEN expansion_was_complete AND decryptor_sid IS NOT NULL END
+                FROM finding_laps_decryptor WHERE finding_id=$id
+                """,
+            _ => null,
+        };
+        if (sql is null) return item.EvidenceIsComplete;
+        OpenPart(StoreSegmentRole.PermissionProof);
+        using var command = _connection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("$id", findingId);
+        var saved = command.ExecuteScalar();
+        if (saved is not long complete || complete is not (0 or 1))
+            throw new InvalidDataException($"Saved finding {findingId} ({item.RuleId}) has no valid completeness header.");
+        return complete == 1;
     }
 
     private FindingListItem ReadListItem(SqliteDataReader row)
