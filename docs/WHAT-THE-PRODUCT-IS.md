@@ -61,6 +61,15 @@ The owner is the only developer and stated that no earlier decision is immutable
 This supersedes any wording that treats hashing every file at every open, per-record proof, tamper-evidence or "skipping proof is rejected" (PERF-01 below) as a requirement; decision `0020` already called the seal a corruption control and said its open-time cost had to be measured in production before being accepted, where it was 246 seconds for 38.6 GB.
 It is not a decision to stop detecting damage: a 2026-10-17 synthetic test found SQLite itself reported none of 200 random one-bit changes inside stored values, silently returned wrong data for 174 of them, and `PRAGMA quick_check` said "ok" for all 174, so some checksum is still needed, and when it runs, whether results may be browsed while it finishes, and whether RESP-05's per-record proof is kept or replaced remain a recommendation awaiting his approval.
 
+**Pay the integrity check once when a run is opened, then browse without re-checking - owner direction, 2026-10-17.**
+The owner is willing to wait 3-5 minutes once when a run is opened if nothing after that hashes or re-validates the data and every screen is then served from prepared tables and indexes; he wants a build that works this way and wants its cost measured in production, where he runs the build and returns only the run log and run summary (the data boundary is unchanged).
+This settles *when* the check runs (once, at open). It is a direction, not approval of an implementation: whether results may be browsed while the check finishes, whether RESP-05 is retired, and any on-screen "checking saved data" wording still need his explicit approval.
+
+**Judging time is accepted; browsing results is the remaining problem - owner direction, 2026-10-17.**
+The owner said he was more than happy with the 4 h 37 m 25 s production judging time (the 2026-10-05 production log recorded under PERF-01/PERF-02) and that the only remaining problem he named is browsing results in the UI.
+That time is an accepted baseline, not something to reduce: RESP-08 is not pursued unless he reverses this, work added to judging for browsing is still reported against it (the PERF-02 non-regression gate stands), and responsiveness effort goes to what a person waits for when opening and browsing a saved run.
+He named no other stage as a problem; this does not by itself change the status of capture (RESP-09) or derivation (RESP-10).
+
 ## What a finding means
 
 **Verification recommendations from captured evidence - owner clarification supplied with the
@@ -7376,6 +7385,29 @@ Production has nine domains and approximately 25 years of accumulated complexity
 return to the development box, but only production run logs and summaries can return here.
 Synthetic scale testing is informed by the observed production workload below, not a claim that
 matching object or domain counts reproduces that complexity.
+
+**The three machines, and what each can be trusted for - owner clarification, 2026-10-17.**
+The development box is a fairly powerful work laptop; offline correctness work and relative-cost
+comparisons happen there. The laboratory is a three-domain forest hosted in Azure, and the
+application runs from a Windows 11 machine inside it; its storage is cloud storage, expected to be
+much slower than either laptop's. It exists to test rule logic, so its timings are wall-clock facts
+about one run, not a basis for performance conclusions. Production is the customer's environment,
+run from a semi-decent Windows 11 laptop that is probably much faster than the laboratory; that
+speed has not been measured. Working rules that follow (engineering practice, not owner direction):
+compare designs by relative cost on identical inputs on one machine, take production facts only
+from the permitted run logs and summaries, and record a machine's capabilities (processor, memory,
+disk type, antivirus) before quoting a figure from it.
+
+**Which captures a build can open - owner facts and measured result, 2026-10-17.**
+The owner builds the application in Visual Studio, so the commit behind the build in production (built 2026-10-12) is not known from outside; lab and production are reached through just-in-time access that can be down for maintenance, so a lab run cannot be assumed available.
+A build opens only captures written in exactly its own formats and refuses any other, older or newer, with no migration: the clean `c690b357` build needs Evidence 17 and capture root 4, while every commit from 2026-10-11 to 2026-10-13 wrote Evidence 16 with no capture root, so any 2026-10-12 build's captures are refused whichever commit it was (measured on a copy of the 2026-10-11 lab bundle: schema 16 against 17, no `evidence.current.json`), and the 2026-10-16/17 lab capture was written by the RESP-05 build (Evidence 19, capture root 5) and is refused for the same reason.
+Moving a machine to a different build therefore means a new capture there; re-deriving and re-judging an existing capture without recapturing works only for captures in the running build's own format (checked on a copy in this build's format), and a quick check on any run folder is whether it holds `evidence.current.json`.
+
+**Lab disk upgraded - owner report, 2026-10-17.**
+The owner upgraded the laboratory Windows 11 machine's disk from Azure standard SSD to premium SSD and expects its limit to rise from about 6,000 to about 20,000 operations per second (IOPS); that is his expectation, not a measurement, and Azure caps a disk by its virtual machine's own size as well ([Virtual machine and disk performance](https://learn.microsoft.com/azure/virtual-machines/disks-performance)).
+Laboratory timings from before the change, including the 86-second (2026-10-11) and 163-second (2026-10-16) judging runs, came from the old disk and are not directly comparable with later ones: compare only runs made on the same disk, and inventory the machine again before quoting a figure from it.
+The owner's 2026-10-17 inventory shows the laboratory machine is an Azure `Standard_B8ms` (burstable, 8 vCPUs of Xeon Platinum 8171M, 31.9 GB) with a 128 GB `Premium_LRS` system disk (host caching ReadWrite), a 64 GB temporary D: drive and Defender real-time protection on with no exclusions, with the run library on C:.
+Microsoft documents a 128 GiB Premium SSD (P10) at 500 base IOPS bursting to 3,500, a 128 GiB Standard SSD (E10) at up to 500 (600 burst) and the `B8ms` at 4,320 uncached IOPS and 50 MB/s (burst 8,000 and 200), so 6,000 and 20,000 IOPS are the 32 TiB disk maximums and not this machine's limits ([disk types](https://learn.microsoft.com/azure/virtual-machines/disks-types), [Bv1 sizes](https://learn.microsoft.com/azure/virtual-machines/sizes/general-purpose/bv1-series)); the clean-package run on it showed little disk effect, and its software SHA-256 measured about 250 MB/s on 9-11 MB files against about 2.3 GB/s on the development laptop.
 
 **Latest completed-production workload, 2026-10-10, with approved Enatel metadata exclusions.**
 These counts come from the supplied log/summary, not a database imported from production.
