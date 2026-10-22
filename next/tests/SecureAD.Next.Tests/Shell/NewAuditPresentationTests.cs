@@ -94,8 +94,8 @@ public sealed class NewAuditPresentationTests
         Assert.Equal(phase == "derive" ? AuditOutputState.Stopped : phase == "judge" ? AuditOutputState.Saved : AuditOutputState.NotStarted, model.DerivationOutput);
         Assert.Equal(phase == "judge" ? AuditOutputState.Stopped : AuditOutputState.NotStarted, model.JudgementOutput);
         Assert.Equal(phase != "capture", model.BundleDirectory is not null);
-        Assert.Equal("What this audit produced", model.StepQuestion);
-        Assert.NotNull(model.ResultsNote);
+        Assert.Equal("Results", model.ScreenHeading);
+        Assert.Equal(phase != "capture", model.HasSealedEvidence);
     }
 
     [Theory]
@@ -144,7 +144,7 @@ public sealed class NewAuditPresentationTests
         Assert.NotNull(seen);
         Assert.True(seen.Value.Requested && seen.Value.Cleared);
         Assert.False(seen.Value.TokenCancelled);
-        Assert.Contains("already sealed", seen.Value.Explanation);
+        Assert.Contains("will be kept", seen.Value.Explanation);
         Assert.Equal(AuditOutputState.Saved, model.JudgementOutput);
     }
 

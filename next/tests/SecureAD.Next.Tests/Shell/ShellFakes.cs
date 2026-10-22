@@ -771,6 +771,8 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
     public bool? AskedToIncludeEnatelSso { get; private set; }
     public bool? AskedToScanGppPasswords { get; private set; }
     public Action? WhenCapturing { get; set; }
+    public IProgress<SecureAD.Kernel.Capture.CaptureProgress>? CaptureProgress { get; private set; }
+    public Task<Result<CaptureOutcome>>? CaptureTask { get; set; }
 
     public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
@@ -780,6 +782,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
         int domainsAtOnce,
         bool includeEnatelSso,
         bool scanGppPasswords,
+        IProgress<SecureAD.Kernel.Capture.CaptureProgress> progress,
         CancellationToken cancellationToken)
     {
         AskedForRoot = libraryRoot;
@@ -788,6 +791,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
         AskedWithDomainsAtOnce = domainsAtOnce;
         AskedToIncludeEnatelSso = includeEnatelSso;
         AskedToScanGppPasswords = scanGppPasswords;
+        CaptureProgress = progress;
         WasRun = true;
 
         if (Cancels)
@@ -797,7 +801,7 @@ internal sealed class FakeCaptureLauncher : ICaptureLauncher
             throw defect;
 
         WhenCapturing?.Invoke();
-        return Task.FromResult(Fails is { } error
+        return CaptureTask ?? Task.FromResult(Fails is { } error
             ? Result<CaptureOutcome>.Failure(error)
             : Result<CaptureOutcome>.Success(Outcome));
     }

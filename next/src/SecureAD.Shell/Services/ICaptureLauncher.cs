@@ -1,4 +1,5 @@
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 
 namespace SecureAD.Shell.Services;
 
@@ -12,7 +13,10 @@ namespace SecureAD.Shell.Services;
 /// </remarks>
 /// <param name="ProducedABundle">Whether the run ended with sealed evidence.</param>
 /// <param name="BundleDirectory">Where the run's directory is, produced or not.</param>
-internal sealed record CaptureOutcome(bool ProducedABundle, string BundleDirectory);
+internal sealed record CaptureOutcome(bool ProducedABundle, string BundleDirectory)
+{
+    public CaptureProgress? Progress { get; init; }
+}
 
 /// <summary>
 /// What one named controller answered, in the shell's own words.
@@ -145,5 +149,6 @@ internal interface ICaptureLauncher
         int domainsAtOnce,
         bool includeEnatelSso,
         bool scanGppPasswords,
+        IProgress<CaptureProgress> progress,
         CancellationToken cancellationToken);
 }

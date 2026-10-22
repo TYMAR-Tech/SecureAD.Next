@@ -336,11 +336,20 @@ public sealed class CaptureSession
     }
 
     /// <summary>Captures with an explicitly supplied run owner, retained by the caller after completion.</summary>
+    public Task<Result<CaptureRunResult>> RunAsync(
+        string? typedName, IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyDictionary<string, AttestedExclusion> exclusions, Action<PreflightReport>? reportPreflight,
+        CaptureObjectScope objectScope, CaptureOptions options, CancellationToken cancellationToken,
+        Func<string, ProtectedRunFiles> protectCapture) =>
+        RunAsync(typedName, overrides, exclusions, reportPreflight, objectScope, options, cancellationToken,
+            protectCapture, null);
+
+    /// <summary>Runs the same capture with transient work reports for an observing caller.</summary>
     public async Task<Result<CaptureRunResult>> RunAsync(
         string? typedName, IReadOnlyDictionary<string, string> overrides,
         IReadOnlyDictionary<string, AttestedExclusion> exclusions, Action<PreflightReport>? reportPreflight,
         CaptureObjectScope objectScope, CaptureOptions options, CancellationToken cancellationToken,
-        Func<string, ProtectedRunFiles> protectCapture)
+        Func<string, ProtectedRunFiles> protectCapture, IProgress<CaptureProgress>? progress)
     {
         ArgumentNullException.ThrowIfNull(overrides);
         ArgumentNullException.ThrowIfNull(exclusions);
@@ -467,7 +476,7 @@ public sealed class CaptureSession
                 directory.Value!,
                 exclusions,
                 options,
-                cancellationToken, files)
+                cancellationToken, files, progress)
             .ConfigureAwait(false);
 
         var captureElapsed = _time.GetUtcNow() - runStartedUtc - preflightElapsed;

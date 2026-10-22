@@ -81,6 +81,12 @@ public static class JudgingRun
 
         /// <summary>The staged generation performing requester work; it is not current until publication.</summary>
         public Guid? JudgementGenerationId { get; init; }
+
+        /// <summary>The count observed for the reported work unit; null is not a reported zero.</summary>
+        public long? WorkCompleted { get; init; }
+
+        /// <summary>What the work count measures, independently of object and finding counts.</summary>
+        public JudgingWorkUnit? WorkUnit { get; init; }
     }
 
     /// <summary>

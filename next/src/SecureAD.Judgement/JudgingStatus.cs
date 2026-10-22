@@ -35,6 +35,7 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
     private long _lastAccounting;
     private bool _disposed;
     private bool _loggingFailed;
+    private readonly Dictionary<PostPassDiagnostics, long> _requesterAnswers = [];
 
     private enum PublicationState { NotStarted, Unconfirmed, Published }
 
@@ -205,6 +206,27 @@ internal sealed class JudgingStatus : IProgress<JudgingRun.JudgingProgress>, IDi
                 _rule = null;
                 _operationStarted = _time.GetTimestamp();
             }
+        }
+        _progress.Report(value);
+    }
+
+    internal void Work(PostPassDiagnostics diagnostic, JudgingWorkUnit unit, long completed)
+    {
+        JudgingRun.JudgingProgress value;
+        lock (_gate)
+        {
+            if (_disposed) return;
+            if (unit == JudgingWorkUnit.RequesterAssessments)
+            {
+                // Only distinct stored answers count here, never membership prerequisites or routes.
+                _requesterAnswers[diagnostic] = completed;
+                completed = _requesterAnswers.Values.Sum();
+            }
+            value = new(_objects)
+            {
+                Phase = _phase, RequesterPhase = _requesterPhase, JudgementGenerationId = _generation,
+                WorkCompleted = completed, WorkUnit = unit,
+            };
         }
         _progress.Report(value);
     }

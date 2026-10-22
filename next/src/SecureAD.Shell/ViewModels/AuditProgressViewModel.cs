@@ -1,8 +1,11 @@
 using System.Globalization;
 using System.Resources;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SecureAD.Shell.ViewModels;
+
+internal sealed record AuditWorkReport(string Time, string Detail);
 
 /// <summary>Visible activity and observed timings, never a fabricated percentage or worker heartbeat.</summary>
 internal sealed partial class AuditProgressViewModel(TimeProvider time) : ObservableObject
@@ -12,12 +15,18 @@ internal sealed partial class AuditProgressViewModel(TimeProvider time) : Observ
     private long _lastUpdate;
     private string _activity = string.Empty;
     private bool _stopping;
+    private bool _hasWorkReport;
     [ObservableProperty] private bool _hasStarted;
     [ObservableProperty] private bool _isActive;
     [ObservableProperty] private string _status = string.Empty;
     [ObservableProperty] private string _counter = string.Empty;
     [ObservableProperty] private string _elapsed = string.Empty;
     [ObservableProperty] private string _lastUpdateAge = string.Empty;
+    [ObservableProperty] private string _elapsedClock = "00:00";
+    [ObservableProperty] private string _lastWorkReportAge = Text("NoWorkReport");
+    [ObservableProperty] private string _workCountText = Text("UnreportedCount");
+    [ObservableProperty] private string _workUnit = Text("NoCountForPhase");
+    public ObservableCollection<AuditWorkReport> RecentReports { get; } = [];
     public string Heading => Text("Heading");
     public string Caveat => Text("Caveat");
     public string CaptureHeading => Text("CaptureHeading");
@@ -28,18 +37,47 @@ internal sealed partial class AuditProgressViewModel(TimeProvider time) : Observ
     {
         _started = _lastUpdate = time.GetTimestamp();
         _stopping = false;
+        _hasWorkReport = false;
+        RecentReports.Clear();
         HasStarted = IsActive = true;
-        Report(activity, string.Empty);
+        SetActivity(activity);
+        Refresh();
     }
 
     internal void Report(string activity, string counter)
+        => RecordReport(activity, counter, counter.Length == 0 ? Text("UnreportedCount") : counter,
+            counter.Length == 0 ? Text("NoCountForPhase") : string.Empty);
+
+    internal void ReportCount(string activity, long? count, string unit)
+    {
+        if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+        var number = count?.ToString("N0", CultureInfo.CurrentCulture) ?? Text("UnreportedCount");
+        RecordReport(activity, count.HasValue ? $"{unit}: {number}" : string.Empty, number, unit);
+    }
+
+    internal void SetActivity(string activity)
+    {
+        _activity = activity;
+        Status = _stopping ? Text("Stopping", activity) : activity;
+        Counter = string.Empty;
+        WorkCountText = Text("UnreportedCount");
+        WorkUnit = Text("NoCountForPhase");
+    }
+
+    private void RecordReport(string activity, string counter, string number, string unit)
     {
         if (!IsActive) return;
         _activity = activity;
         _lastUpdate = time.GetTimestamp();
+        _hasWorkReport = true;
         Status = _stopping ? Text("Stopping", activity) : activity;
         Counter = counter;
+        WorkCountText = number;
+        WorkUnit = unit;
         Refresh();
+        // This is a three-row display, not a limit on captured data or the run log.
+        RecentReports.Add(new(ElapsedClock, counter.Length == 0 ? activity : $"{activity} — {counter}"));
+        if (RecentReports.Count > 3) RecentReports.RemoveAt(0);
     }
 
     internal void RequestStop()
@@ -60,8 +98,17 @@ internal sealed partial class AuditProgressViewModel(TimeProvider time) : Observ
     {
         if (!IsActive) return;
         var now = time.GetTimestamp();
-        Elapsed = Text("Elapsed", Duration(time.GetElapsedTime(_started, now)));
-        LastUpdateAge = Text("LastUpdate", Duration(time.GetElapsedTime(_lastUpdate, now)));
+        var elapsed = time.GetElapsedTime(_started, now);
+        var age = time.GetElapsedTime(_lastUpdate, now);
+        Elapsed = Text("Elapsed", Duration(elapsed));
+        ElapsedClock = elapsed.TotalHours >= 1
+            ? $"{(long)elapsed.TotalHours}:{elapsed.Minutes:00}:{elapsed.Seconds:00}"
+            : $"{(long)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
+        LastUpdateAge = Text("LastUpdate", Duration(age));
+        LastWorkReportAge = !_hasWorkReport ? Text("NoWorkReport")
+            : age.TotalHours >= 1 ? Text("LastWorkHours", (long)age.TotalHours)
+            : age.TotalMinutes >= 1 ? Text("LastWorkMinutes", (long)age.TotalMinutes)
+            : Text("LastWorkSeconds", (long)Math.Max(0, age.TotalSeconds));
     }
 
     internal static string PhaseText(string phase) => Resources.GetString(phase, CultureInfo.CurrentUICulture) ?? Text("Deriving");

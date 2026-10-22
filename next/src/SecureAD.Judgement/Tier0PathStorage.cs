@@ -107,6 +107,7 @@ internal static class Tier0PathStorage
         beginPhase(PathRequesterWorkPhase.OwnAccountMembership);
         WithDiagnostic("Preparing membership prerequisites", diagnostic =>
         {
+            diagnostic?.Counter("answersSaved", 0);
             var groups = plan.MembershipGroups().ToArray();
             diagnostic?.Counter("resourcesTotal", groups.Length);
             diagnostic?.Part("prepare-evaluate-save");
@@ -138,6 +139,7 @@ internal static class Tier0PathStorage
         beginPhase(daclPhase);
         WithDiagnostic("Evaluating requester resource batches", diagnostic =>
         {
+            diagnostic?.Counter("answersSaved", 0);
             var targets = plan.DaclTargets().ToArray();
             diagnostic?.Counter("resourcesTotal", targets.Length);
             if (targets.Length == 0) return 0L;

@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:SecureAD.Shell.ViewModels"
+        xmlns:capture="clr-namespace:SecureAD.Kernel.Capture;assembly=SecureAD.Kernel"
         xmlns:views="clr-namespace:SecureAD.Shell.Views"
         Background="{DynamicResource AssetCanvasBackground}">
     <UserControl.Resources>
@@ -55,21 +56,90 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="ProgressStep" TargetType="Border" BasedOn="{StaticResource WizardCard}">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Active}">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProgressMark" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Active}"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Saved}"><Setter Property="Foreground" Value="{DynamicResource EstablishedGoodBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.SavedWithLimitations}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Stopped}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Failed}"><Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.NoOutput}"><Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CaptureRowMark" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static capture:CaptureReadState.Reading}"><Setter Property="Foreground" Value="{DynamicResource AccentBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static capture:CaptureReadState.ReadComplete}"><Setter Property="Foreground" Value="{DynamicResource EstablishedGoodBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static capture:CaptureReadState.AttemptFailed}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="{x:Static capture:CaptureReadState.Stopped}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ProgressStateText" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.SavedWithLimitations}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Stopped}"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.Failed}"><Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" /></Trigger>
+                <Trigger Property="Tag" Value="{x:Static vm:AuditOutputState.NoOutput}"><Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" /></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ResultsSummaryText" TargetType="TextBlock" BasedOn="{StaticResource SectionTitle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasOutputLimitations}" Value="True"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding WasStopped}" Value="True"><Setter Property="Foreground" Value="{DynamicResource FaultBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding HasRunError}" Value="True"><Setter Property="Foreground" Value="{DynamicResource CriticalFindingBrush}" /></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="RunMetric" TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="RunLeaveButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasRunOutput}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <DockPanel Margin="20,14,20,0">
             <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="New audit" Style="{StaticResource ScreenTitle}" />
-                    <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource Identifier}" Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding ScreenHeading}" Style="{StaticResource ScreenTitle}" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ForestFqdn}" Style="{StaticResource Identifier}" Foreground="{DynamicResource SecondaryTextBrush}" />
+                        <TextBlock Text="{Binding RunScopeLabel,StringFormat='  &#x00b7; {0}'}" Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Visibility="{Binding ShowsRunSurface,Converter={StaticResource Shown}}" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding DomainCountLabel}" Style="{StaticResource WizardText}" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding DomainCountLabel}" Style="{StaticResource WizardText}" HorizontalAlignment="Right"
+                               Visibility="{Binding ShowsWizardSteps,Converter={StaticResource Shown}}" />
+                    <StackPanel Visibility="{Binding ShowsRunSurface,Converter={StaticResource Shown}}">
+                        <TextBlock Text="Elapsed" Style="{StaticResource Caption}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding Progress.ElapsedClock}" Style="{StaticResource RunMetric}" HorizontalAlignment="Right" />
+                    </StackPanel>
                 </StackPanel>
             </Grid>
 
-            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,10" Visibility="{Binding ShowsWizardSteps,Converter={StaticResource Shown}}">
                 <Border x:Name="DomainsStep" Padding="10,6,10,3" CornerRadius="5,5,0,0" Margin="0,0,10,0" BorderThickness="0,0,0,3">
                     <Border.Style>
                         <Style TargetType="Border">
@@ -92,12 +162,8 @@
                 </Border>
             </WrapPanel>
 
-            <TextBlock DockPanel.Dock="Top" Text="{Binding StepQuestion}" Style="{StaticResource SectionTitle}" Margin="0,0,0,10"
-                       Visibility="{Binding ShowsRunHeading,Converter={StaticResource Shown}}" />
-
-            <!-- Kept outside the scrolling body so a long report cannot hide current activity. -->
-            <Border x:Name="AuditPhaseProgress" DockPanel.Dock="Top" Style="{StaticResource WizardCard}" Padding="10"
-                    Visibility="{Binding ShowsPhaseProgress,Converter={StaticResource Shown}}">
+            <Border x:Name="ReadinessPhaseProgress" DockPanel.Dock="Top" Style="{StaticResource WizardCard}" Padding="10"
+                    Visibility="{Binding ShowsReadinessProgress,Converter={StaticResource Shown}}">
                 <StackPanel>
                     <TextBlock Text="{Binding Progress.Heading}" FontWeight="SemiBold" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding Progress.Status}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0" />
@@ -112,8 +178,43 @@
                 </StackPanel>
             </Border>
 
+            <UniformGrid x:Name="RunStages" DockPanel.Dock="Top" Columns="3" Margin="0,2,0,12"
+                         Visibility="{Binding ShowsRunSurface,Converter={StaticResource Shown}}">
+                <Border Style="{StaticResource ProgressStep}" Tag="{Binding CaptureOutput}" Margin="0,0,8,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding CaptureMark}" Style="{StaticResource ProgressMark}" Tag="{Binding CaptureOutput}" Width="24" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1"><TextBlock Text="Capture &amp; seal" FontWeight="SemiBold" /><TextBlock Text="{Binding CaptureStepText}" Tag="{Binding CaptureOutput}" Style="{StaticResource ProgressStateText}" /></StackPanel>
+                    </Grid>
+                </Border>
+                <Border Style="{StaticResource ProgressStep}" Tag="{Binding DerivationOutput}" Margin="0,0,8,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding DerivationMark}" Style="{StaticResource ProgressMark}" Tag="{Binding DerivationOutput}" Width="24" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1"><TextBlock Text="Prepare analysis" FontWeight="SemiBold" /><TextBlock Text="{Binding DerivationOutputText}" Tag="{Binding DerivationOutput}" Style="{StaticResource ProgressStateText}" /></StackPanel>
+                    </Grid>
+                </Border>
+                <Border Style="{StaticResource ProgressStep}" Tag="{Binding JudgementOutput}">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding JudgementMark}" Style="{StaticResource ProgressMark}" Tag="{Binding JudgementOutput}" Width="24" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1"><TextBlock Text="Assess evidence" FontWeight="SemiBold" /><TextBlock Text="{Binding JudgementOutputText}" Tag="{Binding JudgementOutput}" Style="{StaticResource ProgressStateText}" /></StackPanel>
+                    </Grid>
+                </Border>
+            </UniformGrid>
+            <Border x:Name="AuditPhaseProgress" DockPanel.Dock="Top" Style="{StaticResource WizardCard}" CornerRadius="7,7,0,0"
+                    BorderThickness="1,1,1,0" Padding="14,12,14,4" Margin="0"
+                    Visibility="{Binding ShowsRunActivity,Converter={StaticResource Shown}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Progress.Status}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <ProgressBar IsIndeterminate="{Binding Progress.IsActive}" Height="4" Margin="0,10,0,8"
+                                 Visibility="{Binding Progress.IsActive,Converter={StaticResource Shown}}"
+                                 AutomationProperties.Name="Current audit operation; no completion percentage" />
+                </StackPanel>
+            </Border>
+
             <Border DockPanel.Dock="Top" Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}"
-                    BorderThickness="1" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding ShowsStandaloneNotice,Converter={StaticResource Shown}}">
+                    BorderThickness="1" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding ShowsPreparationNotice,Converter={StaticResource Shown}}">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissNoticeCommand}" VerticalAlignment="Top" />
                     <StackPanel Margin="0,0,12,0">
@@ -127,8 +228,16 @@
                     BorderThickness="1,1,1,0" CornerRadius="6,6,0,0" Padding="12,10" Margin="0,10,0,0">
                 <DockPanel LastChildFill="True">
                     <WrapPanel DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center">
-                        <Button Content="{Binding LeaveLabel}" Command="{Binding LeaveCommand}" Margin="0,0,8,0" Visibility="{Binding CanLeave,Converter={StaticResource Shown}}" />
-                        <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" Visibility="{Binding CanGoBack,Converter={StaticResource Shown}}" />
+                        <Button Command="{Binding LeaveCommand}" Style="{StaticResource RunLeaveButton}" Margin="0,0,8,0" Visibility="{Binding CanLeave,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding LeaveLabel}">
+                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlock}">
+                                    <Style.Triggers><DataTrigger Binding="{Binding HasRunOutput}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource OnAccentTextBrush}" />
+                                    </DataTrigger></Style.Triggers>
+                                </Style></TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                        <Button Content="Back" Command="{Binding BackCommand}" Margin="0,0,8,0" Visibility="{Binding ShowsBackAction,Converter={StaticResource Shown}}" />
                         <Button Command="{Binding ReviewCommand}" Style="{StaticResource PrimaryButton}"
                                 Visibility="{Binding IsOnDomains,Converter={StaticResource Shown}}">
                             <TextBlock Text="Next: review run" Foreground="{DynamicResource OnAccentTextBrush}" />
@@ -137,11 +246,16 @@
                                 Visibility="{Binding ShowsStartAction,Converter={StaticResource Shown}}">
                             <TextBlock Text="{Binding StartLabel}" Foreground="{DynamicResource OnAccentTextBrush}" />
                         </Button>
-                        <Button Content="Stop audit" Command="{Binding RequestAuditStopCommand}" Style="{StaticResource DangerButton}"
-                                Visibility="{Binding CanRequestAuditStop,Converter={StaticResource Shown}}" />
+                        <Button Command="{Binding RequestAuditStopCommand}" Style="{StaticResource DangerButton}"
+                                Visibility="{Binding CanRequestAuditStop,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Stop audit" Foreground="{DynamicResource OnAccentTextBrush}" />
+                        </Button>
                     </WrapPanel>
                     <TextBox Text="{Binding FooterStatus,Mode=OneWay}" Style="{StaticResource SelectableMessage}" VerticalAlignment="Center"
-                             MaxHeight="60" VerticalScrollBarVisibility="Auto" />
+                             MaxHeight="60" VerticalScrollBarVisibility="Auto" Visibility="{Binding ShowsRunPreparation,Converter={StaticResource Shown}}" />
+                    <Button Content="Details" Command="{Binding ToggleRunDetailsCommand}" HorizontalAlignment="Left"
+                            AutomationProperties.HelpText="Show or hide the recorded activity, outcome reasons and coverage"
+                            Visibility="{Binding ShowsRunSurface,Converter={StaticResource Shown}}" />
                 </DockPanel>
             </Border>
 
@@ -344,39 +458,132 @@
                             </Border>
                         </StackPanel>
 
-                        <StackPanel Visibility="{Binding HasRunOutput,Converter={StaticResource Shown}}">
-                            <UniformGrid Columns="3" Margin="0,0,0,10">
-                                <Border Style="{StaticResource WizardCard}" Margin="0,0,8,0"><StackPanel>
-                                    <TextBlock Text="Capture &amp; seal" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding CaptureOutputText}" TextWrapping="Wrap" Margin="0,8,0,0" />
-                                </StackPanel></Border>
-                                <Border Style="{StaticResource WizardCard}" Margin="0,0,8,0"><StackPanel>
-                                    <TextBlock Text="Derived facts" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding DerivationOutputText}" TextWrapping="Wrap" Margin="0,8,0,0" />
-                                </StackPanel></Border>
-                                <Border Style="{StaticResource WizardCard}"><StackPanel>
-                                    <TextBlock Text="Judgement" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding JudgementOutputText}" TextWrapping="Wrap" Margin="0,8,0,0" />
-                                </StackPanel></Border>
-                            </UniformGrid>
-                            <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,12"
-                                    Visibility="{Binding HasOutputLimitations,Converter={StaticResource Shown}}">
-                                <TextBlock Text="Review the separate outcomes below. Incomplete or stopped analysis is not a finding of safety; already sealed evidence remains available." TextWrapping="Wrap" />
-                            </Border>
-                            <TextBlock Text="{Binding ResultsNote}" Style="{StaticResource WizardText}" />
-                        </StackPanel>
-                        <StackPanel Visibility="{Binding HasCaptureReport,Converter={StaticResource Shown}}" Margin="0,0,0,10">
-                            <TextBlock Text="{Binding Progress.CaptureHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <TextBox Text="{Binding Report,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="120" VerticalScrollBarVisibility="Auto" />
-                        </StackPanel>
-                        <StackPanel Visibility="{Binding HasDerivationReport,Converter={StaticResource Shown}}" Margin="0,0,0,10">
-                            <TextBlock Text="{Binding Progress.DerivationHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <TextBox Text="{Binding DerivationReport,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="120" VerticalScrollBarVisibility="Auto" />
-                        </StackPanel>
-                        <StackPanel Visibility="{Binding HasJudgingReport,Converter={StaticResource Shown}}">
-                            <TextBlock Text="{Binding Progress.JudgingHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <TextBox Text="{Binding JudgingReport,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
-                        </StackPanel>
+                        <Border Style="{StaticResource WizardCard}" CornerRadius="0,0,7,7" BorderThickness="1,0,1,1"
+                                Visibility="{Binding ShowsRunActivity,Converter={StaticResource Shown}}">
+                            <StackPanel>
+                                <ScrollViewer x:Name="CaptureScopeScroll" MaxHeight="240" VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                        Visibility="{Binding ShowsCaptureActivity,Converter={StaticResource Shown}}">
+                                <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+                                    <StackPanel>
+                                        <Grid Background="{DynamicResource AttributeHeaderBackground}">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="0.38*" /><ColumnDefinition Width="0.2*" /><ColumnDefinition Width="0.42*" /></Grid.ColumnDefinitions>
+                                            <TextBlock Text="Scope" Margin="10,6" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
+                                            <TextBlock Grid.Column="1" Text="Objects read" Margin="10,6" TextAlignment="Right" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
+                                            <TextBlock Grid.Column="2" Text="Status" Margin="10,6" FontWeight="SemiBold" Foreground="{DynamicResource AttributeLabelBrush}" />
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding CaptureRows}">
+                                            <ItemsControl.ItemTemplate><DataTemplate>
+                                                <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="0.38*" /><ColumnDefinition Width="0.2*" /><ColumnDefinition Width="0.42*" /></Grid.ColumnDefinitions>
+                                                        <StackPanel Margin="10,7">
+                                                            <TextBlock Text="{Binding Name}" Style="{StaticResource BaseTextBlock}" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" Foreground="{DynamicResource SecondaryTextBrush}"
+                                                                       Visibility="{Binding HasDetail,Converter={StaticResource Shown}}" />
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="{Binding ObjectsText}" Style="{StaticResource BaseTextBlock}" Margin="10,7" TextAlignment="Right" />
+                                                        <Grid Grid.Column="2" Margin="10,7">
+                                                            <Grid.ColumnDefinitions><ColumnDefinition Width="22" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{Binding Mark}" Style="{StaticResource CaptureRowMark}" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding Status}" Style="{StaticResource BaseTextBlock}" />
+                                                        </Grid>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate></ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                                </ScrollViewer>
+                                <StackPanel Margin="0,10,0,12" Visibility="{Binding ShowsAnalysisActivity,Converter={StaticResource Shown}}">
+                                    <TextBlock Text="{Binding Progress.WorkCountText}" Style="{StaticResource RunMetric}" FontSize="44" />
+                                    <TextBlock Text="{Binding Progress.WorkUnit}" Style="{StaticResource WizardText}" />
+                                </StackPanel>
+                                <UniformGrid Columns="3" Margin="0,12,0,0">
+                                    <StackPanel Visibility="{Binding ShowsCaptureActivity,Converter={StaticResource Shown}}">
+                                        <TextBlock Text="{Binding Progress.WorkCountText}" Style="{StaticResource RunMetric}" />
+                                        <TextBlock Text="{Binding Progress.WorkUnit}" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding ShowsCaptureActivity,Converter={StaticResource Shown}}">
+                                        <TextBlock Text="{Binding DomainReadsText}" Style="{StaticResource RunMetric}" />
+                                        <TextBlock Text="Domain reads finished" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Progress.LastWorkReportAge}" Style="{StaticResource RunMetric}" />
+                                        <TextBlock Text="Last work report" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource WizardCard}" Visibility="{Binding HasRunEnded,Converter={StaticResource Shown}}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ResultsSummary}" Style="{StaticResource ResultsSummaryText}" Margin="0,0,0,14" />
+                                <UniformGrid Columns="3" Margin="0,0,0,12" Visibility="{Binding HasResultMetrics,Converter={StaticResource Shown}}">
+                                    <StackPanel><TextBlock Text="{Binding ResultObjectsText}" Style="{StaticResource RunMetric}" />
+                                        <TextBlock Text="{Binding ResultObjectsLabel}" Style="{StaticResource Caption}" /></StackPanel>
+                                    <StackPanel Visibility="{Binding HasSavedDerivation,Converter={StaticResource Shown}}">
+                                        <TextBlock Text="{Binding ResultPrincipalsText}" Style="{StaticResource RunMetric}" /><TextBlock Text="Principals" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding HasSavedDerivation,Converter={StaticResource Shown}}">
+                                        <TextBlock Text="{Binding ResultRelationshipsText}" Style="{StaticResource RunMetric}" /><TextBlock Text="Nesting relationships" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </UniformGrid>
+                                <TextBlock Text="{Binding ResultsMessage}" Style="{StaticResource WizardText}" Visibility="{Binding HasResultsMessage,Converter={StaticResource Shown}}" />
+                                <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="1" Padding="10,6" Margin="0,4,0,6"
+                                        Visibility="{Binding HasRuleLimitations,Converter={StaticResource Shown}}">
+                                    <DockPanel><Button DockPanel.Dock="Right" Content="Details" Command="{Binding ShowRunDetailsCommand}" />
+                                        <TextBlock Text="{Binding RuleLimitationsText}" Style="{StaticResource BaseTextBlock}" VerticalAlignment="Center" Margin="0,0,12,0" /></DockPanel>
+                                </Border>
+                                <Border Background="{DynamicResource AttributeHeaderBackground}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="10,6" Margin="0,4,0,6"
+                                        Visibility="{Binding HasCoverage,Converter={StaticResource Shown}}">
+                                    <DockPanel><Button DockPanel.Dock="Right" Content="Coverage" Command="{Binding ShowRunDetailsCommand}" />
+                                        <TextBlock Text="{Binding CoverageText}" Style="{StaticResource BaseTextBlock}" VerticalAlignment="Center" Margin="0,0,12,0" /></DockPanel>
+                                </Border>
+                                <Border Background="{DynamicResource FaultSubtleBrush}" BorderBrush="{DynamicResource FaultBrush}" BorderThickness="1" Padding="10,6" Margin="0,4,0,6"
+                                        Visibility="{Binding HasRunError,Converter={StaticResource Shown}}">
+                                    <DockPanel><Button DockPanel.Dock="Right" Content="Details" Command="{Binding ShowRunDetailsCommand}" />
+                                        <TextBlock Text="An audit error was recorded." Style="{StaticResource BaseTextBlock}" VerticalAlignment="Center" /></DockPanel>
+                                </Border>
+                                <StackPanel Margin="0,10,0,0" Visibility="{Binding HasSealedEvidence,Converter={StaticResource Shown}}">
+                                    <TextBlock Text="Saved run" Style="{StaticResource Caption}" />
+                                    <TextBox Text="{Binding BundleDirectory,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="RunDetailsPanel" Style="{StaticResource WizardCard}" views:ScrollToVisible.Enabled="True"
+                                Visibility="{Binding ShowsRunDetails,Converter={StaticResource Shown}}">
+                            <StackPanel>
+                                <TextBlock Text="Run details" Style="{StaticResource SectionTitle}" Margin="0,0,0,10" />
+                                <ItemsControl ItemsSource="{Binding Progress.RecentReports}" Visibility="{Binding ShowsRunActivity,Converter={StaticResource Shown}}">
+                                    <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="80" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Time}" Style="{StaticResource BaseTextBlock}" Foreground="{DynamicResource SecondaryTextBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Detail}" Style="{StaticResource BaseTextBlock}" />
+                                    </Grid></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding UnresolvedReasons}">
+                                    <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,6">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="80" /></Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Reason}" Style="{StaticResource BaseTextBlock}" Margin="0,0,12,0" />
+                                        <StackPanel Grid.Column="1"><TextBlock Text="{Binding ObjectsAffected,StringFormat='{}{0:N0}'}" Style="{StaticResource BaseTextBlock}" />
+                                            <TextBlock Text="Objects" Style="{StaticResource Caption}" /></StackPanel>
+                                    </Grid></DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Margin="0,12,0,4" Visibility="{Binding HasCoverage,Converter={StaticResource Shown}}">
+                                    <TextBlock Text="Coverage" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                    <TextBlock Text="{Binding CoverageDetail}" Style="{StaticResource BaseTextBlock}" />
+                                </StackPanel>
+                                <Expander Header="Recorded capture report" Visibility="{Binding HasCaptureReport,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                                    <TextBox Text="{Binding Report,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                                </Expander>
+                                <Expander Header="Recorded preparation report" Visibility="{Binding HasDerivationReport,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                                    <TextBox Text="{Binding DerivationReport,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="180" VerticalScrollBarVisibility="Auto" />
+                                </Expander>
+                                <Expander Header="Recorded assessment and coverage report" Visibility="{Binding HasJudgingReport,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                                    <TextBox Text="{Binding JudgingReport,Mode=OneWay}" Style="{StaticResource SelectableMessage}" MaxHeight="220" VerticalScrollBarVisibility="Auto" />
+                                </Expander>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
@@ -393,7 +600,9 @@
                     <TextBlock Text="{Binding StopExplanation}" Style="{StaticResource WizardText}" Margin="0,12,0,12" />
                     <WrapPanel HorizontalAlignment="Right">
                         <Button Content="Keep running" Command="{Binding KeepAuditRunningCommand}" Margin="0,0,8,0" />
-                        <Button Content="Stop audit" Command="{Binding ConfirmAuditStopCommand}" Style="{StaticResource DangerButton}" />
+                        <Button Command="{Binding ConfirmAuditStopCommand}" Style="{StaticResource DangerButton}">
+                            <TextBlock Text="Stop audit" Foreground="{DynamicResource OnAccentTextBrush}" />
+                        </Button>
                     </WrapPanel>
                 </StackPanel>
             </Border>

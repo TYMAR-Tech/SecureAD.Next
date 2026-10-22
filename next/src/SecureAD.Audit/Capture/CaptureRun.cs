@@ -47,6 +47,9 @@ public sealed record CaptureRunResult(
     /// <summary>Whether there is a sealed bundle at <see cref="BundleDirectory"/>.</summary>
     public bool ProducedABundle => Outcome == RunCompletion.Sealed;
 
+    /// <summary>The final reported work snapshot, when a caller requested progress.</summary>
+    public CaptureProgress? Progress { get; init; }
+
     /// <summary>
     /// How long each domain took, in plan order. Empty for a run that ended before the domains
     /// were read, which is not a claim that they took no time.
@@ -212,9 +215,16 @@ public sealed class CaptureRun
     }
 
     /// <summary>Captures into a caller-owned lifetime that can continue directly into offline analysis.</summary>
+    public Task<CaptureRunResult> RunAsync(
+        CapturePlan plan, string bundleDirectory, IReadOnlyDictionary<string, AttestedExclusion> exclusions,
+        CaptureOptions options, CancellationToken cancellationToken, ProtectedRunFiles files) =>
+        RunAsync(plan, bundleDirectory, exclusions, options, cancellationToken, files, null);
+
+    /// <summary>Captures with optional observational reports; reports do not add reads or alter stored data.</summary>
     public async Task<CaptureRunResult> RunAsync(
         CapturePlan plan, string bundleDirectory, IReadOnlyDictionary<string, AttestedExclusion> exclusions,
-        CaptureOptions options, CancellationToken cancellationToken, ProtectedRunFiles files)
+        CaptureOptions options, CancellationToken cancellationToken, ProtectedRunFiles files,
+        IProgress<CaptureProgress>? progress)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
@@ -268,6 +278,8 @@ public sealed class CaptureRun
         }
 
         var startedUtc = _time.GetUtcNow();
+        var updates = progress is null ? null : new CaptureProgressTracker(plan, progress);
+        updates?.Start();
 
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc);
 
@@ -307,7 +319,7 @@ public sealed class CaptureRun
         foreach (var unit in prologue)
         {
             var outcome = await ReadOneUnitAsync(
-                capture, unit, plan, cancellationToken, CancellationToken.None)
+                capture, unit, plan, cancellationToken, CancellationToken.None, updates)
                 .ConfigureAwait(false);
 
             if (outcome.Ending is { } ended)
@@ -365,7 +377,7 @@ public sealed class CaptureRun
                 {
                     var read = await ReadOneDomainAsync(
                         bundleDirectory, startedUtc, shard, plan, turns,
-                        domainCancellation.Token, failedDomainCancellation.Token)
+                        domainCancellation.Token, failedDomainCancellation.Token, updates)
                         .ConfigureAwait(false);
 
                     // Recovery is exhausted only when the whole domain read returns. Remember
@@ -413,6 +425,7 @@ public sealed class CaptureRun
         // TogetherAsync answers in the order it was handed its subjects rather than the order they
         // arrived, so this is the plan's order and not the forest's timing - two runs of one forest
         // assemble their bundles the same way round.
+        updates?.Phase(CaptureWorkPhase.Merging);
         foreach (var domain in readDomains)
         {
             var shardPath = BundleLayout.ShardPath(bundleDirectory, domain.Shard.Shard);
@@ -511,8 +524,9 @@ public sealed class CaptureRun
             "reading the policy share",
             [new RunLogDetail("policies", declaredPolicies)]);
 
+        updates?.PolicyInventory(sink.Policies.Policies.Count + sink.Policies.UnlocatablePolicies.Count);
         var sysvol = await new SysvolCapture(_sysvolFiles, writer, _log, _time, options)
-            .ReadAsync(sink.Policies, cancellationToken)
+            .ReadAsync(sink.Policies, cancellationToken, updates is null ? null : updates.Policies)
             .ConfigureAwait(false);
 
         _log.Note(
@@ -524,6 +538,7 @@ public sealed class CaptureRun
             ]);
 
         _log.Note(PartitionCapture.PhaseName, "sealing the bundle", []);
+        updates?.Phase(CaptureWorkPhase.Sealing);
 
         // The seal, the checkpoint and the rename happen here, and only here. Until Complete
         // returns there is no file by the name a reader opens.
@@ -586,6 +601,7 @@ public sealed class CaptureRun
         // and recording it in the evidence would bump the evidence format for a diagnostic figure.
         return new CaptureRunResult(RunCompletion.Sealed, bundleDirectory, Error: null)
         {
+            Progress = updates?.Current,
             DomainTimings = [.. readDomains.Select(d => new DomainReadTiming(
                 d.Shard.Unit.NamingContext, d.ElapsedMilliseconds))],
         };
@@ -693,7 +709,7 @@ public sealed class CaptureRun
         CapturePlan plan,
         DirectoryWorkDispatch turns,
         CancellationToken cancellationToken,
-        CancellationToken failedDomainCancellationToken)
+        CancellationToken failedDomainCancellationToken, CaptureProgressTracker? updates)
     {
         var domainStartedUtc = _time.GetUtcNow();
         var alternatives = plan.Failover.TryGetValue(domain.Unit.NamingContext, out var ranked)
@@ -714,7 +730,7 @@ public sealed class CaptureRun
             var attemptStartedUtc = _time.GetUtcNow();
             var read = await ReadDomainAttemptAsync(
                 bundleDirectory, startedUtc, attempt, plan, turns,
-                cancellationToken, failedDomainCancellationToken)
+                cancellationToken, failedDomainCancellationToken, updates)
                 .ConfigureAwait(false);
 
             if (read.Ending is null)
@@ -773,7 +789,7 @@ public sealed class CaptureRun
         CapturePlan plan,
         DirectoryWorkDispatch turns,
         CancellationToken cancellationToken,
-        CancellationToken failedDomainCancellationToken)
+        CancellationToken failedDomainCancellationToken, CaptureProgressTracker? updates)
     {
         using var writer = BundleWriter.Create(bundleDirectory, startedUtc, domain.Shard);
 
@@ -783,7 +799,7 @@ public sealed class CaptureRun
         var outcome = await turns.OneAtATimeAsync(
             domain.Unit.DomainController,
             () => ReadOneUnitAsync(
-                capture, domain.Unit, plan, cancellationToken, failedDomainCancellationToken),
+                capture, domain.Unit, plan, cancellationToken, failedDomainCancellationToken, updates),
             cancellationToken)
             .ConfigureAwait(false);
 
@@ -825,7 +841,7 @@ public sealed class CaptureRun
         CaptureUnit unit,
         CapturePlan plan,
         CancellationToken cancellationToken,
-        CancellationToken failedDomainCancellationToken)
+        CancellationToken failedDomainCancellationToken, CaptureProgressTracker? updates)
     {
         Result<PartitionCoverage> read;
 
@@ -855,10 +871,13 @@ public sealed class CaptureRun
 
         try
         {
-            read = await capture.ReadAsync(unit, cancellationToken).ConfigureAwait(false);
+            updates?.Scope(unit, CaptureReadState.Reading, null);
+            read = await capture.ReadAsync(unit, cancellationToken, updates is null ? null
+                : count => updates.Scope(unit, CaptureReadState.Reading, count)).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
+            updates?.State(unit, CaptureReadState.Stopped);
             _log.Note(
                 PartitionCapture.PhaseName,
                 failedDomainCancellationToken.IsCancellationRequested
@@ -882,6 +901,7 @@ public sealed class CaptureRun
 
         if (!read.IsSuccess)
         {
+            updates?.State(unit, CaptureReadState.AttemptFailed);
             var error = read.Error!;
 
             // The elapsed time goes on the failure as well as on the success. How long a
@@ -906,6 +926,7 @@ public sealed class CaptureRun
         }
 
         var coverage = read.Value!;
+        updates?.Scope(unit, CaptureReadState.ReadComplete, coverage.ObjectsRead);
 
         _log.Note(
             PartitionCapture.PhaseName,

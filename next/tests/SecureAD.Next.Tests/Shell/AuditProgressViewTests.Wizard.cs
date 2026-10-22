@@ -111,7 +111,7 @@ public sealed partial class AuditProgressViewTests
         Arrange(view, width, height);
         Assert.DoesNotContain(Descendants<Border>(view), border => border.Name == "WizardPreparationAttention");
         Assert.DoesNotContain(Descendants<TextBlock>(view), text => text.Text is "1  Domains & readiness" or "2  Review & run");
-        Assert.Equal(Visibility.Collapsed, BoundText(view, "StepQuestion").Visibility);
+        Assert.Equal("New audit", BoundText(view, "ScreenHeading").Text);
         Assert.Contains("synthetic failure", BoundReport(view, "FooterStatus").Text);
         var active = Assert.Single(Descendants<Border>(view), border => border.Name == "DomainsStep");
         var inactive = Assert.Single(Descendants<Border>(view), border => border.Name == "ReviewStep");
@@ -125,7 +125,7 @@ public sealed partial class AuditProgressViewTests
         view.UpdateLayout();
         Assert.Equal(((SolidColorBrush)view.FindResource("AccentBrush")).Color, ((SolidColorBrush)inactive.BorderBrush).Color);
         Assert.Equal(Colors.Transparent, ((SolidColorBrush)active.BorderBrush).Color);
-        Assert.Equal(Visibility.Collapsed, BoundText(view, "StepQuestion").Visibility);
+        Assert.Equal("New audit", BoundText(view, "ScreenHeading").Text);
         Render(view, width, height, "compact-readiness");
     });
 
@@ -143,13 +143,13 @@ public sealed partial class AuditProgressViewTests
         var view = LoadView();
         view.DataContext = model;
         Arrange(view, width, height);
-        Assert.Equal("Sealed", BoundText(view, "CaptureOutputText").Text);
+        Assert.Equal("Sealed", BoundText(view, "CaptureStepText").Text);
         Assert.Equal("Saved with limitations", BoundText(view, "JudgementOutputText").Text);
         Assert.All(Ancestors(BoundText(view, "JudgementOutputText")).OfType<UIElement>(),
             parent => Assert.Equal(Visibility.Visible, parent.Visibility));
         Assert.Equal(Visibility.Collapsed, ButtonFor(view, "StartCommand").Visibility);
         Assert.Equal(Visibility.Visible, ButtonFor(view, "LeaveCommand").Visibility);
-        Assert.Equal("View results", ButtonFor(view, "LeaveCommand").Content);
+        Assert.Equal("View results", Assert.IsType<TextBlock>(ButtonFor(view, "LeaveCommand").Content).Text);
         Render(view, width, height, "outcome");
     });
 
@@ -157,6 +157,8 @@ public sealed partial class AuditProgressViewTests
     public void WizardStopOverlayBindsConfirmationAndKeepsTheOriginalStopSeparate() => OnSta(() =>
     {
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher());
+        model.CaptureOutput = AuditOutputState.Saved;
+        model.DerivationOutput = AuditOutputState.Active;
         model.IsCapturing = true;
         model.BundleDirectory = @"C:\synthetic-runs\wizard";
         var view = LoadView();
@@ -165,7 +167,7 @@ public sealed partial class AuditProgressViewTests
         ButtonFor(view, "RequestAuditStopCommand").Command.Execute(null);
         view.UpdateLayout();
         Assert.True(model.StopConfirmationRequested);
-        Assert.Contains("already sealed", BoundText(view, "StopExplanation").Text);
+        Assert.Contains("will be kept", BoundText(view, "StopExplanation").Text);
         var keep = ButtonFor(view, "KeepAuditRunningCommand");
         Assert.All(Ancestors(keep).OfType<UIElement>(), parent => Assert.Equal(Visibility.Visible, parent.Visibility));
         keep.Command.Execute(null);

@@ -24,6 +24,8 @@ public sealed class PostPassDiagnosticsTests
         using var diagnostic = status.BeginPostPass("ownership-assessment", Generation);
         diagnostic.Targets(2);
         diagnostic.Part("read-evidence");
+        var beforeTimer = screen.Calls;
+        Assert.Equal(1, beforeTimer);
         clock.Advance(TimeSpan.FromMinutes(1));
         var line = Assert.Single(log.Lines.Where(item => item.Message == "post-pass status" && item.Value("outcome") == "running"));
         Assert.Equal(("read-evidence", "60000", "0", "2", Generation.ToString("D")),
@@ -31,7 +33,7 @@ public sealed class PostPassDiagnosticsTests
         var part = Assert.Single(log.Lines.Where(item => item.Message == "post-pass part"));
         Assert.Equal(("0", "60000"), (part.Value("completedMs"), part.Value("activeMs")));
         Assert.Equal("7", Assert.Single(log.Lines.Where(item => item.Message == "judging status")).Value("objects"));
-        Assert.Equal(0, screen.Calls);
+        Assert.Equal(beforeTimer, screen.Calls);
     }
 
     [Fact]

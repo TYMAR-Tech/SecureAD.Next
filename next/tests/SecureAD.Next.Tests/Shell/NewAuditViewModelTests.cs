@@ -2250,8 +2250,8 @@ public sealed class NewAuditViewModelTests
         await screen.StartAsync();
 
         Assert.True(screen.HasFinished);
-        Assert.Contains(@"D:\audits\run", screen.ResultsNote, StringComparison.Ordinal);
-        Assert.DoesNotContain("not built", screen.ResultsNote, StringComparison.Ordinal);
+        Assert.Equal(@"D:\audits\run", screen.BundleDirectory);
+        Assert.True(screen.HasSealedEvidence);
     }
 
     /// <summary>

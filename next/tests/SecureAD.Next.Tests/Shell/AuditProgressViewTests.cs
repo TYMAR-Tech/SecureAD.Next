@@ -70,28 +70,38 @@ public sealed partial class AuditProgressViewTests
     private static void Verify(int width, int height, bool unbind)
     {
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher());
+        model.CaptureOutput = AuditOutputState.Saved;
+        model.DerivationOutput = AuditOutputState.Saved;
+        model.JudgementOutput = AuditOutputState.Active;
         model.IsCapturing = model.IsJudging = true;
         model.Report = "Sealed evidence; the audit is still running.";
         model.DerivationReport = "Derived facts completed.";
         model.JudgingReport = "Judging is in progress.";
         model.Progress.Begin(AuditProgressViewModel.Text("EvaluatingObjects"));
-        model.Progress.Report(AuditProgressViewModel.Text("EvaluatingObjects"), AuditProgressViewModel.Text("ObjectsProcessed", 5000));
+        model.Progress.ReportCount(AuditProgressViewModel.Text("EvaluatingObjects"), 5000, "Objects processed");
         var view = LoadView();
         view.DataContext = model;
         view.Measure(new Size(width, height));
         view.Arrange(new Rect(0, 0, width, height));
         view.UpdateLayout();
         var panel = Assert.Single(Descendants<Border>(view).Where(border => border.Name == "AuditPhaseProgress"));
-        var phase = BoundText(view, "Progress.Status");
+        var phase = Assert.Single(VisibleText(view, "Progress.Status"));
         if (unbind) BindingOperations.ClearBinding(phase, TextBlock.TextProperty);
         Assert.Equal(model.Progress.Status, phase.Text);
-        Assert.Equal(model.Progress.Counter, BoundText(view, "Progress.Counter").Text);
+        Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "5,000" && Ancestors(text).OfType<UIElement>()
+            .All(parent => parent.Visibility == Visibility.Visible));
         Assert.Equal(Visibility.Visible, panel.Visibility);
         Assert.All(Ancestors(panel).OfType<UIElement>(), ancestor => Assert.Equal(Visibility.Visible, ancestor.Visibility));
         Assert.True(panel.ActualHeight > 0);
         Assert.Equal(Dock.Top, DockPanel.GetDock(panel));
         Assert.DoesNotContain(Ancestors(panel), parent => parent is ScrollViewer);
         Assert.True(panel.TransformToAncestor(view).Transform(new Point()).Y + panel.ActualHeight <= height);
+        model.ShowsRunDetails = true;
+        view.UpdateLayout();
+        foreach (var expander in Descendants<Expander>(view).Where(item =>
+            item.Header is string header && header.StartsWith("Recorded ", StringComparison.Ordinal)))
+            expander.IsExpanded = true;
+        view.UpdateLayout();
         Assert.Equal(model.DerivationReport, BoundReport(view, "DerivationReport").Text);
         Assert.Equal(model.JudgingReport, BoundReport(view, "JudgingReport").Text);
         Assert.True(Assert.Single(Descendants<ProgressBar>(panel)).IsIndeterminate);
@@ -117,13 +127,32 @@ public sealed partial class AuditProgressViewTests
         resources?.Remove();
         var assembly = typeof(NewAuditViewModel).Assembly.GetName().Name;
         root.SetAttributeValue(XNamespace.Xmlns + "vm", "clr-namespace:SecureAD.Shell.ViewModels;assembly=" + assembly);
+        root.SetAttributeValue(XNamespace.Xmlns + "views", "clr-namespace:SecureAD.Shell.Views;assembly=" + assembly);
+        XNamespace originalViews = "clr-namespace:SecureAD.Shell.Views";
+        XNamespace qualifiedViews = "clr-namespace:SecureAD.Shell.Views;assembly=" + assembly;
+        foreach (var attribute in root.DescendantsAndSelf().Attributes()
+            .Where(attribute => attribute.Name.Namespace == originalViews).ToArray())
+        {
+            var parent = attribute.Parent!;
+            var replacement = new XAttribute(qualifiedViews + attribute.Name.LocalName, attribute.Value);
+            attribute.Remove();
+            parent.Add(replacement);
+        }
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
         var dictionaries = sources.Select(source => new XElement(wpf + "ResourceDictionary",
             new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source)));
         root.AddFirst(new XElement(wpf + "UserControl.Resources", new XElement(wpf + "ResourceDictionary",
             new XElement(wpf + "ResourceDictionary.MergedDictionaries", dictionaries), styles)));
-        return (FrameworkElement)XamlReader.Parse(root.ToString());
+        return (FrameworkElement)XamlReader.Parse(root.ToString(), new ParserContext
+        {
+            XamlTypeMapper = new AuditViewTypeMapper(),
+        });
+    }
+
+    private sealed class AuditViewTypeMapper() : XamlTypeMapper([typeof(NewAuditViewModel).Assembly.FullName!])
+    {
+        protected override bool AllowInternalType(Type type) => type.Assembly == typeof(NewAuditViewModel).Assembly;
     }
 
     private static TextBlock BoundText(DependencyObject root, string path) => Assert.Single(Descendants<TextBlock>(root)

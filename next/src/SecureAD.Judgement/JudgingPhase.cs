@@ -22,3 +22,22 @@ public enum JudgingPhase
     /// <summary>Assessing hypothetical ownership only for automatically selected targets.</summary>
     AssessingOwnership,
 }
+
+/// <summary>The unit of observed work, never an authorization verdict or a completion percentage.</summary>
+public enum JudgingWorkUnit
+{
+    /// <summary>Ownership targets whose assessment work was performed.</summary>
+    OwnershipTargets,
+    /// <summary>Relationships examined while selecting ownership scope.</summary>
+    ScopeRelationships,
+    /// <summary>Resources processed by the current operation.</summary>
+    Resources,
+    /// <summary>Path objects processed by the current operation.</summary>
+    PathObjects,
+    /// <summary>Distinct requester answers processed, separately from prerequisites and routes.</summary>
+    RequesterAssessments,
+    /// <summary>Candidate questions examined during selection, not distinct stored answers.</summary>
+    QuestionsConsidered,
+    /// <summary>Captured identities indexed for the current selection operation.</summary>
+    IdentitiesIndexed,
+}

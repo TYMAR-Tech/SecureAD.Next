@@ -176,7 +176,7 @@ public sealed partial class AuditProgressViewTests
         var view = LoadView();
         view.DataContext = model;
         Arrange(view, 900, 650);
-        Assert.Equal(Visibility.Collapsed, BoundText(view, "StepQuestion").Visibility);
+        Assert.Equal("New audit", BoundText(view, "ScreenHeading").Text);
         var text = Descendants<TextBlock>(view).Select(item => item.Text).ToArray();
         Assert.DoesNotContain("Scope you are authorizing", text);
         Assert.DoesNotContain("Worth knowing before you start", text);
@@ -195,27 +195,35 @@ public sealed partial class AuditProgressViewTests
         var view = LoadView();
         view.DataContext = model;
         Arrange(view, 900, 650);
-        var heading = BoundText(view, "StepQuestion");
-        Assert.Equal(Visibility.Collapsed, heading.Visibility);
+        var heading = BoundText(view, "ScreenHeading");
+        Assert.Equal("New audit", heading.Text);
         model.CaptureOutput = AuditOutputState.Active;
         model.IsCapturing = true;
         view.UpdateLayout();
         Assert.Equal(Visibility.Visible, heading.Visibility);
-        Assert.Equal("This audit is running", heading.Text);
+        Assert.Equal("Audit in progress", heading.Text);
         model.IsCapturing = false;
         model.CaptureOutput = AuditOutputState.Saved;
         model.HasFinished = true;
         view.UpdateLayout();
         Assert.Equal(Visibility.Visible, heading.Visibility);
-        Assert.Equal("What this audit produced", heading.Text);
+        Assert.Equal("Results", heading.Text);
         model.Screen = AuditScreen.Domains;
         view.UpdateLayout();
-        Assert.Equal(Visibility.Collapsed, heading.Visibility);
+        Assert.Equal("New audit", heading.Text);
     });
 
     private static (NewAuditViewModel Model, FakeCaptureLauncher Capture) ReviewExample(bool exclude = false)
     {
-        var capture = new FakeCaptureLauncher
+        var capture = ReviewCapture();
+        var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
+        model.OpenAsync().GetAwaiter().GetResult();
+        if (exclude) model.Domains[1].IsIncluded = false;
+        model.Screen = AuditScreen.Review;
+        return (model, capture);
+    }
+
+    private static FakeCaptureLauncher ReviewCapture() => new()
         {
             Plan = Forests.OneDomain() with
             {
@@ -228,10 +236,4 @@ public sealed partial class AuditProgressViewTests
             },
             Check = new(true, []),
         };
-        var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
-        model.OpenAsync().GetAwaiter().GetResult();
-        if (exclude) model.Domains[1].IsIncluded = false;
-        model.Screen = AuditScreen.Review;
-        return (model, capture);
-    }
 }

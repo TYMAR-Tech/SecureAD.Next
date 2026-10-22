@@ -1190,38 +1190,6 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private string? _bundleDirectory;
 
     /// <summary>
-    /// Where a finished run's evidence landed.
-    /// </summary>
-    /// <remarks>
-    /// <b>This used to say reading results was not built.</b> That was true when written and stopped
-    /// being true on 2026-08-21, when the Assets section began reading bundles and the run library
-    /// began opening them. The path is still given: knowing where a run landed is worth having
-    /// whether or not it is being opened from here, and it is the only thing to say about a run
-    /// that sealed nothing.
-    /// </remarks>
-    public string? ResultsNote => !HasFinished && !HasRunEnded
-        ? null
-        : BundleDirectory is null
-            ? "This run produced no evidence to read."
-            : "The evidence is at " + BundleDirectory + ".";
-
-    /// <summary>
-    /// What this window is asking, as a question.
-    /// </summary>
-    /// <remarks>
-    /// <b>It does not mention choosing which domains to read.</b> Every domain of the forest is
-    /// read unless the operator takes one out under an attestation, and a heading offering a choice
-    /// would misdescribe what the tick boxes are for.
-    /// </remarks>
-    public string StepQuestion => Screen switch
-    {
-        AuditScreen.Review when HasFinished || HasRunEnded => "What this audit produced",
-        AuditScreen.Review when IsCapturing => "This audit is running",
-        AuditScreen.Review => "Is this run ready to start?",
-        _ => "What would this run read?",
-    };
-
-    /// <summary>
     /// How many domains the plan covers, for the window's header.
     /// </summary>
     /// <remarks>
@@ -1881,6 +1849,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         _stopping?.Dispose();
         _stopping = new CancellationTokenSource();
         _progressEpoch++;
+        var epoch = _progressEpoch;
+        ResetRunPresentation();
         _auditHasGaps = false;
         Problem = null;
         Notice = null;
@@ -1905,10 +1875,17 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             var outcome = await _capture
                 .RunAsync(
                     Location.Path!, forest: null, Overrides(), Attestations(),
-                    _concurrency.Effective, IncludeEnatelSso, ScanGppPasswords, _stopping.Token)
+                    _concurrency.Effective, IncludeEnatelSso, ScanGppPasswords,
+                    new Progress<CaptureProgress>(value =>
+                    {
+                        if (epoch == _progressEpoch && CaptureOutput == AuditOutputState.Active)
+                            ApplyCaptureProgress(value);
+                    }), _stopping.Token)
                 .ConfigureAwait(true);
 
             Report = Describe(outcome);
+            if (outcome.IsSuccess && outcome.Value.Progress is { } captured)
+                ApplyCaptureProgress(captured);
 
             // What it produced, so the screen can offer to read it. A run can succeed and seal
             // nothing - CaptureOutcome.ProducedABundle false with a directory means it recorded
@@ -1919,6 +1896,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 : null;
             CaptureOutput = BundleDirectory is not null ? AuditOutputState.Saved
                 : outcome.IsSuccess ? AuditOutputState.NoOutput : AuditOutputState.Failed;
+            if (BundleDirectory is not null)
+                Progress.ReportCount(Text("EvidenceSealed"), CapturedObjects, Text("ObjectsReadShort"));
 
             // Deriving and judging both follow a capture without being asked for - the owner's
             // shape, 2026-08-26 - unless the operator asked for a capture on its own. The decision
@@ -1952,6 +1931,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
+            WasStopped = true;
             if (CaptureOutput == AuditOutputState.Active) CaptureOutput = AuditOutputState.Stopped;
             Progress.End(AuditProgressViewModel.Text("Stopped"));
             Report = BundleDirectory is { } sealedEvidence
@@ -2023,7 +2003,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         IsDeriving = true;
         DerivationOutput = AuditOutputState.Active;
         var epoch = _progressEpoch;
-        Progress.Report(AuditProgressViewModel.Text("Deriving"), string.Empty);
+        Progress.SetActivity(AuditProgressViewModel.Text("Deriving"));
         DerivationReport = "Deriving from the evidence. Nothing is read from the directory now.";
 
         try
@@ -2047,6 +2027,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             }
 
             DerivationReport = Describe(derived.Value);
+            _derivedSummary = derived.Value;
             DerivationOutput = derived.Value.State switch
             {
                 DerivationRunState.Completed when derived.Value.EveryPhaseThatRanSucceeded => AuditOutputState.Saved,
@@ -2086,8 +2067,8 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private void OnDerived(DerivationProgress progress)
     {
         ObjectsDerived = Math.Max(ObjectsDerived, progress.ObjectsRead);
-        Progress.Report(AuditProgressViewModel.PhaseText(progress.Phase),
-            progress.Phase == "MembershipAndNesting" ? AuditProgressViewModel.Text("ObjectsRead", ObjectsDerived) : string.Empty);
+        Progress.ReportCount(AuditProgressViewModel.PhaseText(progress.Phase),
+            progress.Phase == "MembershipAndNesting" ? ObjectsDerived : null, Text("ObjectsReadShort"));
     }
 
     /// <summary>
@@ -2133,7 +2114,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         IsJudging = true;
         JudgementOutput = AuditOutputState.Active;
         var epoch = _progressEpoch;
-        Progress.Report(AuditProgressViewModel.Text("PreparingInputs"), string.Empty);
+        Progress.SetActivity(AuditProgressViewModel.Text("PreparingInputs"));
         JudgingReport = "Judging the evidence. Nothing is read from the directory now.";
 
         try
@@ -2157,6 +2138,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
             }
 
             Findings = judged.Value.Findings;
+            _judgedSummary = judged.Value;
             ObjectsJudged = Math.Max(ObjectsJudged, judged.Value.ObjectsJudged);
             JudgingReport = Describe(judged.Value);
             JudgementOutput = judged.Value.State switch
@@ -2166,7 +2148,7 @@ internal sealed partial class NewAuditViewModel : ObservableObject
                 _ => AuditOutputState.Failed,
             };
             _auditHasGaps |= judged.Value.State != JudgementRunState.Completed;
-            Progress.Report(AuditProgressViewModel.Text("ReadingResults"), AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
+            Progress.ReportCount(AuditProgressViewModel.Text("ReadingResults"), ObjectsJudged, Text("ObjectsProcessedShort"));
         }
         catch (OperationCanceledException)
         {
@@ -2197,12 +2179,16 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     private void OnJudged(JudgingRun.JudgingProgress progress)
     {
         ObjectsJudged = Math.Max(ObjectsJudged, progress.ObjectsRead);
-        Progress.Report(AuditProgressViewModel.PhaseText(progress.Phase.ToString()),
-            progress.Phase == JudgingPhase.PreparingInputs ? string.Empty
-            : progress.Tier0ObjectsObserved > 0
-                ? AuditProgressViewModel.Text("Tier0Discovery", progress.Tier0ObjectsObserved,
-                    AuditProgressViewModel.Spoken(progress.Tier0DiscoveryElapsed))
-                : AuditProgressViewModel.Text("ObjectsProcessed", ObjectsJudged));
+        var activity = progress.RequesterPhase is { } phase ? Text("Requester" + phase)
+            : AuditProgressViewModel.PhaseText(progress.Phase.ToString());
+        if (progress.WorkCompleted is { } completed && progress.WorkUnit is { } unit)
+            Progress.ReportCount(activity, completed, Text("WorkUnit" + unit));
+        else if (progress.Tier0ObjectsObserved > 0)
+            Progress.ReportCount(activity, progress.Tier0ObjectsObserved, Text("Tier0ObjectsShort"));
+        else
+            Progress.ReportCount(activity,
+                progress.Phase is JudgingPhase.EvaluatingObjects or JudgingPhase.ReadingResults ? ObjectsJudged : null,
+                Text("ObjectsProcessedShort"));
     }
 
     /// <summary>
@@ -2491,7 +2477,6 @@ internal sealed partial class NewAuditViewModel : ObservableObject
         AnnouncePresentation();
         OnPropertyChanged(nameof(IsOnDomains));
         OnPropertyChanged(nameof(IsOnReview));
-        OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(Review));
         OnPropertyChanged(nameof(CanGoBack));
         BackCommand.NotifyCanExecuteChanged();
@@ -2502,8 +2487,6 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     {
         AnnouncePresentation();
         OnPropertyChanged(nameof(MayChangeObjectScope));
-        OnPropertyChanged(nameof(StepQuestion));
-        OnPropertyChanged(nameof(ResultsNote));
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(LeaveLabel));
         BackCommand.NotifyCanExecuteChanged();
@@ -2513,7 +2496,6 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     partial void OnBundleDirectoryChanged(string? value)
     {
         AnnouncePresentation();
-        OnPropertyChanged(nameof(ResultsNote));
         OnPropertyChanged(nameof(LeaveLabel));
     }
 
@@ -2545,7 +2527,6 @@ internal sealed partial class NewAuditViewModel : ObservableObject
     {
         AnnouncePresentation();
         OnPropertyChanged(nameof(MayChangeObjectScope));
-        OnPropertyChanged(nameof(StepQuestion));
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanStop));
         OnPropertyChanged(nameof(CanLeave));

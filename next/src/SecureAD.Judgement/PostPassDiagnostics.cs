@@ -18,6 +18,9 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
     private bool _completed;
     private string? _interruption;
     private bool _disposed;
+    private JudgingWorkUnit? _workUnit;
+    private long _workValue;
+    private long? _lastReportedWork;
 
     private sealed record PartSnapshot(string Name, double CompletedMs, double ActiveMs);
     private sealed record Snapshot(string Outcome, string? ActivePart, double ElapsedMs,
@@ -38,6 +41,16 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
     internal void Counter(string name, long value)
     {
         lock (_gate) _counters[name] = value;
+        var unit = name switch
+        {
+            "answersSaved" => JudgingWorkUnit.RequesterAssessments,
+            "objectsProcessed" => JudgingWorkUnit.PathObjects,
+            "resourcesProcessed" => JudgingWorkUnit.Resources,
+            "questionsConsidered" => JudgingWorkUnit.QuestionsConsidered,
+            "identityNodesIndexed" => JudgingWorkUnit.IdentitiesIndexed,
+            _ => (JudgingWorkUnit?)null,
+        };
+        if (unit is { } observed) Work(observed, value);
     }
 
     internal void Targets(long total)
@@ -49,15 +62,18 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
             _counters["targetsCompleted"] = 0;
             _counters["targetsUnavailable"] = 0;
         }
+        Work(JudgingWorkUnit.OwnershipTargets, 0);
     }
 
     internal void TargetFinished(bool available = true)
     {
+        long processed;
         lock (_gate)
         {
-            _counters["targetsProcessed"]++;
+            processed = ++_counters["targetsProcessed"];
             _counters[available ? "targetsCompleted" : "targetsUnavailable"]++;
         }
+        Work(JudgingWorkUnit.OwnershipTargets, processed);
     }
 
     internal IProgress<OwnershipScopeProgress> ScopeProgress => new ScopeObserver(this);
@@ -72,12 +88,52 @@ internal sealed class PostPassDiagnostics(JudgingStatus owner, string stage, Gui
                 diagnostic._counters["scopeRelationsExamined"] = value.ExaminedRelations;
                 diagnostic._counters["scopeTargetsIncluded"] = value.IncludedTargets;
             }
+            diagnostic.Work(JudgingWorkUnit.ScopeRelationships, value.ExaminedRelations);
         }
     }
 
     internal void Complete()
     {
         lock (_gate) _completed = true;
+        FlushWork();
+    }
+
+    private void Work(JudgingWorkUnit unit, long value)
+    {
+        if (value < 0) throw new ArgumentOutOfRangeException(nameof(value));
+        lock (_gate)
+        {
+            if (_disposed) return;
+            if (_workUnit is { } active && Priority(active) > Priority(unit)) return;
+            if (_workUnit != unit) _lastReportedWork = null;
+            _workUnit = unit;
+            _workValue = value;
+            if (_lastReportedWork is { } last && value >= last && value - last < PathRequesterWorkPlan.PageSize) return;
+            _lastReportedWork = value;
+        }
+        owner.Work(this, unit, value);
+    }
+
+    private static int Priority(JudgingWorkUnit unit) => unit switch
+    {
+        JudgingWorkUnit.RequesterAssessments => 4,
+        JudgingWorkUnit.QuestionsConsidered => 3,
+        JudgingWorkUnit.Resources => 1,
+        _ => 2,
+    };
+
+    private void FlushWork()
+    {
+        JudgingWorkUnit? unit;
+        long value;
+        lock (_gate)
+        {
+            unit = _workUnit;
+            value = _workValue;
+            if (unit is null || _lastReportedWork == value) return;
+            _lastReportedWork = value;
+        }
+        owner.Work(this, unit.Value, value);
     }
 
     internal void Interrupted(bool cancelled)

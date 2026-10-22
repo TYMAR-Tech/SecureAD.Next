@@ -14,7 +14,6 @@ internal sealed partial class NewAuditViewModel
 
     public bool HasRunOutput => CaptureOutput != AuditOutputState.NotStarted;
     public bool ShowsRunPreparation => !HasRunOutput;
-    public bool ShowsRunHeading => IsOnReview && HasRunOutput;
     public bool ShowsStartAction => IsOnReview && ShowsRunPreparation;
     public bool HasRunEnded => HasRunOutput && !IsCapturing;
     public bool ShowsPhaseProgress => IsBusy || IsCapturing || HasRunOutput;
@@ -35,8 +34,8 @@ internal sealed partial class NewAuditViewModel
     public bool HasOutputLimitations => HasRunEnded && new[] { CaptureOutput, DerivationOutput, JudgementOutput }
         .Any(state => state is AuditOutputState.SavedWithLimitations or AuditOutputState.NoOutput or AuditOutputState.Failed or AuditOutputState.Stopped);
     public string StopExplanation => BundleDirectory is null
-        ? "Sealing has not been confirmed. Stopping is not a completed capture; the run will report what it actually produced."
-        : "Evidence is already sealed and remains available. Stopping analysis does not remove it or complete unfinished checks.";
+        ? "Sealing has not been confirmed. Stopping will not complete the capture."
+        : "Sealed evidence will be kept. Unfinished analysis will remain incomplete.";
 
     public bool CanRequestAuditStop => IsCapturing;
 
@@ -74,7 +73,6 @@ internal sealed partial class NewAuditViewModel
     {
         OnPropertyChanged(nameof(HasRunOutput));
         OnPropertyChanged(nameof(ShowsRunPreparation));
-        OnPropertyChanged(nameof(ShowsRunHeading));
         OnPropertyChanged(nameof(ShowsStartAction));
         OnPropertyChanged(nameof(CanRequestAuditStop));
         OnPropertyChanged(nameof(HasRunEnded));
@@ -89,8 +87,7 @@ internal sealed partial class NewAuditViewModel
         OnPropertyChanged(nameof(HasOutputLimitations));
         OnPropertyChanged(nameof(StopExplanation));
         OnPropertyChanged(nameof(LeaveLabel));
-        OnPropertyChanged(nameof(StepQuestion));
-        OnPropertyChanged(nameof(ResultsNote));
+        AnnounceProgressPresentation();
         RequestAuditStopCommand.NotifyCanExecuteChanged();
         ConfirmAuditStopCommand.NotifyCanExecuteChanged();
     }

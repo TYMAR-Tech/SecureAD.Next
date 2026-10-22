@@ -114,10 +114,10 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         IReadOnlyList<ExclusionAttestation> exclusions,
         int domainsAtOnce,
         CancellationToken cancellationToken) =>
-        RunAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, false, false, cancellationToken);
+        RunCoreAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, false, false, null, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task<Result<CaptureOutcome>> RunAsync(
+    public Task<Result<CaptureOutcome>> RunAsync(
         string libraryRoot,
         string? forest,
         IReadOnlyDictionary<string, string> overrides,
@@ -125,16 +125,24 @@ internal sealed class CaptureLauncher : ICaptureLauncher
         int domainsAtOnce,
         bool includeEnatelSso,
         bool scanGppPasswords,
+        IProgress<CaptureProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(progress);
+        return RunCoreAsync(libraryRoot, forest, overrides, exclusions, domainsAtOnce, includeEnatelSso,
+            scanGppPasswords, progress, cancellationToken);
+    }
+
+    private async Task<Result<CaptureOutcome>> RunCoreAsync(
+        string libraryRoot, string? forest, IReadOnlyDictionary<string, string> overrides,
+        IReadOnlyList<ExclusionAttestation> exclusions, int domainsAtOnce,
+        bool includeEnatelSso, bool scanGppPasswords, IProgress<CaptureProgress>? progress,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
         ArgumentNullException.ThrowIfNull(overrides);
         ArgumentNullException.ThrowIfNull(exclusions);
 
-        // Nothing is reported while the run is in flight. The capture layer has no per-object
-        // progress to offer, and a progress bar over a run that cannot report one is a picture of a
-        // run rather than a report of it. What preflight found was shown on the Review step, before
-        // the operator pressed Start.
         using var standalone = new RunProtectionSessions();
         var protections = _protection ?? standalone;
         RunProtectionSessions.Lease? producing = null;
@@ -152,13 +160,14 @@ internal sealed class CaptureLauncher : ICaptureLauncher
                     {
                         producing = protections.Acquire(directory);
                         return producing.Files;
-                    })
+                    }, progress)
                 .ConfigureAwait(false);
 
             if (run.IsSuccess && run.Value.ProducedABundle)
                 protections.Offer(producing ?? throw new InvalidOperationException("Capture completed without its run owner."));
             return run.IsSuccess
-                ? Result<CaptureOutcome>.Success(new CaptureOutcome(run.Value.ProducedABundle, run.Value.BundleDirectory))
+                ? Result<CaptureOutcome>.Success(new CaptureOutcome(run.Value.ProducedABundle, run.Value.BundleDirectory)
+                    { Progress = run.Value.Progress })
                 : Result<CaptureOutcome>.Failure(run.Error);
         }
         finally { producing?.Dispose(); }

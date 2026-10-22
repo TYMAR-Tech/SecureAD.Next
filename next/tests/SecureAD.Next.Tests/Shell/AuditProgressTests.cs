@@ -1,6 +1,7 @@
 using SecureAD.Derivation;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Shell.Services;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
@@ -10,6 +11,71 @@ namespace SecureAD.Next.Tests.Shell;
 
 public sealed class AuditProgressTests
 {
+    [Fact]
+    public void MissingWorkReportsAreNotZeroAndUiClockRefreshesAreNotWorkerHeartbeats()
+    {
+        var time = new ManualTime();
+        var progress = new AuditProgressViewModel(time);
+        progress.Begin("Capture");
+        time.Advance(10);
+        progress.Refresh();
+        Assert.Equal(("Not yet reported", "\u2014"), (progress.LastWorkReportAge, progress.WorkCountText));
+        progress.ReportCount("Reading objects", 0, "Objects read");
+        time.Advance(5);
+        progress.Refresh();
+        Assert.Equal(("5 s ago", "0", "00:15"), (progress.LastWorkReportAge, progress.WorkCountText, progress.ElapsedClock));
+        progress.SetActivity("Sealing");
+        time.Advance(5);
+        progress.Refresh();
+        Assert.Equal(("10 s ago", "\u2014"), (progress.LastWorkReportAge, progress.WorkCountText));
+        Assert.Single(progress.RecentReports);
+    }
+
+    [Fact]
+    public async Task PreviousCaptureCallbacksCannotReplaceTheNextRunsScopeCounts()
+    {
+        var capture = new FakeCaptureLauncher();
+        var model = Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
+        model.CaptureOnly = true;
+        var original = SynchronizationContext.Current;
+        var first = new TaskCompletionSource<Result<CaptureOutcome>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var second = new TaskCompletionSource<Result<CaptureOutcome>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task? firstRun = null;
+        Task? secondRun = null;
+        static CaptureProgress Snapshot(long sequence, long count) => new(sequence, CaptureWorkPhase.DirectoryRead,
+            [new(Forests.Root, "ad.lab", true, count, CaptureReadState.Reading)], null);
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(new InlineCaptureContext());
+            capture.CaptureTask = first.Task;
+            firstRun = model.StartAsync();
+            var previous = Assert.IsAssignableFrom<IProgress<CaptureProgress>>(capture.CaptureProgress);
+            previous.Report(Snapshot(1, 10));
+            Assert.Equal("10", model.CapturedObjectsText);
+            first.SetResult(Result<CaptureOutcome>.Success(new(true, @"C:\synthetic\first")));
+            await firstRun;
+            SynchronizationContext.SetSynchronizationContext(new InlineCaptureContext());
+            capture.CaptureTask = second.Task;
+            secondRun = model.StartAsync();
+            capture.CaptureProgress!.Report(Snapshot(1, 20));
+            previous.Report(Snapshot(99, 999));
+            Assert.Equal("20", model.CapturedObjectsText);
+        }
+        finally
+        {
+            first.TrySetResult(Result<CaptureOutcome>.Success(new(true, @"C:\synthetic\first")));
+            second.TrySetResult(Result<CaptureOutcome>.Success(new(true, @"C:\synthetic\second")));
+            if (firstRun is not null) await firstRun;
+            if (secondRun is not null) await secondRun;
+            SynchronizationContext.SetSynchronizationContext(original);
+        }
+    }
+
+    private sealed class InlineCaptureContext : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state) => callback(state);
+    }
+
     [Fact]
     public void ElapsedRefreshDoesNotInventWorkProgress()
     {
@@ -70,8 +136,8 @@ public sealed class AuditProgressTests
             await judging.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
             await ReportAndWait(screen.Progress, () => screen.Progress.Counter.Contains("5,000", StringComparison.Ordinal),
                 () => judging.Progress!.Report(new(5000)));
-            Assert.Equal((true, false, true, "This audit is running"),
-                (screen.IsJudging, screen.HasFinished, screen.Report!.Contains("Sealed", StringComparison.Ordinal), screen.StepQuestion));
+            Assert.Equal((true, false, true, "Audit in progress"),
+                (screen.IsJudging, screen.HasFinished, screen.Report!.Contains("Sealed", StringComparison.Ordinal), screen.ScreenHeading));
         }
         finally { deriving.Complete(); judging.Complete(); await run; }
     }
@@ -87,7 +153,7 @@ public sealed class AuditProgressTests
         {
             await ReportAndWait(screen.Progress, () => screen.ObjectsDerived == 2000,
                 () => deriving.Progress!.Report(new("MembershipAndNesting", 2000)));
-            await ReportAndWait(screen.Progress, () => screen.Progress.Status.Contains("expanding security-group", StringComparison.Ordinal),
+            await ReportAndWait(screen.Progress, () => screen.Progress.Status == AuditProgressViewModel.PhaseText("ExpansionPhase"),
                 () => deriving.Progress!.Report(new("ExpansionPhase", 0)));
             Assert.Equal((2000L, string.Empty), (screen.ObjectsDerived, screen.Progress.Counter));
         }

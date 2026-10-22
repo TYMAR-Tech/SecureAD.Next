@@ -119,9 +119,12 @@ public sealed class SysvolCapture
     /// has not discovered anything about his policies, and recording a cancelled read as an
     /// unreadable policy would put a finding in front of him that says more than he knows.
     /// </remarks>
-    public async Task<SysvolCoverage> ReadAsync(
+    public Task<SysvolCoverage> ReadAsync(
         GpoInventory inventory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) => ReadAsync(inventory, cancellationToken, null);
+
+    internal async Task<SysvolCoverage> ReadAsync(
+        GpoInventory inventory, CancellationToken cancellationToken, Action<long>? reportPolicies)
     {
         ArgumentNullException.ThrowIfNull(inventory);
 
@@ -132,6 +135,7 @@ public sealed class SysvolCapture
                         GppPasswordScanOutcome.Unreadable,
                         policy.Reason ?? "The policy had no readable SYSVOL location.")
                     : policy));
+        reportPolicies?.Invoke(policies.Count);
 
         foreach (var target in inventory.Policies)
         {
@@ -141,6 +145,7 @@ public sealed class SysvolCapture
             _log.Note("Capture", SysvolText.Get("PolicyStarted"), PolicyDetails(target, policies.Count, total, started, "Started"));
             var coverage = await ReadPolicyAsync(target, cancellationToken).ConfigureAwait(false);
             policies.Add(coverage);
+            reportPolicies?.Invoke(policies.Count);
             _log.Note("Capture", SysvolText.Get("PolicyFinished"), PolicyDetails(target, policies.Count, total, started, coverage.Outcome.ToString()));
         }
 

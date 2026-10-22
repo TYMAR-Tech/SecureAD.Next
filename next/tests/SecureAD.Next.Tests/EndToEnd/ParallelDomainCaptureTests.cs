@@ -4,6 +4,7 @@ using SecureAD.Audit.Connect;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
+using SecureAD.Kernel.Capture;
 using SecureAD.Kernel.Naming;
 using SecureAD.Next.Tests.Capture;
 using SecureAD.Next.Tests.Sysvol;
@@ -34,6 +35,28 @@ namespace SecureAD.Next.Tests.EndToEnd;
 /// </remarks>
 public sealed class ParallelDomainCaptureTests : IDisposable
 {
+    [Fact]
+    public async Task LiveReportsReachTheCallerWithExactPartitionCountsAndASeparateSealingPhase()
+    {
+        var forest = TwoDomainsOnTwoControllers(TimeSpan.Zero);
+        var reports = new CaptureProgressTests.Reports();
+        var result = await RunAsync(forest, 2, reports);
+        Assert.True(result.ProducedABundle, result.Error?.Description);
+        var final = Assert.IsType<CaptureProgress>(result.Progress);
+        Assert.Equal(4, final.Scopes.Count);
+        Assert.All(final.Scopes, scope => Assert.Equal(CaptureReadState.ReadComplete, scope.State));
+        Assert.Equal(forest.ObjectsIn(FirstDomain), final.Scopes.Single(scope => scope.NamingContext == FirstDomain).ObjectsRead);
+        Assert.Equal(forest.ObjectsIn(SecondDomain), final.Scopes.Single(scope => scope.NamingContext == SecondDomain).ObjectsRead);
+        Assert.Equal(Scalar(result.BundleDirectory, "SELECT COUNT(*) FROM captured_object"),
+            final.Scopes.Sum(scope => scope.ObjectsRead!.Value));
+        Assert.Contains(reports.Values, report => report.Scopes.Any(scope =>
+            scope.State == CaptureReadState.Reading && scope.ObjectsRead > 0));
+        Assert.Contains(reports.Values, report => report.Phase == CaptureWorkPhase.Merging);
+        Assert.Contains(reports.Values, report => report.Phase == CaptureWorkPhase.PolicyFiles);
+        Assert.Equal(CaptureWorkPhase.Sealing, reports.Values.Last().Phase);
+        Assert.Same(final, reports.Values.Last());
+    }
+
     private const string Forest = "example.com";
     private const string Configuration = "CN=Configuration,DC=example,DC=com";
     private const string Schema = "CN=Schema,CN=Configuration,DC=example,DC=com";
@@ -256,7 +279,9 @@ public sealed class ParallelDomainCaptureTests : IDisposable
 
     // ---------------------------------------------------------------------------------------
 
-    private async Task<CaptureRunResult> RunAsync(ForestModel forest, int domainsAtOnce)
+    private Task<CaptureRunResult> RunAsync(ForestModel forest, int domainsAtOnce) => RunAsync(forest, domainsAtOnce, null);
+
+    private async Task<CaptureRunResult> RunAsync(ForestModel forest, int domainsAtOnce, IProgress<CaptureProgress>? progress)
     {
         var plan = CapturePlan.For(
             RootHost,
@@ -284,11 +309,9 @@ public sealed class ParallelDomainCaptureTests : IDisposable
             RunLog.Discarded,
             domainsAtOnce);
 
-        return await run.RunAsync(
-            plan.Value!,
-            directory.Value!,
-            new Dictionary<string, AttestedExclusion>(),
-            CancellationToken.None);
+        using var files = new ProtectedRunFiles(directory.Value!);
+        return await run.RunAsync(plan.Value!, directory.Value!, new Dictionary<string, AttestedExclusion>(),
+            CaptureOptions.Default, CancellationToken.None, files, progress);
     }
 
     /// <summary>Two domains, each pinned to a controller of its own.</summary>

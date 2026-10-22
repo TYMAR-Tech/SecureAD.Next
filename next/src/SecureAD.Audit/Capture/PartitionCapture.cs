@@ -110,14 +110,17 @@ public sealed class PartitionCapture
     /// </remarks>
     /// <param name="unit">The naming context, and the controller to read it from.</param>
     /// <param name="cancellationToken">Cancellation for a capture an operator stopped.</param>
-    public async Task<Result<PartitionCoverage>> ReadAsync(
-        CaptureUnit unit, CancellationToken cancellationToken)
+    public Task<Result<PartitionCoverage>> ReadAsync(
+        CaptureUnit unit, CancellationToken cancellationToken) => ReadAsync(unit, cancellationToken, null);
+
+    internal async Task<Result<PartitionCoverage>> ReadAsync(
+        CaptureUnit unit, CancellationToken cancellationToken, Action<long>? reportObjects)
     {
         ArgumentNullException.ThrowIfNull(unit);
 
         for (var restart = 0; ; restart++)
         {
-            var attempt = await ReadOnceAsync(unit, cancellationToken).ConfigureAwait(false);
+            var attempt = await ReadOnceAsync(unit, cancellationToken, reportObjects).ConfigureAwait(false);
 
             if (attempt.Result.IsSuccess
                 || !attempt.RestartWanted
@@ -147,7 +150,7 @@ public sealed class PartitionCapture
     }
 
     private async Task<Outcome<PartitionCoverage>> ReadOnceAsync(
-        CaptureUnit unit, CancellationToken cancellationToken)
+        CaptureUnit unit, CancellationToken cancellationToken, Action<long>? reportObjects)
     {
         var opened = _connections.Connect(unit);
         if (!opened.IsSuccess)
@@ -219,6 +222,7 @@ public sealed class PartitionCapture
         // announces the partition again; a sink that has already seen it refuses, which is the
         // guard that stops a restarted unit being recorded twice.
         _sink.BeginPartition(unit, channel.SecurityLevel, referralsSuppressed);
+        reportObjects?.Invoke(0);
         var completed = false;
 
         try
@@ -276,6 +280,7 @@ public sealed class PartitionCapture
             }
 
             references.AddRange(page.ContinuationReferences);
+            reportObjects?.Invoke(objects);
 
                 if (page.Completeness == PageCompleteness.LastPage)
                 {
