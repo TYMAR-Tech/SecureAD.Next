@@ -219,7 +219,7 @@ public sealed class CircularGroupMembershipTests
         var directory = Capture("self");
         Derive(directory);
         using var reader = DerivationReader.Open(directory).Value!;
-        Assert.Equal(16, reader.Description.SchemaVersion);
+        Assert.Equal(17, reader.Description.SchemaVersion);
         Assert.Single(Assert.Single(reader.Read().NestingCycles.Cycles!));
     }
 

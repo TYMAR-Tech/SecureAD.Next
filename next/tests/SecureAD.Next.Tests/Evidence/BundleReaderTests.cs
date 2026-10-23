@@ -184,13 +184,14 @@ public sealed class BundleReaderTests : IDisposable
     }
 
     [Fact]
-    public void ASealedBundleThatReachedNoDomainStillOpensAndSaysSo()
+    public void ASealedBundleClaimingAnUnreadDomainIsRefused()
     {
-        WriteABundle(NoDomainRead());
+        WriteABundle(UnreadDomainCoverage());
 
         using var opening = Open();
 
-        Assert.False(opening.Value.Description.EveryDeclaredUnitRecordedAsRead);
+        Assert.False(opening.IsSuccess);
+        Assert.Equal("Evidence.CaptureManifestUnreadable", opening.Error.Code);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -1030,10 +1031,9 @@ public sealed class BundleReaderTests : IDisposable
             SysvolCoverage.Of([]));
 
     /// <summary>
-    /// A run that sealed a bundle without reaching its one domain. Sealed evidence of an
-    /// incomplete capture, which is a thing that exists.
+    /// Deliberately contradictory input: a failed domain read prevents capture from sealing.
     /// </summary>
-    private static RunCoverage NoDomainRead() =>
+    private static RunCoverage UnreadDomainCoverage() =>
         RunCoverage.Of(
             CoverageId.ForDomains("contoso.com", ["contoso.com"]),
             [DomainCoverage.NotRead("contoso.com", "No controller answered.")],

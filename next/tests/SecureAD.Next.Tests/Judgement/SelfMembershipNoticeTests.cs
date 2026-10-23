@@ -19,7 +19,7 @@ namespace SecureAD.Next.Tests.Judgement;
 public sealed class SelfMembershipNoticeTests
 {
     [Fact]
-    public async Task AScanThatDidNotRunIsStatedRatherThanLeftSilent()
+    public void AScanThatDidNotRunIsStatedRatherThanLeftSilent() => OneThread.Run(async () =>
     {
         var report = await ShellReport(budget: null);
 
@@ -27,7 +27,7 @@ public sealed class SelfMembershipNoticeTests
         Assert.Contains("no processing limit is configured", report, StringComparison.Ordinal);
         Assert.Contains("Tier 0 requester checks have their own saved coverage", report, StringComparison.Ordinal);
         Assert.Contains("this does not mean nobody can add themselves", report, StringComparison.Ordinal);
-    }
+    });
 
     [Fact]
     public void CliCompletionDistinguishesTheSeparateMembershipScan()
@@ -52,7 +52,7 @@ public sealed class SelfMembershipNoticeTests
     }
 
     [Fact]
-    public async Task AScanThatRanReportsWhatItStoredAndWhatItCouldNotDecide()
+    public void AScanThatRanReportsWhatItStoredAndWhatItCouldNotDecide() => OneThread.Run(async () =>
     {
         var report = await ShellReport(SelfMembershipDiscoveryTests.TestBudget);
 
@@ -60,19 +60,22 @@ public sealed class SelfMembershipNoticeTests
         Assert.Contains("account/group pair(s)", report, StringComparison.Ordinal);
         Assert.Contains("could not be decided", report, StringComparison.Ordinal);
         Assert.DoesNotContain("were not scheduled", report, StringComparison.Ordinal);
-    }
+    });
 
     [Fact]
-    public async Task AStoppedScanSaysItDidNotReadEverythingCaptured()
+    public void AStoppedScanSaysItDidNotReadEverythingCaptured() => OneThread.Run(async () =>
     {
         var report = await ShellReport(new SelfMembershipDiscoveryBudget(100, 1000, 1000, 0));
 
         Assert.Contains("stopped at its configured limit", report, StringComparison.Ordinal);
         Assert.Contains("What it found is kept", report, StringComparison.Ordinal);
-    }
+    });
 
     private static async Task<string> ShellReport(SelfMembershipDiscoveryBudget? budget)
     {
+        Assert.NotNull(SynchronizationContext.Current);
+        var ownerThread = Environment.CurrentManagedThreadId;
+        var progressThreads = new System.Collections.Concurrent.ConcurrentQueue<int>();
         var directory = SelfMembershipDiscoveryTests.Bundle();
         var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
         var location = new RunLibraryLocation(settings);
@@ -81,10 +84,14 @@ public sealed class SelfMembershipNoticeTests
             new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) },
             new FakeNewAuditDialog(), new FakeRunOpener(), new DerivationLauncher(),
             new JudgingLauncher(budget), new DomainConcurrency(settings));
+        screen.Progress.RecentReports.CollectionChanged += (_, _) =>
+            progressThreads.Enqueue(Environment.CurrentManagedThreadId);
 
         await screen.OpenAsync();
         await screen.StartAsync();
 
+        Assert.NotEmpty(progressThreads);
+        Assert.All(progressThreads, thread => Assert.Equal(ownerThread, thread));
         Assert.DoesNotContain("could not be judged", screen.JudgingReport, StringComparison.OrdinalIgnoreCase);
         return screen.JudgingReport;
     }

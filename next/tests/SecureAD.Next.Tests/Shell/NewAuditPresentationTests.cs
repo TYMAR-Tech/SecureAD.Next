@@ -21,7 +21,7 @@ public sealed class NewAuditPresentationTests
     }
 
     [Fact]
-    public async Task WizardRefusalIsProminentButNextCanRecheckWithoutStartingCapture()
+    public void WizardRefusalIsProminentButNextCanRecheckWithoutStartingCapture() => OneThread.Run(async () =>
     {
         var capture = new FakeCaptureLauncher { CheckFails = Failures.Any("Recorded DNS failure") };
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
@@ -38,10 +38,10 @@ public sealed class NewAuditPresentationTests
         Assert.Equal(AuditScreen.Review, model.Screen);
         Assert.False(capture.WasRun);
         Assert.True(model.ShowsStartAction);
-    }
+    });
 
     [Fact]
-    public async Task WizardCaptureOnlyKeepsUnrequestedAnalysisSeparateFromSuccess()
+    public void WizardCaptureOnlyKeepsUnrequestedAnalysisSeparateFromSuccess() => OneThread.Run(async () =>
     {
         var deriving = new FakeDerivationLauncher();
         var judging = new FakeJudgingLauncher();
@@ -56,12 +56,12 @@ public sealed class NewAuditPresentationTests
         Assert.False(deriving.WasRun || judging.WasRun);
         Assert.False(model.ShowsRunPreparation || model.ShowsStartAction);
         Assert.Equal("View results", model.LeaveLabel);
-    }
+    });
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task WizardSeparateOutcomeCardsKeepDegradedAnalysisVisible(bool derivation)
+    public void WizardSeparateOutcomeCardsKeepDegradedAnalysisVisible(bool derivation) => OneThread.Run(async () =>
     {
         var deriving = new FakeDerivationLauncher();
         var judging = new FakeJudgingLauncher();
@@ -73,13 +73,13 @@ public sealed class NewAuditPresentationTests
         Assert.Equal(AuditOutputState.SavedWithLimitations, derivation ? model.DerivationOutput : model.JudgementOutput);
         Assert.Equal("Saved with limitations", derivation ? model.DerivationOutputText : model.JudgementOutputText);
         Assert.True(model.HasOutputLimitations);
-    }
+    });
 
     [Theory]
     [InlineData("capture")]
     [InlineData("derive")]
     [InlineData("judge")]
-    public async Task WizardStoppedOutputDoesNotErasePreviouslySealedEvidence(string phase)
+    public void WizardStoppedOutputDoesNotErasePreviouslySealedEvidence(string phase) => OneThread.Run(async () =>
     {
         var capture = new FakeCaptureLauncher { Cancels = phase == "capture" };
         var deriving = new FakeDerivationLauncher { Cancels = phase == "derive" };
@@ -96,12 +96,12 @@ public sealed class NewAuditPresentationTests
         Assert.Equal(phase != "capture", model.BundleDirectory is not null);
         Assert.Equal("Results", model.ScreenHeading);
         Assert.Equal(phase != "capture", model.HasSealedEvidence);
-    }
+    });
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task WizardFailedAnalysisDoesNotBecomeSavedOutput(bool derivation)
+    public void WizardFailedAnalysisDoesNotBecomeSavedOutput(bool derivation) => OneThread.Run(async () =>
     {
         var deriving = new FakeDerivationLauncher { Fails = derivation ? Failures.Any("derive refused") : null };
         var judging = new FakeJudgingLauncher { Fails = derivation ? null : Failures.Any("judge refused") };
@@ -111,10 +111,10 @@ public sealed class NewAuditPresentationTests
         Assert.True(model.HasOutputLimitations);
         Assert.Equal(AuditOutputState.Saved, model.CaptureOutput);
         Assert.Equal("View results", model.LeaveLabel);
-    }
+    });
 
     [Fact]
-    public async Task WizardRetryClearsOutputCardsFromThePreviousRun()
+    public void WizardRetryClearsOutputCardsFromThePreviousRun() => OneThread.Run(async () =>
     {
         var capture = new FakeCaptureLauncher();
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
@@ -125,10 +125,10 @@ public sealed class NewAuditPresentationTests
         Assert.Equal((AuditOutputState.Stopped, AuditOutputState.NotStarted, AuditOutputState.NotStarted),
             (model.CaptureOutput, model.DerivationOutput, model.JudgementOutput));
         Assert.Null(model.BundleDirectory);
-    }
+    });
 
     [Fact]
-    public async Task WizardStopConfirmationCanBeCancelledWithoutStoppingTheRun()
+    public void WizardStopConfirmationCanBeCancelledWithoutStoppingTheRun() => OneThread.Run(async () =>
     {
         var judging = new FakeJudgingLauncher();
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), judging);
@@ -146,10 +146,10 @@ public sealed class NewAuditPresentationTests
         Assert.False(seen.Value.TokenCancelled);
         Assert.Contains("will be kept", seen.Value.Explanation);
         Assert.Equal(AuditOutputState.Saved, model.JudgementOutput);
-    }
+    });
 
     [Fact]
-    public async Task WizardConfirmedStopUsesTheExistingCancellationAndPreservesEvidence()
+    public void WizardConfirmedStopUsesTheExistingCancellationAndPreservesEvidence() => OneThread.Run(async () =>
     {
         var judging = new FakeJudgingLauncher();
         var model = AuditProgressTests.Model(new FakeDerivationLauncher(), judging);
@@ -163,7 +163,7 @@ public sealed class NewAuditPresentationTests
         Assert.Equal(AuditOutputState.Saved, model.CaptureOutput);
         Assert.False(model.StopConfirmationRequested);
         Assert.False(model.CanRequestAuditStop);
-    }
+    });
 
     [Fact]
     public void WizardModeChoiceRefreshesTheStartActionLabel()
