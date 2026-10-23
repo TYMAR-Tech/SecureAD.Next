@@ -177,6 +177,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
             if (oldValue is SavedTier0PathSectionViewModel path) path.CancelRead();
             if (oldValue is ControlEdgesSectionViewModel controls) controls.Suspend();
             if (oldValue is GroupMembershipSectionViewModel members) members.Suspend();
+            if (oldValue is FindingsSectionViewModel findings) findings.Suspend();
             oldValue.IsSelected = false;
             var index = Sections.IndexOf(oldValue);
             if (index >= 0) Sections[index] = new UnloadedObjectSectionViewModel(_definitions[index]);
@@ -213,6 +214,7 @@ internal sealed partial class ObjectViewModel : ObservableObject
         if (Selected is SavedTier0PathSectionViewModel path) path.CancelRead();
         if (Selected is ControlEdgesSectionViewModel controls) controls.Suspend();
         if (Selected is GroupMembershipSectionViewModel members) members.Suspend();
+        if (Selected is FindingsSectionViewModel findings) findings.Suspend();
         IsLoading = false;
     }
 

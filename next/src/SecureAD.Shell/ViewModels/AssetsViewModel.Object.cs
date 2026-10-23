@@ -83,8 +83,9 @@ internal sealed partial class AssetsViewModel
                 return;
             }
             var objectClass = identity.ObjectClass;
+            var findingPages = new FindingsSectionViewModel.PagingState();
             var opened = new ObjectViewModel(identity.DistinguishedName, objectClass ?? "not recorded", objectClass,
-                (definition, token) => ReadSectionAsync(bundle, identity, definition, result.Current, token))
+                (definition, token) => ReadSectionAsync(bundle, identity, definition, result.Current, findingPages, token))
             {
                 ObjectGuid = identity.ObjectGuid,
             };
@@ -134,12 +135,25 @@ internal sealed partial class AssetsViewModel
     }
 
     private async Task<ObjectSectionViewModel> ReadSectionAsync(string bundle, CapturedObjectIdentity identity,
-        ObjectSectionDefinition definition, Func<bool> current, CancellationToken token)
+        ObjectSectionDefinition definition, Func<bool> current, FindingsSectionViewModel.PagingState findingPages,
+        CancellationToken token)
     {
         var dn = identity.DistinguishedName;
         var objectClass = identity.ObjectClass;
         if (definition.Key == ObjectSectionCatalog.Help)
             return new ObjectHelpSectionViewModel(definition);
+        if (definition.Key == ObjectSectionCatalog.Findings)
+        {
+            var findings = new FindingsSectionViewModel(definition, findingPages,
+                (after, cancellation) => ReadBoundAsync(bundle, current,
+                    reader => reader.ReadFindingsList(bundle, FindingsQuery.About(dn) with { After = after }),
+                    cancellation, "read object " + definition.Key), current);
+            using var cancellation = token.Register(findings.Suspend);
+            await findings.ReadCompletion;
+            token.ThrowIfCancellationRequested();
+            if (findings.Refusal is { } refusal) throw new InvalidOperationException(refusal);
+            return findings;
+        }
         if (definition.Key == ObjectSectionCatalog.Membership && string.Equals(objectClass, "group", StringComparison.OrdinalIgnoreCase))
         {
             var members = new GroupMembershipSectionViewModel(definition,
@@ -200,13 +214,6 @@ internal sealed partial class AssetsViewModel
         }
         var content = await ReadBoundAsync(bundle, current, reader =>
         {
-            if (definition.Key == ObjectSectionCatalog.Findings)
-            {
-                var findings = reader.ReadFindingsList(bundle, FindingsQuery.About(dn));
-                return findings.IsSuccess
-                    ? Result<ObjectSectionViewModel>.Success(new FindingsSectionViewModel(definition, findings.Value, null))
-                    : Result<ObjectSectionViewModel>.Failure(findings.Error);
-            }
             if (definition.Key is ObjectSectionCatalog.Overview or ObjectSectionCatalog.Permissions or ObjectSectionCatalog.Evidence)
             {
                 var permissions = reader.ReadPermissions(bundle, dn);

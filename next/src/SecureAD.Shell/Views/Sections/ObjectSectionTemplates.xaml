@@ -1332,16 +1332,28 @@
          is - nobody judged, the judgement would not open, or the rules found nothing here - is
          decided in the view model, where a test can reach it. -->
     <DataTemplate DataType="{x:Type vm:FindingsSectionViewModel}">
-        <StackPanel>
-            <Button Content="Open Path to Tier 0" HorizontalAlignment="Left" Margin="0,0,0,10"
+        <DockPanel>
+            <Button DockPanel.Dock="Top" Content="Open Path to Tier 0" HorizontalAlignment="Left" Margin="0,0,0,10"
                     Command="{Binding DataContext.ShowObjectPathCommand,RelativeSource={RelativeSource AncestorType=views:ObjectView}}" />
-            <Border Style="{StaticResource Card}"
+            <TextBlock DockPanel.Dock="Top" Text="{Binding LoadingText}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource Shown}}" />
+            <Border DockPanel.Dock="Top" Style="{StaticResource Card}"
                     Visibility="{Binding HasVerdict, Converter={StaticResource Shown}}">
                 <TextBox Text="{Binding Verdict, Mode=OneWay}"
                          Style="{StaticResource SelectableMessage}"
                          Foreground="{DynamicResource SecondaryTextBrush}" />
             </Border>
 
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0"
+                        Visibility="{Binding ShowsPaging, Converter={StaticResource Shown}}">
+                <TextBlock Text="{Binding PageNumber, StringFormat=Page {0}}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                <Button Content="Previous" Command="{Binding PreviousCommand}" Margin="0,0,8,0" />
+                <Button Content="Next" Command="{Binding NextCommand}" />
+            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding Findings}"
                           Visibility="{Binding HasFindings, Converter={StaticResource Shown}}">
                 <ItemsControl.ItemTemplate>
@@ -1379,7 +1391,8 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-        </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type vm:OtherValuesSectionViewModel}">
