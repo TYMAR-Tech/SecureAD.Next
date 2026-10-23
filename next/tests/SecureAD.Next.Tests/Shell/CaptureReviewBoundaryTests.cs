@@ -56,7 +56,7 @@ public sealed partial class CaptureReviewBoundaryTests
     [Theory]
     [InlineData(false, 6)]
     [InlineData(true, 2)]
-    public async Task RecordedScopeSurvivesPreflightEvidenceAndDashboard(bool includeEnatelSso, int excludedCount)
+    public void RecordedScopeSurvivesPreflightEvidenceAndDashboard(bool includeEnatelSso, int excludedCount) => OneThread.Run(async () =>
     {
         var fixture = new Fixture();
         fixture.ScopeObjects(failover: false);
@@ -73,20 +73,27 @@ public sealed partial class CaptureReviewBoundaryTests
             (reader.Description.ExcludedObjectClasses.Count,
                 preflight.RootElement.GetProperty("ExcludedObjectClasses").GetArrayLength(),
                 dashboard.ObjectClassScopeStatement.Contains(", enatelSSOStorage,", StringComparison.Ordinal)));
-    }
+    });
 
-    private static async Task<string> CaptureScopeAsync(Fixture fixture, bool includeEnatelSso)
+    private static Task<string> CaptureScopeAsync(Fixture fixture, bool includeEnatelSso) => Task.FromResult(OneThread.Run(async () =>
     {
+        Assert.NotNull(SynchronizationContext.Current);
+        var ownerThread = Environment.CurrentManagedThreadId;
+        var progressThreads = new System.Collections.Concurrent.ConcurrentQueue<int>();
         var screen = fixture.Screen();
+        screen.Progress.RecentReports.CollectionChanged += (_, _) =>
+            progressThreads.Enqueue(Environment.CurrentManagedThreadId);
         await screen.OpenAsync();
         var row = Assert.Single(screen.Domains);
         row.NamedController = First;
         await screen.ValidateOverrideAsync(row);
         screen.IncludeEnatelSso = includeEnatelSso;
         await screen.StartAsync();
+        Assert.NotEmpty(progressThreads);
+        Assert.All(progressThreads, thread => Assert.Equal(ownerThread, thread));
         Assert.True(screen.BundleDirectory is not null, screen.Problem ?? screen.Report);
         return screen.BundleDirectory!;
-    }
+    }));
 
     [Theory]
     [InlineData(false, false, 0)]

@@ -17,8 +17,11 @@ public sealed class JudgingFailureLoggingTests
         var directory = ReadyBundle();
         var prior = Publish(directory);
         var evidenceHash = Hash(BundleLayout.EvidencePath(directory));
-        var derivationFile = Directory.GetFiles(directory, "derivation.*.db").Single();
-        var derivationHash = Hash(derivationFile);
+        var derivation = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Derivation).Value;
+        Assert.Equal(new[] { StoreSegmentRole.Derivation, StoreSegmentRole.Membership },
+            derivation.Segments.Select(segment => segment.Role));
+        var derivationHashes = derivation.Segments.ToDictionary(segment => segment.FileName,
+            segment => Hash(Path.Combine(directory, segment.FileName)));
         var failure = new InvalidOperationException("injected proof failure", new IOException("inner diagnostic detail"));
         var opened = RunLogFile.Open(directory, "terminal-failure-test", TimeProvider.System);
         Assert.True(opened.IsSuccess);
@@ -69,7 +72,8 @@ public sealed class JudgingFailureLoggingTests
         using var reopened = JudgementReader.Open(directory).Value;
         Assert.Equal(prior.Generation, reopened.Read().Description.GenerationId);
         Assert.Equal(evidenceHash, Hash(BundleLayout.EvidencePath(directory)));
-        Assert.Equal(derivationHash, Hash(derivationFile));
+        Assert.All(derivationHashes, product =>
+            Assert.Equal(product.Value, Hash(Path.Combine(directory, product.Key))));
     }
 
     [Fact]

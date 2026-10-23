@@ -9,6 +9,23 @@ namespace SecureAD.Next.Tests.Capture;
 public sealed class CaptureProgressTests
 {
     [Fact]
+    public void AnUnreportedPolicyInventoryIsDifferentFromAnObservedZero()
+    {
+        var reports = new Reports();
+        var tracker = new CaptureProgressTracker(Plan(), reports);
+        tracker.Start();
+        var unreported = Assert.Single(reports.Values);
+        Assert.Null(unreported.PoliciesTotal);
+        tracker.PolicyInventory(0);
+        var empty = tracker.Current;
+        Assert.Equal(0L, empty.PoliciesTotal);
+        tracker.PolicyInventory(4);
+        Assert.Equal(4L, tracker.Current.PoliciesTotal);
+        Assert.Equal(0L, empty.PoliciesTotal);
+        Assert.Null(unreported.PoliciesTotal);
+    }
+
+    [Fact]
     public async Task PageReportsObserveWrittenObjectsWithoutAddingQueriesOrPerObjectNotifications()
     {
         var model = new ControllerModel();

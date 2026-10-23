@@ -208,6 +208,41 @@ existing results/inputs, and retain the current application, correctness tests a
 This does not authorize new benchmark runs, performance tooling, analysis changes or replacement
 of the lab build being tested.
 
+**Object Findings paging - owner-approved bounded batch, 2026-10-22.**
+The owner approved adding Page/Previous/Next controls to the object Findings tab using the settled
+design, while retaining its current finding presentation for this batch.
+Read one existing-size page at a time, retain the selected object, section and return context, and
+keep unloaded pages distinct from incomplete saved evidence.
+This is reusable groundwork for the later grid, not approval of rule-content changes, new
+performance measurements, saved-format changes, full LAPS analysis, a package, commit or push.
+After offline validation, the owner declined creating a separate lab ZIP for this paging batch.
+
+**Repair CI checks in a fresh session - owner direction, 2026-10-22.**
+The owner selected repairing the native-layout checks first, preserving every historical hash and
+recording proper checkpoints for the current saved products, then addressing the remaining checks
+against accepted behavior without weakening them or changing AD calculations.
+He requested that this continue in a new session rather than extending the long implementation
+session; begin with the bounded native-layout-check repair, keeping the uncommitted paging work
+separate and preserving all lab builds, frozen evidence and existing results.
+This does not authorize performance measurements, live access, re-judgement, full LAPS analysis,
+another Findings implementation batch, a package, commit or push.
+
+**Finish CI validation with the correct UI test environment - owner-approved 2026-10-22.**
+After full regression was blocked by UI-test progress callbacks running on concurrent worker
+threads, the owner approved a bounded harness correction using the existing single-UI-thread
+test helper before another full run.
+Keep application behavior, AD calculations, saved formats and UI wording/layout unchanged;
+this authorizes the test-harness continuation, not live access, new performance measurements,
+re-judgement, packaging, commit or push.
+
+**Publish verified paging and CI repairs - owner direction, 2026-10-22.**
+After the complete offline CI-equivalent run passed, the owner requested committing and pushing
+the verified pending work so he can move on.
+Publish the approved object Findings paging and CI repairs from the current branch, preserving
+their verification records, historical hashes and existing builds/evidence.
+This is publication approval, not approval for another implementation batch, package, live access,
+re-judgement or the deferred LAPS review.
+
 **Complete LAPS analysis review at the end - owner direction, 2026-10-21.**
 During the Findings review the owner deferred both the proposed expiry-reference-time choice and
 the choice of reporting either overdue LAPS signal rather than the existing combined predicate.

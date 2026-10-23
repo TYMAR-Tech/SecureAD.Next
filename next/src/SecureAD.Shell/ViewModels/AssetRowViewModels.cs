@@ -47,7 +47,7 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Creates a screen's view of one container.</summary>
     /// <param name="node">The container as the evidence rebuilt it.</param>
     /// <param name="observe">Connects selection only when a presented node is created.</param>
-    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe = null)
+    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe)
     {
         ArgumentNullException.ThrowIfNull(node);
 

@@ -8,6 +8,9 @@ public sealed record CapturedDomainHeader(string DomainFqdn, string Outcome, str
 /// <summary>The library's scope information, published atomically with the captured products.</summary>
 public sealed record CapturedLibraryHeader(string CoverageId, IReadOnlyList<CapturedDomainHeader> Domains)
 {
+    [System.Text.Json.Serialization.JsonInclude]
+    internal IReadOnlyList<CapturedDomainHeader> Domains { get; init; } = Domains;
+
     internal Result<RunScope> ReadScope(string directory)
     {
         if (string.IsNullOrWhiteSpace(CoverageId) || Domains is null || Domains.Count == 0)

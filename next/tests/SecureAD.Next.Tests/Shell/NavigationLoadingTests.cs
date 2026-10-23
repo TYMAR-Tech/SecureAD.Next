@@ -91,7 +91,7 @@ public sealed class NavigationLoadingTests
         var source = Source();
         var screen = Show(source);
         screen.OpenFinding(new FindingRowViewModel(Finding()));
-        Assert.Equal(("Attributes", 1, 0, 0),
+        Assert.Equal(("Identity", 1, 0, 0),
             (string.Join(",", source.Reads), source.FindingsReads, source.ControlQueries.Count, source.SchemaReads));
     }
 
@@ -101,7 +101,7 @@ public sealed class NavigationLoadingTests
         var source = Source();
         var screen = Show(source);
         screen.OpenObject(screen.Objects[0]);
-        Assert.Equal(("Attributes,Permissions", 0, 0, 0),
+        Assert.Equal(("Identity,Permissions,Attributes", 0, 0, 0),
             (string.Join(",", source.Reads), source.FindingsReads, source.ControlQueries.Count, source.SchemaReads));
     }
 
@@ -226,7 +226,8 @@ public sealed class NavigationLoadingTests
         screen.OpenObject(screen.Objects[0]);
         screen.PageNumber = 3;
         screen.CloseObject();
-        Assert.Equal((3, 2), (source.ListedPage, source.ObjectListings));
+        // A page label cannot supply a continuation; the changed question must re-read page one.
+        Assert.Equal((1, 2), (source.ListedPage, source.ObjectListings));
     }
 
     [Fact]

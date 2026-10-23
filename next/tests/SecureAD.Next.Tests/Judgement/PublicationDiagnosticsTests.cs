@@ -22,10 +22,15 @@ public sealed class PublicationDiagnosticsTests
         Assert.True(Judge(directory, log).IsSuccess);
         var reports = log.Lines.Where(line => line.Message == "file sealing").ToArray();
 
-        Assert.Equal(1 + BundleLayout.JudgementParts.Count + 1, reports.Length);
+        Assert.Equal(6, reports.Length);
         foreach (var kind in new[] { AnalysisStoreKind.Derivation, AnalysisStoreKind.Judgement })
         {
             var root = AnalysisStoreLifecycle.ResolveRoot(directory, kind).Value;
+            var roles = kind == AnalysisStoreKind.Derivation
+                ? new[] { StoreSegmentRole.Derivation, StoreSegmentRole.Membership }
+                : new[] { StoreSegmentRole.Judgement, StoreSegmentRole.PermissionProof,
+                    StoreSegmentRole.PathProof, StoreSegmentRole.JudgementFacts };
+            Assert.Equal(roles, root.Segments.Select(segment => segment.Role));
             var selected = reports.Where(line => line.Value("artifact") == kind.ToString()).ToArray();
             Assert.Equal(root.Segments.Count, selected.Length);
             foreach (var (segment, report) in root.Segments.Zip(selected))
