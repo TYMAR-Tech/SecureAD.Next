@@ -190,6 +190,83 @@ first correction for testing, without replacing the earlier lab package or produ
 That packaging request does not authorize another implementation batch, new performance
 measurements, live access, re-judgement, commit or push.
 
+**Owner-published test builds count as between-batch feedback - owner clarification, 2026-10-30.**
+The owner confirmed that he published SEC-022 through Visual Studio, tested it and wanted to move
+to the next batch; do not make an assistant-created lab ZIP a prerequisite to continuing when he
+has already supplied his testing feedback.
+Still propose the next concrete bounded scope and wording for approval before implementation,
+without treating this feedback as production-performance or unreported physical-display acceptance.
+
+**Findings navigation-only batch - owner-approved 2026-10-22.**
+Implement the settled summary grids at both Findings entry points and one shared selected-finding
+window, retaining current saved explanations and rule guidance rather than rewriting all 32 rules.
+Preserve paging, selection, filters and return context; supporting membership is requested explicitly,
+not loaded or formatted for grid rows or closed sections, and the old preview/card paths are removed.
+The window uses Finding, Why it matters, What to do, Open affected object and Close; focused offline
+checks and rebuilt isolated defects are included, but warn with a duration estimate and obtain
+separate approval before long tests.
+This approves neither performance acceptance nor new measurements, LAPS analysis, circular-membership
+completeness, analysis/format changes, packaging, commits or pushes.
+On 2026-10-23 the owner explicitly authorized continuing the warned focused verification and isolated
+rebuilt defect/restored checks, not a full suite, another UI batch or a performance campaign.
+After a safe pause for the overrun, he separately approved the remaining checks and final combined
+verification with another 25-35-minute estimate.
+On 2026-10-26 the owner requested a separate self-contained Windows x64 lab ZIP of this verified
+navigation batch for his testing, preserving earlier packages and production results; this does not
+authorize another implementation batch, live access, re-judgement, performance measurements, commit
+or push.
+
+**SEC-022 finding detail - owner-approved 2026-10-28.**
+Implement SEC-022 only in the existing finding window, showing the captured
+Do not require Kerberos preauthentication setting and enabled/disabled account state from its
+original saved flags, with account identity/type/domain/location and existing severity/coverage.
+Use the approved conditional risk and dependency-first action guidance consistently with Rules,
+without a membership section, raw flag numbers or claims of successful requests, weak/cracked
+passwords, attacks or current live state.
+The selected read must preserve exact saved finding/object/run binding and explicit refusal of
+unreadable or mismatched facts, not guess an enabled account or rewrite saved findings.
+Keep the tested grids/navigation, all other rules and existing lab packages unchanged; this includes
+short focused checks, not long tests without a new warning/approval, LAPS analysis, CI repair,
+new measurements, packaging, commits or pushes.
+The owner separately approved focused verification and isolated rebuilt defect/restored checks
+after a 25-40-minute warning on 2026-10-28, excluding the full suite and the other boundaries above.
+
+**SEC-028/029/033 captured-setting detail - owner-approved 2026-10-30.**
+Extend the tested captured-setting panel and selected saved-flag reader to Password not required,
+Store password using reversible encryption and the DES-only account option, retaining each rule's
+distinct conditional risk and dependency-first action guidance consistently with Rules.
+Use Reversible password storage enabled as SEC-029's displayed title rather than asserting that
+a recoverable password copy is known to exist, and retain captured account state, identity,
+type/location/coverage without unrelated membership sections.
+Preserve SEC-022, severities, finding grain/counts, calculations, original results and the SEC-028
+interdomain-trust exclusion; no saved-format change, extra grid reads or new performance claim is
+approved, and selected details retain the existing first-file verification boundary.
+This approves short focused checks, not long verification without a fresh warning/approval, LAPS
+analysis, CI repair, new measurements, packaging, commits or pushes.
+On 2026-10-30 the owner explicitly approved the warned 30-45-minute focused regression and isolated
+rebuilt defect/restored verification, clarifying that he had selected approval in the form.
+
+**SEC-010/011 unconstrained-delegation detail - owner-approved 2026-10-30.**
+Use the existing captured-setting frame for Unconstrained delegation: Enabled, saved account state
+and actual object type/domain/location, with conditional risk and dependency-first action guidance
+shared with Rules rather than claims of received credentials, impersonation or completed Tier 0 paths.
+Keep SEC-010's title and use Unconstrained delegation on a computer-class account for SEC-011,
+without moving managed-service accounts between the existing rule identities or calling them running hosts.
+For SEC-011 state that the domain-controller role is not independently verified by the saved finding,
+show an additional warning if stored controller indicators disagree, and caution against changing a
+controller's normal delegation configuration from this finding alone.
+Read selected stored header facts only; preserve High severity, all original findings, current
+classification/exclusion logic and formats, and do not claim to repair SCOUT-05 or recover suppressed findings.
+This approves short compile/behaviour checks, not long verification without a fresh warning/approval,
+LAPS analysis, new measurements, packaging, commits or pushes.
+On 2026-10-30 the owner explicitly authorized the warned 30-45-minute focused verification in chat
+after the approval form became unresponsive; do not require another form for that already-approved run.
+He then requested committing and pushing the verified Findings work and preparing a complete
+new-session handoff and short continuation prompt, and confirmed that the open pull request's
+automatic long CI run may proceed without waiting for it.
+This is publication approval, not approval of SEC-012 implementation, a merge, new analysis,
+performance measurements or an additional package, and does not substitute for his SEC-010/011 feedback.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

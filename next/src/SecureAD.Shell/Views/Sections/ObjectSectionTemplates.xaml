@@ -1353,45 +1353,27 @@
                 <Button Content="Previous" Command="{Binding PreviousCommand}" Margin="0,0,8,0" />
                 <Button Content="Next" Command="{Binding NextCommand}" />
             </StackPanel>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Findings}"
-                          Visibility="{Binding HasFindings, Converter={StaticResource Shown}}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource Card}" Margin="0,0,0,8">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource RowTitle}">
-                                    <Run Text="{Binding Rule, Mode=OneWay}" />
-                                    <Run Text=" — " Foreground="{DynamicResource SecondaryTextBrush}" />
-                                    <Run Text="{Binding Severity, Mode=OneWay}" />
-                                </TextBlock>
-
-                                <TextBox Text="{Binding Detail, Mode=OneWay}"
-                                         Style="{StaticResource SelectableMessage}"
-                                         Margin="0,4,0,0" />
-
-                                <!-- A finding resting on evidence that may be incomplete is a
-                                     weaker claim than one resting on a complete read, and it is
-                                     said here rather than left for the operator to assume. -->
-                                <TextBlock Text="{Binding Coverage}"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
-                                           Margin="0,4,0,0" />
-                                <Expander Header="View membership evidence" Margin="0,8,0,0"
-                                          Visibility="{Binding HasMembershipEvidence, Converter={StaticResource Shown}}">
-                                    <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding MembershipCompleteness}" TextWrapping="Wrap" Margin="0,4,0,6" />
-                                            <TextBox Text="{Binding MembershipDetails, Mode=OneWay}"
-                                                     Style="{StaticResource SelectableMessage}" />
-                                        </StackPanel>
-                                    </ScrollViewer>
-                                </Expander>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            </ScrollViewer>
+            <DataGrid ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding,Mode=TwoWay}"
+                      views:GridRowAction.Command="{Binding OpenFindingCommand}"
+                      ColumnHeaderStyle="{StaticResource TableColumnHeader}" AutoGenerateColumns="False"
+                      IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      Visibility="{Binding HasFindings,Converter={StaticResource Shown}}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="Auto" />
+                    <DataGridTemplateColumn Header="Finding" Width="2*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding FindingTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Rule}" Style="{StaticResource Caption}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Principal" Binding="{Binding Principal}" Width="*" />
+                    <DataGridTextColumn Header="Coverage" Binding="{Binding Coverage}" Width="Auto" />
+                </DataGrid.Columns>
+            </DataGrid>
         </DockPanel>
     </DataTemplate>
 

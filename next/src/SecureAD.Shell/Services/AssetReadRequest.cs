@@ -166,6 +166,14 @@ internal sealed partial class AssetReadRequest(
         }, _readCancellation)));
     }
 
+    public Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadSelectedFinding(reference, includeMembership), _readCancellation)));
+
+    public Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadAccountSetting(reference), _readCancellation)));
+
     /// <inheritdoc/>
     public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory) =>
         WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadRuleExecutions(), _readCancellation));

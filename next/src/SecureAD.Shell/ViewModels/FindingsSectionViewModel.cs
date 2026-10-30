@@ -1,4 +1,5 @@
 using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
@@ -12,6 +13,7 @@ internal sealed partial class FindingsSectionViewModel : ObjectSectionViewModel
     {
         internal FindingsPageMark? Position { get; set; }
         internal Stack<FindingsPageMark?> Back { get; } = [];
+        internal FindingReference? Selected { get; set; }
     }
 
     public const string NothingFound =
@@ -47,6 +49,12 @@ internal sealed partial class FindingsSectionViewModel : ObjectSectionViewModel
     }
 
     public IReadOnlyList<FindingRowViewModel> Findings { get; private set; } = [];
+    public IRelayCommand<FindingRowViewModel?>? OpenFindingCommand { get; init; }
+    [ObservableProperty] private FindingRowViewModel? _selectedFinding;
+    partial void OnSelectedFindingChanged(FindingRowViewModel? value)
+    {
+        if (value?.Saved.Reference is { } reference) _paging.Selected = reference;
+    }
     public string? Refusal { get; private set; }
     public bool NobodyHasLooked { get; private set; }
     public bool HasFindings => Findings.Count > 0;
@@ -63,7 +71,8 @@ internal sealed partial class FindingsSectionViewModel : ObjectSectionViewModel
     private void Apply(FindingListPage? page, string? refusal)
     {
         Refusal = refusal;
-        Findings = page is null ? [] : [.. page.Findings.Select(finding => new FindingRowViewModel(finding))];
+        Findings = page is null ? [] : [.. page.Findings.Select(finding => new FindingRowViewModel(finding, _current))];
+        SelectedFinding = Findings.FirstOrDefault(finding => finding.Saved.Reference is { } reference && reference == _paging.Selected);
         NobodyHasLooked = page?.DidNotRun ?? false;
         _next = page?.Next;
     }

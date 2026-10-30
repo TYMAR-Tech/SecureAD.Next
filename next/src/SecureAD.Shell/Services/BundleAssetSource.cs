@@ -189,6 +189,12 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query) =>
         WithRun(bundleDirectory, reader => reader.ReadFindingsList(bundleDirectory, query));
 
+    public Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership) =>
+        WithRun(bundleDirectory, reader => reader.ReadSelectedFinding(bundleDirectory, reference, includeMembership));
+
+    public Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadAccountSetting(bundleDirectory, reference));
+
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

@@ -58,6 +58,29 @@ public sealed class ObjectFindingsPagingTests
         Assert.False(section.PreviousCommand.CanExecute(null));
     }
 
+    [Fact]
+    public async Task SelectedFindingIdentitySurvivesPagingAndSectionResume()
+    {
+        var state = new FindingsSectionViewModel.PagingState();
+        Task<Result<FindingListPage>> Read(FindingsPageMark? after, CancellationToken _) =>
+            Task.FromResult(Result<FindingListPage>.Success(Page(121, after)));
+        var section = new FindingsSectionViewModel(Definition, state, Read, () => true);
+        await section.ReadCompletion;
+        var selected = section.Findings[17];
+        section.SelectedFinding = selected;
+        section.NextCommand.Execute(null);
+        await section.ReadCompletion;
+        section.PreviousCommand.Execute(null);
+        await section.ReadCompletion;
+        Assert.Equal(selected.Saved.Reference, section.SelectedFinding!.Saved.Reference);
+        section.Suspend();
+        var resumed = new FindingsSectionViewModel(Definition, state, Read, () => true);
+        await resumed.ReadCompletion;
+        Assert.Equal(selected.Saved.Reference, resumed.SelectedFinding!.Saved.Reference);
+        Assert.Equal(1, resumed.PageNumber);
+        Assert.NotSame(selected, resumed.SelectedFinding);
+    }
+
     [Theory]
     [InlineData("refused")]
     [InlineData("empty")]
@@ -250,7 +273,7 @@ public sealed class ObjectFindingsPagingTests
     [Theory]
     [InlineData(900, 430)]
     [InlineData(1300, 650)]
-    public void ObjectFindingPagerRendersAndOperatesWithoutHidingScrollableCards(int width, int height) => OnSta(() =>
+    public void ObjectFindingPagerRendersAndOperatesWithoutHidingTheGrid(int width, int height) => OnSta(() =>
     {
         var section = new FindingsSectionViewModel(Definition, new(),
             (after, _) => Task.FromResult(Result<FindingListPage>.Success(Page(51, after))), () => true);
@@ -263,7 +286,9 @@ public sealed class ObjectFindingsPagingTests
         Assert.Same(section.NextCommand, next.Command);
         Assert.False(previous.IsEnabled);
         Assert.True(next.IsEnabled);
-        var scroll = Assert.Single(Descendants<ScrollViewer>(host), viewer => viewer.Content is ItemsControl);
+        var grid = Assert.Single(Descendants<DataGrid>(host));
+        Assert.Equal(new[] { "Severity", "Finding", "Principal", "Coverage" }, grid.Columns.Select(column => column.Header));
+        var scroll = Descendants<ScrollViewer>(grid).First();
         Assert.True(scroll.ViewportHeight > 0);
         Assert.True(scroll.ScrollableHeight > 0);
         var initialBounds = next.TransformToAncestor(host).TransformBounds(new Rect(0, 0, next.ActualWidth, next.ActualHeight));
@@ -304,7 +329,8 @@ public sealed class ObjectFindingsPagingTests
         $"Recorded finding {index:D3}", EvidenceCompleteness.Complete, new UserAccountControlEvidence(0x400200))
     { PrincipalName = "Recorded principal " + index };
 
-    private static FindingListItem Item(int index) => FindingListItem.FromFinding(Finding(index));
+    private static FindingListItem Item(int index) => FindingListItem.FromFinding(Finding(index)) with
+    { Reference = new(Guid.Parse("10000000-0000-0000-0000-000000000001"), index + 1) };
     private static FindingsPageMark Mark(int position) =>
         new((int)Severity.High, "SEC-022", Dn, position) { GenerationId = Generation };
     private static FindingListPage Page(int count, FindingsPageMark? after)

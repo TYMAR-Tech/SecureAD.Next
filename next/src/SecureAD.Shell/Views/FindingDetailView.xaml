@@ -1,0 +1,83 @@
+<UserControl x:Class="SecureAD.Shell.Views.FindingDetailView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="View saved routes" Command="{Binding OpenSavedRoutesCommand}"
+                    CommandParameter="{Binding FindingDetails.Finding}" Margin="0,0,8,0"
+                    Visibility="{Binding FindingDetails.Finding.HasTier0Routes,Converter={StaticResource Shown}}" />
+            <Button Content="Open affected object" Command="{Binding OpenAffectedObjectCommand}" Margin="0,0,8,0"
+                    IsEnabled="{Binding FindingDetails.HasFinding}" />
+            <Button Content="Close" Command="{Binding CloseFindingDetailsCommand}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding FindingDetails.LoadingText}" Style="{StaticResource Caption}"
+                   Visibility="{Binding FindingDetails.IsLoading,Converter={StaticResource Shown}}" />
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8"
+                Visibility="{Binding FindingDetails.HasRefusal,Converter={StaticResource Shown}}">
+            <TextBox Text="{Binding FindingDetails.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                     Foreground="{DynamicResource FaultBrush}" />
+        </Border>
+        <ScrollViewer x:Name="FindingDetailsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding FindingDetails.HasFinding,Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding FindingDetails.Finding.FindingLabel}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                <WrapPanel Margin="0,8,0,12">
+                    <TextBlock Text="{Binding FindingDetails.Finding.Severity}" Margin="0,0,16,0" />
+                    <TextBlock Text="{Binding FindingDetails.Finding.Coverage}" Foreground="{DynamicResource SecondaryTextBrush}" />
+                </WrapPanel>
+                <TextBlock Text="{Binding FindingDetails.Finding.Principal,StringFormat=Principal: {0}}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding FindingDetails.Finding.DistinguishedName,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding FindingDetails.Finding.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" Margin="0,0,0,16" />
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasCapturedSetting,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured setting" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.Setting}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.ControllerRoleNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CapturedSetting.HasControllerRoleNote,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.ControllerDisagreement}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CapturedSetting.HasControllerDisagreement,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.ShowsSavedDescription,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Finding" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.Finding.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Why it matters" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.WhyItMatters}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="What to do" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.WhatToDo}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <StackPanel Margin="0,12,0,0"
+                            Visibility="{Binding FindingDetails.Finding.HasMembershipEvidence,Converter={StaticResource Shown}}">
+                    <Button Content="View membership evidence" Command="{Binding FindingDetails.LoadMembershipCommand}" HorizontalAlignment="Left" />
+                    <TextBlock Text="{Binding FindingDetails.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                               Visibility="{Binding FindingDetails.IsLoadingMembership,Converter={StaticResource Shown}}" />
+                    <TextBox Text="{Binding FindingDetails.MembershipRefusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                             Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                             Visibility="{Binding FindingDetails.HasMembershipRefusal,Converter={StaticResource Shown}}" />
+                    <StackPanel Visibility="{Binding FindingDetails.HasMembershipDetails,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding FindingDetails.MembershipCompleteness}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding FindingDetails.MembershipDetails,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Text="{Binding FindingDetails.Finding.About}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,16,0,0" />
+                <TextBlock Text="{Binding FindingDetails.Finding.MicrosoftReference}" Style="{StaticResource Caption}" Margin="0,12,0,0"
+                           Visibility="{Binding FindingDetails.Finding.HasMicrosoftReference,Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

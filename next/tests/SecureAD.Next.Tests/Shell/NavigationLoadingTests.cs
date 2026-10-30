@@ -86,13 +86,17 @@ public sealed class NavigationLoadingTests
     }
 
     [Fact]
-    public void FindingOpeningPreparesOnlyIdentityAndFindings()
+    public void FindingOpeningReadsOnlyTheSelectedSavedFinding()
     {
         var source = Source();
         var screen = Show(source);
-        screen.OpenFinding(new FindingRowViewModel(Finding()));
-        Assert.Equal(("Identity", 1, 0, 0),
+        screen.Pane = AssetsPane.Findings;
+        source.Reads.Clear();
+        screen.OpenFinding(screen.Findings[0]);
+        Assert.Equal(("", 1, 0, 0),
             (string.Join(",", source.Reads), source.FindingsReads, source.ControlQueries.Count, source.SchemaReads));
+        Assert.False(Assert.Single(source.FindingSelections).Membership);
+        Assert.False(screen.HasObjectPresentation);
     }
 
     [Fact]

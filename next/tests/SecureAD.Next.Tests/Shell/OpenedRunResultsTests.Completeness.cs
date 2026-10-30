@@ -230,8 +230,12 @@ public sealed partial class OpenedRunResultsTests
         row = Assert.Single(screen.Findings);
         screen.SelectedFinding = row;
         screen.OpenFinding(row);
+        await screen.FindingDetails!.ReadCompletion;
+        screen.OpenAffectedObjectCommand.Execute(null);
         await screen.ObjectReadCompletion;
         Assert.Null(screen.ObjectRefusal);
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
+        await screen.Opened.ReadCompletion;
         var section = screen.Findings();
         Assert.Null(section.Refusal);
         Assert.Equal("May be incomplete", Assert.Single(section.Findings).Coverage);

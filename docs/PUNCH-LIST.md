@@ -233,9 +233,9 @@ Apply documented Registry.pol operations at the exact root, preserve raw values 
 Verify all deletion forms, overwrite/blank/type cases, wrong prefixes and partial positives through storage/readback, leaving exact unsupported Windows blank/type behavior explicitly lab-bound rather than guessing it.
 
 **SCOUT-17 - operator claims and conditional remediation - MEDIUM, open.**
-SEC-010/011/021/022/027/029/030/031/032/033 guidance overstates eligible ticket issuance, current reversible storage, historical privilege, unconditional owner power or a fixed one-hour/two-cause SDProp diagnosis, and SEC-027 offers a user-only removal command for its computer/group subjects.
+SEC-021/027/030/031/032 guidance overstates eligible ticket issuance, historical privilege, unconditional owner power or a fixed one-hour/two-cause SDProp diagnosis, original SEC-010/011/022/028/029/033 finding descriptions retain unconditional delegation/issuance/password-storage/encryption wording, and SEC-027 offers a user-only removal command for its computer/group subjects.
 Update affected title, detail, WhyItMatters, About, WhatToDo and typed convenience properties together using observed evidence, review reason, limitations, verification and conditional remediation with dependency risks.
-Preserve setting-based dormant findings, historical-sensitive-identifier review, existing SEC-100/101 association/nonrotation wording and SEC-012/013 configuration-only limits, with explicit approval before displayed wording changes.
+Preserve setting-based dormant findings, historical-sensitive-identifier review, existing SEC-100/101 association/nonrotation wording and SEC-012/013 configuration-only limits, with explicit approval before displayed wording changes; the separately approved SEC-010/011/022/028/029/033 selected presentations and shared guidance are tracked only under RESP-07-F03 in [the responsiveness queue](ENTERPRISE-RESPONSIVENESS-PUNCH-LIST.md), not treated as rewriting original findings or completing this broader correction.
 
 **SCOUT-18 - known exclusions causing unrelated unknowns - MEDIUM, open; bounded follow-up.**
 A known nonzero protected-operator exclusion mask makes unrelated negative protection/owner answers globally Unknown, and limited FullControl scope support can also lose coverage without proving any false authority.

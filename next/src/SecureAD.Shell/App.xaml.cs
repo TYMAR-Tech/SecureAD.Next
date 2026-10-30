@@ -195,6 +195,7 @@ internal partial class App : Application
             protections.Dispose();
         };
         _ = new ObjectDetailPresenter(shell.Assets, window);
+        _ = new FindingDetailPresenter(shell.Assets, window);
         _prepared(window, shell);
         window.Show();
         _startup(AppStartupPoint.WindowShown);

@@ -199,6 +199,12 @@ internal interface IAssetReader
     /// <summary>Reads saved Findings display values and selected completeness headers, without reconstructing full proof.</summary>
     Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query);
 
+    /// <summary>Reads the exact selected finding, optionally including explicitly requested membership support.</summary>
+    Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership);
+
+    /// <summary>Reads only the selected supported account-option finding's original setting and saved account state.</summary>
+    Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference);
+
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <remarks>

@@ -118,7 +118,7 @@ public sealed class UnconstrainedDelegationOnNonDomainController : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         "SEC-011",
-        "Unconstrained delegation on a non-domain controller",
+        "Unconstrained delegation on a computer-class account",
         Severity.High,
         Version: 1,
         UnconstrainedDelegation.SubjectClasses,

@@ -133,7 +133,11 @@ public sealed partial class OpenedRunResultsTests
         var row = screen.Findings.First(finding => finding.DistinguishedName == FirstDn);
         screen.SelectedFinding = row;
         screen.OpenFinding(row);
+        await screen.FindingDetails!.ReadCompletion;
+        screen.OpenAffectedObjectCommand.Execute(null);
         await screen.ObjectReadCompletion;
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
+        await screen.Opened.ReadCompletion;
         var section = Assert.IsType<FindingsSectionViewModel>(screen.Opened!.Content);
         Assert.True(section.NextCommand.CanExecute(null));
         section.NextCommand.Execute(null);

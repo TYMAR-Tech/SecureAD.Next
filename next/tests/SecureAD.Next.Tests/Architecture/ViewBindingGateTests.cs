@@ -151,18 +151,28 @@ public sealed class ViewBindingGateTests
         Assert.Contains(member, PermissionsTemplate(), StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("FindingsView.xaml", "SelectedFinding.")]
-    [InlineData("ObjectSectionTemplates.xaml", "")]
-    public void BothFindingSurfacesBindMembershipEvidenceAndCompleteness(string fileName, string prefix)
+    [Fact]
+    public void FindingGridsDeferMembershipToTheSharedWindow()
     {
-        var file = XamlFiles().Single(path => Path.GetFileName(path) == fileName);
-        var document = System.Xml.Linq.XDocument.Load(file);
-        var paths = document.Descendants().SelectMany(element => element.Attributes()).Select(attribute =>
-            Regex.Match(attribute.Value, @"^\{Binding\s+([^,}\s]+)").Groups[1].Value).ToArray();
-        foreach (var member in new[] { nameof(FindingRowViewModel.HasMembershipEvidence),
-            nameof(FindingRowViewModel.MembershipCompleteness), nameof(FindingRowViewModel.MembershipDetails) })
-            Assert.Contains(prefix + member, paths);
+        System.Xml.Linq.XElement Root(string name) => System.Xml.Linq.XDocument.Load(
+            XamlFiles().Single(path => Path.GetFileName(path) == name)).Root!;
+        static string[] Paths(System.Xml.Linq.XElement root) => root.DescendantsAndSelf()
+            .SelectMany(element => element.Attributes()).Select(attribute =>
+               Regex.Match(attribute.Value, @"^\{Binding\s+([^,}\s]+)").Groups[1].Value).ToArray();
+        var objectFindings = Root("ObjectSectionTemplates.xaml").Descendants().Single(element =>
+            element.Name.LocalName == "DataTemplate"
+            && element.Attribute("DataType")?.Value == "{x:Type vm:FindingsSectionViewModel}");
+        foreach (var grid in new[] { Root("FindingsView.xaml"), objectFindings })
+        {
+            var paths = Paths(grid);
+            Assert.Contains(nameof(AssetsViewModel.OpenFindingCommand), paths);
+            Assert.DoesNotContain(paths, path => path.EndsWith(nameof(FindingRowViewModel.MembershipDetails), StringComparison.Ordinal)
+               || path.EndsWith(nameof(FindingRowViewModel.MembershipCompleteness), StringComparison.Ordinal));
+        }
+        var detail = Paths(Root("FindingDetailView.xaml"));
+        foreach (var member in new[] { "FindingDetails.Finding.HasMembershipEvidence", "FindingDetails.LoadMembershipCommand",
+            "FindingDetails.MembershipCompleteness", "FindingDetails.MembershipDetails" })
+            Assert.Contains(member, detail);
     }
 
     // -------------------------------------------------------------------------------------------

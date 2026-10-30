@@ -55,7 +55,7 @@ internal sealed partial class AssetsViewModel
         _groupObjectBack.Clear();
     }
 
-    private async Task OpenAsync(string bundle, string distinguishedName, string section)
+    private async Task OpenAsync(string bundle, string distinguishedName, string section, Guid? expectedObjectGuid)
     {
         var revision = _objectRevision;
         var pending = new CancellationTokenSource();
@@ -82,6 +82,8 @@ internal sealed partial class AssetsViewModel
                 navigation.Complete("refused", "object missing");
                 return;
             }
+            if (expectedObjectGuid is { } expected && identity.ObjectGuid != expected)
+                throw new InvalidDataException("The captured object does not match the selected finding's saved object identity.");
             var objectClass = identity.ObjectClass;
             var findingPages = new FindingsSectionViewModel.PagingState();
             var opened = new ObjectViewModel(identity.DistinguishedName, objectClass ?? "not recorded", objectClass,
@@ -96,7 +98,7 @@ internal sealed partial class AssetsViewModel
             await opened.ReadCompletion;
         }
         catch (OperationCanceledException) when (pending.IsCancellationRequested) { navigation.Complete("cancelled", null); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException
             or ArgumentException or Microsoft.Data.Sqlite.SqliteException)
         {
             if (revision == _objectRevision && !pending.IsCancellationRequested)
@@ -147,7 +149,10 @@ internal sealed partial class AssetsViewModel
             var findings = new FindingsSectionViewModel(definition, findingPages,
                 (after, cancellation) => ReadBoundAsync(bundle, current,
                     reader => reader.ReadFindingsList(bundle, FindingsQuery.About(dn) with { After = after }),
-                    cancellation, "read object " + definition.Key), current);
+                    cancellation, "read object " + definition.Key), current)
+            {
+                OpenFindingCommand = this.OpenFindingCommand,
+            };
             using var cancellation = token.Register(findings.Suspend);
             await findings.ReadCompletion;
             token.ThrowIfCancellationRequested();
