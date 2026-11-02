@@ -11,7 +11,8 @@ public sealed partial class JudgementReader
 {
     private const string ListColumns = """
         f.finding_id,f.rule_id,f.subject_kind,f.subject_key,f.object_guid,f.severity,
-        f.distinguished_name,f.detail,f.coverage,f.domain_fqdn,f.object_class,f.principal_name,
+        f.distinguished_name,CASE WHEN f.rule_id IN ('SEC-012','SEC-013','SEC-014') THEN NULL ELSE f.detail END AS detail,
+        f.coverage,f.domain_fqdn,f.object_class,f.principal_name,
         r.rule_version,f.list_kind,f.evidence_complete,f.protection_catalogue_version,
         f.direct_protection_entry_id,f.direct_protection_name
         """;
@@ -189,8 +190,18 @@ public sealed partial class JudgementReader
         if (!Enum.IsDefined(severity) || !Enum.IsDefined(coverage) || !Enum.IsDefined(subjectKind))
             throw new InvalidDataException("A saved finding has an unsupported classification.");
         _readCancellation.ThrowIfCancellationRequested();
-        return new(row.GetString(1), row.GetInt32(12), severity, new(subjectKind, row.GetString(3)),
-            Guid.Parse(row.GetString(4)), row.GetString(6), row.GetString(9), row.GetString(10), row.GetString(7),
+        var ruleId = row.GetString(1);
+        // The old delegation explanations embed complete service/holder inventories and snapshot-derived context.
+        // Its structured window reads the requested saved facts instead of loading that prose.
+        var detail = ruleId switch
+        {
+            "SEC-012" => SavedDelegationConfiguration.ConstrainedStatement,
+            "SEC-013" => SavedDelegationConfiguration.ResourceStatement,
+            "SEC-014" => SavedAttributeWritePermission.ScopeNote,
+            _ => row.GetString(7),
+        };
+        return new(ruleId, row.GetInt32(12), severity, new(subjectKind, row.GetString(3)),
+            Guid.Parse(row.GetString(4)), row.GetString(6), row.GetString(9), row.GetString(10), detail,
             coverage, row.GetString(11), kind, complete == 1, membership)
         {
             Reference = new(Description.GenerationId, row.GetInt64(0)),

@@ -45,13 +45,22 @@ public static class RuleGuidanceCatalogue
             About: UnexpectedDomainSecretReplication.Explanation + "\n\n" + UnexpectedDomainSecretReplication.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-drsr/15bbda52-7742-4ce3-9327-018647b0fc26"),
         new RuleGuidance("SEC-012", "Delegation configuration", MitreTechnique: null,
-            WhyItMatters: ConstrainedDelegationToRelevantService.Explanation,
-            WhatToDo: "Review whether this delegation is required.",
+            WhyItMatters: "Where Kerberos permits delegation, a service using this account may act on a user's behalf to the configured services. "
+                + "Unintended delegation to a Tier 0-relevant destination warrants review. "
+                + "The captured configuration does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path.",
+            WhatToDo: "Confirm the service owner, intended destination and business need for each listed value. Review dependencies before making changes. "
+                + "If a destination is unnecessary, remove only the unnecessary values from msDS-AllowedToDelegateTo on the delegating account under change control, "
+                + "then test dependent authentication. Do not remove the resource's legitimate servicePrincipalName registration, clear every destination "
+                + "or switch to unconstrained delegation as a shortcut.",
             About: ConstrainedDelegationToRelevantService.Summary + "\n\n" + ConstrainedDelegationToRelevantService.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/security/kerberos/kerberos-constrained-delegation-overview"),
         new RuleGuidance("SEC-013", "Delegation configuration", MitreTechnique: null,
-            WhyItMatters: ResourceBasedDelegationOnRelevantResource.Explanation,
-            WhatToDo: "Review the recorded grants and whether this delegation is required.",
+            WhyItMatters: "The captured RBCD configuration contains delegation grants for the recorded holders on this Tier 0-relevant resource. "
+                + "Unintended grants warrant review. A group-held grant does not establish authorization for each member. "
+                + "This finding does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path.",
+            WhatToDo: "Confirm each configured holder and its business need. Review service dependencies and shared or group-held grants before making changes. "
+                + "If a grant is unnecessary, narrow or remove only that grant from msDS-AllowedToActOnBehalfOfOtherIdentity on the resource account under change control, "
+                + "then test dependent authentication. Do not clear the entire configuration indiscriminately or change general object permissions as a substitute.",
             About: ResourceBasedDelegationOnRelevantResource.Summary + "\n\n" + ResourceBasedDelegationOnRelevantResource.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-sfu/3bff5864-8135-400e-bdd9-33b552051d94"),
         new RuleGuidance("SEC-050", "Group membership", MitreTechnique: null,
@@ -74,9 +83,14 @@ public static class RuleGuidanceCatalogue
                 + "Reports one finding per resource-domain legacy group with supported broad membership, keeping symbolic broad identities and alternative recorded security links rather than expanding them into accounts.",
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-014", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change the RBCD attribute that controls who may act on behalf of other identities to this account's services. "
-                + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's RBCD configuration. "
+                + "If misused, this permission could allow the delegation configuration to be altered. "
+                + "It does not show that delegation is configured or in use, that a directory change will succeed, or that impersonation, authentication, "
+                + "account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate service or delegation-administration responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not clear legitimate RBCD configuration as a substitute for correcting the write permission.",
             About: "Reports established WRITE_PROPERTY permission on msDS-AllowedToActOnBehalfOfOtherIdentity using captured account identity, schema and scoped expectedness.\n\n"
                 + "Permission is not proof of a successful RBCD configuration or service impersonation. WRITE_DAC and ownership pivots are separate assessments. "
                 + AttributeWriteRules.ScopeNote,

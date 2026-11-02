@@ -9,6 +9,8 @@ namespace SecureAD.Shell.ViewModels;
 internal sealed record FindingDetailContent(FindingListItem Saved, string? Completeness, string? Membership)
 {
     internal SavedAccountSetting? AccountSetting { get; init; }
+    internal SavedDelegationConfiguration? DelegationConfiguration { get; init; }
+    internal SavedAttributeWritePermission? AttributeWritePermission { get; init; }
 
     internal static FindingDetailContent FromSaved(FindingListItem saved)
     {
@@ -34,13 +36,18 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     private readonly FindingRowViewModel _selected;
     private readonly Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> _read;
     private readonly Func<bool> _current;
+    private readonly Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? _readDelegation;
+    private readonly Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? _readWritePermission;
     private CancellationTokenSource? _pending;
     private bool _active = true;
 
     internal FindingDetailViewModel(FindingRowViewModel selected,
-        Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current)
+        Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current,
+        Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? readDelegation = null,
+        Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission = null)
     {
-        (_selected, _read, _current) = (selected, read, current);
+        (_selected, _read, _current, _readDelegation) = (selected, read, current, readDelegation);
+        _readWritePermission = readWritePermission;
         ReadCompletion = LoadAsync(false);
     }
 
@@ -50,7 +57,12 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasFinding => Finding is not null;
     public CapturedAccountSettingViewModel? CapturedSetting { get; private set; }
     public bool HasCapturedSetting => CapturedSetting is not null;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting;
+    public DelegationConfigurationViewModel? DelegationConfiguration { get; private set; }
+    public bool HasDelegationConfiguration => DelegationConfiguration is not null;
+    public AttributeWritePermissionViewModel? AttributeWritePermission { get; private set; }
+    public bool HasAttributeWritePermission => AttributeWritePermission is not null;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
@@ -77,6 +89,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         Refusal = SavedPathText.Get("GenerationChanged");
         Finding = null;
         CapturedSetting = null;
+        DelegationConfiguration?.Suspend();
+        DelegationConfiguration = null;
+        AttributeWritePermission?.Suspend();
+        AttributeWritePermission = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
         return false;
@@ -125,6 +141,25 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.AccountSetting is not null)
                     throw new InvalidDataException("The selected finding has unrelated account setting data.");
+                if (content.Saved.RuleId is "SEC-012" or "SEC-013")
+                {
+                    if (content.DelegationConfiguration is not { Context: not null } delegation || _readDelegation is null
+                        || !delegation.Context.Matches(content.Saved) || !delegation.IsExpectedPage(0))
+                        throw new InvalidDataException(content.Saved.RuleId == "SEC-013"
+                            ? SavedDelegationConfiguration.ResourceInvalidDetails : SavedDelegationConfiguration.ConstrainedInvalidDetails);
+                    DelegationConfiguration = new(content.Saved.PrincipalName, delegation, _readDelegation, CheckCurrent);
+                }
+                else if (content.DelegationConfiguration is not null)
+                    throw new InvalidDataException("The selected finding has unrelated delegation configuration data.");
+                if (content.Saved.RuleId == "SEC-014")
+                {
+                    if (content.AttributeWritePermission is not { Context: not null } permission || _readWritePermission is null
+                        || !permission.Context.Matches(content.Saved) || !permission.IsExpectedPage(-1))
+                        throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetails);
+                    AttributeWritePermission = new(permission, _readWritePermission, CheckCurrent);
+                }
+                else if (content.AttributeWritePermission is not null)
+                    throw new InvalidDataException("The selected finding has unrelated saved write-permission data.");
                 Finding = new(content.Saved, _current);
             }
         }
@@ -139,6 +174,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     Refusal = SavedPathText.Get("GenerationChanged");
                     Finding = null;
                     CapturedSetting = null;
+                    DelegationConfiguration?.Suspend();
+                    DelegationConfiguration = null;
+                    AttributeWritePermission?.Suspend();
+                    AttributeWritePermission = null;
                     MembershipCompleteness = MembershipDetails = null;
                 }
                 else if (membership) MembershipRefusal = error.Message;
@@ -162,6 +201,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         _pending?.Cancel();
         Finding = null;
         CapturedSetting = null;
+        DelegationConfiguration?.Suspend();
+        DelegationConfiguration = null;
+        AttributeWritePermission?.Suspend();
+        AttributeWritePermission = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
     }
@@ -172,6 +215,11 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasFinding));
         OnPropertyChanged(nameof(CapturedSetting));
         OnPropertyChanged(nameof(HasCapturedSetting));
+        OnPropertyChanged(nameof(DelegationConfiguration));
+        OnPropertyChanged(nameof(HasDelegationConfiguration));
+        OnPropertyChanged(nameof(AttributeWritePermission));
+        OnPropertyChanged(nameof(HasAttributeWritePermission));
+        OnPropertyChanged(nameof(ShowsStandardIdentity));
         OnPropertyChanged(nameof(ShowsSavedDescription));
         OnPropertyChanged(nameof(IsLoading));
         OnPropertyChanged(nameof(Refusal));

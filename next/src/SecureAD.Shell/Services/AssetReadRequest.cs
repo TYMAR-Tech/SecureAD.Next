@@ -174,6 +174,40 @@ internal sealed partial class AssetReadRequest(
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
             reader => reader.ReadAccountSetting(reference), _readCancellation)));
 
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadConstrainedDelegation(reference, after), _readCancellation)));
+
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after)
+    {
+        var read = Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadResourceDelegation(reference, after), _readCancellation)));
+        if (!read.IsSuccess || read.Value.Context.HasNullDacl) return read;
+        var holders = new List<SavedDelegationHolder>(read.Value.Holders.Count);
+        foreach (var holder in read.Value.Holders)
+        {
+            _readCancellation.ThrowIfCancellationRequested();
+            var lookup = FindDelegationPrincipals(bundleDirectory, holder.Sid, null);
+            if (!lookup.IsSuccess) return Result<SavedDelegationConfiguration>.Failure(lookup.Error);
+            if (lookup.Value.Principals.Any(principal => !principal.Sid.Equals(holder.Sid, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException(SavedDelegationConfiguration.ResourceInvalidDetails);
+            var principal = lookup.Value.Principals.Count == 1 && lookup.Value.Next is null ? lookup.Value.Principals[0] : null;
+            var name = principal is { ObjectId: > 0 } && !string.IsNullOrWhiteSpace(principal.Name)
+                && !string.IsNullOrWhiteSpace(principal.DistinguishedName) && !string.IsNullOrWhiteSpace(principal.DomainFqdn)
+                ? principal.Name : null;
+            holders.Add(holder with { Name = name });
+        }
+        _readCancellation.ThrowIfCancellationRequested();
+        return Result<SavedDelegationConfiguration>.Success(read.Value with { Holders = holders });
+    }
+
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadAttributeWritePermission(reference, after), _readCancellation)));
+
     /// <inheritdoc/>
     public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory) =>
         WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadRuleExecutions(), _readCancellation));

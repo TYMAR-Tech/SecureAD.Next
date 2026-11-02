@@ -35,9 +35,38 @@ internal sealed partial class AssetsViewModel
                     if (!setting.IsSuccess) return Result<FindingDetailContent>.Failure(setting.Error);
                     content = content with { AccountSetting = setting.Value };
                 }
+                if (!membership && answer.Value.RuleId is "SEC-012" or "SEC-013")
+                {
+                    var delegation = answer.Value.RuleId == "SEC-013"
+                        ? reader.ReadResourceDelegation(bundle, reference, null)
+                        : reader.ReadConstrainedDelegation(bundle, reference, null);
+                    if (!delegation.IsSuccess) return Result<FindingDetailContent>.Failure(delegation.Error);
+                    content = content with { DelegationConfiguration = delegation.Value };
+                }
+                if (!membership && answer.Value.RuleId == "SEC-014")
+                {
+                    var permission = reader.ReadAttributeWritePermission(bundle, reference, null);
+                    if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);
+                    content = content with { AttributeWritePermission = permission.Value };
+                }
                 return Result<FindingDetailContent>.Success(content);
             }, token, membership ? "read selected finding membership" : "read selected finding"),
-            finding.IsCurrent);
+            finding.IsCurrent,
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
+                finding.Saved.Reference is { } reference
+                    ? finding.Saved.RuleId == "SEC-013"
+                        ? reader.ReadResourceDelegation(bundle, reference, after)
+                        : reader.ReadConstrainedDelegation(bundle, reference, after)
+                    : Result<SavedDelegationConfiguration>.Failure(AuditError.Create(ErrorCategory.Shell,
+                        "FindingIdentityUnavailable", ErrorSeverity.Failed,
+                        "The selected finding has no saved identity.", bundle)),
+                token, "read selected delegation services"),
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
+                finding.Saved.Reference is { } reference
+                    ? reader.ReadAttributeWritePermission(bundle, reference, after)
+                    : Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                        "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
+                token, "read selected write-permission entries"));
     }
 
     [RelayCommand]

@@ -603,6 +603,41 @@ internal sealed class FakeAssetSource : IAssetSource
                 "TestAccountSettingUnavailable", ErrorSeverity.Failed, "No saved account setting was supplied by this test.", bundleDirectory));
     }
 
+    public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ConstrainedDelegationRead { get; set; }
+    public List<(FindingReference Reference, DelegationConfigurationMark? After)> ConstrainedDelegationReads { get; } = [];
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after)
+    {
+        ConstrainedDelegationReads.Add((reference, after));
+        return ConstrainedDelegationRead is { } read ? read(reference, after)
+            : Result<SavedDelegationConfiguration>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestConstrainedDelegationUnavailable", ErrorSeverity.Failed,
+                "No saved constrained delegation was supplied by this test.", bundleDirectory));
+    }
+
+    public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
+    public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
+    public List<(FindingReference Reference, AttributeWritePermissionMark? After)> AttributeWritePermissionReads { get; } = [];
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after)
+    {
+        AttributeWritePermissionReads.Add((reference, after));
+        return AttributeWritePermissionRead is { } read ? read(reference, after)
+            : Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestWritePermissionUnavailable", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetails, bundleDirectory));
+    }
+
+    public List<(FindingReference Reference, DelegationConfigurationMark? After)> ResourceDelegationReads { get; } = [];
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after)
+    {
+        ResourceDelegationReads.Add((reference, after));
+        return ResourceDelegationRead is { } read ? read(reference, after)
+            : Result<SavedDelegationConfiguration>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestResourceDelegationUnavailable", ErrorSeverity.Failed,
+                SavedDelegationConfiguration.ResourceInvalidDetails, bundleDirectory));
+    }
+
     /// <summary>What the filters may offer. Nothing, unless a test says otherwise.</summary>
     public FindingsFilterValues FilterValues { get; set; } = new([], [], RulesRan: 1);
 
