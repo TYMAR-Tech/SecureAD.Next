@@ -34,7 +34,7 @@ public sealed class AttributeWritePermissionDetailTests
         Assert.Equal("Captured target", panel.TargetName);
         Assert.Equal("user", panel.Target.ObjectClass);
         Assert.Equal(disabled ? "Disabled" : "Enabled", panel.AccountState);
-        Assert.Equal(SavedAttributeWritePermission.AttributeName, panel.Attribute);
+        Assert.Equal(AttributeWritePermissionReadTests.AttributeName, panel.Attribute);
         Assert.Equal(2, panel.Entries.Count);
         Assert.Equal("High", details.Finding!.Severity);
         Assert.Equal("SEC-014", details.Finding.Rule);
@@ -128,7 +128,7 @@ public sealed class AttributeWritePermissionDetailTests
         source.AttributeWritePermissionRead = (reference, after) =>
         {
             if (defect == "missing") return Result<SavedAttributeWritePermission>.Failure(AuditError.Create(
-                ErrorCategory.Evidence, "MissingWritePermission", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetails, null));
+                ErrorCategory.Evidence, "MissingWritePermission", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"), null));
             var page = read(reference, after).Value;
             page = defect switch
             {
@@ -136,7 +136,8 @@ public sealed class AttributeWritePermissionDetailTests
                 "target" => page with { Context = page.Context with { Target = page.Context.Target with { ObjectGuid = Guid.NewGuid() } } },
                 "generation" => page with { Context = page.Context with { Reference = reference with { GenerationId = Guid.NewGuid() } } },
                 "coverage" => page with { Context = page.Context with { EvidenceIsComplete = false } },
-                "too-many" => page with { Entries = [.. page.Entries, new(50, false, SavedPropertyWriteScope.AllProperties, null, false)] },
+                "too-many" => page with { Entries = [.. page.Entries, new(50, false, SavedPropertyWriteScope.AllProperties, null, false,
+                    AttributeWritePermissionKind.ResourceBasedConstrainedDelegation)] },
                 "null-context" => page with { Context = null! },
                 _ => page with { Next = page.Next!.Value with { Ordinal = 50 } },
             };
@@ -144,7 +145,7 @@ public sealed class AttributeWritePermissionDetailTests
         };
         model.OpenFinding(Assert.Single(model.Findings));
         Assert.True(model.FindingDetails!.HasRefusal);
-        Assert.Equal(SavedAttributeWritePermission.InvalidDetails, model.FindingDetails.Refusal);
+        Assert.Equal(SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"), model.FindingDetails.Refusal);
         Assert.False(model.FindingDetails.HasFinding);
         Assert.Null(model.FindingDetails.AttributeWritePermission);
     }
@@ -184,9 +185,12 @@ public sealed class AttributeWritePermissionDetailTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ClosedOrExpiredPermissionPagesCannotPublishLateAnswers(bool expire) => OneThread.Run(async () =>
+    public void ClosedOrExpiredPermissionPagesCannotPublishLateAnswers(bool expire) =>
+        CheckClosedOrExpiredPermissionPages(expire, AttributeWritePermissionKind.ResourceBasedConstrainedDelegation);
+
+    internal static void CheckClosedOrExpiredPermissionPages(bool expire, AttributeWritePermissionKind kind) => OneThread.Run(async () =>
     {
-        var (model, source, _) = Model(51);
+        var (model, source, _) = Model(51, kind: kind);
         var row = Assert.Single(model.Findings);
         model.OpenFinding(row);
         var details = model.FindingDetails!;
@@ -212,9 +216,12 @@ public sealed class AttributeWritePermissionDetailTests
     [InlineData(1300, false)]
     [InlineData(900, true)]
     [InlineData(1300, true)]
-    public void RealPermissionPanelDistinguishesEntryMeaningInheritanceAndNullDacl(int width, bool nullDacl) => OnSta(() =>
+    public void RealPermissionPanelDistinguishesEntryMeaningInheritanceAndNullDacl(int width, bool nullDacl) =>
+        CheckRealPermissionPanel(width, nullDacl, AttributeWritePermissionKind.ResourceBasedConstrainedDelegation);
+
+    internal static void CheckRealPermissionPanel(int width, bool nullDacl, AttributeWritePermissionKind kind) => OnSta(() =>
     {
-        var (model, _, _) = Model(nullDacl ? 0 : 2, nullDacl: nullDacl);
+        var (model, _, _) = Model(nullDacl ? 0 : 2, nullDacl: nullDacl, kind: kind, scope: SavedPropertyWriteScope.Attribute);
         model.OpenFinding(Assert.Single(model.Findings));
         var view = FindingsViewTests.View(model, "FindingDetailView.xaml");
         var host = new Window { Content = view, Width = width, Height = 750, Left = -20000, Top = -20000,
@@ -225,10 +232,15 @@ public sealed class AttributeWritePermissionDetailTests
             Layout(view, width, 700);
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Captured write permission");
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Target account: Captured target");
-            Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Attribute: " + SavedAttributeWritePermission.AttributeName);
+            Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible
+                && value.Text == "Attribute: " + AttributeWritePermissionReadTests.Family(kind).Attribute);
             Assert.Equal(nullDacl, Descendants<TextBlock>(view).Any(value => value.IsVisible && value.Text == SavedAttributeWritePermission.NullDaclNote));
             if (!nullDacl)
             {
+                var attributeLabel = kind == AttributeWritePermissionKind.ResourceBasedConstrainedDelegation
+                    ? "RBCD attribute" : AttributeWritePermissionFamilyReadTests.AttributeLabel(kind);
+                Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible
+                    && value.Text == "Permission scope: " + attributeLabel);
                 Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Allow");
                 Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Deny");
                 Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Assignment: Inherited");
@@ -251,16 +263,18 @@ public sealed class AttributeWritePermissionDetailTests
 
     private static async Task<object> Complete(Task<Result<SavedAttributeWritePermission>> read) => await read;
 
-    private static (AssetsViewModel Model, FakeAssetSource Source, AttributeWritePermissionEvidence Evidence) Model(
-        int count, bool disabled = false, bool nullDacl = false)
+    internal static (AssetsViewModel Model, FakeAssetSource Source, AttributeWritePermissionEvidence Evidence) Model(
+        int count, bool disabled = false, bool nullDacl = false,
+        AttributeWritePermissionKind kind = AttributeWritePermissionKind.ResourceBasedConstrainedDelegation,
+        SavedPropertyWriteScope scope = SavedPropertyWriteScope.AllProperties)
     {
-        var (evidence, _, sources) = AttributeWritePermissionReadTests.Fixture(count, nullDacl: nullDacl);
+        var (evidence, _, sources) = AttributeWritePermissionReadTests.Fixture(count, scope, nullDacl, kind);
         evidence = evidence with { AccountControl = [new(0, disabled ? "514" : "512", null)] };
         if (sources.Length > 1) sources[1] = sources[1] with { IsDeny = true, IsInherited = true };
         var source = new FakeAssetSource
         {
             FindingsPage = new([AttributeWritePermissionReadTests.Finding(evidence)], null, 1),
-            FilterValues = new([Severity.High], ["SEC-014"], 1),
+            FilterValues = new([Severity.High], [AttributeWritePermissionReadTests.Family(kind).Rule], 1),
         };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         model.Show(@"C:\offline-fixture\attribute-write-permission", false);

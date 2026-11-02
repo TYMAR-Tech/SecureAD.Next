@@ -653,11 +653,9 @@ public sealed class AttributeWriteRuleTests
         {
             Assert.Equal(Severity.High, rule.Definition.Severity);
             Assert.Single(RuleCatalogue.All, scheduled => scheduled.Definition.Id == rule.Definition.Id);
-            Assert.Contains(rule.Definition.Id == "SEC-014"
-                ? "It does not show that delegation is configured or in use" : "does not prove",
+            Assert.Contains("It does not show",
                 RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhyItMatters, StringComparison.Ordinal);
-            Assert.Contains(rule.Definition.Id == "SEC-014"
-                ? "remove or narrow only that permission on the target account" : "Remove only",
+            Assert.Contains("remove or narrow only that permission on the target account",
                 RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhatToDo, StringComparison.Ordinal);
         });
         Assert.DoesNotContain(RuleCatalogue.All, rule => rule.Definition.Id == "SEC-083");

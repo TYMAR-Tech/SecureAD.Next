@@ -15,6 +15,7 @@ public sealed class AttributeWritePermissionReadTests
     internal const string TargetDn = "CN=Captured target,DC=contoso,DC=com";
     internal const string HolderSid = "S-1-5-21-1-2-3-1200";
     internal const string AttributeGuid = "3f78c3e5-f79a-46bd-a0b8-9d18116ddc79";
+    internal const string AttributeName = "msDS-AllowedToActOnBehalfOfOtherIdentity";
     internal const string SetGuid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
     [Theory]
@@ -181,7 +182,7 @@ public sealed class AttributeWritePermissionReadTests
         var names = path.Split('.');
         var parent = names.Take(names.Length - 1).Aggregate(json, (node, name) => node[name]!);
         parent[names[^1]] = JsonNode.Parse(replacement);
-        Assert.Equal(SavedAttributeWritePermission.InvalidDetails,
+        Assert.Equal(SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"),
             Assert.Throws<InvalidDataException>(() => Project(json.ToJsonString(), evidence, selected, sources, 1)).Message);
     }
 
@@ -198,22 +199,24 @@ public sealed class AttributeWritePermissionReadTests
     }
 
     internal static (AttributeWritePermissionEvidence Evidence, FindingListItem Selected, SavedWriteEntrySource[] Sources) Fixture(
-        int count, SavedPropertyWriteScope scope = SavedPropertyWriteScope.AllProperties, bool nullDacl = false)
+        int count, SavedPropertyWriteScope scope = SavedPropertyWriteScope.AllProperties, bool nullDacl = false,
+        AttributeWritePermissionKind permissionKind = AttributeWritePermissionKind.ResourceBasedConstrainedDelegation)
     {
+        var family = Family(permissionKind);
         var generation = Guid.NewGuid();
         var target = new AdministrativeMembershipIdentity(Guid.NewGuid(), TargetDn, "DC=contoso,DC=com", "contoso.com",
             "S-1-5-21-1-2-3-1100", null, "user", null, DateTimeOffset.UnixEpoch, EvidenceCompleteness.Complete,
             [new("objectClass", 0, "top"), new("objectClass", 1, "person"), new("objectClass", 2, "user")]);
-        var attribute = new SchemaGuidEntry(AttributeGuid, SavedAttributeWritePermission.AttributeName, SchemaGuidKind.Attribute, SchemaGuidSource.Captured);
+        var attribute = new SchemaGuidEntry(family.Guid, family.Attribute, SchemaGuidKind.Attribute, SchemaGuidSource.Captured);
         var definitions = new List<SchemaGuidEntry> { attribute };
         if (scope is SavedPropertyWriteScope.PropertySet or SavedPropertyWriteScope.ObjectClass)
             definitions.Add(new(SetGuid, scope == SavedPropertyWriteScope.PropertySet ? "Captured property set" : "user",
                 scope == SavedPropertyWriteScope.PropertySet ? SchemaGuidKind.PropertySet : SchemaGuidKind.ObjectClass, SchemaGuidSource.Captured));
         var sources = Enumerable.Range(0, count).Select(ordinal => new SavedWriteEntrySource(ordinal, false, HolderSid,
-            scope == SavedPropertyWriteScope.AllProperties ? null : scope == SavedPropertyWriteScope.Attribute ? AttributeGuid : SetGuid,
+            scope == SavedPropertyWriteScope.AllProperties ? null : scope == SavedPropertyWriteScope.Attribute ? family.Guid : SetGuid,
             scope != SavedPropertyWriteScope.AllProperties, false)).ToArray();
         var evidence = new AttributeWritePermissionEvidence(generation, new string('a', 64), Guid.NewGuid(), new string('b', 64),
-            PrincipalClassificationRegistry.Version, ControlEdgeStorage.EngineVersion, AttributeWritePermissionKind.ResourceBasedConstrainedDelegation,
+            PrincipalClassificationRegistry.Version, ControlEdgeStorage.EngineVersion, permissionKind,
             target, [], [new(0, "512", null)], nullDacl ? "S-1-1-0" : HolderSid, null, nullDacl ? "Everyone" : "Captured holder",
             nullDacl ? "UnexpectedBroadPrincipal" : "UnexpectedNotControlPlane", attribute, definitions,
             new Dictionary<string, IReadOnlyList<string>>(),
@@ -222,7 +225,15 @@ public sealed class AttributeWritePermissionReadTests
         return (evidence, Selected(evidence), sources);
     }
 
-    internal static Finding Finding(AttributeWritePermissionEvidence evidence) => new("SEC-014", 1, Severity.High,
+    internal static (string Rule, string Attribute, string Guid) Family(AttributeWritePermissionKind kind) => kind switch
+    {
+        AttributeWritePermissionKind.ResourceBasedConstrainedDelegation => ("SEC-014", AttributeName, AttributeGuid),
+        AttributeWritePermissionKind.ServicePrincipalName => ("SEC-024", "servicePrincipalName", "f3a64788-5306-11d1-a9c5-0000f80367c1"),
+        AttributeWritePermissionKind.KeyCredentialLink => ("SEC-025", "msDS-KeyCredentialLink", "5b47d60f-6090-40b2-9f37-2a4de88f3063"),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
+
+    internal static Finding Finding(AttributeWritePermissionEvidence evidence) => new(Family(evidence.PermissionKind).Rule, 1, Severity.High,
         new(FindingSubjectKind.Account, AttributeWriteRules.Key(evidence.HolderSid, evidence.HolderScope)), evidence.Target.ObjectGuid,
         evidence.Target.DistinguishedName, evidence.Target.DomainFqdn!, "user", "Original full proof prose must not be used.",
         EvidenceCompleteness.Complete, evidence) { PrincipalName = evidence.HolderName ?? evidence.HolderSid };
@@ -233,7 +244,7 @@ public sealed class AttributeWritePermissionReadTests
         IReadOnlyList<SavedWriteEntrySource> sources, long total, AttributeWritePermissionMark? after = null, AttributeWritePermissionMark? next = null) =>
         Project(JsonSerializer.Serialize(evidence, ProofSerialization.Options), evidence, selected, sources, total, after, next);
 
-    private static SavedAttributeWritePermission Project(string json, AttributeWritePermissionEvidence evidence, FindingListItem selected,
+    internal static SavedAttributeWritePermission Project(string json, AttributeWritePermissionEvidence evidence, FindingListItem selected,
         IReadOnlyList<SavedWriteEntrySource> sources, long total, AttributeWritePermissionMark? after = null, AttributeWritePermissionMark? next = null)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));

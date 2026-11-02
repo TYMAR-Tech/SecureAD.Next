@@ -624,7 +624,7 @@ internal sealed class FakeAssetSource : IAssetSource
         AttributeWritePermissionReads.Add((reference, after));
         return AttributeWritePermissionRead is { } read ? read(reference, after)
             : Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Shell,
-                "TestWritePermissionUnavailable", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetails, bundleDirectory));
+                "TestWritePermissionUnavailable", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"), bundleDirectory));
     }
 
     public List<(FindingReference Reference, DelegationConfigurationMark? After)> ResourceDelegationReads { get; } = [];

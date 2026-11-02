@@ -88,7 +88,8 @@ public sealed record FindingListItem(
             finding.DistinguishedName, finding.DomainFqdn, finding.ObjectClass,
             finding.RuleId == "SEC-012" ? SavedDelegationConfiguration.ConstrainedStatement
                 : finding.RuleId == "SEC-013" ? SavedDelegationConfiguration.ResourceStatement
-                : finding.RuleId == "SEC-014" ? SavedAttributeWritePermission.ScopeNote : finding.Detail, finding.Coverage,
+                : SavedAttributeWritePermission.SupportsRule(finding.RuleId)
+                    ? SavedAttributeWritePermission.ScopeNoteForRule(finding.RuleId) : finding.Detail, finding.Coverage,
             finding.PrincipalName, membership is not null ? FindingListKind.Membership
                 : finding.Evidence is Tier0RouteFindingEvidence ? FindingListKind.Tier0Routes : FindingListKind.Standard,
             Complete(finding.Evidence), membership);

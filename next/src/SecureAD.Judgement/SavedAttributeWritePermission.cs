@@ -14,30 +14,34 @@ public enum SavedPropertyWriteScope
 
 /// <summary>One selected original allow/deny occurrence, without raw masks or interpretation bulk.</summary>
 public sealed record SavedPropertyWriteEntry(int Ordinal, bool IsDeny, SavedPropertyWriteScope Scope,
-    string? ScopeName, bool IsInherited)
+    string? ScopeName, bool IsInherited, AttributeWritePermissionKind PermissionKind)
 {
     public string EntryType => IsDeny ? "Deny" : "Allow";
     public string Assignment => IsInherited ? "Inherited" : "Explicit";
     public string InheritanceNote => "The original source of this inherited assignment is not established by this finding.";
     public string PermissionScope => Scope switch
     {
-        SavedPropertyWriteScope.Attribute => "RBCD attribute",
+        SavedPropertyWriteScope.Attribute => SavedAttributeWritePermission.AttributeScopeLabel(PermissionKind),
         SavedPropertyWriteScope.PropertySet => ScopeName is null ? "Property set (captured name unavailable)" : "Property set: " + ScopeName,
         SavedPropertyWriteScope.ObjectClass => ScopeName is null ? "Object class (captured name unavailable)" : "Object class: " + ScopeName,
         SavedPropertyWriteScope.AllProperties => "All properties",
-        _ => throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetails),
+        _ => throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetailsForRule(AttributeWriteRules.RuleFor(PermissionKind))),
     };
 }
 
 /// <summary>A position in one selected finding's original shared-entry links.</summary>
 public readonly record struct AttributeWritePermissionMark(Guid GenerationId, long FindingId, Guid TargetGuid, int Ordinal);
 
-/// <summary>Saved SEC-014 context, independent of the currently loaded permission-entry page.</summary>
+/// <summary>Saved attribute-write context, independent of the currently loaded permission-entry page.</summary>
 public sealed record AttributeWritePermissionContext(FindingReference Reference, FindingSubject Subject,
     SavedDelegationIdentity Target, string HolderSid, string? HolderScope, string? HolderName,
     string ExpectednessReason, bool? AccountIsDisabled, bool HasNullDacl, bool EvidenceIsComplete,
-    bool CaptureIncomplete, bool OtherLimitations)
+    bool CaptureIncomplete, bool OtherLimitations, AttributeWritePermissionKind PermissionKind)
 {
+    public string RuleId => AttributeWriteRules.RuleFor(PermissionKind);
+    public string AttributeName => AttributeWriteRules.Operation(RuleId).Attribute;
+    public string ScopeNote => SavedAttributeWritePermission.ScopeNoteForRule(RuleId);
+    public string InvalidDetails => SavedAttributeWritePermission.InvalidDetailsForRule(RuleId);
     public string PermissionHolder => HolderName ?? HolderSid;
     public string AccountState => AccountIsDisabled is null ? "Not established from captured evidence."
         : AccountIsDisabled.Value ? "Disabled" : "Enabled";
@@ -48,10 +52,10 @@ public sealed record AttributeWritePermissionContext(FindingReference Reference,
             "The saved assessment does not identify this holder as an expected administrator for this target.",
         nameof(ControlExpectednessReason.UnexpectedOutsideAuthorityScope) =>
             "The holder is outside its expected administrative authority for this target in the saved assessment.",
-        _ => throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetails),
+        _ => throw new InvalidDataException(InvalidDetails),
     };
 
-    public bool Matches(FindingListItem finding) => finding.RuleId == "SEC-014" && finding.RuleVersion == 1
+    public bool Matches(FindingListItem finding) => Enum.IsDefined(PermissionKind) && finding.RuleId == RuleId && finding.RuleVersion == 1
         && finding.Severity == Severity.High && Reference == finding.Reference && Reference.GenerationId != Guid.Empty
         && Reference.FindingId > 0 && Target is { IsValid: true } && Target.ObjectGuid == finding.ObjectGuid
         && Target.DistinguishedName == finding.DistinguishedName && Target.DomainFqdn == finding.DomainFqdn
@@ -73,15 +77,38 @@ public sealed record AttributeWritePermissionContext(FindingReference Reference,
     }
 }
 
-/// <summary>A selected SEC-014 page served from original saved metadata and shared-entry links.</summary>
+/// <summary>A selected attribute-write page served from original saved metadata and shared-entry links.</summary>
 public sealed record SavedAttributeWritePermission(AttributeWritePermissionContext Context,
     IReadOnlyList<SavedPropertyWriteEntry> Entries, AttributeWritePermissionMark? Next)
 {
     public const int PageSize = 50;
-    public const string AttributeName = "msDS-AllowedToActOnBehalfOfOtherIdentity";
-    public const string InvalidDetails = "The selected finding's saved RBCD-write permission details are missing, invalid or inconsistent.";
-    public const string ScopeNote = "Permission to edit RBCD configuration is not an existing delegation grant. SEC-013 reports captured RBCD configuration grants.";
     public const string NullDaclNote = "The captured object security descriptor has a NULL DACL (no discretionary access list). This finding is not an explicit Everyone permission entry. Review the object's permission configuration rather than deleting an invented entry.";
+
+    public static bool SupportsRule(string ruleId) => ruleId is "SEC-014" or "SEC-024" or "SEC-025";
+
+    public static string InvalidDetailsForRule(string ruleId) => ruleId switch
+    {
+        "SEC-014" => "The selected finding's saved RBCD-write permission details are missing, invalid or inconsistent.",
+        "SEC-024" => "The selected finding's saved SPN-write permission details are missing, invalid or inconsistent.",
+        "SEC-025" => "The selected finding's saved key-credential-write permission details are missing, invalid or inconsistent.",
+        _ => throw new InvalidDataException("The attribute-write rule is not supported."),
+    };
+
+    public static string ScopeNoteForRule(string ruleId) => ruleId switch
+    {
+        "SEC-014" => "Permission to edit RBCD configuration is not an existing delegation grant. SEC-013 reports captured RBCD configuration grants.",
+        "SEC-024" => "Permission to edit servicePrincipalName is not an existing service registration or evidence of service use. Validated write to service principal names is a separate permission.",
+        "SEC-025" => "Permission to edit msDS-KeyCredentialLink is not an existing usable key or proof that key-based authentication will work. The SELF-only validated computer-account operation is separate.",
+        _ => throw new InvalidDataException("The attribute-write rule is not supported."),
+    };
+
+    public static string AttributeScopeLabel(AttributeWritePermissionKind kind) => kind switch
+    {
+        AttributeWritePermissionKind.ResourceBasedConstrainedDelegation => "RBCD attribute",
+        AttributeWritePermissionKind.ServicePrincipalName => "SPN attribute",
+        AttributeWritePermissionKind.KeyCredentialLink => "Key-credential-link attribute",
+        _ => throw new InvalidDataException("The attribute-write permission kind is not supported."),
+    };
 
     public bool IsExpectedPage(int after)
     {
@@ -91,7 +118,7 @@ public sealed record SavedAttributeWritePermission(AttributeWritePermissionConte
         var previous = after;
         foreach (var entry in Entries)
         {
-            if (entry is null || entry.Ordinal <= previous || !Enum.IsDefined(entry.Scope)
+            if (entry is null || entry.Ordinal <= previous || !Enum.IsDefined(entry.Scope) || entry.PermissionKind != Context.PermissionKind
                 || entry.ScopeName is not null && string.IsNullOrWhiteSpace(entry.ScopeName)) return false;
             previous = entry.Ordinal;
         }

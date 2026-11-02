@@ -413,6 +413,60 @@ On 2026-11-01 the owner requested full completion rather than a partly verified 
 explicitly approved a further 25-35-minute close-out after checking the actual changes against
 the recorded scope; report and stop rather than silently extending past 35 minutes.
 
+**SEC-024/025 captured-write-permission presentation - owner-approved 2026-11-01.**
+The owner approved the exact two-rule scope/copy and requested beginning implementation and
+short focused checks, not a long verification run.
+Reuse SEC-014's charcoal permission window from both Findings grids, retaining the existing
+Unexpected service-principal-name write permission and Unexpected key-credential-link write
+permission titles, High severity, one holder/target finding, target scope and original investigation.
+Show the saved holder name/exact SID, target identity/type/domain/location/state at capture,
+attribute, saved unexpectedness reason, all original Allow/Deny occurrences and inheritance in
+50-entry Previous/Next pages and Page {number}.
+Retain the existing shared labels, NULL-DACL explanation, unknown-state wording, inherited-source
+warning, limitations and property-set/object-class/all-properties labels without changing SEC-014.
+The new attribute-specific scope labels are SPN attribute and Key-credential-link attribute.
+Extend the existing selected reader/panel using the existing rule-to-attribute mapping rather
+than introducing another reader framework, full-proof reconstruction, schema/permission replay,
+automatic SPN/key-value loading, new analysis, formats, live work, measurements or LAPS work.
+Keep group-held permission distinct from individual authorization and preserve exact
+source/resource/generation/rule binding and explicit refusals.
+Share the following wording between Findings and Rules for SEC-024:
+- **Why it matters:** "The saved assessment identifies unexpected permission to write this account's servicePrincipalName attribute. If misused, this permission could allow unintended service registrations or changes to existing registrations. It does not show that a service principal name has been added or changed, that a service is in use, that a directory change will succeed, or that authentication, impersonation, credential theft, account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member."
+- **What to do:** "Confirm the holder's legitimate service-registration responsibilities. Review dependent services and other rights in the same assignment before making changes. If this write permission is unintended, remove or narrow only that permission on the target account. For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. Do not remove legitimate service principal names or reset passwords as a substitute for correcting the write permission."
+SEC-024's scope note is "Permission to edit servicePrincipalName is not an existing service
+registration or evidence of service use. Validated write to service principal names is a separate
+permission."
+Unavailable SEC-024 details say "The selected finding's saved SPN-write permission details are
+missing, invalid or inconsistent."
+Share the following wording between Findings and Rules for SEC-025:
+- **Why it matters:** "The saved assessment identifies unexpected permission to write this account's msDS-KeyCredentialLink attribute. If misused, this permission could allow key-credential registrations to be added or changed. It does not show that a usable key is registered, that a directory change will succeed, that key-based authentication is available or will succeed, or that credential extraction, account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member."
+- **What to do:** "Confirm the holder's legitimate account, device-authentication and key-enrolment responsibilities. Review dependent services and other rights in the same assignment before making changes. If this write permission is unintended, remove or narrow only that permission on the target account. For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. Do not delete existing key credentials or reset passwords as a substitute for correcting the write permission."
+SEC-025's scope note is "Permission to edit msDS-KeyCredentialLink is not an existing usable key
+or proof that key-based authentication will work. The SELF-only validated computer-account
+operation is separate."
+Unavailable SEC-025 details say "The selected finding's saved key-credential-write permission
+details are missing, invalid or inconsistent."
+Retain all existing SEC-014 wording and behaviour, loading/cancellation/generation wording,
+Open affected object (the target account) and Close.
+The owner accepted the uncertain 90-120-minute end-to-end estimate, a 45-minute checkpoint and a
+stop/report rather than silent extension past 120 minutes; the estimated 30-45-minute long
+isolated rebuilt-defect/restored and final affected verification needs a separate warning and
+explicit approval after the short checkpoint.
+After the 185-case short checkpoint (86 new family cases plus retained SEC-014, binding and
+guidance controls), the owner explicitly approved the warned 30-45-minute offline rebuilt-defect/
+restored and final affected Release verification, retaining the stage and overall stop boundaries.
+On 2026-11-02 the owner explicitly approved a new 40-minute maximum close-out window:
+correct and self-test per-process deadline enforcement, resume only controls 12-37 without
+restarting completed controls, and finish final affected verification and cleanup.
+The new deadline must interrupt a running process and leave the batch explicitly unfinished
+if it expires; it authorizes no application scope expansion or package/merge/commit/push.
+After the final run returned one WPF resource-loading failure, the owner explicitly approved
+a final 15-minute maximum window on 2026-11-02 to validate the existing non-parallel test
+collection correction, retry the affected build/tests and finish preservation/cleanup,
+without repeating the 37 completed fault controls or changing application behaviour.
+This does not authorize packaging, merge, commit or push, or repeat the completed content review,
+mockups or CI repairs.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

@@ -43,7 +43,7 @@ internal sealed partial class AssetsViewModel
                     if (!delegation.IsSuccess) return Result<FindingDetailContent>.Failure(delegation.Error);
                     content = content with { DelegationConfiguration = delegation.Value };
                 }
-                if (!membership && answer.Value.RuleId == "SEC-014")
+                if (!membership && SavedAttributeWritePermission.SupportsRule(answer.Value.RuleId))
                 {
                     var permission = reader.ReadAttributeWritePermission(bundle, reference, null);
                     if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);

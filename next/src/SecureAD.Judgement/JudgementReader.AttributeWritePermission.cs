@@ -6,19 +6,18 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    /// <summary>Reads SEC-014 saved context and one original permission-entry page without permission or schema replay.</summary>
+    /// <summary>Reads saved attribute-write context and one original permission-entry page without permission or schema replay.</summary>
     public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(FindingReference reference, AttributeWritePermissionMark? after = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();
-        if (reference.GenerationId != Description.GenerationId || reference.FindingId <= 0
-            || after is { } mark && (mark.GenerationId != reference.GenerationId || mark.FindingId != reference.FindingId
-                || mark.TargetGuid == Guid.Empty || mark.Ordinal < 0))
-            return Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Evidence,
-                "FindingSelectionChanged", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetails, BundleDirectory));
         var selected = ReadSelectedFinding(reference);
         if (!selected.IsSuccess) return Result<SavedAttributeWritePermission>.Failure(selected.Error);
-        if (selected.Value.RuleId != "SEC-014" || after is { } cursor && cursor.TargetGuid != selected.Value.ObjectGuid) throw InvalidWritePermission();
+        var invalidDetails = SavedAttributeWritePermission.InvalidDetailsForRule(selected.Value.RuleId);
+        if (after is { } mark && (mark.GenerationId != reference.GenerationId || mark.FindingId != reference.FindingId
+            || mark.TargetGuid != selected.Value.ObjectGuid || mark.Ordinal < 0))
+            return Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Evidence,
+                "FindingSelectionChanged", ErrorSeverity.Failed, invalidDetails, BundleDirectory));
         OpenPart(StoreSegmentRole.PermissionProof);
         using (var command = _connection.CreateCommand())
         {
@@ -26,7 +25,7 @@ public sealed partial class JudgementReader
             command.Parameters.AddWithValue("$id", reference.FindingId);
             using var row = command.ExecuteReader();
             if (!row.Read() || row.GetString(0) != Description.GenerationId.ToString("D") || row.GetString(1) != "text"
-                || row.GetValue(2) is not byte[] { Length: 32 }) throw InvalidWritePermission();
+                || row.GetValue(2) is not byte[] { Length: 32 }) throw Invalid();
         }
         long total;
         using (var command = _connection.CreateCommand())
@@ -61,18 +60,18 @@ public sealed partial class JudgementReader
                     || row.GetValue(6) is not long mask || mask is < int.MinValue or > uint.MaxValue || (mask & 0x20) == 0
                     || row.GetValue(10) is not long inheritance || inheritance is < 0 or > 255
                     || row.GetValue(11) is not long propagation || propagation is < 0 or > 255 || (propagation & 0x08) != 0
-                    || row.GetValue(14) is not long dataLength || dataLength != 0) throw InvalidWritePermission();
+                    || row.GetValue(14) is not long dataLength || dataLength != 0) throw Invalid();
                 var inherited = Bit(8);
                 var objectType = row.IsDBNull(7) ? null : row.GetString(7);
                 var hasObjectType = Bit(9);
                 var hasInheritedType = Bit(12);
                 if (hasObjectType != (objectType is not null)
-                    || hasInheritedType != !row.IsDBNull(13)) throw InvalidWritePermission();
+                    || hasInheritedType != !row.IsDBNull(13)) throw Invalid();
                 entries.Add(new((int)ordinal, row.GetString(4).Contains("Denied", StringComparison.Ordinal),
                     row.GetString(5), objectType, hasObjectType, inherited));
             }
             bool Bit(int column) => row.GetValue(column) is long value && value is 0 or 1
-                ? value == 1 : throw InvalidWritePermission();
+                ? value == 1 : throw Invalid();
         }
         AttributeWritePermissionMark? next = null;
         if (entries.Count > SavedAttributeWritePermission.PageSize)
@@ -81,14 +80,13 @@ public sealed partial class JudgementReader
             next = new(Description.GenerationId, reference.FindingId, selected.Value.ObjectGuid, entries[^1].Ordinal);
         }
         _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
-        if (_findingDerivationSeal is null) throw InvalidWritePermission();
+        if (_findingDerivationSeal is null) throw Invalid();
         using var proof = new SqliteBlob(_connection, JudgementStoreLayout.Schema(_connection, StoreSegmentRole.PermissionProof),
             "finding_attribute_write", "proof", reference.FindingId, readOnly: true);
         var page = AttributeWritePermissionProjection.Read(proof, selected.Value, Description, _findingDerivationSeal,
             entries, total, after, next, _readCancellation);
         _readCancellation.ThrowIfCancellationRequested();
         return Result<SavedAttributeWritePermission>.Success(page);
+        InvalidDataException Invalid() => new(invalidDetails);
     }
-
-    private static InvalidDataException InvalidWritePermission() => new(SavedAttributeWritePermission.InvalidDetails);
 }

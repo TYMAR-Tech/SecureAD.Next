@@ -22,7 +22,7 @@ public sealed partial class OpenedRunResultsTests
             var rows = source.ReadFindingsList(directory, FindingsQuery.Everything()).Value.Findings;
             var row = Assert.Single(rows, item => item.RuleId == "SEC-014");
             Assert.Equal(0L, counts.Heavy);
-            Assert.Equal(SavedAttributeWritePermission.ScopeNote, row.Detail);
+            Assert.Equal(SavedAttributeWritePermission.ScopeNoteForRule("SEC-014"), row.Detail);
             var first = source.ReadAttributeWritePermission(directory, row.Reference!.Value, null);
             Assert.True(first.IsSuccess, first.Error?.Description);
             Assert.True(first.Value.Context.Matches(row));
@@ -64,7 +64,7 @@ public sealed partial class OpenedRunResultsTests
         var row = Assert.Single(source.ReadFindingsList(directory, FindingsQuery.Everything()).Value.Findings, item => item.RuleId == "SEC-014");
         var read = source.ReadAttributeWritePermission(directory, row.Reference!.Value, null);
         Assert.False(read.IsSuccess);
-        Assert.Contains(SavedAttributeWritePermission.InvalidDetails, read.Error.Description, StringComparison.Ordinal);
+        Assert.Contains(SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"), read.Error.Description, StringComparison.Ordinal);
     }
 
     [Theory]

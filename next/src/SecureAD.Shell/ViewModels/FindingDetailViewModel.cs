@@ -151,11 +151,11 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.DelegationConfiguration is not null)
                     throw new InvalidDataException("The selected finding has unrelated delegation configuration data.");
-                if (content.Saved.RuleId == "SEC-014")
+                if (SavedAttributeWritePermission.SupportsRule(content.Saved.RuleId))
                 {
                     if (content.AttributeWritePermission is not { Context: not null } permission || _readWritePermission is null
                         || !permission.Context.Matches(content.Saved) || !permission.IsExpectedPage(-1))
-                        throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetails);
+                        throw new InvalidDataException(SavedAttributeWritePermission.InvalidDetailsForRule(content.Saved.RuleId));
                     AttributeWritePermission = new(permission, _readWritePermission, CheckCurrent);
                 }
                 else if (content.AttributeWritePermission is not null)

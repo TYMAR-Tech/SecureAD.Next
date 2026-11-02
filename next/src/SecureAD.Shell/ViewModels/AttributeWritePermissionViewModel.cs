@@ -32,18 +32,18 @@ internal sealed class AttributeWritePermissionViewModel : SavedFindingPageViewMo
     public string TargetName => DnHelper.ExtractFirstRdn(Target.DistinguishedName);
     public string AccountState => _context.AccountState;
     public string Unexpectedness => _context.Unexpectedness;
-    public string Attribute { get; } = SavedAttributeWritePermission.AttributeName;
+    public string Attribute => _context.AttributeName;
     public bool HasNullDacl => _context.HasNullDacl;
     public bool ShowsEntries => !HasNullDacl;
     public string NullDaclNote { get; } = SavedAttributeWritePermission.NullDaclNote;
-    public string ScopeNote { get; } = SavedAttributeWritePermission.ScopeNote;
+    public string ScopeNote => _context.ScopeNote;
     public IReadOnlyList<string> Limitations { get; }
     public bool HasLimitations => Limitations.Count > 0;
     public IReadOnlyList<PropertyWriteEntryViewModel> Entries { get; private set; } = [];
     protected override AttributeWritePermissionMark? NextFor(SavedAttributeWritePermission page) => page.Next;
     protected override bool Accepts(SavedAttributeWritePermission page, AttributeWritePermissionMark? after) =>
         page.Context == _context && page.IsExpectedPage(after?.Ordinal ?? -1);
-    protected override string InvalidDetails => SavedAttributeWritePermission.InvalidDetails;
+    protected override string InvalidDetails => _context.InvalidDetails;
     protected override void AnnouncePage()
     {
         Entries = IsActive ? Page.Entries.Select(entry => new PropertyWriteEntryViewModel(entry)).ToArray() : [];

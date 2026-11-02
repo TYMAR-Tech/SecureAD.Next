@@ -96,15 +96,29 @@ public static class RuleGuidanceCatalogue
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-ada2/cea4ac11-a4b2-4f2d-84cc-aebb4a4ad405"),
         new RuleGuidance("SEC-024", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change service principal names registered on this account. " + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's servicePrincipalName attribute. "
+                + "If misused, this permission could allow unintended service registrations or changes to existing registrations. "
+                + "It does not show that a service principal name has been added or changed, that a service is in use, that a directory change will succeed, "
+                + "or that authentication, impersonation, credential theft, account takeover or a completed Tier 0 path has occurred. "
+                + "A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate service-registration responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not remove legitimate service principal names or reset passwords as a substitute for correcting the write permission.",
             About: "Reports established WRITE_PROPERTY permission on servicePrincipalName, including a captured containing property set.\n\n"
                 + "Restricted validated-SPN writes are not unrestricted attribute-write permission. Existing SPNs, service usage, password strength and successful Kerberos ticket requests are not prerequisites established here. "
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows/win32/api/ntdsapi/nf-ntdsapi-dswriteaccountspnw"),
         new RuleGuidance("SEC-025", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change the account's key-credential-link attribute. " + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's msDS-KeyCredentialLink attribute. "
+                + "If misused, this permission could allow key-credential registrations to be added or changed. "
+                + "It does not show that a usable key is registered, that a directory change will succeed, that key-based authentication is available or will succeed, "
+                + "or that credential extraction, account takeover or a completed Tier 0 path has occurred. "
+                + "A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate account, device-authentication and key-enrolment responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not delete existing key credentials or reset passwords as a substitute for correcting the write permission.",
             About: "Reports the existing CanWriteKeyCredentialLink permission assessment for msDS-KeyCredentialLink.\n\n"
                 + "The SELF-only validated computer operation is separate. Adding a usable key, certificate infrastructure, authentication and credential extraction are not established. "
                 + AttributeWriteRules.ScopeNote,

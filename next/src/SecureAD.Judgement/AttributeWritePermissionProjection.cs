@@ -14,19 +14,26 @@ internal sealed class AttributeWritePermissionProjection
 {
     private readonly SavedProofJsonReader _json;
     private readonly IReadOnlyList<SavedWriteEntrySource> _entries;
+    private readonly AttributeWritePermissionKind _kind;
+    private readonly string _attributeName, _attributeGuid, _invalidDetails;
     private readonly Dictionary<string, SchemaGuidEntry> _definitions = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<int> _scopes = [];
     private bool _captureIncomplete, _otherLimitations, _stateUnreadable;
     private long _scopeCount;
 
-    private AttributeWritePermissionProjection(SavedProofJsonReader json, IReadOnlyList<SavedWriteEntrySource> entries) =>
+    private AttributeWritePermissionProjection(SavedProofJsonReader json, IReadOnlyList<SavedWriteEntrySource> entries, string ruleId)
+    {
         (_json, _entries) = (json, entries);
+        var operation = AttributeWriteRules.Operation(ruleId);
+        (_kind, _attributeName, _attributeGuid) = (operation.Kind, operation.Attribute, operation.Guid);
+        _invalidDetails = SavedAttributeWritePermission.InvalidDetailsForRule(ruleId);
+    }
 
     internal static SavedAttributeWritePermission Read(Stream stream, FindingListItem selected, JudgementDescription description,
         string derivationSeal, IReadOnlyList<SavedWriteEntrySource> entries, long totalEntries,
         AttributeWritePermissionMark? after, AttributeWritePermissionMark? next, CancellationToken token) =>
-        SavedProofJsonReader.Read(stream, token, SavedAttributeWritePermission.InvalidDetails, json =>
-            new AttributeWritePermissionProjection(json, entries).Read(selected, description, derivationSeal, totalEntries, after, next));
+        SavedProofJsonReader.Read(stream, token, SavedAttributeWritePermission.InvalidDetailsForRule(selected.RuleId), json =>
+            new AttributeWritePermissionProjection(json, entries, selected.RuleId).Read(selected, description, derivationSeal, totalEntries, after, next));
 
     private SavedAttributeWritePermission Read(FindingListItem selected, JudgementDescription description,
         string derivationSeal, long totalEntries, AttributeWritePermissionMark? after, AttributeWritePermissionMark? next)
@@ -46,7 +53,7 @@ internal sealed class AttributeWritePermissionProjection
                 case "DerivationSeal": _json.Require(_json.Text() == derivationSeal); break;
                 case "PrincipalCatalogueVersion": _json.Require(_json.Number() == PrincipalClassificationRegistry.Version); break;
                 case "ControlEngineVersion": _json.Require(_json.Number() == ControlEdgeStorage.EngineVersion); break;
-                case "PermissionKind": _json.Require(_json.Text() == nameof(AttributeWritePermissionKind.ResourceBasedConstrainedDelegation)); break;
+                case "PermissionKind": _json.Require(_json.Text() == _kind.ToString()); break;
                 case "Target": (targetGuid, dn, domain, targetSid, actualClass) = Target(); break;
                 case "Domains": _json.Skip("array"); break;
                 case "AccountControl": control = AccountControl(); break;
@@ -57,14 +64,15 @@ internal sealed class AttributeWritePermissionProjection
                 case "Attribute":
                     var attribute = Definition();
                     attributeValid = attribute.Kind == SchemaGuidKind.Attribute && attribute.Source == SchemaGuidSource.Captured
-                        && attribute.LdapName == SavedAttributeWritePermission.AttributeName
-                        && Same(attribute.Guid, SchemaGuidCatalog.Embedded.GuidFor(SavedAttributeWritePermission.AttributeName));
+                        && attribute.LdapName == _attributeName && Same(attribute.Guid, _attributeGuid);
                     break;
                 case "SchemaEntries":
                     _json.Array(() =>
                     {
                         var definition = Definition();
-                        if (_entries.Any(entry => Same(entry.ObjectType, definition.Guid)))
+                        // Attribute/validated-write aliases are not assignment-breadth definitions.
+                        if (definition.Kind is SchemaGuidKind.PropertySet or SchemaGuidKind.ObjectClass
+                            && _entries.Any(entry => Same(entry.ObjectType, definition.Guid)))
                             _json.Require(_definitions.TryAdd(definition.Guid, definition));
                     });
                     break;
@@ -101,7 +109,7 @@ internal sealed class AttributeWritePermissionProjection
         var context = new AttributeWritePermissionContext(selected.Reference!.Value, selected.Subject,
             new(targetGuid, dn!, domain!, actualClass!), holder!, holderScope, holderName, reason!,
             control is null ? null : (control.Value & 2) != 0, nullDacl, selected.EvidenceIsComplete,
-            _captureIncomplete, _otherLimitations);
+            _captureIncomplete, _otherLimitations, _kind);
         _json.Require(context.Matches(selected));
         var rows = _entries.Select(entry => Row(entry, targetSid!, holder!)).ToArray();
         var page = new SavedAttributeWritePermission(context, rows, next);
@@ -239,7 +247,7 @@ internal sealed class AttributeWritePermissionProjection
         if (entry.HasObjectType)
         {
             _json.Require(Guid.TryParse(entry.ObjectType, out _));
-            if (Same(entry.ObjectType, SchemaGuidCatalog.Embedded.GuidFor(SavedAttributeWritePermission.AttributeName)))
+            if (Same(entry.ObjectType, _attributeGuid))
                 kind = SavedPropertyWriteScope.Attribute;
             else
             {
@@ -248,10 +256,10 @@ internal sealed class AttributeWritePermissionProjection
                 name = definition?.Source == SchemaGuidSource.Captured ? definition.LdapName : null;
             }
         }
-        return new(entry.Ordinal, entry.IsDeny, kind, name, entry.IsInherited);
+        return new(entry.Ordinal, entry.IsDeny, kind, name, entry.IsInherited, _kind);
     }
 
     private static bool Same(string? left, string? right) => left is not null && right is not null
         && left.Equals(right, StringComparison.OrdinalIgnoreCase);
-    private static InvalidDataException Invalid() => new(SavedAttributeWritePermission.InvalidDetails);
+    private InvalidDataException Invalid() => new(_invalidDetails);
 }
