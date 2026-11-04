@@ -216,7 +216,7 @@ internal static class ObjectAttributesReader
             + " WHERE object_id = $object"));
 
     public static ObjectAttributes? Read(SqliteConnection connection, string distinguishedName,
-        IReadOnlyCollection<string>? selected = null)
+        IReadOnlyCollection<string>? selected)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
@@ -224,14 +224,14 @@ internal static class ObjectAttributesReader
     }
 
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId) =>
-        ReadCore(connection, null, objectId);
+        ReadCore(connection, null, objectId, selected: null);
 
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId,
         IReadOnlyCollection<string>? selected) =>
         ReadCore(connection, null, objectId, selected);
 
     private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId,
-        IReadOnlyCollection<string>? selected = null)
+        IReadOnlyCollection<string>? selected)
     {
         var names = selected?.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (names is not null && names.Any(name => !CapturedAttributeCatalog.All.Any(attribute =>

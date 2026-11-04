@@ -324,44 +324,52 @@ public sealed class DirectoryTreeTests : IDisposable
     }
 
     /// <summary>
-    /// A branch the run could not read produces a tree smaller than the forest, and a smaller tree
-    /// looks exactly like a smaller directory unless the tree says otherwise.
+    /// An attested exclusion leaves part of the forest out of the tree, not an apparently smaller forest.
     /// </summary>
-    [Fact]
-    public void ADomainTheRunCouldNotReadIsReportedAsAGap()
+    [Theory]
+    [InlineData(ExclusionKind.ByChoice)]
+    [InlineData(ExclusionKind.ForWantOfCandidates)]
+    public void AnExcludedDomainIsReportedAsAGap(ExclusionKind exclusion)
     {
         WriteBundle(
             writer => writer.WriteObject(ObjectAt("CN=Alice," + DomainDn, GuidNumbered(1))),
-            OneDomainNotRead());
+            OneDomainExcluded(exclusion));
 
         var tree = ReadTree();
 
-        Assert.Contains(
-            tree.Gaps, g => g.Reason == TreeGapReason.DomainNotFullyRead);
+        var gap = Assert.Single(tree.Gaps);
+        Assert.Equal(("sales.contoso.com", TreeGapReason.DomainNotFullyRead),
+            (gap.DistinguishedName, gap.Reason));
+        Assert.Equal([DomainDn], tree.Roots.Select(root => root.DistinguishedName));
     }
 
-    [Fact]
-    public void ATreeWithAGapDoesNotClaimItsBranchesAreComplete()
+    [Theory]
+    [InlineData(ExclusionKind.ByChoice)]
+    [InlineData(ExclusionKind.ForWantOfCandidates)]
+    public void ATreeWithAGapDoesNotClaimItsBranchesAreComplete(ExclusionKind exclusion)
     {
         WriteBundle(
             writer => writer.WriteObject(ObjectAt("CN=Alice," + DomainDn, GuidNumbered(1))),
-            OneDomainNotRead());
+            OneDomainExcluded(exclusion));
 
         var tree = ReadTree();
 
         Assert.False(tree.BranchesAreComplete);
     }
 
-    [Fact]
-    public void AGapSaysWhatTheRunRecordedAboutIt()
+    [Theory]
+    [InlineData(ExclusionKind.ByChoice, "ExcludedByChoice", "Outside the authorized audit scope; attested populated.")]
+    [InlineData(ExclusionKind.ForWantOfCandidates, "ExcludedForWantOfCandidates", "No writable controller candidates; attested populated.")]
+    public void AGapSaysWhatTheRunRecordedAboutIt(ExclusionKind exclusion, string outcome, string detail)
     {
         WriteBundle(
             writer => writer.WriteObject(ObjectAt("CN=Alice," + DomainDn, GuidNumbered(1))),
-            OneDomainNotRead());
+            OneDomainExcluded(exclusion));
 
         var gap = GapFor(TreeGapReason.DomainNotFullyRead);
 
-        Assert.Contains("No controller answered", gap.Detail, StringComparison.Ordinal);
+        Assert.Contains(outcome, gap.Detail, StringComparison.Ordinal);
+        Assert.Contains(detail, gap.Detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -587,12 +595,15 @@ public sealed class DirectoryTreeTests : IDisposable
             ],
             SysvolCoverage.Of([]));
 
-    private static RunCoverage OneDomainNotRead() =>
+    private static RunCoverage OneDomainExcluded(ExclusionKind exclusion) =>
         RunCoverage.Of(
-            CoverageId.ForDomains("contoso.com", ["contoso.com", "sales.contoso.com"]),
+            CoverageId.ForDomainsExcluding("contoso.com", ["contoso.com", "sales.contoso.com"], ["sales.contoso.com"]),
             [
                 DomainCoverage.Read("contoso.com"),
-                DomainCoverage.NotRead("sales.contoso.com", "No controller answered."),
+                DomainCoverage.Excluded("sales.contoso.com", exclusion,
+                    exclusion == ExclusionKind.ByChoice
+                        ? "Outside the authorized audit scope; attested populated."
+                        : "No writable controller candidates; attested populated."),
             ],
             [
                 ForestPartitionCoverage.Read(

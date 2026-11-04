@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Data.Sqlite;
+using SecureAD.Evidence;
 using SecureAD.Judgement;
 using Xunit;
 
@@ -169,63 +169,124 @@ public sealed class ControlEdgeLayoutTests
         [75] = "6DD365895EC3F435F2A835A9ED40445CD73A6D653CC07F680661E2436C07067C",
         // Observed format-76 LAPS serving index; no historical layout checkpoint is changed.
         [76] = "46A7B9EF398A4F904B15471A37B8ADC441AD055A877E7E6122F0DFC17AC1AC9E",
+        // Format 77 checkpoints the published root version and each native product's role and
+        // persisted definitions, including part headers. Observed from this build's writer,
+        // not an independent forest anchor; every earlier logical-layout hash stays frozen.
+        [77] = "C46A94CDC352A0812808C3083A9A05254A658AB2217CD703CFBD504922F01F4C",
     };
 
     [Fact]
     public void JudgementLayoutMatchesItsIndependentlyRecordedVersion()
     {
-        using var connection = Create();
-        Check(connection);
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);
+        Check(layout);
     }
 
     [Theory]
-    [InlineData("ALTER TABLE control_edge ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP INDEX ix_control_holder")]
-    [InlineData("DROP INDEX ux_control_identity")]
-    [InlineData("ALTER TABLE self_membership_assessment ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP INDEX ux_self_membership_identity")]
-    [InlineData("ALTER TABLE self_membership_discovery ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP TABLE self_membership_discovery")]
-    [InlineData("DROP TABLE full_control_support")]
-    [InlineData("DROP INDEX ux_full_control_identity")]
-    [InlineData("ALTER TABLE full_control_source ADD COLUMN unversioned TEXT")]
-    [InlineData("ALTER TABLE permission_entry ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP TABLE full_control_source_entry")]
-    [InlineData("ALTER TABLE ownership_audit ADD COLUMN unversioned TEXT")]
-    [InlineData("ALTER TABLE ownership_target ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP TABLE ownership_seed")]
-    [InlineData("DROP TABLE ownership_relation")]
-    [InlineData("ALTER TABLE finding_laps_decryptor_route ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP TABLE finding_laps_decryptor_path")]
-    public void LayoutCheckpointRejectsUnversionedChanges(string mutation)
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE control_edge ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP INDEX ix_control_holder")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP INDEX ux_control_identity")]
+    [InlineData(StoreSegmentRole.PathProof, "ALTER TABLE self_membership_assessment ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PathProof, "DROP INDEX ux_self_membership_identity")]
+    [InlineData(StoreSegmentRole.PathProof, "ALTER TABLE self_membership_discovery ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PathProof, "DROP TABLE self_membership_discovery")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP TABLE full_control_support")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP INDEX ux_full_control_identity")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE full_control_source ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE permission_entry ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP TABLE full_control_source_entry")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE ownership_audit ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE ownership_target ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP TABLE ownership_seed")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP TABLE ownership_relation")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE finding_laps_decryptor_route ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DROP TABLE finding_laps_decryptor_path")]
+    [InlineData(StoreSegmentRole.Judgement, "ALTER TABLE finding ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PathProof, "ALTER TABLE path_proof ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "ALTER TABLE permission_classification_entry ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.PathProof, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
+    public void LayoutCheckpointRejectsUnversionedChanges(StoreSegmentRole role, string mutation)
     {
-        using var connection = Create();
-        Check(connection);
-        using var command = connection.CreateCommand();
-        command.CommandText = mutation;
-        command.ExecuteNonQuery();
-        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => Check(connection));
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);
+        Check(layout);
+        layout.Execute(role, mutation);
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => Check(layout));
         Assert.Contains("layout changed", error.Message);
     }
 
-    private static SqliteConnection Create()
+    [Theory]
+    [InlineData(StoreSegmentRole.PermissionProof, StoreSegmentRole.Judgement, "control_edge")]
+    [InlineData(StoreSegmentRole.PathProof, StoreSegmentRole.JudgementFacts, "path_proof")]
+    [InlineData(StoreSegmentRole.Judgement, StoreSegmentRole.JudgementFacts, "group_inventory")]
+    public void TheCheckpointRejectsMovingAnUnchangedTableToAnotherProduct(
+        StoreSegmentRole source, StoreSegmentRole destination, string table)
     {
-        var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-        JudgementSchema.CreateTables(connection);
-        JudgementSchema.CreateDeferredIndexes(connection);
-        return connection;
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);
+        Check(layout);
+        var before = layout.Roles.SelectMany(layout.Definitions).Order(StringComparer.Ordinal).ToArray();
+        layout.MoveTable(source, destination, table);
+        Assert.Equal(before, layout.Roles.SelectMany(layout.Definitions).Order(StringComparer.Ordinal));
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => Check(layout));
+        Assert.Contains("layout changed", error.Message);
     }
-    private static void Check(SqliteConnection connection)
+
+    [Theory]
+    [InlineData(StoreSegmentRole.Judgement, "UPDATE judgement SET schema_version=0")]
+    [InlineData(StoreSegmentRole.Judgement, "UPDATE judgement SET evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.Judgement, "UPDATE judgement SET judgement_generation_id='foreign generation'")]
+    [InlineData(StoreSegmentRole.Judgement, "UPDATE judgement SET derivation_generation_id=NULL")]
+    [InlineData(StoreSegmentRole.Judgement, "DELETE FROM judgement")]
+    [InlineData(StoreSegmentRole.PermissionProof, "UPDATE judgement_part SET schema_version=0")]
+    [InlineData(StoreSegmentRole.PermissionProof, "UPDATE judgement_part SET evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.PermissionProof, "UPDATE judgement_part SET generation='foreign generation'")]
+    [InlineData(StoreSegmentRole.PermissionProof, "UPDATE judgement_part SET derivation_generation=NULL")]
+    [InlineData(StoreSegmentRole.PermissionProof, "UPDATE judgement_part SET role='Judgement'")]
+    [InlineData(StoreSegmentRole.PermissionProof, "DELETE FROM judgement_part")]
+    [InlineData(StoreSegmentRole.PathProof, "UPDATE judgement_part SET schema_version=0")]
+    [InlineData(StoreSegmentRole.PathProof, "UPDATE judgement_part SET evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.PathProof, "UPDATE judgement_part SET generation='foreign generation'")]
+    [InlineData(StoreSegmentRole.PathProof, "UPDATE judgement_part SET derivation_generation=NULL")]
+    [InlineData(StoreSegmentRole.PathProof, "UPDATE judgement_part SET role='Judgement'")]
+    [InlineData(StoreSegmentRole.PathProof, "DELETE FROM judgement_part")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "UPDATE judgement_part SET schema_version=0")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "UPDATE judgement_part SET evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "UPDATE judgement_part SET generation='foreign generation'")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "UPDATE judgement_part SET derivation_generation=NULL")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "UPDATE judgement_part SET role='Judgement'")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "DELETE FROM judgement_part")]
+    public void TheCheckpointRejectsAChangedProductBinding(StoreSegmentRole role, string change)
     {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY type,name";
-        using var reader = command.ExecuteReader();
-        var layout = new StringBuilder();
-        while (reader.Read())
-            for (var column = 0; column < reader.FieldCount; column++)
-                layout.Append(reader.GetString(column).Replace("\r\n", "\n", StringComparison.Ordinal)).Append('\n');
-        var actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(layout.ToString())));
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);
+        Check(layout);
+        Assert.Equal(1, layout.Execute(role, change));
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => Check(layout));
+        Assert.Contains("Published layout binding changed", error.Message);
+    }
+
+    [Theory]
+    [InlineData("root-version")]
+    [InlineData("root-generation")]
+    [InlineData("root-evidence")]
+    [InlineData("missing-role")]
+    [InlineData("duplicate-role")]
+    [InlineData("product-version")]
+    [InlineData("product-generation")]
+    [InlineData("product-file")]
+    [InlineData("summary")]
+    public void NativeDeclarationsRejectChangedBindings(string change)
+    {
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);
+        Check(layout);
+        layout.ChangeDeclaration(change);
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(layout.CheckDeclarations);
+        Assert.Contains("Published layout binding changed", error.Message);
+    }
+
+    private static void Check(PublishedAnalysisLayout layout)
+    {
+        var actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(layout.Read())));
         Assert.True(Layouts.TryGetValue(JudgementSchema.Version, out var expected), $"Missing schema {JudgementSchema.Version} checkpoint; actual {actual}.");
         Assert.True(actual == expected, $"Judgement layout changed without a new checkpoint: expected {expected}; actual {actual}.");
     }

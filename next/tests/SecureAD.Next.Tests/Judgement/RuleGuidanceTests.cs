@@ -23,6 +23,86 @@ namespace SecureAD.Next.Tests.Judgement;
 /// </remarks>
 public sealed class RuleGuidanceTests
 {
+    [Theory]
+    [InlineData("SEC-010")]
+    [InlineData("SEC-011")]
+    public void UnconstrainedDelegationGuidanceDoesNotInventServiceUseOrAnExercisedPath(string ruleId)
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For(ruleId));
+        Assert.StartsWith("For authentication that permits delegation", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("does not establish that a service is in use, credentials were received, impersonation occurred",
+            guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("a route to Tier 0 was completed", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("classification", guidance.About, StringComparison.Ordinal);
+        Assert.Contains("exclusion", guidance.About, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("SEC-010")]
+    [InlineData("SEC-011")]
+    public void UnconstrainedDelegationActionChecksRoleAndDependenciesWithoutAPrescribedMigration(string ruleId)
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For(ruleId));
+        Assert.StartsWith("Identify the services and authentication flows", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("confirm the account's actual role", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("If unconstrained delegation is unnecessary", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("rather than assuming any one alternative is automatically safe", guidance.WhatToDo, StringComparison.Ordinal);
+        if (ruleId == "SEC-011")
+            Assert.Contains("Do not change a domain controller's normal delegation configuration based only on this finding.",
+                guidance.WhatToDo, StringComparison.Ordinal);
+        else
+            Assert.DoesNotContain("Do not change a domain controller", guidance.WhatToDo, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("SEC-028", "does not show that the account has an empty or weak password", "passwordless sign-in succeeded")]
+    [InlineData("SEC-029", "not proof that a reversible copy of the password currently exists", "does not establish that a previously stored copy has been removed")]
+    [InlineData("SEC-033", "DES is an old, weak encryption method", "does not show which encryption an actual ticket used")]
+    public void AccountSettingRiskKeepsTheCapturedOptionSeparateFromAnObservedOutcome(string ruleId, string first, string second)
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For(ruleId));
+        Assert.Contains(first, guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains(second, guidance.WhyItMatters, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("SEC-028", "Confirm what uses the account", "If the exception is unnecessary", "Do not reset the password blindly.")]
+    [InlineData("SEC-029", "Check application and protocol dependencies", "If the requirement is unnecessary", "then coordinate a password change")]
+    [InlineData("SEC-033", "Identify legacy clients and applications", "clear an unnecessary DES-only restriction", "does not by itself guarantee stronger encryption")]
+    public void AccountSettingActionReviewsDependenciesBeforeAConditionalChange(string ruleId, string first, string condition, string limit)
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For(ruleId));
+        Assert.StartsWith(first, guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains(condition, guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains(limit, guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.True(guidance.WhatToDo.IndexOf(first, StringComparison.Ordinal)
+            < guidance.WhatToDo.IndexOf(condition, StringComparison.Ordinal));
+        Assert.DoesNotContain("Set-ADUser", guidance.WhatToDo, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Sec022RiskDescribesAPossibilityRatherThanAnObservedRequestOrCompromise()
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-022"));
+        Assert.StartsWith("This setting can allow an attacker", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("without first proving knowledge of the account password", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("does not establish that a request succeeded", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("weak or cracked, or an attack occurred", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("including disabled accounts", guidance.About, StringComparison.Ordinal);
+        Assert.Contains("not current live state", guidance.About, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Sec022ActionChecksDependenciesBeforeAConditionalClassAppropriateChange()
+    {
+        var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-022"));
+        Assert.StartsWith("Confirm what uses this account and whether any integration requires this exception.", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("If it is unnecessary, clear \"Do not require Kerberos preauthentication\"", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("appropriate account-management tool under change control", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.EndsWith("then verify dependent authentication still works.", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.DoesNotContain("Set-ADUser", guidance.WhatToDo, StringComparison.Ordinal);
+    }
+
     /// <summary>P-162: shared guidance must distinguish encrypted reads from password retrieval.</summary>
     [Fact]
     public void LapsReadGuidanceSeparatesReadPermissionFromDecryption()

@@ -192,7 +192,7 @@ public sealed class ReversiblePasswordEncryption : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         "SEC-029",
-        "Password stored using reversible encryption",
+        "Reversible password storage enabled",
         Severity.High,
         Version: 1,
         SubjectClasses: ["user", "computer"],

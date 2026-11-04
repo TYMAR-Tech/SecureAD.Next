@@ -716,7 +716,7 @@ public sealed class AssetsViewModelTests
         Assert.Equal(3, screen.FindingsPageNumber);
 
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
-        screen.CloseObject();
+        screen.CloseFindingDetails();
 
         Assert.Equal(3, screen.FindingsPageNumber);
         Assert.NotEmpty(screen.Findings);
@@ -733,13 +733,14 @@ public sealed class AssetsViewModelTests
     [Fact]
     public void ClosingAnObjectDoesNotReReadTheFindings()
     {
+        var finding = AFinding();
         var assets = new FakeAssetSource
         {
             Tree = TreeOfOneDomain(),
             Page = APageOfOne(),
             Permissions = SomePermissions(),
-            Attributes = FakeAssetSource.CapturedObject(AFinding().DistinguishedName, "user"),
-            FindingsPage = new FindingsPage([AFinding()], null, RulesRan: 2),
+            Attributes = FakeAssetSource.CapturedObject(finding.DistinguishedName, "user") with { ObjectGuid = finding.ObjectGuid },
+            FindingsPage = new FindingsPage([finding], null, RulesRan: 2),
         };
 
         var screen = new AssetsViewModel(assets);
@@ -747,6 +748,7 @@ public sealed class AssetsViewModelTests
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
+        screen.OpenAffectedObjectCommand.Execute(null);
         var afterOpening = assets.FindingsReads;
 
         screen.CloseObject();
@@ -988,16 +990,17 @@ public sealed class AssetsViewModelTests
     {
         var screen = ShowingFindings(APageOfFindings());
 
-        Assert.False(screen.HasSelectedFinding);
+        Assert.Null(screen.SelectedFinding);
 
         screen.SelectedFinding = screen.Findings[0];
 
-        Assert.True(screen.HasSelectedFinding);
+        Assert.Same(screen.Findings[0], screen.SelectedFinding);
+        Assert.False(screen.HasFindingPresentation);
         Assert.Equal("SEC-010", screen.SelectedFinding!.Rule);
         Assert.True(screen.SelectedFinding.HasGuidance);
-        Assert.Contains("impersonate", screen.SelectedFinding.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("delegated Kerberos credentials", screen.SelectedFinding.WhyItMatters, StringComparison.Ordinal);
         Assert.Contains(
-            "resource-based constrained delegation",
+            "compatible, narrowly scoped design",
             screen.SelectedFinding.WhatToDo,
             StringComparison.Ordinal);
         Assert.True(screen.SelectedFinding.HasMicrosoftReference);

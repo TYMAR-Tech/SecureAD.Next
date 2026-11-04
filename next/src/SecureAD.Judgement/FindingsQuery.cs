@@ -128,9 +128,8 @@ public sealed record FindingsQuery(
     /// Everything found about one object.
     /// </summary>
     /// <remarks>
-    /// One page of the default size rather than all of them. An object with more findings than that
-    /// is rare enough that paging them is not worth a screen, and common enough that reading them
-    /// all into a panel would be the one place this product forgot the forest can be large.
+    /// One page of the default size rather than all of them. Callers retain its continuation so
+    /// every saved finding remains reachable without loading the whole object.
     /// </remarks>
     /// <param name="distinguishedName">The object to ask about.</param>
     public static FindingsQuery About(string distinguishedName)

@@ -53,7 +53,7 @@ public sealed partial class Tier0PathTests(ITestOutputHelper output)
         internal List<PathRequesterWorkPhase> Values { get; } = [];
         public void Report(JudgingRun.JudgingProgress value)
         {
-            if (value.RequesterPhase is { } phase) Values.Add(phase);
+            if (value.RequesterPhase is { } phase && value.WorkUnit is null) Values.Add(phase);
         }
     }
 

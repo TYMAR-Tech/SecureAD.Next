@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using SecureAD.Kernel.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -324,6 +325,7 @@ public sealed class UnvouchedResultGateTests
         var offenders = PublicMembers()
             .Where(m => IsCountShaped(m.Member.Name))
             .Where(m => IsBareNumber(m.Returns))
+            .Where(m => !IsObservedCaptureWork(m.Type, m.Member, m.Returns))
             .Where(m => !IsVouched(m.Type))
             .Where(m => !VouchedByContainment.Value.Contains(m.Type))
             .Select(m => $"  {ReadableName(m.Type)}.{m.Member.Name} returns {ReadableName(m.Returns)}")
@@ -365,6 +367,7 @@ public sealed class UnvouchedResultGateTests
     {
         var offenders = PublicMembers()
             .Where(m => IsCollection(m.Returns))
+            .Where(m => !IsObservedCaptureWork(m.Type, m.Member, m.Returns))
             .Where(m => !IsVouched(m.Type))
             .Where(m => !IsExempt(ReadableName(m.Type)))
             .Where(m => !VouchedByContainment.Value.Contains(m.Type))
@@ -382,6 +385,49 @@ public sealed class UnvouchedResultGateTests
             + "AceNormalizationResult do, or return Result<T>:"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
+
+    // These fields report observed work, not audit answers. The witnesses below keep that
+    // distinction limited to the exact typed members and their final capture-report carrier.
+    private static bool IsObservedCaptureWork(Type type, MemberInfo member, Type returns) =>
+        type == typeof(CaptureProgress) && member is PropertyInfo
+        && (member.Name == nameof(CaptureProgress.PoliciesTotal) && returns == typeof(long?)
+            || member.Name == nameof(CaptureProgress.Scopes)
+                && returns == typeof(IReadOnlyList<CaptureScopeProgress>));
+
+    [Theory]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.PoliciesTotal), true)]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.Scopes), true)]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.PoliciesProcessed), false)]
+    [InlineData(typeof(UnqualifiedProgressLookalike), nameof(UnqualifiedProgressLookalike.PoliciesTotal), false)]
+    [InlineData(typeof(UnqualifiedProgressLookalike), nameof(UnqualifiedProgressLookalike.Scopes), false)]
+    public void TheCaptureObservationContractIsMemberAndTypeSpecific(Type type, string name, bool expected)
+    {
+        var member = Assert.Single(type.GetProperties(), property => property.Name == name);
+        Assert.Equal(expected, IsObservedCaptureWork(type, member, member.PropertyType));
+    }
+
+    [Fact]
+    public void CaptureWorkRemainsAQualifiedReportWithinTheCaptureResult()
+    {
+        var exposure = Assert.Single(PublicMembers().Where(member =>
+            ExposedTypesOf(member.Returns).Contains(typeof(CaptureProgress))));
+        Assert.Equal((typeof(SecureAD.Audit.Capture.CaptureRunResult), nameof(SecureAD.Audit.Capture.CaptureRunResult.Progress)),
+            (exposure.Type, exposure.Member.Name));
+        Assert.Equal(typeof(SecureAD.Audit.Capture.RunCompletion),
+            typeof(SecureAD.Audit.Capture.CaptureRunResult).GetProperty(nameof(SecureAD.Audit.Capture.CaptureRunResult.Outcome))!.PropertyType);
+        Assert.Equal(typeof(SecureAD.Kernel.AuditError),
+            typeof(SecureAD.Audit.Capture.CaptureRunResult).GetProperty(nameof(SecureAD.Audit.Capture.CaptureRunResult.Error))!.PropertyType);
+        var parameters = ProductionAssemblies().SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic
+                | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            .SelectMany(method => method.GetParameters());
+        Assert.Contains(parameters, parameter => parameter.ParameterType == typeof(IProgress<CaptureProgress>));
+        Assert.Equal(typeof(long?), typeof(CaptureProgress).GetProperty(nameof(CaptureProgress.PoliciesTotal))!.PropertyType);
+        Assert.Equal(typeof(long?), typeof(CaptureScopeProgress).GetProperty(nameof(CaptureScopeProgress.ObjectsRead))!.PropertyType);
+        Assert.Equal(typeof(CaptureReadState), typeof(CaptureScopeProgress).GetProperty(nameof(CaptureScopeProgress.State))!.PropertyType);
+    }
+
+    private sealed record UnqualifiedProgressLookalike(long? PoliciesTotal, IReadOnlyList<CaptureScopeProgress> Scopes);
 
     /// <summary>
     /// The containment rule finds the leaves it was written for. Without this it could quietly

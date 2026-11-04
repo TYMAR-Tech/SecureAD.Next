@@ -1,4 +1,7 @@
 using System.Diagnostics.Metrics;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
@@ -48,6 +51,30 @@ public sealed class RunLibraryListTests : IDisposable
     public void AnEmptyLibraryListsNothing()
     {
         Assert.Empty(List());
+    }
+
+    [Fact]
+    public void RawLibraryDomainsAreNotAPublicUnvalidatedAnswer()
+    {
+        Assert.Null(typeof(CapturedLibraryHeader).GetProperty(nameof(CapturedLibraryHeader.Domains),
+            BindingFlags.Public | BindingFlags.Instance));
+    }
+
+    [Fact]
+    public void TheLibraryHeaderRetainsItsSavedJsonShapeAndValidatedReadback()
+    {
+        var coverage = CoverageId.ForDomains("contoso.example", ["contoso.example"]).Value;
+        var header = new CapturedLibraryHeader(coverage, [new("contoso.example", "Read", null)]);
+        var expected = "{\"CoverageId\":" + JsonSerializer.Serialize(coverage)
+            + ",\"Domains\":[{\"DomainFqdn\":\"contoso.example\",\"Outcome\":\"Read\",\"Reason\":null}]}";
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(header);
+        Assert.Equal(Encoding.UTF8.GetBytes(expected), bytes);
+        var restored = JsonSerializer.Deserialize<CapturedLibraryHeader>(bytes)
+            ?? throw new InvalidDataException("The saved library header was not reconstructed.");
+        var scope = restored.ReadScope(_root);
+        Assert.True(scope.IsSuccess, scope.Error?.Description);
+        Assert.Equal(1, scope.Value.ReadCount);
+        Assert.Equal("contoso.example", Assert.Single(scope.Value.Domains).DomainFqdn);
     }
 
     [Fact]

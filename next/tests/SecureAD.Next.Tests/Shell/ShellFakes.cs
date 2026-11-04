@@ -167,6 +167,10 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    private Guid _findingGeneration = Guid.NewGuid();
+    private long _findingIdentity;
+    private readonly Dictionary<FindingReference, FindingListItem> _findingDetails = [];
+    private readonly Dictionary<FindingReference, SavedAccountSetting> _accountSettings = [];
     private int _lifetime;
     private bool _selected;
     private string? _selectedRun;
@@ -190,6 +194,10 @@ internal sealed class FakeAssetSource : IAssetSource
             return;
         }
         _lifetime++;
+        _findingGeneration = Guid.NewGuid();
+        _findingDetails.Clear();
+        _accountSettings.Clear();
+        _findingIdentity = 0;
         _selected = true;
         _selectedRun = bundleDirectory;
         IsCurrent = true;
@@ -546,9 +554,106 @@ internal sealed class FakeAssetSource : IAssetSource
     {
         var original = ReadFindings(bundleDirectory, query);
         return original.IsSuccess
-            ? Result<FindingListPage>.Success(new(original.Value.Findings.Select(FindingListItem.FromFinding).ToArray(),
+            ? Result<FindingListPage>.Success(new(original.Value.Findings.Select(finding =>
+            {
+                var saved = FindingListItem.FromFinding(finding);
+                var existing = _findingDetails.Values.FirstOrDefault(item =>
+                    item.RuleId == saved.RuleId && item.Subject == saved.Subject && item.ObjectGuid == saved.ObjectGuid);
+                var reference = existing?.Reference ?? new FindingReference(_findingGeneration, ++_findingIdentity);
+                saved = saved with { Reference = reference };
+                _findingDetails[reference] = saved;
+                SavedAccountSetting? setting = !SavedAccountSetting.SupportsRule(finding.RuleId) ? null : finding.Evidence switch
+                {
+                    UserAccountControlEvidence control => new(reference, saved.RuleId, saved.ObjectGuid, saved.Subject, saved.DistinguishedName, control),
+                    UnconstrainedDelegationEvidence delegation => new(reference, saved.RuleId, saved.ObjectGuid, saved.Subject,
+                        saved.DistinguishedName, new(delegation.UserAccountControl))
+                    {
+                        Delegation = new(delegation.IsComputer, delegation.DomainController),
+                    },
+                    _ => null,
+                };
+                if (setting is not null) _accountSettings[reference] = setting;
+                return saved with { Membership = null };
+            }).ToArray(),
                 original.Value.Next, original.Value.RulesRan))
             : Result<FindingListPage>.Failure(original.Error);
+    }
+
+    public Func<FindingReference, bool, Result<FindingListItem>>? SelectedFindingRead { get; set; }
+    public List<(FindingReference Reference, bool Membership)> FindingSelections { get; } = [];
+    public Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership)
+    {
+        FindingSelections.Add((reference, includeMembership));
+        if (SelectedFindingRead is { } read) return read(reference, includeMembership);
+        return _findingDetails.TryGetValue(reference, out var saved)
+            ? Result<FindingListItem>.Success(includeMembership ? saved : saved with { Membership = null })
+            : Result<FindingListItem>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestFindingUnavailable", ErrorSeverity.Failed, "No selected finding was supplied by this test.", bundleDirectory));
+    }
+
+    public Func<FindingReference, Result<SavedAccountSetting>>? AccountSettingRead { get; set; }
+    public List<FindingReference> AccountSettingReads { get; } = [];
+    public Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference)
+    {
+        AccountSettingReads.Add(reference);
+        if (AccountSettingRead is { } read) return read(reference);
+        return _accountSettings.TryGetValue(reference, out var setting)
+            ? Result<SavedAccountSetting>.Success(setting)
+            : Result<SavedAccountSetting>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestAccountSettingUnavailable", ErrorSeverity.Failed, "No saved account setting was supplied by this test.", bundleDirectory));
+    }
+
+    public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ConstrainedDelegationRead { get; set; }
+    public List<(FindingReference Reference, DelegationConfigurationMark? After)> ConstrainedDelegationReads { get; } = [];
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after)
+    {
+        ConstrainedDelegationReads.Add((reference, after));
+        return ConstrainedDelegationRead is { } read ? read(reference, after)
+            : Result<SavedDelegationConfiguration>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestConstrainedDelegationUnavailable", ErrorSeverity.Failed,
+                "No saved constrained delegation was supplied by this test.", bundleDirectory));
+    }
+
+    public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
+    public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
+    public Func<FindingReference, DuplicateSpnMark?, Result<SavedDuplicateSpn>>? DuplicateSpnRead { get; set; }
+    public Func<FindingReference, SidHistoryMark?, Result<SavedSidHistory>>? SidHistoryRead { get; set; }
+    public List<(FindingReference Reference, SidHistoryMark? After)> SidHistoryReads { get; } = [];
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after)
+    {
+        SidHistoryReads.Add((reference, after));
+        return SidHistoryRead is { } read ? read(reference, after) : Result<SavedSidHistory>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestSidHistoryUnavailable", ErrorSeverity.Failed, SavedSidHistory.InvalidDetails, bundleDirectory));
+    }
+    public List<(FindingReference Reference, DuplicateSpnMark? Position)> DuplicateSpnReads { get; } = [];
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position)
+    {
+        DuplicateSpnReads.Add((reference, position));
+        return DuplicateSpnRead is { } read ? read(reference, position)
+            : Result<SavedDuplicateSpn>.Failure(AuditError.Create(ErrorCategory.Shell, "TestDuplicateSpnUnavailable",
+                ErrorSeverity.Failed, SavedDuplicateSpn.InvalidDetails, bundleDirectory));
+    }
+
+    public List<(FindingReference Reference, AttributeWritePermissionMark? After)> AttributeWritePermissionReads { get; } = [];
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after)
+    {
+        AttributeWritePermissionReads.Add((reference, after));
+        return AttributeWritePermissionRead is { } read ? read(reference, after)
+            : Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestWritePermissionUnavailable", ErrorSeverity.Failed, SavedAttributeWritePermission.InvalidDetailsForRule("SEC-014"), bundleDirectory));
+    }
+
+    public List<(FindingReference Reference, DelegationConfigurationMark? After)> ResourceDelegationReads { get; } = [];
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after)
+    {
+        ResourceDelegationReads.Add((reference, after));
+        return ResourceDelegationRead is { } read ? read(reference, after)
+            : Result<SavedDelegationConfiguration>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestResourceDelegationUnavailable", ErrorSeverity.Failed,
+                SavedDelegationConfiguration.ResourceInvalidDetails, bundleDirectory));
     }
 
     /// <summary>What the filters may offer. Nothing, unless a test says otherwise.</summary>

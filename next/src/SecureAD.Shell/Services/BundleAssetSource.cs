@@ -189,6 +189,30 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query) =>
         WithRun(bundleDirectory, reader => reader.ReadFindingsList(bundleDirectory, query));
 
+    public Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership) =>
+        WithRun(bundleDirectory, reader => reader.ReadSelectedFinding(bundleDirectory, reference, includeMembership));
+
+    public Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadAccountSetting(bundleDirectory, reference));
+
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadConstrainedDelegation(bundleDirectory, reference, after));
+
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadResourceDelegation(bundleDirectory, reference, after));
+
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadAttributeWritePermission(bundleDirectory, reference, after));
+
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
+        WithRun(bundleDirectory, reader => reader.ReadDuplicateSpn(bundleDirectory, reference, position));
+
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadSidHistory(bundleDirectory, reference, after));
+
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

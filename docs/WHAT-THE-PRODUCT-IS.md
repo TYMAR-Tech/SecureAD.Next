@@ -190,6 +190,364 @@ first correction for testing, without replacing the earlier lab package or produ
 That packaging request does not authorize another implementation batch, new performance
 measurements, live access, re-judgement, commit or push.
 
+**Owner-published test builds count as between-batch feedback - owner clarification, 2026-10-30.**
+The owner confirmed that he published SEC-022 through Visual Studio, tested it and wanted to move
+to the next batch; do not make an assistant-created lab ZIP a prerequisite to continuing when he
+has already supplied his testing feedback.
+Still propose the next concrete bounded scope and wording for approval before implementation,
+without treating this feedback as production-performance or unreported physical-display acceptance.
+
+**Findings navigation-only batch - owner-approved 2026-10-22.**
+Implement the settled summary grids at both Findings entry points and one shared selected-finding
+window, retaining current saved explanations and rule guidance rather than rewriting all 32 rules.
+Preserve paging, selection, filters and return context; supporting membership is requested explicitly,
+not loaded or formatted for grid rows or closed sections, and the old preview/card paths are removed.
+The window uses Finding, Why it matters, What to do, Open affected object and Close; focused offline
+checks and rebuilt isolated defects are included, but warn with a duration estimate and obtain
+separate approval before long tests.
+This approves neither performance acceptance nor new measurements, LAPS analysis, circular-membership
+completeness, analysis/format changes, packaging, commits or pushes.
+On 2026-10-23 the owner explicitly authorized continuing the warned focused verification and isolated
+rebuilt defect/restored checks, not a full suite, another UI batch or a performance campaign.
+After a safe pause for the overrun, he separately approved the remaining checks and final combined
+verification with another 25-35-minute estimate.
+On 2026-10-26 the owner requested a separate self-contained Windows x64 lab ZIP of this verified
+navigation batch for his testing, preserving earlier packages and production results; this does not
+authorize another implementation batch, live access, re-judgement, performance measurements, commit
+or push.
+
+**SEC-022 finding detail - owner-approved 2026-10-28.**
+Implement SEC-022 only in the existing finding window, showing the captured
+Do not require Kerberos preauthentication setting and enabled/disabled account state from its
+original saved flags, with account identity/type/domain/location and existing severity/coverage.
+Use the approved conditional risk and dependency-first action guidance consistently with Rules,
+without a membership section, raw flag numbers or claims of successful requests, weak/cracked
+passwords, attacks or current live state.
+The selected read must preserve exact saved finding/object/run binding and explicit refusal of
+unreadable or mismatched facts, not guess an enabled account or rewrite saved findings.
+Keep the tested grids/navigation, all other rules and existing lab packages unchanged; this includes
+short focused checks, not long tests without a new warning/approval, LAPS analysis, CI repair,
+new measurements, packaging, commits or pushes.
+The owner separately approved focused verification and isolated rebuilt defect/restored checks
+after a 25-40-minute warning on 2026-10-28, excluding the full suite and the other boundaries above.
+
+**SEC-028/029/033 captured-setting detail - owner-approved 2026-10-30.**
+Extend the tested captured-setting panel and selected saved-flag reader to Password not required,
+Store password using reversible encryption and the DES-only account option, retaining each rule's
+distinct conditional risk and dependency-first action guidance consistently with Rules.
+Use Reversible password storage enabled as SEC-029's displayed title rather than asserting that
+a recoverable password copy is known to exist, and retain captured account state, identity,
+type/location/coverage without unrelated membership sections.
+Preserve SEC-022, severities, finding grain/counts, calculations, original results and the SEC-028
+interdomain-trust exclusion; no saved-format change, extra grid reads or new performance claim is
+approved, and selected details retain the existing first-file verification boundary.
+This approves short focused checks, not long verification without a fresh warning/approval, LAPS
+analysis, CI repair, new measurements, packaging, commits or pushes.
+On 2026-10-30 the owner explicitly approved the warned 30-45-minute focused regression and isolated
+rebuilt defect/restored verification, clarifying that he had selected approval in the form.
+
+**SEC-010/011 unconstrained-delegation detail - owner-approved 2026-10-30.**
+Use the existing captured-setting frame for Unconstrained delegation: Enabled, saved account state
+and actual object type/domain/location, with conditional risk and dependency-first action guidance
+shared with Rules rather than claims of received credentials, impersonation or completed Tier 0 paths.
+Keep SEC-010's title and use Unconstrained delegation on a computer-class account for SEC-011,
+without moving managed-service accounts between the existing rule identities or calling them running hosts.
+For SEC-011 state that the domain-controller role is not independently verified by the saved finding,
+show an additional warning if stored controller indicators disagree, and caution against changing a
+controller's normal delegation configuration from this finding alone.
+Read selected stored header facts only; preserve High severity, all original findings, current
+classification/exclusion logic and formats, and do not claim to repair SCOUT-05 or recover suppressed findings.
+This approves short compile/behaviour checks, not long verification without a fresh warning/approval,
+LAPS analysis, new measurements, packaging, commits or pushes.
+On 2026-10-30 the owner explicitly authorized the warned 30-45-minute focused verification in chat
+after the approval form became unresponsive; do not require another form for that already-approved run.
+He then requested committing and pushing the verified Findings work and preparing a complete
+new-session handoff and short continuation prompt, and confirmed that the open pull request's
+automatic long CI run may proceed without waiting for it.
+This is publication approval, not approval of SEC-012 implementation, a merge, new analysis,
+performance measurements or an additional package, and does not substitute for his SEC-010/011 feedback.
+After the handoff the owner reported "yes they work" for SEC-010/011 on 2026-10-30; this is
+between-batch feedback, not enumerated physical-display or production-performance acceptance.
+
+**SEC-012 captured-delegation presentation - owner-approved 2026-10-30.**
+The owner approved the concrete scope and wording and explicitly requested beginning implementation.
+Use the existing charcoal finding window from both grids, retaining High severity, one finding per
+delegating-account/resource pair, navigation and every other rule, including SEC-013.
+Show the saved delegating account/type/domain/location, matched captured resource/domain and saved
+resource relevance, with exact configured service names in 50-row Previous/Next pages and
+Page {number}; preserve ports, instances, repeated occurrences and copyable untruncated values.
+Read selected structured facts from the existing saved record, not parsed explanation text,
+whole account/resource snapshots or a reconstructed complete service collection.
+Do not invoke the full evidence reader's resource-relevance replay; selected-record scanning is
+permitted without claiming measured responsiveness, and a necessary format change requires separate approval.
+Retain exact source/resource/generation binding, original evidence and explicit saved limitations,
+without treating unloaded pages as incomplete capture or deriving totals/risk from a page.
+Keep the existing title and finding statement, with Captured delegation and the labels
+Delegating account, Object type, Domain, Location, Matched resource, Resource domain,
+Resource relevance and Configured service names.
+Resource relevance is "Established Tier 0 resource." or "Identified controller or dependency of
+Tier 0; not itself classified as Tier 0.", according to the saved result.
+Share the following risk/action wording between Findings and Rules:
+- **Why it matters:** "Where Kerberos permits delegation, a service using this account may act on a user's behalf to the configured services. Unintended delegation to a Tier 0-relevant destination warrants review. The captured configuration does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path."
+- **What to do:** "Confirm the service owner, intended destination and business need for each listed value. Review dependencies before making changes. If a destination is unnecessary, remove only the unnecessary values from msDS-AllowedToDelegateTo on the delegating account under change control, then test dependent authentication. Do not remove the resource's legitimate servicePrincipalName registration, clear every destination or switch to unconstrained delegation as a shortcut."
+The scope note is "Only supported matches to the resource shown are listed here. Unmatched,
+ambiguous or unassessed destinations are not treated as safe."
+Show only supported saved limitations: "Some configured service names could not be matched to a
+supported captured resource.", "Some configured service names have ambiguous captured registrations;
+no destination is guessed.", "Tier 0 relevance could not be established for some other configured
+destinations.", "The capture is incomplete. The supported matches shown here remain findings.",
+or "Additional saved evidence limitations apply. This is not a complete assessment of every
+configured destination." for other recorded input/analysis limitations.
+Missing, invalid or mismatched details say "The selected finding's saved delegation details are
+missing, invalid or inconsistent."; retain existing loading/cancellation/changed-generation wording,
+Open affected object (the delegating account) and Close.
+This includes short build/focused behaviour checks only; long verification needs a fresh warning,
+duration estimate and explicit approval, and does not authorize LAPS analysis, new analysis/formats,
+live work, measurement tools/runs, re-judgement, packaging, merge, commit or push.
+After the 81-case short checkpoint, the owner separately approved the warned 30-45-minute focused
+verification, including isolated explicitly rebuilt defects, rebuilt restored controls, directly
+affected existing checks and a final correct-source Release rebuild, not the full suite.
+When the final rebuild exceeded the estimate, the owner explicitly authorized continuing that same
+final check and cleanup, not restarting it or adding further test work.
+The owner then reported "i have no sec-012 checks currently in lab to verify" and requested the
+next batch; this is not positive lab verification of SEC-012 and does not authorize creating a lab
+finding, changing the lab, recapturing or re-judging as a prerequisite to the next proposal.
+
+**SEC-013 captured-RBCD presentation - owner-approved 2026-10-30.**
+The owner approved the concrete scope/copy and explicitly requested beginning this implementation.
+Reuse the current charcoal window from both Findings grids, preserving High severity, one finding
+per resource, exact selection/page/return context and every other rule's behaviour.
+Show the saved resource identity/type/domain/location and existing saved Tier 0 relevance, with
+configured delegation holders in 50-row Previous/Next pages and Page {number}.
+Retain every original grant/evidence occurrence and exact SID; show captured names only when
+reliably resolved, otherwise "Name not resolved from captured evidence.", without expanding group
+members or inferring individual authorization.
+Keep raw descriptors, masks and entry ordinals out of the ordinary panel while retaining the
+intentional original-data investigation screens.
+Read selected saved structured grants/context, without reconstructing whole snapshots, parsing the
+descriptor again, replaying resource relevance or making live SID lookups.
+Selected-record scanning is permitted without a measured speed claim; a necessary format change
+requires separate approval.
+Retain the existing title and finding statement, with Captured RBCD configuration and the labels
+Resource, Object type, Domain, Location, Resource relevance, Configured delegation holders, SID
+and Saved evidence limitations.
+Use the same saved relevance wording as SEC-012, distinguishing established Tier 0 from an
+identified controller/dependency not itself classified as Tier 0.
+Share the following wording between Findings and Rules:
+- **Why it matters:** "The captured RBCD configuration contains delegation grants for the recorded holders on this Tier 0-relevant resource. Unintended grants warrant review. A group-held grant does not establish authorization for each member. This finding does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path."
+- **What to do:** "Confirm each configured holder and its business need. Review service dependencies and shared or group-held grants before making changes. If a grant is unnecessary, narrow or remove only that grant from msDS-AllowedToActOnBehalfOfOtherIdentity on the resource account under change control, then test dependent authentication. Do not clear the entire configuration indiscriminately or change general object permissions as a substitute."
+For a saved NULL DACL show "The captured RBCD configuration has a NULL DACL (no discretionary
+access list). No access list restricts delegation in this descriptor. This is not an explicit
+Everyone permission entry. Review the RBCD configuration itself rather than deleting an invented
+Everyone entry."
+The scope note is "These are captured RBCD configuration grants, not permission to change that
+configuration or authorization for a particular requester."
+Show only applicable saved limitations: "The capture is incomplete. The supported grants shown
+here remain findings.", "Some RBCD configuration could not be assessed. Supported saved grants
+remain listed; unassessed entries are not treated as a clean configuration.", or "Additional saved
+evidence limitations apply. This is not a complete delegation assessment."
+Missing, invalid or mismatched details say "The selected finding's saved RBCD details are missing,
+invalid or inconsistent."; retain existing loading/cancellation/changed-generation wording,
+Open affected object (the resource account) and Close.
+This includes short focused offline checks only; long verification needs a separate warning and
+explicit approval, and does not authorize LAPS analysis, new analysis/formats, live work,
+measurement tools/runs, owner-data re-judgement, packaging, merge, commit or push.
+After the 181-case short checkpoint (92 new SEC-013 cases and 89 retained SEC-012 cases), the owner
+separately approved the warned 45-65-minute focused verification, including isolated rebuilt
+defects/restored controls, directly affected existing checks and a final correct-source Release
+rebuild, not the full suite.
+The owner then reported "i have no 013 findings in my lab to test. ill set them up later" and
+requested the next batch; SEC-013 remains without positive lab verification.
+His planned later lab setup is not authorization for assistant-side lab changes, live work,
+capture or re-judgement, and is not a prerequisite to proposing the next Findings presentation.
+
+**SEC-014 captured-write-permission presentation - owner-approved 2026-10-30.**
+The owner approved the concrete scope/copy and explicitly requested beginning SEC-014 only.
+Reuse the charcoal window from both Findings grids, retaining Unexpected RBCD-configuration write
+permission, High severity, one named-holder/target finding, existing target scope and all other rules.
+Show the saved holder name/exact SID, target identity/type/domain/location/state at capture,
+msDS-AllowedToActOnBehalfOfOtherIdentity, saved unexpectedness reason and original permission
+entries in 50-row Previous/Next pages and Page {number}.
+Distinguish Allow/Deny and Explicit/Inherited; preserve the attribute, property-set or all-properties
+breadth without calling every supporting entry a grant or inventing an inherited source.
+The owner separately approved Object class: {captured name} and Object class (captured name
+unavailable) for the existing saved object-class scope case, rather than mislabelling it a property set.
+Preserve original occurrences, saved limitations and source/target/generation binding, keeping
+group-held permission separate from individual authorization.
+Read selected saved metadata and original shared-entry pages without reconstructing full
+proof/schema collections, replaying permission calculations or inferring an operation.
+A necessary format change requires separate approval; no measured speed claim is approved.
+Use Captured write permission and the labels Permission holder, SID, Target account, Object type,
+Domain, Location, Account state at capture, Attribute, Why this holder is unexpected, Saved permission
+entries, Permission scope, Assignment and Saved evidence limitations.
+Scope labels are RBCD attribute, Property set: {captured name}, Property set (captured name
+unavailable), All properties and the separately approved object-class labels.
+For inherited entries without a proven source say "The original source of this inherited assignment
+is not established by this finding."
+The saved reasons say "The holder is a broadly applicable identity.", "The saved assessment does
+not identify this holder as an expected administrator for this target.", or "The holder is outside
+its expected administrative authority for this target in the saved assessment."
+Share the following wording between Findings and Rules:
+- **Why it matters:** "The saved assessment identifies unexpected permission to write this account's RBCD configuration. If misused, this permission could allow the delegation configuration to be altered. It does not show that delegation is configured or in use, that a directory change will succeed, or that impersonation, authentication, account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member."
+- **What to do:** "Confirm the holder's legitimate service or delegation-administration responsibilities. Review dependent services and other rights in the same assignment before making changes. If this write permission is unintended, remove or narrow only that permission on the target account. For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. Do not clear legitimate RBCD configuration as a substitute for correcting the write permission."
+For a saved NULL DACL say "The captured object security descriptor has a NULL DACL (no discretionary
+access list). This finding is not an explicit Everyone permission entry. Review the object's
+permission configuration rather than deleting an invented entry."
+The scope note is "Permission to edit RBCD configuration is not an existing delegation grant.
+SEC-013 reports captured RBCD configuration grants."
+Unestablished account state says "Not established from captured evidence."
+Only applicable limitations say "The capture is incomplete. The supported permission shown here
+remains a finding." or "Other saved permission or holder-assessment limitations apply. This is not
+a complete assessment of every permission."
+Missing, invalid or mismatched details say "The selected finding's saved RBCD-write permission
+details are missing, invalid or inconsistent."
+Retain Open affected object (the target account), Close, existing loading/cancellation/generation
+wording and original investigation screens, without raw masks/proof IDs/schema inventories.
+This includes short focused offline checks only; long verification needs a separate warning and
+approval, and does not authorize LAPS analysis, new analysis/formats, live work, measurement tools/runs,
+owner-data re-judgement, packaging, merge, commit or push.
+After the 225-case short checkpoint (72 new permission cases and 153 retained delegation
+reader/window cases), the owner separately approved the warned 45-65-minute focused
+rebuilt-defect/restored and final correct-source verification, not the full suite.
+On 2026-11-01 the owner requested full completion rather than a partly verified handoff, and
+explicitly approved a further 25-35-minute close-out after checking the actual changes against
+the recorded scope; report and stop rather than silently extending past 35 minutes.
+
+**SEC-024/025 captured-write-permission presentation - owner-approved 2026-11-01.**
+The owner approved the exact two-rule scope/copy and requested beginning implementation and
+short focused checks, not a long verification run.
+Reuse SEC-014's charcoal permission window from both Findings grids, retaining the existing
+Unexpected service-principal-name write permission and Unexpected key-credential-link write
+permission titles, High severity, one holder/target finding, target scope and original investigation.
+Show the saved holder name/exact SID, target identity/type/domain/location/state at capture,
+attribute, saved unexpectedness reason, all original Allow/Deny occurrences and inheritance in
+50-entry Previous/Next pages and Page {number}.
+Retain the existing shared labels, NULL-DACL explanation, unknown-state wording, inherited-source
+warning, limitations and property-set/object-class/all-properties labels without changing SEC-014.
+The new attribute-specific scope labels are SPN attribute and Key-credential-link attribute.
+Extend the existing selected reader/panel using the existing rule-to-attribute mapping rather
+than introducing another reader framework, full-proof reconstruction, schema/permission replay,
+automatic SPN/key-value loading, new analysis, formats, live work, measurements or LAPS work.
+Keep group-held permission distinct from individual authorization and preserve exact
+source/resource/generation/rule binding and explicit refusals.
+Share the following wording between Findings and Rules for SEC-024:
+- **Why it matters:** "The saved assessment identifies unexpected permission to write this account's servicePrincipalName attribute. If misused, this permission could allow unintended service registrations or changes to existing registrations. It does not show that a service principal name has been added or changed, that a service is in use, that a directory change will succeed, or that authentication, impersonation, credential theft, account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member."
+- **What to do:** "Confirm the holder's legitimate service-registration responsibilities. Review dependent services and other rights in the same assignment before making changes. If this write permission is unintended, remove or narrow only that permission on the target account. For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. Do not remove legitimate service principal names or reset passwords as a substitute for correcting the write permission."
+SEC-024's scope note is "Permission to edit servicePrincipalName is not an existing service
+registration or evidence of service use. Validated write to service principal names is a separate
+permission."
+Unavailable SEC-024 details say "The selected finding's saved SPN-write permission details are
+missing, invalid or inconsistent."
+Share the following wording between Findings and Rules for SEC-025:
+- **Why it matters:** "The saved assessment identifies unexpected permission to write this account's msDS-KeyCredentialLink attribute. If misused, this permission could allow key-credential registrations to be added or changed. It does not show that a usable key is registered, that a directory change will succeed, that key-based authentication is available or will succeed, or that credential extraction, account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member."
+- **What to do:** "Confirm the holder's legitimate account, device-authentication and key-enrolment responsibilities. Review dependent services and other rights in the same assignment before making changes. If this write permission is unintended, remove or narrow only that permission on the target account. For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. Do not delete existing key credentials or reset passwords as a substitute for correcting the write permission."
+SEC-025's scope note is "Permission to edit msDS-KeyCredentialLink is not an existing usable key
+or proof that key-based authentication will work. The SELF-only validated computer-account
+operation is separate."
+Unavailable SEC-025 details say "The selected finding's saved key-credential-write permission
+details are missing, invalid or inconsistent."
+Retain all existing SEC-014 wording and behaviour, loading/cancellation/generation wording,
+Open affected object (the target account) and Close.
+The owner accepted the uncertain 90-120-minute end-to-end estimate, a 45-minute checkpoint and a
+stop/report rather than silent extension past 120 minutes; the estimated 30-45-minute long
+isolated rebuilt-defect/restored and final affected verification needs a separate warning and
+explicit approval after the short checkpoint.
+After the 185-case short checkpoint (86 new family cases plus retained SEC-014, binding and
+guidance controls), the owner explicitly approved the warned 30-45-minute offline rebuilt-defect/
+restored and final affected Release verification, retaining the stage and overall stop boundaries.
+On 2026-11-02 the owner explicitly approved a new 40-minute maximum close-out window:
+correct and self-test per-process deadline enforcement, resume only controls 12-37 without
+restarting completed controls, and finish final affected verification and cleanup.
+The new deadline must interrupt a running process and leave the batch explicitly unfinished
+if it expires; it authorizes no application scope expansion or package/merge/commit/push.
+After the final run returned one WPF resource-loading failure, the owner explicitly approved
+a final 15-minute maximum window on 2026-11-02 to validate the existing non-parallel test
+collection correction, retry the affected build/tests and finish preservation/cleanup,
+without repeating the 37 completed fault controls or changing application behaviour.
+This does not authorize packaging, merge, commit or push, or repeat the completed content review,
+mockups or CI repairs.
+
+**SEC-026 captured-duplicate-SPN presentation - owner-approved 2026-11-02.**
+The owner approved the exact single-rule scope/copy and requested beginning implementation and
+short checks after committing SEC-024/025 as `0315a0f`; this does not authorize another commit or push.
+Reuse the charcoal window from both Findings grids, keeping Duplicate service principal names,
+High severity and one finding per affected captured object, not per duplicated SPN.
+Use Captured duplicate service names, Affected object, Object type, Domain, Location and Forest.
+Show one complete saved comparison value at a time under Duplicated SPN (case-insensitive match),
+with Previous SPN, SPN {number} and Next SPN; ports, instance names and suffixes remain intact.
+Registered objects shows all known distinct objects in 50-row Previous/Next pages and Page {number},
+with captured name/type/domain/location and This finding's object marking the selected subject.
+View captured registrations explicitly reveals original spellings and every original occurrence
+in separate 50-row pages under Captured registration values, Registered object and Captured SPN.
+Do not show raw positions, GUID inventories or an eager repeated-occurrence dump.
+Retain Open affected object, Close, original investigation screens and existing loading/cancellation/
+generation wording; do not invent account state, choose a rightful owner or add unrelated nesting.
+The finding statement is "The same complete service principal name is recorded on more than one
+captured object in this forest."
+Share the following wording between Findings and Rules:
+- **Why it matters:** "Duplicate service principal names can prevent Kerberos from identifying the intended service account. This finding records captured registrations, not a confirmed outage, current service use, successful authentication, credential exposure, compromise or a completed Tier 0 path."
+- **What to do:** "Confirm the intended service and service account before changing any registration. When authorized, use setspn -F -Q <SPN> and setspn -F -X to check current registrations in the affected forest. Review dependencies, then remove only a confirmed erroneous registration under change control and test dependent service authentication. Do not choose an owner automatically, remove every matching value or reset passwords as a substitute for correcting the registration. Do not remove krbtgt or kadmin registrations based on this finding alone."
+The scope note is "Matching compares complete captured SPNs without regard to letter case; ports,
+instance names and suffixes remain part of the name. SPN aliases and other forests were not assessed.
+Recorded values do not establish complete attribute visibility. SecureAD does not run the suggested commands."
+Show saved limitations verbatim, including the conditional Kerberos-system-registration warning;
+where any exist, add "The saved assessment has limitations. The recorded duplicates remain findings;
+this is not assurance of complete forest-wide uniqueness."
+Unavailable details say "The selected finding's saved duplicate-SPN details are missing, invalid or inconsistent."
+Read selected portions of existing saved proof using the existing streaming reader and paging
+mechanism, without full-proof reconstruction, replay, new format or live query.
+Selected-record scans are permitted without a measured speed claim.
+The initial approval covers implementation and short checks only with a stop/report at 45 minutes;
+the uncertain overall active-work estimate was 90-120 minutes, including later verification,
+which needs its own warning and explicit approval.
+No repeated review/mockups, measurements, LAPS work, package, merge, commit or push is authorized.
+After the 131-pass short checkpoint, the owner explicitly approved the warned 35-45-minute,
+maximum-45-minute remaining verification on 2026-11-02: isolated rebuilt faults/restorations
+for all 52 new checks, one final correct-source affected Release build/tests with coverage,
+preservation checks and cleanup, using an interrupting per-process deadline and not the full suite.
+After the original deadline interrupted control 12's restored test run, the owner explicitly
+approved up to 45 additional minutes to finish that restoration, controls 13-23, final affected
+verification and cleanup, without rerunning completed controls or broadening application scope.
+
+**SEC-027 captured-SID-history presentation - owner-approved 2026-11-03.**
+The owner approved this exact single-rule scope/copy and implementation/short checks only.
+Preserve uncommitted verified SEC-026, its original evidence and subsequent work without committing it.
+Reuse the charcoal window from both Findings grids, retaining Privileged identifier carried in
+SID history, High severity, one finding per affected object and the existing user/computer/group scope.
+Use Captured SID history, Affected object, Object type, Domain, Location and Object SID;
+a missing object SID says "Not established from captured evidence."
+Flagged historical identifiers uses 50-row Previous/Next pages and Page {number}, with SID and
+Recognised identifier type; View other captured values explicitly loads separate 50-row pages
+under Other captured SID-history values, with "Not ranked by this rule." beside each value.
+Only a successful read establishing none exist says "No other readable SID-history values are recorded."
+Always show Unreadable SID-history values: {number} from the original saved header.
+Preserve every saved occurrence/order, do not guess an issuing-domain name or present a recognised
+identifier type as a resolved current group, and retain Open affected object, Close, original
+investigation screens and existing loading/cancellation messages without unrelated membership graphs.
+The finding statement is "The captured SID history includes an identifier recognised as privileged by this rule."
+Share the following wording between Findings and Rules:
+- **Why it matters:** "SID history can retain access through earlier identifiers without adding the object to the corresponding group. A privileged historical identifier can therefore preserve access that a group-membership review would miss. Actual access depends on resource permissions and, where applicable, trust and SID-filtering rules. This finding does not prove a specific current group membership, effective access, successful use, compromise or a completed Tier 0 path."
+- **What to do:** "Verify why each flagged value is present, the migration history and current resource dependencies. When authorised, check relevant trust and SID-filtering behaviour. If a value is no longer needed, remove only that specific sIDHistory value using administration appropriate to the user, computer or group shown, under change control, then test dependent access. Do not clear the entire attribute or assume that unranked or unreadable values are harmless. Removing a historical identifier may break access still granted only to that identifier."
+- **About:** "Reports a captured user, computer or group carrying a SID-history value recognised by SecureAD's existing privileged-identifier catalogue. Recognition uses well-known SID patterns, not a live lookup of the issuing domain or group. Custom identifiers are not assessed for privilege by this rule. Other captured values remain available, and unreadable values are reported. This rule does not establish current group membership, effective access, trust acceptance, SID filtering or a completed Tier 0 path."
+The scope note is "A recognised identifier type is not a resolved current group or a confirmed
+source-domain name. Values not ranked by this rule are not assessed as harmless."
+Only applicable limitations say "Some SID-history values could not be read. The flagged values
+remain findings; this is not a complete list of what the object may carry." or "The captured
+evidence for this object may be incomplete. The flagged values remain findings."
+Unavailable details say "The selected finding's saved SID-history details are missing, invalid or inconsistent."
+The current format saves SID text, not classification answers; reuse the existing catalogue lookup
+already used by saved readback, not a separate ranking system or new rule analysis.
+Filtering may scan this finding's indexed rows, without reconstructing the complete collection,
+scanning the forest, performing live resolution, changing native formats or claiming measured speed.
+The initial approval has a 45-minute implementation/short-check checkpoint cap, not full verification;
+long verification needs a fresh warning/approval, and the uncertain overall active-work estimate was
+2-3 hours based on recent actual timings.
+No measurements, LAPS work, package, merge, commit or push is authorized.
+After the 178-pass short checkpoint (39 new cases and 139 retained checks), the owner explicitly
+approved the warned 60-90-minute, maximum-90-minute offline fault/restoration qualification,
+final correct-source affected Release build/tests with coverage, preservation checks and cleanup,
+using the interrupting process deadline and not the full suite.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.
@@ -207,6 +565,41 @@ Remove BenchmarkSuite1/2/6/7 from the everyday build, preserve their exact histo
 existing results/inputs, and retain the current application, correctness tests and tools those tests use.
 This does not authorize new benchmark runs, performance tooling, analysis changes or replacement
 of the lab build being tested.
+
+**Object Findings paging - owner-approved bounded batch, 2026-10-22.**
+The owner approved adding Page/Previous/Next controls to the object Findings tab using the settled
+design, while retaining its current finding presentation for this batch.
+Read one existing-size page at a time, retain the selected object, section and return context, and
+keep unloaded pages distinct from incomplete saved evidence.
+This is reusable groundwork for the later grid, not approval of rule-content changes, new
+performance measurements, saved-format changes, full LAPS analysis, a package, commit or push.
+After offline validation, the owner declined creating a separate lab ZIP for this paging batch.
+
+**Repair CI checks in a fresh session - owner direction, 2026-10-22.**
+The owner selected repairing the native-layout checks first, preserving every historical hash and
+recording proper checkpoints for the current saved products, then addressing the remaining checks
+against accepted behavior without weakening them or changing AD calculations.
+He requested that this continue in a new session rather than extending the long implementation
+session; begin with the bounded native-layout-check repair, keeping the uncommitted paging work
+separate and preserving all lab builds, frozen evidence and existing results.
+This does not authorize performance measurements, live access, re-judgement, full LAPS analysis,
+another Findings implementation batch, a package, commit or push.
+
+**Finish CI validation with the correct UI test environment - owner-approved 2026-10-22.**
+After full regression was blocked by UI-test progress callbacks running on concurrent worker
+threads, the owner approved a bounded harness correction using the existing single-UI-thread
+test helper before another full run.
+Keep application behavior, AD calculations, saved formats and UI wording/layout unchanged;
+this authorizes the test-harness continuation, not live access, new performance measurements,
+re-judgement, packaging, commit or push.
+
+**Publish verified paging and CI repairs - owner direction, 2026-10-22.**
+After the complete offline CI-equivalent run passed, the owner requested committing and pushing
+the verified pending work so he can move on.
+Publish the approved object Findings paging and CI repairs from the current branch, preserving
+their verification records, historical hashes and existing builds/evidence.
+This is publication approval, not approval for another implementation batch, package, live access,
+re-judgement or the deferred LAPS review.
 
 **Complete LAPS analysis review at the end - owner direction, 2026-10-21.**
 During the Findings review the owner deferred both the proposed expiry-reference-time choice and

@@ -136,7 +136,7 @@ internal sealed partial class AssetsViewModel
                         _filterValidity = current;
                         _resetting = false;
                     }
-                    foreach (var row in read.Page.Findings) Findings.Add(new FindingRowViewModel(row));
+                    foreach (var row in read.Page.Findings) Findings.Add(new FindingRowViewModel(row, current));
                     _findingsFrom = read.Page.Next;
                     NothingWasFound = read.Page.NothingWasFound;
                     Tier0SummaryText = SavedPathText.Summary(read.Summary);

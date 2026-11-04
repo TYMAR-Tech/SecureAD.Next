@@ -979,7 +979,7 @@ public sealed class BundleReader : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         return _bulkObjectIds is not null && _bulkObjectIds.TryGetValue(distinguishedName, out var objectId)
             ? ObjectAttributesReader.ReadAt(connection, objectId)
-            : ObjectAttributesReader.Read(connection, distinguishedName);
+            : ObjectAttributesReader.Read(connection, distinguishedName, selected: null);
     }
 
     /// <summary>Reads the selected catalogue attributes without reconstructing unrelated multivalued collections.</summary>

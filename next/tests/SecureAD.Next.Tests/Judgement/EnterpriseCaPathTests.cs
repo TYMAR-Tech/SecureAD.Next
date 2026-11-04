@@ -57,6 +57,7 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
     public void TheNewSourceSemanticsCarryTheirOwnVersionsAndConfigurationContext()
     {
         using var reader = Open(Judged());
+        using var derivation = DerivationReader.Open(reader.BundleDirectory).Value;
         var binding = reader.ReadPathInputs().Input;
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
@@ -68,8 +69,8 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
         command.CommandText = "SELECT schema_version FROM judgement";
         var storedVersion = Assert.IsType<long>(command.ExecuteScalar());
 
-        Assert.Equal((8, 16, (int?)2, (int?)2, ConfigurationDn),
-            (CapturedAttributeCatalog.Version, DerivationSchema.Version,
+        Assert.Equal((8, 17, (int?)2, (int?)2, ConfigurationDn),
+            (CapturedAttributeCatalog.Version, derivation.Description.SchemaVersion,
              binding?.PolicyVersion, binding?.ContractVersion, binding?.ConfigurationNamingContext));
         Assert.Equal((long)JudgementSchema.Version, storedVersion);
     }

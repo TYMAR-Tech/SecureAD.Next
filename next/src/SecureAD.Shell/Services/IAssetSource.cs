@@ -199,6 +199,30 @@ internal interface IAssetReader
     /// <summary>Reads saved Findings display values and selected completeness headers, without reconstructing full proof.</summary>
     Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query);
 
+    /// <summary>Reads the exact selected finding, optionally including explicitly requested membership support.</summary>
+    Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership);
+
+    /// <summary>Reads only the selected supported account-option finding's original setting and saved account state.</summary>
+    Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference);
+
+    /// <summary>Reads selected SEC-012 context and a bounded page of original supported service occurrences.</summary>
+    Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after);
+
+    /// <summary>Reads selected saved RBCD holders and reliably resolved captured names, never group members.</summary>
+    Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after);
+
+    /// <summary>Reads selected saved SEC-014 context and one original shared-entry page.</summary>
+    Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after);
+
+    /// <summary>Reads one saved duplicated SPN and the requested original owner or registration page.</summary>
+    Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position);
+
+    /// <summary>Reads selected saved SID-history values using the existing catalogue interpretation.</summary>
+    Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after);
+
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <remarks>

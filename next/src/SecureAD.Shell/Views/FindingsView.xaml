@@ -2,237 +2,69 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SecureAD.Shell.Views">
-
-    <UserControl.Resources>
-        <!-- A DataGridColumn is not in the visual tree and cannot find the view model by walking
-             it, so a column that needs the screen rather than the row reaches it through this. The
-             same knot AssetsView already ties. -->
-        <views:BindingProxy x:Key="Screen" Data="{Binding}" />
-    </UserControl.Resources>
-
     <DockPanel>
-
-        <!-- WHAT THE FILTERS OFFER COMES FROM THE FINDINGS THAT EXIST. A fixed list would offer
-             Critical whether or not anything is critical, and an operator who picks it and gets an
-             empty grid has learned only to distrust the control. A third filter is a combo box
-             here and a line in FindingsAsked - nothing about loading or paging changes. -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="Severity" Style="{StaticResource FieldLabel}"
                        VerticalAlignment="Center" Margin="0,0,8,0" />
-            <ComboBox ItemsSource="{Binding Severities}"
-                      SelectedItem="{Binding SeverityFilter, Mode=TwoWay}"
+            <ComboBox ItemsSource="{Binding Severities}" SelectedItem="{Binding SeverityFilter,Mode=TwoWay}"
                       MinWidth="120" Margin="0,0,16,0" />
-
             <TextBlock Text="Rule" Style="{StaticResource FieldLabel}"
                        VerticalAlignment="Center" Margin="0,0,8,0" />
-            <ComboBox ItemsSource="{Binding Rules}"
-                      SelectedItem="{Binding RuleFilter, Mode=TwoWay}"
+            <ComboBox ItemsSource="{Binding Rules}" SelectedItem="{Binding RuleFilter,Mode=TwoWay}"
                       MinWidth="120" Margin="0,0,16,0" />
-
-            <!-- Shown only while something is narrowed, so it is never a control that does
-                 nothing. -->
-            <Button Content="Clear"
-                    Command="{Binding ClearFindingsFiltersCommand}"
-                    Visibility="{Binding IsFiltered, Converter={StaticResource Shown}}" />
+            <Button Content="Clear" Command="{Binding ClearFindingsFiltersCommand}"
+                    Visibility="{Binding IsFiltered,Converter={StaticResource Shown}}" />
         </StackPanel>
-
         <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8"
-                Visibility="{Binding HasTier0Summary, Converter={StaticResource Shown}}">
+                Visibility="{Binding HasTier0Summary,Converter={StaticResource Shown}}">
             <StackPanel>
                 <TextBlock Text="{Binding Tier0SummaryHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="Tier0FindingSummary" Text="{Binding Tier0SummaryText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                 <Button Content="Tier 0 overview" Command="{Binding ShowTier0OverviewCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
             </StackPanel>
         </Border>
-
-        <!-- WHY A REFUSAL IS A SENTENCE RATHER THAN AN EMPTY TABLE. A bundle nobody judged and a
-             forest with nothing wrong with it draw the same blank grid, and an operator reads a
-             blank grid as reassurance. This says which it is, in words, where the findings would
-             have been. -->
-        <Border DockPanel.Dock="Top"
-                Style="{StaticResource Card}"
-                Margin="0,0,0,8"
-                Visibility="{Binding HasFindingsRefusal, Converter={StaticResource Shown}}">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8"
+                Visibility="{Binding HasFindingsRefusal,Converter={StaticResource Shown}}">
             <StackPanel>
-                <TextBlock Text="{Binding FindingsRefusal.Title}"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,4" />
-                <TextBox Text="{Binding FindingsRefusal.Detail, Mode=OneWay}"
-                         Style="{StaticResource SelectableMessage}"
+                <TextBlock Text="{Binding FindingsRefusal.Title}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBox Text="{Binding FindingsRefusal.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
                          Foreground="{DynamicResource SecondaryTextBrush}" />
             </StackPanel>
         </Border>
-
-        <!-- Said only when the rules ran and none of them matched, which is the one case where an
-             empty table is a statement about the directory rather than about the judging. The
-             wording comes from the view model because it is not the same claim once a filter is
-             on: "nothing was found here" and "nothing matched what you asked for" are different
-             facts, and only the first is about the forest. -->
-        <TextBlock DockPanel.Dock="Top"
-                   Text="{Binding NothingFoundReason}"
-                   Foreground="{DynamicResource SecondaryTextBrush}"
-                   Margin="0,0,0,8"
-                   Visibility="{Binding NothingWasFound, Converter={StaticResource Shown}}" />
-
-        <!-- Findings are paged rather than counted. There is no "page 3 of 400" because counting
-             every match is a second query over the same rows, paid for on every page. -->
+        <TextBlock DockPanel.Dock="Top" Text="{Binding NothingFoundReason}"
+                   Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,8"
+                   Visibility="{Binding NothingWasFound,Converter={StaticResource Shown}}" />
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-            <TextBlock Text="{Binding FindingsPageNumber, StringFormat=Page {0}}"
-                       Foreground="{DynamicResource SecondaryTextBrush}"
-                       VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock Text="{Binding FindingsPageNumber,StringFormat=Page {0}}"
+                       Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
             <Button Content="Previous" Command="{Binding PreviousFindingsCommand}"
                     IsEnabled="{Binding HasEarlierFindings}" Margin="0,0,8,0" />
-            <Button Content="Next" Command="{Binding NextFindingsCommand}"
-                    IsEnabled="{Binding HasMoreFindings}" />
-
-            <!-- A gesture nothing announces is a gesture nobody finds. -->
-            <TextBlock Text="Double-click a finding to open the object it is about"
-                       Margin="24,0,0,0"
-                       VerticalAlignment="Center"
+            <Button Content="Next" Command="{Binding NextFindingsCommand}" IsEnabled="{Binding HasMoreFindings}" />
+            <TextBlock Text="Double-click a finding to open its details" Margin="24,0,0,0" VerticalAlignment="Center"
                        Foreground="{DynamicResource SecondaryTextBrush}"
-                       Visibility="{Binding HasFindings, Converter={StaticResource Shown}}" />
+                       Visibility="{Binding HasFindings,Converter={StaticResource Shown}}" />
         </StackPanel>
-
-        <!-- WHAT IT MEANS AND WHAT TO DO ABOUT IT, for whichever finding is selected.
-
-             A grid of findings tells an operator what is wrong and leaves him to work out what to
-             do, which is the difference between a list and a working screen. These are the two
-             blocks the predecessor's finding window carried, and which a duplicated evidence table
-             above them pushed off the first screen on a laptop.
-
-             Bound to a SelectedFinding on the view model rather than to the collection's current
-             item, because a binding a gate cannot resolve is a binding nobody is holding: the
-             current-item path reads as a property name to ViewBindingGateTests, and a view naming
-             something no view model publishes is how this shell crashed once with a green build. -->
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition MaxHeight="280">
-                    <RowDefinition.Style>
-                        <Style TargetType="RowDefinition">
-                            <Setter Property="Height" Value="2*" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasSelectedFinding}" Value="False">
-                                    <Setter Property="Height" Value="0" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </RowDefinition.Style>
-                </RowDefinition>
-            </Grid.RowDefinitions>
-        <Border x:Name="FindingDetails" Grid.Row="1"
-                Style="{StaticResource Card}"
-                Margin="0,8,0,0"
-                MaxHeight="280"
-                Visibility="{Binding HasSelectedFinding, Converter={StaticResource Shown}}">
-            <DockPanel>
-                <DockPanel DockPanel.Dock="Top">
-                <Button DockPanel.Dock="Right" Content="Close details"
-                        Command="{Binding CloseFindingDetailsCommand}"
-                        HorizontalAlignment="Right" Margin="0,0,0,8" />
-                <Button Content="View saved routes"
-                        Command="{Binding OpenSavedRoutesCommand}" CommandParameter="{Binding SelectedFinding}"
-                        Visibility="{Binding SelectedFinding.HasTier0Routes, Converter={StaticResource Shown}}"
-                        HorizontalAlignment="Left" Margin="0,0,0,8" />
-                </DockPanel>
-                <ScrollViewer x:Name="FindingDetailsScroll"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <TextBlock Text="WHY IT MATTERS"
-                                   Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding SelectedFinding.WhyItMatters}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,16" />
-
-                        <TextBlock Text="WHAT TO DO"
-                                   Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding SelectedFinding.WhatToDo}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,0" />
-
-                        <Expander Header="View membership evidence" Margin="0,10,0,0"
-                                  Visibility="{Binding SelectedFinding.HasMembershipEvidence, Converter={StaticResource Shown}}">
-                            <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding SelectedFinding.MembershipCompleteness}"
-                                               TextWrapping="Wrap" Margin="0,4,0,6" />
-                                    <TextBox Text="{Binding SelectedFinding.MembershipDetails, Mode=OneWay}"
-                                             Style="{StaticResource SelectableMessage}" />
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Expander>
-
-                        <!-- WHAT THIS RULE LOOKS FOR, AND WHAT IT DOES NOT. A rule reporting a subset of a
-                             problem must not let its silence read as "nothing else is wrong", and until
-                             this had a field of its own the only place to say so was inside each finding's
-                             own text - repeated once per object, and attached to the machines that fired
-                             rather than to the rule.
-
-                             IT IS ALSO ON THE RULES TAB, WHICH IS WHERE HALF ITS AUDIENCE IS. The operator
-                             who most needs it is the one looking at a rule that reported nothing, and he
-                             never opens a finding. Repeated here because a reader of one finding should not
-                             have to leave it to learn what the rule does not cover. -->
-                        <TextBlock Text="WHAT THIS RULE LOOKS FOR"
-                                   Style="{StaticResource SectionTitle}"
-                                   Margin="0,16,0,0" />
-                        <TextBlock Text="{Binding SelectedFinding.About}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,0" />
-
-                        <!-- The source, so a customer can check the reasoning rather than take it. Shown
-                             only when one is recorded: an empty line where a citation belongs suggests the
-                             claim has one and it was lost. -->
-                        <TextBlock Text="{Binding SelectedFinding.MicrosoftReference}"
-                                   Style="{StaticResource Caption}"
-                                   Margin="0,16,0,0"
-                                   Visibility="{Binding SelectedFinding.HasMicrosoftReference, Converter={StaticResource Shown}}" />
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
-
-        <DataGrid Grid.Row="0" ItemsSource="{Binding Findings}"
-                  SelectedItem="{Binding SelectedFinding, Mode=TwoWay}"
-                  ColumnHeaderStyle="{StaticResource TableColumnHeader}"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  IsSynchronizedWithCurrentItem="True">
-
-            <!-- THE WAY IN IS THE ROW ITSELF, as it is on the objects grid. A MouseBinding rather
-                 than a handler because logic behind a view is logic ShellMvvmGateTests fails the
-                 build for. The parameter is the current item of this collection, which is what
-                 IsSynchronizedWithCurrentItem above keeps in step with the selection. -->
-            <DataGrid.InputBindings>
-                <MouseBinding MouseAction="LeftDoubleClick"
-                              Command="{Binding OpenFindingCommand}"
-                              CommandParameter="{Binding Findings/}" />
-            </DataGrid.InputBindings>
-
+        <DataGrid x:Name="FindingsGrid" ItemsSource="{Binding Findings}" SelectedItem="{Binding SelectedFinding,Mode=TwoWay}"
+                  views:GridRowAction.Command="{Binding OpenFindingCommand}"
+                  ColumnHeaderStyle="{StaticResource TableColumnHeader}" AutoGenerateColumns="False"
+                  IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Severity" Binding="{Binding Severity}"
-                                    Width="Auto" />
-                <DataGridTextColumn Header="Rule" Binding="{Binding Rule}"
-                                    Width="Auto" />
-                <DataGridTextColumn Header="Principal" Binding="{Binding Principal}"
-                                    Width="*" />
-                <DataGridTextColumn Header="Target" Binding="{Binding Target}"
-                                    Width="*" />
-                <DataGridTextColumn Header="Domain" Binding="{Binding Domain}"
-                                    Width="Auto" />
-
-                <!-- A finding resting on evidence that may be incomplete is a weaker claim than one
-                     resting on a complete read, and an operator deciding what to act on first
-                     needs that in the row rather than by opening it. -->
-                <DataGridTextColumn Header="Coverage" Binding="{Binding Coverage}"
-                                    Width="Auto" />
-
-                <DataGridTextColumn Header="Details" Binding="{Binding Detail}"
-                                    Width="3*" />
+                <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="Auto" />
+                <DataGridTemplateColumn Header="Finding" Width="2*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding FindingTitle}" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding Rule}" Style="{StaticResource Caption}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Principal" Binding="{Binding Principal}" Width="*" />
+                <DataGridTextColumn Header="Affected object" Binding="{Binding Target}" Width="*" />
+                <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" Width="Auto" />
+                <DataGridTextColumn Header="Coverage" Binding="{Binding Coverage}" Width="Auto" />
             </DataGrid.Columns>
         </DataGrid>
-        </Grid>
     </DockPanel>
 </UserControl>

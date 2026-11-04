@@ -47,7 +47,7 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Creates a screen's view of one container.</summary>
     /// <param name="node">The container as the evidence rebuilt it.</param>
     /// <param name="observe">Connects selection only when a presented node is created.</param>
-    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe = null)
+    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe)
     {
         ArgumentNullException.ThrowIfNull(node);
 
@@ -253,6 +253,8 @@ internal sealed class ListedObjectViewModel
 /// </remarks>
 internal sealed class FindingRowViewModel
 {
+    private static readonly IReadOnlyDictionary<string, string> Titles =
+        RuleCatalogue.All.ToDictionary(rule => rule.Definition.Id, rule => rule.Definition.Name, StringComparer.Ordinal);
     private readonly FindingListItem _finding;
 
     /// <summary>Creates a screen's view of one finding.</summary>
@@ -261,12 +263,18 @@ internal sealed class FindingRowViewModel
     {
     }
 
-    public FindingRowViewModel(FindingListItem finding)
+    public FindingRowViewModel(FindingListItem finding, Func<bool>? current = null)
     {
         ArgumentNullException.ThrowIfNull(finding);
 
         _finding = finding;
+        IsCurrent = current ?? (() => false);
     }
+
+    internal FindingListItem Saved => _finding;
+    internal Func<bool> IsCurrent { get; }
+    public string FindingTitle => Titles.TryGetValue(Rule, out var title) ? title : Rule;
+    public string FindingLabel => FindingTitle == Rule ? Rule : FindingTitle + " (" + Rule + ")";
 
     /// <summary>How serious this is, in the word an operator reads.</summary>
     public string Severity => _finding.Severity.ToString();
@@ -299,10 +307,12 @@ internal sealed class FindingRowViewModel
     /// <summary>The domain it was found in.</summary>
     public string Domain => _finding.DomainFqdn;
 
+    public string ObjectClass => _finding.ObjectClass;
+
     /// <summary>What was found, said plainly enough to act on.</summary>
     public string Detail => _finding.Detail;
 
-    public bool HasMembershipEvidence => _finding.Membership is not null;
+    public bool HasMembershipEvidence => _finding.Kind == FindingListKind.Membership;
 
     public string MembershipCompleteness => _finding.Membership is { } evidence
         ? evidence.MembershipRoutes.CompletenessDescription : string.Empty;
