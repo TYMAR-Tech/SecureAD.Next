@@ -208,6 +208,12 @@ internal sealed partial class AssetReadRequest(
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
             reader => reader.ReadAttributeWritePermission(reference, after), _readCancellation)));
 
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadDuplicateSpn(reference, position), _readCancellation)));
+
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadSidHistory(reference, after), _readCancellation)));
+
     /// <inheritdoc/>
     public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory) =>
         WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadRuleExecutions(), _readCancellation));

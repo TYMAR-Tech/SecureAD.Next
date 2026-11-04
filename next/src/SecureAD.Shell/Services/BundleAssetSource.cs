@@ -207,6 +207,12 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         AttributeWritePermissionMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadAttributeWritePermission(bundleDirectory, reference, after));
 
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
+        WithRun(bundleDirectory, reader => reader.ReadDuplicateSpn(bundleDirectory, reference, position));
+
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadSidHistory(bundleDirectory, reference, after));
+
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

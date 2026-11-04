@@ -165,6 +165,161 @@
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasDuplicateSpn,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured duplicate service names" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Forest,StringFormat=Forest: {0}}" TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,12,0,6">
+                            <Button Content="Previous SPN" Command="{Binding FindingDetails.DuplicateSpn.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.SpnLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next SPN" Command="{Binding FindingDetails.DuplicateSpn.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="Duplicated SPN (case-insensitive match)" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.MatchKey,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="Registered objects" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Owners.Owners}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding RegisteredObject}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SubjectNote}" Style="{StaticResource Caption}"
+                                                   Visibility="{Binding IsSubject,Converter={StaticResource Shown}}" />
+                                        <TextBlock Text="{Binding ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.DuplicateSpn.Owners.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Owners.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.DuplicateSpn.Owners.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Owners.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.Owners.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.Owners.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.Owners.HasRefusal,Converter={StaticResource Shown}}" />
+                        <Button Content="View captured registrations" Command="{Binding FindingDetails.DuplicateSpn.LoadRegistrationsCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.IsLoadingRegistrations,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.RegistrationRefusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.HasRegistrationRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.DuplicateSpn.HasRegistrations,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Captured registration values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Registrations.Registrations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding RegisteredObject,StringFormat=Registered object: {0}}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding CapturedSpn,Mode=OneWay,StringFormat=Captured SPN: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.DuplicateSpn.Registrations.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Registrations.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.DuplicateSpn.Registrations.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Registrations.LoadingText}" Style="{StaticResource Caption}"
+                                       Visibility="{Binding FindingDetails.DuplicateSpn.Registrations.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.DuplicateSpn.Registrations.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.Registrations.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.DuplicateSpn.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LimitationsNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasSidHistory,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured SID history" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.ObjectSid,Mode=OneWay,StringFormat=Object SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.UnreadableValues,StringFormat=Unreadable SID-history values: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Flagged historical identifiers" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.SidHistory.Flagged.Values}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding RecognisedType,StringFormat=Recognised identifier type: {0}}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.SidHistory.Flagged.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.Flagged.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.SidHistory.Flagged.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Flagged.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.SidHistory.Flagged.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.Flagged.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.Flagged.HasRefusal,Converter={StaticResource Shown}}" />
+                        <Button Content="View other captured values" Command="{Binding FindingDetails.SidHistory.LoadOtherCommand}" HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.SidHistory.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.HasRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.SidHistory.HasOther,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Other captured SID-history values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="No other readable SID-history values are recorded." TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasNoOther,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.SidHistory.Other.Values}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding RecognisedType}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.SidHistory.Other.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.SidHistory.Other.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.SidHistory.Other.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.Other.LoadingText}" Style="{StaticResource Caption}"
+                                       Visibility="{Binding FindingDetails.SidHistory.Other.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.SidHistory.Other.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.Other.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.SidHistory.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.UnreadableNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasUnreadable,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.CaptureNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasCaptureLimit,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.ShowsSavedDescription,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="Finding" Style="{StaticResource SectionTitle}" />

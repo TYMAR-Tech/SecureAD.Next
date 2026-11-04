@@ -49,6 +49,18 @@ internal sealed partial class AssetsViewModel
                     if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);
                     content = content with { AttributeWritePermission = permission.Value };
                 }
+                if (!membership && answer.Value.RuleId == "SEC-026")
+                {
+                    var duplicate = reader.ReadDuplicateSpn(bundle, reference, null);
+                    if (!duplicate.IsSuccess) return Result<FindingDetailContent>.Failure(duplicate.Error);
+                    content = content with { DuplicateSpn = duplicate.Value };
+                }
+                if (!membership && answer.Value.RuleId == "SEC-027")
+                {
+                    var history = reader.ReadSidHistory(bundle, reference, null);
+                    if (!history.IsSuccess) return Result<FindingDetailContent>.Failure(history.Error);
+                    content = content with { SidHistory = history.Value };
+                }
                 return Result<FindingDetailContent>.Success(content);
             }, token, membership ? "read selected finding membership" : "read selected finding"),
             finding.IsCurrent,
@@ -66,7 +78,19 @@ internal sealed partial class AssetsViewModel
                     ? reader.ReadAttributeWritePermission(bundle, reference, after)
                     : Result<SavedAttributeWritePermission>.Failure(AuditError.Create(ErrorCategory.Shell,
                         "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
-                token, "read selected write-permission entries"));
+                token, "read selected write-permission entries"),
+            (position, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
+                finding.Saved.Reference is { } reference
+                    ? reader.ReadDuplicateSpn(bundle, reference, position)
+                    : Result<SavedDuplicateSpn>.Failure(AuditError.Create(ErrorCategory.Shell,
+                        "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
+                token, "read selected duplicate service names"),
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
+                finding.Saved.Reference is { } reference
+                    ? reader.ReadSidHistory(bundle, reference, after)
+                    : Result<SavedSidHistory>.Failure(AuditError.Create(ErrorCategory.Shell,
+                        "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
+                token, "read selected SID-history values"));
     }
 
     [RelayCommand]

@@ -617,6 +617,24 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
+    public Func<FindingReference, DuplicateSpnMark?, Result<SavedDuplicateSpn>>? DuplicateSpnRead { get; set; }
+    public Func<FindingReference, SidHistoryMark?, Result<SavedSidHistory>>? SidHistoryRead { get; set; }
+    public List<(FindingReference Reference, SidHistoryMark? After)> SidHistoryReads { get; } = [];
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after)
+    {
+        SidHistoryReads.Add((reference, after));
+        return SidHistoryRead is { } read ? read(reference, after) : Result<SavedSidHistory>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestSidHistoryUnavailable", ErrorSeverity.Failed, SavedSidHistory.InvalidDetails, bundleDirectory));
+    }
+    public List<(FindingReference Reference, DuplicateSpnMark? Position)> DuplicateSpnReads { get; } = [];
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position)
+    {
+        DuplicateSpnReads.Add((reference, position));
+        return DuplicateSpnRead is { } read ? read(reference, position)
+            : Result<SavedDuplicateSpn>.Failure(AuditError.Create(ErrorCategory.Shell, "TestDuplicateSpnUnavailable",
+                ErrorSeverity.Failed, SavedDuplicateSpn.InvalidDetails, bundleDirectory));
+    }
+
     public List<(FindingReference Reference, AttributeWritePermissionMark? After)> AttributeWritePermissionReads { get; } = [];
     public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
         AttributeWritePermissionMark? after)

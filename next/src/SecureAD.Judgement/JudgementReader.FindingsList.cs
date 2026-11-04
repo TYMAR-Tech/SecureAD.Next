@@ -11,7 +11,7 @@ public sealed partial class JudgementReader
 {
     private const string ListColumns = """
         f.finding_id,f.rule_id,f.subject_kind,f.subject_key,f.object_guid,f.severity,
-        f.distinguished_name,CASE WHEN f.rule_id IN ('SEC-012','SEC-013','SEC-014','SEC-024','SEC-025') THEN NULL ELSE f.detail END AS detail,
+        f.distinguished_name,CASE WHEN f.rule_id IN ('SEC-012','SEC-013','SEC-014','SEC-024','SEC-025','SEC-026','SEC-027') THEN NULL ELSE f.detail END AS detail,
         f.coverage,f.domain_fqdn,f.object_class,f.principal_name,
         r.rule_version,f.list_kind,f.evidence_complete,f.protection_catalogue_version,
         f.direct_protection_entry_id,f.direct_protection_name
@@ -197,6 +197,8 @@ public sealed partial class JudgementReader
             "SEC-012" => SavedDelegationConfiguration.ConstrainedStatement,
             "SEC-013" => SavedDelegationConfiguration.ResourceStatement,
             "SEC-014" or "SEC-024" or "SEC-025" => SavedAttributeWritePermission.ScopeNoteForRule(ruleId),
+            "SEC-026" => SavedDuplicateSpn.Statement,
+            "SEC-027" => SavedSidHistory.Statement,
             _ => row.GetString(7),
         };
         return new(ruleId, row.GetInt32(12), severity, new(subjectKind, row.GetString(3)),

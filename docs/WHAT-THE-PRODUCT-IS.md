@@ -467,6 +467,87 @@ without repeating the 37 completed fault controls or changing application behavi
 This does not authorize packaging, merge, commit or push, or repeat the completed content review,
 mockups or CI repairs.
 
+**SEC-026 captured-duplicate-SPN presentation - owner-approved 2026-11-02.**
+The owner approved the exact single-rule scope/copy and requested beginning implementation and
+short checks after committing SEC-024/025 as `0315a0f`; this does not authorize another commit or push.
+Reuse the charcoal window from both Findings grids, keeping Duplicate service principal names,
+High severity and one finding per affected captured object, not per duplicated SPN.
+Use Captured duplicate service names, Affected object, Object type, Domain, Location and Forest.
+Show one complete saved comparison value at a time under Duplicated SPN (case-insensitive match),
+with Previous SPN, SPN {number} and Next SPN; ports, instance names and suffixes remain intact.
+Registered objects shows all known distinct objects in 50-row Previous/Next pages and Page {number},
+with captured name/type/domain/location and This finding's object marking the selected subject.
+View captured registrations explicitly reveals original spellings and every original occurrence
+in separate 50-row pages under Captured registration values, Registered object and Captured SPN.
+Do not show raw positions, GUID inventories or an eager repeated-occurrence dump.
+Retain Open affected object, Close, original investigation screens and existing loading/cancellation/
+generation wording; do not invent account state, choose a rightful owner or add unrelated nesting.
+The finding statement is "The same complete service principal name is recorded on more than one
+captured object in this forest."
+Share the following wording between Findings and Rules:
+- **Why it matters:** "Duplicate service principal names can prevent Kerberos from identifying the intended service account. This finding records captured registrations, not a confirmed outage, current service use, successful authentication, credential exposure, compromise or a completed Tier 0 path."
+- **What to do:** "Confirm the intended service and service account before changing any registration. When authorized, use setspn -F -Q <SPN> and setspn -F -X to check current registrations in the affected forest. Review dependencies, then remove only a confirmed erroneous registration under change control and test dependent service authentication. Do not choose an owner automatically, remove every matching value or reset passwords as a substitute for correcting the registration. Do not remove krbtgt or kadmin registrations based on this finding alone."
+The scope note is "Matching compares complete captured SPNs without regard to letter case; ports,
+instance names and suffixes remain part of the name. SPN aliases and other forests were not assessed.
+Recorded values do not establish complete attribute visibility. SecureAD does not run the suggested commands."
+Show saved limitations verbatim, including the conditional Kerberos-system-registration warning;
+where any exist, add "The saved assessment has limitations. The recorded duplicates remain findings;
+this is not assurance of complete forest-wide uniqueness."
+Unavailable details say "The selected finding's saved duplicate-SPN details are missing, invalid or inconsistent."
+Read selected portions of existing saved proof using the existing streaming reader and paging
+mechanism, without full-proof reconstruction, replay, new format or live query.
+Selected-record scans are permitted without a measured speed claim.
+The initial approval covers implementation and short checks only with a stop/report at 45 minutes;
+the uncertain overall active-work estimate was 90-120 minutes, including later verification,
+which needs its own warning and explicit approval.
+No repeated review/mockups, measurements, LAPS work, package, merge, commit or push is authorized.
+After the 131-pass short checkpoint, the owner explicitly approved the warned 35-45-minute,
+maximum-45-minute remaining verification on 2026-11-02: isolated rebuilt faults/restorations
+for all 52 new checks, one final correct-source affected Release build/tests with coverage,
+preservation checks and cleanup, using an interrupting per-process deadline and not the full suite.
+After the original deadline interrupted control 12's restored test run, the owner explicitly
+approved up to 45 additional minutes to finish that restoration, controls 13-23, final affected
+verification and cleanup, without rerunning completed controls or broadening application scope.
+
+**SEC-027 captured-SID-history presentation - owner-approved 2026-11-03.**
+The owner approved this exact single-rule scope/copy and implementation/short checks only.
+Preserve uncommitted verified SEC-026, its original evidence and subsequent work without committing it.
+Reuse the charcoal window from both Findings grids, retaining Privileged identifier carried in
+SID history, High severity, one finding per affected object and the existing user/computer/group scope.
+Use Captured SID history, Affected object, Object type, Domain, Location and Object SID;
+a missing object SID says "Not established from captured evidence."
+Flagged historical identifiers uses 50-row Previous/Next pages and Page {number}, with SID and
+Recognised identifier type; View other captured values explicitly loads separate 50-row pages
+under Other captured SID-history values, with "Not ranked by this rule." beside each value.
+Only a successful read establishing none exist says "No other readable SID-history values are recorded."
+Always show Unreadable SID-history values: {number} from the original saved header.
+Preserve every saved occurrence/order, do not guess an issuing-domain name or present a recognised
+identifier type as a resolved current group, and retain Open affected object, Close, original
+investigation screens and existing loading/cancellation messages without unrelated membership graphs.
+The finding statement is "The captured SID history includes an identifier recognised as privileged by this rule."
+Share the following wording between Findings and Rules:
+- **Why it matters:** "SID history can retain access through earlier identifiers without adding the object to the corresponding group. A privileged historical identifier can therefore preserve access that a group-membership review would miss. Actual access depends on resource permissions and, where applicable, trust and SID-filtering rules. This finding does not prove a specific current group membership, effective access, successful use, compromise or a completed Tier 0 path."
+- **What to do:** "Verify why each flagged value is present, the migration history and current resource dependencies. When authorised, check relevant trust and SID-filtering behaviour. If a value is no longer needed, remove only that specific sIDHistory value using administration appropriate to the user, computer or group shown, under change control, then test dependent access. Do not clear the entire attribute or assume that unranked or unreadable values are harmless. Removing a historical identifier may break access still granted only to that identifier."
+- **About:** "Reports a captured user, computer or group carrying a SID-history value recognised by SecureAD's existing privileged-identifier catalogue. Recognition uses well-known SID patterns, not a live lookup of the issuing domain or group. Custom identifiers are not assessed for privilege by this rule. Other captured values remain available, and unreadable values are reported. This rule does not establish current group membership, effective access, trust acceptance, SID filtering or a completed Tier 0 path."
+The scope note is "A recognised identifier type is not a resolved current group or a confirmed
+source-domain name. Values not ranked by this rule are not assessed as harmless."
+Only applicable limitations say "Some SID-history values could not be read. The flagged values
+remain findings; this is not a complete list of what the object may carry." or "The captured
+evidence for this object may be incomplete. The flagged values remain findings."
+Unavailable details say "The selected finding's saved SID-history details are missing, invalid or inconsistent."
+The current format saves SID text, not classification answers; reuse the existing catalogue lookup
+already used by saved readback, not a separate ranking system or new rule analysis.
+Filtering may scan this finding's indexed rows, without reconstructing the complete collection,
+scanning the forest, performing live resolution, changing native formats or claiming measured speed.
+The initial approval has a 45-minute implementation/short-check checkpoint cap, not full verification;
+long verification needs a fresh warning/approval, and the uncertain overall active-work estimate was
+2-3 hours based on recent actual timings.
+No measurements, LAPS work, package, merge, commit or push is authorized.
+After the 178-pass short checkpoint (39 new cases and 139 retained checks), the owner explicitly
+approved the warned 60-90-minute, maximum-90-minute offline fault/restoration qualification,
+final correct-source affected Release build/tests with coverage, preservation checks and cleanup,
+using the interrupting process deadline and not the full suite.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

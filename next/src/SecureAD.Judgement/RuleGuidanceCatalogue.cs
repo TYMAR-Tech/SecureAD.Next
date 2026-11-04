@@ -144,7 +144,9 @@ public static class RuleGuidanceCatalogue
             About: BroadAdministrativeGroupMembership.MembershipSummary + "\n\n" + BroadAdministrativeGroupMembership.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-026", "Kerberos", MitreTechnique: null,
-            WhyItMatters: DuplicateServicePrincipalNames.Explanation,
+            WhyItMatters: "Duplicate service principal names can prevent Kerberos from identifying the intended service account. "
+                + "This finding records captured registrations, not a confirmed outage, current service use, successful authentication, "
+                + "credential exposure, compromise or a completed Tier 0 path.",
             WhatToDo: DuplicateServicePrincipalNames.Guidance,
             About: "Reports the same complete service principal name on distinct captured objects in this forest, using Windows case-insensitive comparison.\n\n"
                 + "Ports, instance names and service-name suffixes remain part of the match; HOST registrations are not blanket-exempt. "
@@ -259,29 +261,21 @@ public static class RuleGuidanceCatalogue
             "Privileged access",
             "T1134.005",
             WhyItMatters:
-                "Every value in an account's SID history is placed in its access token when it "
-                + "signs in, and grants access exactly as membership of that group would. This "
-                + "account carries an identifier Microsoft documents as privileged, so it has that "
-                + "privilege - but it appears in no group membership listing, because nothing was "
-                + "ever added to a group. An administrator reviewing who is in Domain Admins will "
-                + "not see this account, and the account has the access anyway.",
+                "SID history can retain access through earlier identifiers without adding the object to the corresponding group. "
+                + "A privileged historical identifier can therefore preserve access that a group-membership review would miss. "
+                + "Actual access depends on resource permissions and, where applicable, trust and SID-filtering rules. "
+                + "This finding does not prove a specific current group membership, effective access, successful use, compromise or a completed Tier 0 path.",
             WhatToDo:
-                "Establish why the account carries the value, then remove it with "
-                + "Set-ADUser -Remove @{SIDHistory='S-1-5-21-…'}. Removing it may take away access "
-                + "the account still depends on: permissions left behind by the migration may name "
-                + "only the old identifier, and nothing will have re-stamped them. This rule ranks "
-                + "only the identifiers Microsoft documents, so an account carrying a custom group "
-                + "from a domain that no longer exists is not reported here - the values it holds "
-                + "are shown on the object itself.",
+                "Verify why each flagged value is present, the migration history and current resource dependencies. "
+                + "When authorised, check relevant trust and SID-filtering behaviour. If a value is no longer needed, remove only that specific sIDHistory value "
+                + "using administration appropriate to the user, computer or group shown, under change control, then test dependent access. "
+                + "Do not clear the entire attribute or assume that unranked or unreadable values are harmless. "
+                + "Removing a historical identifier may break access still granted only to that identifier.",
             About:
-                "Reports an account whose SID history contains an identifier Microsoft documents "
-                + "as privileged - Domain Admins, Enterprise Admins, the built-in operator groups "
-                + "and their like.\n\nIt ranks a value by the number at the end of it, which it can "
-                + "only do for the identifiers Microsoft publishes. A custom group that was "
-                + "powerful in the old domain has an ordinary, sequentially allocated number, and "
-                + "nothing in that number says what it once granted; if the old domain is gone, "
-                + "nothing can. Such an account is not reported, and every value it carries is "
-                + "shown on the object itself so a reader is not left with a filtered view.",
+                "Reports a captured user, computer or group carrying a SID-history value recognised by SecureAD's existing privileged-identifier catalogue. "
+                + "Recognition uses well-known SID patterns, not a live lookup of the issuing domain or group. "
+                + "Custom identifiers are not assessed for privilege by this rule. Other captured values remain available, and unreadable values are reported. "
+                + "This rule does not establish current group membership, effective access, trust acceptance, SID filtering or a completed Tier 0 path.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-sid-history-attributes"),
 

@@ -11,6 +11,8 @@ internal sealed record FindingDetailContent(FindingListItem Saved, string? Compl
     internal SavedAccountSetting? AccountSetting { get; init; }
     internal SavedDelegationConfiguration? DelegationConfiguration { get; init; }
     internal SavedAttributeWritePermission? AttributeWritePermission { get; init; }
+    internal SavedDuplicateSpn? DuplicateSpn { get; init; }
+    internal SavedSidHistory? SidHistory { get; init; }
 
     internal static FindingDetailContent FromSaved(FindingListItem saved)
     {
@@ -38,16 +40,22 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     private readonly Func<bool> _current;
     private readonly Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? _readDelegation;
     private readonly Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? _readWritePermission;
+    private readonly Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? _readDuplicateSpn;
+    private readonly Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? _readSidHistory;
     private CancellationTokenSource? _pending;
     private bool _active = true;
 
     internal FindingDetailViewModel(FindingRowViewModel selected,
         Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current,
         Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? readDelegation = null,
-        Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission = null)
+        Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission = null,
+        Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? readDuplicateSpn = null,
+        Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? readSidHistory = null)
     {
         (_selected, _read, _current, _readDelegation) = (selected, read, current, readDelegation);
         _readWritePermission = readWritePermission;
+        _readDuplicateSpn = readDuplicateSpn;
+        _readSidHistory = readSidHistory;
         ReadCompletion = LoadAsync(false);
     }
 
@@ -61,8 +69,12 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasDelegationConfiguration => DelegationConfiguration is not null;
     public AttributeWritePermissionViewModel? AttributeWritePermission { get; private set; }
     public bool HasAttributeWritePermission => AttributeWritePermission is not null;
-    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission;
+    public DuplicateSpnViewModel? DuplicateSpn { get; private set; }
+    public bool HasDuplicateSpn => DuplicateSpn is not null;
+    public SidHistoryViewModel? SidHistory { get; private set; }
+    public bool HasSidHistory => SidHistory is not null;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
@@ -93,6 +105,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         DelegationConfiguration = null;
         AttributeWritePermission?.Suspend();
         AttributeWritePermission = null;
+        DuplicateSpn?.Suspend();
+        DuplicateSpn = null;
+        SidHistory?.Suspend();
+        SidHistory = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
         return false;
@@ -160,6 +176,24 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.AttributeWritePermission is not null)
                     throw new InvalidDataException("The selected finding has unrelated saved write-permission data.");
+                if (content.Saved.RuleId == "SEC-026")
+                {
+                    if (content.DuplicateSpn is not { Context: not null } duplicate || _readDuplicateSpn is null
+                        || !duplicate.Context.Matches(content.Saved) || !duplicate.IsExpectedPage(null))
+                        throw new InvalidDataException(SavedDuplicateSpn.InvalidDetails);
+                    DuplicateSpn = new(duplicate, _readDuplicateSpn, CheckCurrent);
+                }
+                else if (content.DuplicateSpn is not null)
+                    throw new InvalidDataException(SavedDuplicateSpn.InvalidDetails);
+                if (content.Saved.RuleId == "SEC-027")
+                {
+                    if (content.SidHistory is not { Context: not null } history || _readSidHistory is null
+                        || !history.Context.Matches(content.Saved) || !history.IsExpectedPage(null))
+                        throw new InvalidDataException(SavedSidHistory.InvalidDetails);
+                    SidHistory = new(history, _readSidHistory, CheckCurrent);
+                }
+                else if (content.SidHistory is not null)
+                    throw new InvalidDataException(SavedSidHistory.InvalidDetails);
                 Finding = new(content.Saved, _current);
             }
         }
@@ -178,6 +212,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     DelegationConfiguration = null;
                     AttributeWritePermission?.Suspend();
                     AttributeWritePermission = null;
+                    DuplicateSpn?.Suspend();
+                    DuplicateSpn = null;
+                    SidHistory?.Suspend();
+                    SidHistory = null;
                     MembershipCompleteness = MembershipDetails = null;
                 }
                 else if (membership) MembershipRefusal = error.Message;
@@ -205,6 +243,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         DelegationConfiguration = null;
         AttributeWritePermission?.Suspend();
         AttributeWritePermission = null;
+        DuplicateSpn?.Suspend();
+        DuplicateSpn = null;
+        SidHistory?.Suspend();
+        SidHistory = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
     }
@@ -219,6 +261,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDelegationConfiguration));
         OnPropertyChanged(nameof(AttributeWritePermission));
         OnPropertyChanged(nameof(HasAttributeWritePermission));
+        OnPropertyChanged(nameof(DuplicateSpn));
+        OnPropertyChanged(nameof(HasDuplicateSpn));
+        OnPropertyChanged(nameof(SidHistory));
+        OnPropertyChanged(nameof(HasSidHistory));
         OnPropertyChanged(nameof(ShowsStandardIdentity));
         OnPropertyChanged(nameof(ShowsSavedDescription));
         OnPropertyChanged(nameof(IsLoading));

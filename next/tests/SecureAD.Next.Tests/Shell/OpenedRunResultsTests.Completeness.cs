@@ -61,7 +61,7 @@ public sealed partial class OpenedRunResultsTests
                 Assert.True(read.IsSuccess, read.Error?.Description);
                 var item = Assert.Single(read.Value.Findings);
                 Assert.False(item.EvidenceIsComplete);
-                Assert.Equal((finding.Subject, finding.ObjectGuid, finding.RuleId, finding.Severity, finding.Detail),
+                Assert.Equal((finding.Subject, finding.ObjectGuid, finding.RuleId, finding.Severity, FindingListItem.FromFinding(finding).Detail),
                     (item.Subject, item.ObjectGuid, item.RuleId, item.Severity, item.Detail));
                 Assert.Equal(1, read.Value.RulesRan);
                 Assert.Equal("May be incomplete", new FindingRowViewModel(item).Coverage);
@@ -254,7 +254,8 @@ public sealed partial class OpenedRunResultsTests
             [(FirstDn, null, null, null, null, 512), (SecondDn, null, null, null, null, 512)], DateTimeOffset.UnixEpoch);
         using (var captured = BundleReader.Open(directory).Value)
             finding = new(ruleId, 1, ruleId == "SEC-031" ? Severity.Low : ruleId == "SEC-032" ? Severity.Medium : Severity.High,
-                new(FindingSubjectKind.DirectoryObject, "saved coverage finding"),
+                ruleId == "SEC-027" ? new(FindingSubjectKind.Account, "Recorded principal")
+                    : new(FindingSubjectKind.DirectoryObject, "saved coverage finding"),
                 Assert.IsType<Guid>(captured.ReadObjectAttributes(FirstDn)!.ObjectGuid), FirstDn, "ad.lab", "computer",
                 "Recorded finding with independently saved limitations.", EvidenceCompleteness.Complete, CoverageEvidence(ruleId, complete))
             { PrincipalName = "Recorded principal" };
