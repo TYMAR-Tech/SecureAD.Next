@@ -223,6 +223,9 @@ internal interface IAssetReader
     /// <summary>Reads selected saved SID-history values using the existing catalogue interpretation.</summary>
     Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after);
 
+    /// <summary>Reads the exact saved SEC-030 assessment identity without protection re-derivation.</summary>
+    Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference);
+
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>
     /// <remarks>

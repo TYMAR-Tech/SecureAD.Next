@@ -548,6 +548,43 @@ approved the warned 60-90-minute, maximum-90-minute offline fault/restoration qu
 final correct-source affected Release build/tests with coverage, preservation checks and cleanup,
 using the interrupting process deadline and not the full suite.
 
+**SEC-030 saved protection-marker presentation - owner-approved 2026-11-04.**
+The owner approved the concrete Learn-verified proposal, confirming the focus on object permission
+management, not proof of a named actor's control or a path to Tier 0.
+Reuse the charcoal window from both Findings grids, retaining Protected-account marker without
+current protection, Medium severity, current object/rule scope and original investigation screens.
+The dedicated saved record contains only the assessed object's SID, not three independent stored
+flags: label the panel Saved assessment and show object identity/type/domain/location/SID, followed by
+Reported adminCount: 1, Reported permission inheritance: Disabled, and
+Saved protection assessment: Not protected.
+Explain "These are the conditions reported by the saved finding, not a new check of the object
+or a measurement of SDProp."
+The finding statement is "The saved assessment reports adminCount=1 and blocked permission
+inheritance on an object assessed as not currently protected by AdminSDHolder."
+Share the following exact wording between Findings and Rules:
+- **Why it matters:** "Blocked permission inheritance prevents permission changes delegated through the parent container from reaching this object through inheritance. This can prevent delegated administration from working as intended. Microsoft documents that this condition can remain after protected membership ends, but this finding does not establish that history for this object or determine what its explicit permissions grant."
+- **What to do:** "Confirm the object's current protection requirements and intended delegated administration. Review its current explicit permissions and the permissions it would inherit from its parent before making changes. If the object is no longer protected and blocked inheritance is unintended, clear the unnecessary adminCount marker and re-enable inheritance under change control, then test delegated management and dependent access. Preserve legitimate explicit permissions. Do not change AdminSDHolder or the SDProp schedule as a shortcut. Clearing adminCount alone does not re-enable inheritance, and enabling inheritance does not remove existing explicit grants."
+- **About:** "Reports the saved combination of adminCount=1, disabled permission inheritance and a completed captured-evidence assessment that the object is not AdminSDHolder-protected. adminCount alone is not the protection test. The rule does not reconstruct past membership or an old AdminSDHolder permissions template, assess every explicit permission, or test current SDProp operation. A missing or uncertain protection answer must not be presented as this finding."
+The scope note is "This finding does not prove past privilege, who set the marker, when inheritance
+was disabled, an unchanged AdminSDHolder permissions copy, absence of other privileges or failure
+of a live protection process."
+Unavailable details say "The selected finding's saved protection-marker details are missing, invalid or inconsistent."
+Retain existing coverage, loading/cancellation/generation wording, Open affected object and Close.
+Use exact saved finding/object/subject/generation binding, without new flags, new formats,
+protection re-derivation, whole-proof/prose reconstruction or live queries.
+First-party Learn verification used [Reducing the AD attack surface](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface#privileged-accounts-and-groups-in-active-directory),
+[Appendix C](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory)
+and the [Admin-Count schema](https://learn.microsoft.com/windows/win32/adschema/a-admincount).
+They document the common residual state, protected-object inheritance and System-Only: False;
+they do not prove this object's historical membership or an unchanged historical ACL.
+Initial approval covers implementation and short checks with a 45-minute checkpoint cap;
+long verification needs separate warning and approval.
+No CI, new analysis/catalogue changes, live work, measurements, package, merge, commit or push is authorized.
+After the 126-pass short checkpoint (31 new cases), the owner explicitly approved the warned
+45-60-minute, maximum-60-minute remaining offline verification, including isolated rebuilt faults/
+restorations, final affected Release build/tests with coverage, exact source/binary preservation
+and cleanup, with interrupting process deadlines and the WPF application-lifecycle test isolated.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

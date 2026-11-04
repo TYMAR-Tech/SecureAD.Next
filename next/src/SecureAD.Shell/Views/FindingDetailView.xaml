@@ -320,6 +320,23 @@
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasProtectionMarker,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved assessment" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.ProtectionMarker.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ReportedAdminCount,StringFormat=Reported adminCount: {0}}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ReportedInheritance,StringFormat=Reported permission inheritance: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.SavedProtection,StringFormat=Saved protection assessment: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.AssessmentNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.ShowsSavedDescription,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="Finding" Style="{StaticResource SectionTitle}" />

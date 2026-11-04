@@ -170,13 +170,15 @@ public sealed class FindingsViewTests
         {
             Findings = [source.FindingsPage.Findings[0] with
             {
-                RuleId = "SEC-030",
-                Severity = Severity.Medium,
-                Evidence = new AdminCountWithoutProtectionEvidence("S-1-5-21-1-2-3-1100"),
+                RuleId = "SEC-031",
+                RuleVersion = 3,
+                Severity = Severity.Low,
+                Subject = new(FindingSubjectKind.DirectoryObject, source.FindingsPage.Findings[0].ObjectGuid.ToString("D")),
+                Evidence = new ObjectOwnershipEvidence("S-1-5-21-1-2-3-1100", "Recorded owner", ObjectOwnerStanding.Exists, "user", true),
                 Detail = string.Join(Environment.NewLine, Enumerable.Range(1, 80).Select(index => $"Recorded observation {index}: retain this saved explanation.")),
             }],
         };
-        source.FilterValues = new([Severity.Medium], ["SEC-030"], 1);
+        source.FilterValues = new([Severity.Low], ["SEC-031"], 1);
         model.Read();
         model.SelectedFinding = model.Findings[0];
         model.OpenFinding(model.SelectedFinding);

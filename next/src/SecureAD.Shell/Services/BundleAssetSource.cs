@@ -213,6 +213,9 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadSidHistory(bundleDirectory, reference, after));
 
+    public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadProtectionMarker(bundleDirectory, reference));
+
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);

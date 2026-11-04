@@ -90,6 +90,7 @@ public sealed record FindingListItem(
                 : finding.RuleId == "SEC-013" ? SavedDelegationConfiguration.ResourceStatement
                 : finding.RuleId == "SEC-026" ? SavedDuplicateSpn.Statement
                 : finding.RuleId == "SEC-027" ? SavedSidHistory.Statement
+                : finding.RuleId == "SEC-030" ? SavedProtectionMarker.Statement
                 : SavedAttributeWritePermission.SupportsRule(finding.RuleId)
                     ? SavedAttributeWritePermission.ScopeNoteForRule(finding.RuleId) : finding.Detail, finding.Coverage,
             finding.PrincipalName, membership is not null ? FindingListKind.Membership

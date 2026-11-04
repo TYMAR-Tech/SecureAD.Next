@@ -234,25 +234,20 @@ public static class RuleGuidanceCatalogue
             "Privileged access",
             MitreTechnique: null,
             WhyItMatters:
-                "This object was privileged once and is not now, and it is carrying the leftovers. "
-                + "Microsoft states that its access control list is no longer maintained, and that "
-                + "it still does not inherit permissions from where it lives - so it sits in a "
-                + "state nobody chose, with a frozen set of permissions that no longer reflects "
-                + "either its old role or its new one.",
+                "Blocked permission inheritance prevents permission changes delegated through the parent container from reaching this object through inheritance. "
+                + "This can prevent delegated administration from working as intended. Microsoft documents that this condition can remain after protected membership ends, "
+                + "but this finding does not establish that history for this object or determine what its explicit permissions grant.",
             WhatToDo:
-                "Confirm the object is genuinely no longer privileged, then clear its adminCount "
-                + "value and re-enable inheritance on it so it picks up the permissions of the "
-                + "container it now lives in. Check what its current access control list grants "
-                + "before doing so: it is a snapshot of AdminSDHolder from the day it was last "
-                + "stamped, and something may be relying on it.",
+                "Confirm the object's current protection requirements and intended delegated administration. "
+                + "Review its current explicit permissions and the permissions it would inherit from its parent before making changes. "
+                + "If the object is no longer protected and blocked inheritance is unintended, clear the unnecessary adminCount marker and re-enable inheritance under change control, "
+                + "then test delegated management and dependent access. Preserve legitimate explicit permissions. "
+                + "Do not change AdminSDHolder or the SDProp schedule as a shortcut. Clearing adminCount alone does not re-enable inheritance, "
+                + "and enabling inheritance does not remove existing explicit grants.",
             About:
-                "Reports an object carrying the AdminSDHolder marker whose permissions still "
-                + "refuse to inherit, where the captured evidence does not establish that "
-                + "AdminSDHolder protects it now.\n\nIt does not prove the object was ever "
-                + "privileged - the marker is set when protection begins and is never cleared when "
-                + "it ends, so it records a history nobody can read back - and it does not examine "
-                + "what the frozen access control list actually grants. Whether those permissions "
-                + "are dangerous is a separate question this product does not yet answer.",
+                "Reports the saved combination of adminCount=1, disabled permission inheritance and a completed captured-evidence assessment that the object is not AdminSDHolder-protected. "
+                + "adminCount alone is not the protection test. The rule does not reconstruct past membership or an old AdminSDHolder permissions template, "
+                + "assess every explicit permission, or test current SDProp operation. A missing or uncertain protection answer must not be presented as this finding.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface#privileged-accounts-and-groups-in-active-directory"),
 

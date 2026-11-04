@@ -25,7 +25,7 @@ public sealed partial class OpenedRunResultsTests
             using var counts = new FindingsVerificationCounts(directory);
             using var source = new BundleAssetSource();
             var screen = new AssetsViewModel(source) { Pane = AssetsPane.Objects };
-            using (var heavy = new FindingsHeavyLocks(directory))
+            using (var heavy = new FindingsHeavyLocks(directory, permissionHeaders: true))
             {
                 screen.Show(directory, false);
                 await screen.ReadCompletion;
@@ -75,6 +75,8 @@ public sealed partial class OpenedRunResultsTests
                 Assert.Equal(0, counts.Heavy);
                 screen.OpenFinding(screen.Findings.Single(row => row.DistinguishedName == NavigationBrowsingTests.Group));
                 await screen.FindingDetails!.ReadCompletion;
+                Assert.Null(screen.FindingDetails.Refusal);
+                Assert.NotNull(screen.FindingDetails.ProtectionMarker);
                 screen.OpenAffectedObjectCommand.Execute(null);
                 await screen.ObjectReadCompletion;
                 Assert.NotNull(screen.Opened);
@@ -96,14 +98,16 @@ public sealed partial class OpenedRunResultsTests
                 screen.CloseObject();
                 await screen.ReadCompletion;
                 Assert.Equal(original, screen.Findings.Select(FindingDisplaySnapshot));
-                Assert.Equal(0, counts.Heavy);
+                Assert.Equal((1L, 0L, 0L, 0L, 0L), (counts.Count("permission"), counts.Count("path"),
+                    counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
                 screen.Suspend();
                 source.CloseRun();
                 screen.Show(directory, false);
                 await screen.ReadCompletion;
                 Assert.Null(screen.ViewRefusal);
                 Assert.Equal(original, screen.Findings.Select(FindingDisplaySnapshot));
-                Assert.Equal(0, counts.Heavy);
+                Assert.Equal((1L, 0L, 0L, 0L, 0L), (counts.Count("permission"), counts.Count("path"),
+                    counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
             }
 
             screen.OpenFinding(screen.Findings.Single(row => row.DistinguishedName == NavigationBrowsingTests.Group));

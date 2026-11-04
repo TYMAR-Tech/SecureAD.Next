@@ -61,6 +61,12 @@ internal sealed partial class AssetsViewModel
                     if (!history.IsSuccess) return Result<FindingDetailContent>.Failure(history.Error);
                     content = content with { SidHistory = history.Value };
                 }
+                if (!membership && answer.Value.RuleId == "SEC-030")
+                {
+                    var marker = reader.ReadProtectionMarker(bundle, reference);
+                    if (!marker.IsSuccess) return Result<FindingDetailContent>.Failure(marker.Error);
+                    content = content with { ProtectionMarker = marker.Value };
+                }
                 return Result<FindingDetailContent>.Success(content);
             }, token, membership ? "read selected finding membership" : "read selected finding"),
             finding.IsCurrent,

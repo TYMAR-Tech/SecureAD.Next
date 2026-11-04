@@ -13,6 +13,7 @@ internal sealed record FindingDetailContent(FindingListItem Saved, string? Compl
     internal SavedAttributeWritePermission? AttributeWritePermission { get; init; }
     internal SavedDuplicateSpn? DuplicateSpn { get; init; }
     internal SavedSidHistory? SidHistory { get; init; }
+    internal SavedProtectionMarker? ProtectionMarker { get; init; }
 
     internal static FindingDetailContent FromSaved(FindingListItem saved)
     {
@@ -73,8 +74,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasDuplicateSpn => DuplicateSpn is not null;
     public SidHistoryViewModel? SidHistory { get; private set; }
     public bool HasSidHistory => SidHistory is not null;
-    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory;
+    public ProtectionMarkerViewModel? ProtectionMarker { get; private set; }
+    public bool HasProtectionMarker => ProtectionMarker is not null;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
@@ -109,6 +112,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         DuplicateSpn = null;
         SidHistory?.Suspend();
         SidHistory = null;
+        ProtectionMarker = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
         return false;
@@ -194,6 +198,14 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.SidHistory is not null)
                     throw new InvalidDataException(SavedSidHistory.InvalidDetails);
+                if (content.Saved.RuleId == "SEC-030")
+                {
+                    if (content.ProtectionMarker is not { } marker || !marker.Matches(content.Saved))
+                        throw new InvalidDataException(SavedProtectionMarker.InvalidDetails);
+                    ProtectionMarker = new(marker);
+                }
+                else if (content.ProtectionMarker is not null)
+                    throw new InvalidDataException(SavedProtectionMarker.InvalidDetails);
                 Finding = new(content.Saved, _current);
             }
         }
@@ -216,6 +228,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     DuplicateSpn = null;
                     SidHistory?.Suspend();
                     SidHistory = null;
+                    ProtectionMarker = null;
                     MembershipCompleteness = MembershipDetails = null;
                 }
                 else if (membership) MembershipRefusal = error.Message;
@@ -247,6 +260,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         DuplicateSpn = null;
         SidHistory?.Suspend();
         SidHistory = null;
+        ProtectionMarker = null;
         MembershipCompleteness = MembershipDetails = null;
         Announce();
     }
@@ -265,6 +279,8 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDuplicateSpn));
         OnPropertyChanged(nameof(SidHistory));
         OnPropertyChanged(nameof(HasSidHistory));
+        OnPropertyChanged(nameof(ProtectionMarker));
+        OnPropertyChanged(nameof(HasProtectionMarker));
         OnPropertyChanged(nameof(ShowsStandardIdentity));
         OnPropertyChanged(nameof(ShowsSavedDescription));
         OnPropertyChanged(nameof(IsLoading));

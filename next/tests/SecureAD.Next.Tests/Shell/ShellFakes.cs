@@ -619,6 +619,14 @@ internal sealed class FakeAssetSource : IAssetSource
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
     public Func<FindingReference, DuplicateSpnMark?, Result<SavedDuplicateSpn>>? DuplicateSpnRead { get; set; }
     public Func<FindingReference, SidHistoryMark?, Result<SavedSidHistory>>? SidHistoryRead { get; set; }
+    public Func<FindingReference, Result<SavedProtectionMarker>>? ProtectionMarkerRead { get; set; }
+    public List<FindingReference> ProtectionMarkerReads { get; } = [];
+    public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference)
+    {
+        ProtectionMarkerReads.Add(reference);
+        return ProtectionMarkerRead is { } read ? read(reference) : Result<SavedProtectionMarker>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestProtectionMarkerUnavailable", ErrorSeverity.Failed, SavedProtectionMarker.InvalidDetails, bundleDirectory));
+    }
     public List<(FindingReference Reference, SidHistoryMark? After)> SidHistoryReads { get; } = [];
     public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after)
     {

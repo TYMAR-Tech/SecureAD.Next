@@ -181,16 +181,19 @@ public sealed class Sec022FindingDetailTests
             "CN=Same name,OU=Accounts,DC=one,DC=example", "one.example", objectClass,
             disabled ? "Misleading original prose says enabled." : "Misleading original prose says disabled.",
             EvidenceCompleteness.MayBeMissingConfidentialValues, new UserAccountControlEvidence(control)) { PrincipalName = "same-friendly-name" };
+        var otherGuid = Guid.NewGuid();
         var other = finding with
         {
-            RuleId = "SEC-030", ObjectGuid = Guid.NewGuid(), DomainFqdn = "two.example",
+            RuleId = "SEC-031", RuleVersion = 3, Severity = Severity.Low, ObjectGuid = otherGuid, DomainFqdn = "two.example",
+            Subject = new(FindingSubjectKind.DirectoryObject, otherGuid.ToString("D")),
             DistinguishedName = "CN=Same name,OU=Accounts,DC=two,DC=example",
-            Evidence = new AdminCountWithoutProtectionEvidence("S-1-5-21-1-2-3-1100"), Detail = "Other rule's unchanged saved description.",
+            Evidence = new ObjectOwnershipEvidence("S-1-5-21-1-2-3-1100", "Recorded owner", ObjectOwnerStanding.Exists, objectClass, true),
+            Detail = "Other rule's unchanged saved description.",
         };
         var source = new FakeAssetSource
         {
             FindingsPage = new([finding, other], null, 2),
-            FilterValues = new([Severity.High], ["SEC-022", "SEC-030"], 2),
+            FilterValues = new([Severity.High, Severity.Low], ["SEC-022", "SEC-031"], 2),
         };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         model.Show(@"C:\offline-fixture\sec022-detail", false);
