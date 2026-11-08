@@ -332,12 +332,15 @@ public sealed partial class OpenedRunResultsTests
         var display = new FindingRowViewModel(selected.Value);
         Assert.True(display.HasMembershipEvidence);
         Assert.Equal("May be incomplete", display.Coverage);
-        Assert.Contains("Direct protection basis: Recorded direct protection", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Initial membership:", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("--primary group-->", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Contains a distribution group", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("not every possible path", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("membership evidence or capture coverage is incomplete", display.MembershipCompleteness, StringComparison.Ordinal);
+        var membership = Assert.IsType<FindingMembershipDisplay>(selected.Value.Membership);
+        Assert.Equal("Recorded direct protection", membership.DirectProtectionName);
+        var initial = Assert.Single(membership.MembershipRoutes.Memberships);
+        var route = Assert.Single(initial.Routes);
+        Assert.True(route.Steps[1].IsPrimaryGroup);
+        Assert.Equal(MembershipRouteAuthorization.DistributionGroup, route.Authorization);
+        Assert.False(route.EstablishesProtection);
+        Assert.Contains("not every possible path", ServiceRegistrationPresentation.MembershipNote, StringComparison.Ordinal);
+        Assert.Contains("membership evidence or capture coverage is incomplete", membership.MembershipRoutes.CompletenessDescription, StringComparison.Ordinal);
         var original = source.ReadFindings(directory, FindingsQuery.Everything() with { PageSize = 1 });
         Assert.True(original.IsSuccess, original.Error?.Description);
         Assert.Equal(new[] { "HTTP/a.ad.lab", "HTTP/a.ad.lab" },
@@ -546,7 +549,7 @@ public sealed partial class OpenedRunResultsTests
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!;
         using var writer = JudgementWriter.Create(directory, seal.Hash, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
         foreach (var group in findings.GroupBy(finding => finding.RuleId, StringComparer.Ordinal))
-            writer.Write(RuleExecution.Judged(new(group.Key, "Recorded display fixture", group.First().Severity, 1,
+            writer.Write(RuleExecution.Judged(new(group.Key, "Recorded display fixture", group.First().Severity, group.First().RuleVersion,
                 ["computer"], ["userAccountControl"], []), group.Count(), 0, group.ToArray()));
         writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));
     }

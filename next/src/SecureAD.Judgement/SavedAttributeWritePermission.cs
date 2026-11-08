@@ -45,15 +45,7 @@ public sealed record AttributeWritePermissionContext(FindingReference Reference,
     public string PermissionHolder => HolderName ?? HolderSid;
     public string AccountState => AccountIsDisabled is null ? "Not established from captured evidence."
         : AccountIsDisabled.Value ? "Disabled" : "Enabled";
-    public string Unexpectedness => ExpectednessReason switch
-    {
-        nameof(ControlExpectednessReason.UnexpectedBroadPrincipal) => "The holder is a broadly applicable identity.",
-        nameof(ControlExpectednessReason.UnexpectedNotControlPlane) =>
-            "The saved assessment does not identify this holder as an expected administrator for this target.",
-        nameof(ControlExpectednessReason.UnexpectedOutsideAuthorityScope) =>
-            "The holder is outside its expected administrative authority for this target in the saved assessment.",
-        _ => throw new InvalidDataException(InvalidDetails),
-    };
+    public string Unexpectedness => SavedPermissionReview.Describe(ExpectednessReason, InvalidDetails);
 
     public bool Matches(FindingListItem finding) => Enum.IsDefined(PermissionKind) && finding.RuleId == RuleId && finding.RuleVersion == 1
         && finding.Severity == Severity.High && Reference == finding.Reference && Reference.GenerationId != Guid.Empty

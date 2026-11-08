@@ -58,7 +58,7 @@ public sealed class DelegationSettingDetailTests
         Assert.Equal(row.Saved.Reference!.Value, Assert.Single(source.AccountSettingReads));
         Assert.False(details.ShowsSavedDescription);
         Assert.False(details.Finding.HasMembershipEvidence);
-        Assert.Null(details.MembershipDetails);
+        Assert.Null(details.ServiceRegistration);
         Assert.Empty(source.PathQueries);
         Assert.Empty(source.ControlQueries);
         model.CloseFindingDetails();

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 
@@ -18,24 +19,23 @@ internal sealed partial class AssetsViewModel
     {
         if (finding is null || BundlePath is not { } bundle || _captureIsRunning) return;
         FindingDetails?.Suspend();
-        FindingDetails = new(finding, (membership, token) =>
+        FindingDetails = new(finding, token =>
             ReadBoundAsync(bundle, finding.IsCurrent, reader =>
             {
                 if (finding.Saved.Reference is not { } reference)
                     return Result<FindingDetailContent>.Failure(AuditError.Create(ErrorCategory.Shell,
                         "FindingIdentityUnavailable", ErrorSeverity.Failed,
                         "The selected finding has no saved identity.", bundle));
-                var answer = reader.ReadSelectedFinding(bundle, reference, membership);
+                var answer = reader.ReadSelectedFinding(bundle, reference, false);
                 if (!answer.IsSuccess) return Result<FindingDetailContent>.Failure(answer.Error);
-                // Formatting requested chains belongs to the read worker, never a hidden WPF binding.
                 var content = FindingDetailContent.FromSaved(answer.Value);
-                if (!membership && SavedAccountSetting.SupportsRule(answer.Value.RuleId))
+                if (SavedAccountSetting.SupportsRule(answer.Value.RuleId))
                 {
                     var setting = reader.ReadAccountSetting(bundle, reference);
                     if (!setting.IsSuccess) return Result<FindingDetailContent>.Failure(setting.Error);
                     content = content with { AccountSetting = setting.Value };
                 }
-                if (!membership && answer.Value.RuleId is "SEC-012" or "SEC-013")
+                if (answer.Value.RuleId is "SEC-012" or "SEC-013")
                 {
                     var delegation = answer.Value.RuleId == "SEC-013"
                         ? reader.ReadResourceDelegation(bundle, reference, null)
@@ -43,32 +43,62 @@ internal sealed partial class AssetsViewModel
                     if (!delegation.IsSuccess) return Result<FindingDetailContent>.Failure(delegation.Error);
                     content = content with { DelegationConfiguration = delegation.Value };
                 }
-                if (!membership && SavedAttributeWritePermission.SupportsRule(answer.Value.RuleId))
+                if (SavedAttributeWritePermission.SupportsRule(answer.Value.RuleId))
                 {
                     var permission = reader.ReadAttributeWritePermission(bundle, reference, null);
                     if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);
                     content = content with { AttributeWritePermission = permission.Value };
                 }
-                if (!membership && answer.Value.RuleId == "SEC-026")
+                if (answer.Value.RuleId == "SEC-026")
                 {
                     var duplicate = reader.ReadDuplicateSpn(bundle, reference, null);
                     if (!duplicate.IsSuccess) return Result<FindingDetailContent>.Failure(duplicate.Error);
                     content = content with { DuplicateSpn = duplicate.Value };
                 }
-                if (!membership && answer.Value.RuleId == "SEC-027")
+                if (answer.Value.RuleId == "SEC-027")
                 {
                     var history = reader.ReadSidHistory(bundle, reference, null);
                     if (!history.IsSuccess) return Result<FindingDetailContent>.Failure(history.Error);
                     content = content with { SidHistory = history.Value };
                 }
-                if (!membership && answer.Value.RuleId == "SEC-030")
+                if (answer.Value.RuleId == "SEC-030")
                 {
                     var marker = reader.ReadProtectionMarker(bundle, reference);
                     if (!marker.IsSuccess) return Result<FindingDetailContent>.Failure(marker.Error);
                     content = content with { ProtectionMarker = marker.Value };
                 }
+                if (answer.Value.RuleId is "SEC-031" or "SEC-032")
+                {
+                    var ownership = reader.ReadOwnershipAssessment(bundle, reference);
+                    if (!ownership.IsSuccess) return Result<FindingDetailContent>.Failure(ownership.Error);
+                    content = content with { OwnershipAssessment = ownership.Value };
+                }
+                if (answer.Value.RuleId == "SEC-002")
+                {
+                    var replication = reader.ReadReplicationPermission(bundle, reference, null);
+                    if (!replication.IsSuccess) return Result<FindingDetailContent>.Failure(replication.Error);
+                    content = content with { ReplicationPermission = replication.Value };
+                }
+                if (answer.Value.RuleId == "SEC-021")
+                {
+                    var service = reader.ReadServiceRegistrations(bundle, reference, null);
+                    if (!service.IsSuccess) return Result<FindingDetailContent>.Failure(service.Error);
+                    content = content with { ServiceRegistration = service.Value };
+                }
+                if (answer.Value.RuleId is "SEC-050" or "SEC-051")
+                {
+                    var review = reader.ReadGroupReview(bundle, reference);
+                    if (!review.IsSuccess) return Result<FindingDetailContent>.Failure(review.Error);
+                    content = content with { GroupReview = review.Value };
+                }
+                if (answer.Value.RuleId == "SEC-052")
+                {
+                    var circular = reader.ReadCircularMembershipGroups(bundle, reference, null);
+                    if (!circular.IsSuccess) return Result<FindingDetailContent>.Failure(circular.Error);
+                    content = content with { CircularMembership = circular.Value };
+                }
                 return Result<FindingDetailContent>.Success(content);
-            }, token, membership ? "read selected finding membership" : "read selected finding"),
+            }, token, "read selected finding"),
             finding.IsCurrent,
             (after, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
                 finding.Saved.Reference is { } reference
@@ -96,7 +126,32 @@ internal sealed partial class AssetsViewModel
                     ? reader.ReadSidHistory(bundle, reference, after)
                     : Result<SavedSidHistory>.Failure(AuditError.Create(ErrorCategory.Shell,
                         "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
-                token, "read selected SID-history values"));
+                token, "read selected SID-history values"),
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent, reader =>
+                finding.Saved.Reference is { } reference
+                    ? reader.ReadReplicationPermission(bundle, reference, after)
+                    : Result<SavedReplicationPermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                        "FindingIdentityUnavailable", ErrorSeverity.Failed, "The selected finding has no saved identity.", bundle)),
+                token, "read selected replication-permission entries"),
+            new ServiceRegistrationReads(
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceRegistrations(bundle, finding.Saved.Reference!.Value, after), token, "read selected service names"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadInitialMemberships(bundle, finding.Saved.Reference!.Value, after), token, "read selected initial memberships"),
+                (group, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadMembershipRoutes(bundle, finding.Saved.Reference!.Value, group, after), token, "read selected membership routes"),
+                (group, route, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadMembershipSteps(bundle, finding.Saved.Reference!.Value, group, route, after), token, "read selected membership steps")),
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                reader => reader.ReadGroupReviewReferences(bundle, finding.Saved.Reference!.Value, after), token, "read saved direct references"),
+            new CircularMembershipReads(
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadCircularMembershipGroups(bundle, finding.Saved.Reference!.Value, after), token, "read saved circular groups"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadCircularMembershipLinks(bundle, finding.Saved.Reference!.Value, after), token, "read recorded circular membership links"),
+                (group, member, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadCircularMembershipWitnesses(bundle, finding.Saved.Reference!.Value, group, member, after), token, "read selected circular membership values"),
+                OpenCircularGroup));
     }
 
     [RelayCommand]
@@ -115,5 +170,12 @@ internal sealed partial class AssetsViewModel
             AnnounceObjectPresentation();
         else
             Open(finding.DistinguishedName, ObjectSectionCatalog.Overview, finding.Saved.ObjectGuid);
+    }
+
+    private void OpenCircularGroup(CircularMembershipGroup group)
+    {
+        if (FindingDetails is not { } details || !details.CheckCurrent() || details.CircularMembership is not { } circular
+            || !circular.ContainsGroup(group)) return;
+        Open(group.DistinguishedName, ObjectSectionCatalog.Overview, group.ObjectGuid);
     }
 }

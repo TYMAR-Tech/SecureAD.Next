@@ -50,7 +50,7 @@ public sealed class ResourceDelegationDetailTests
         Assert.Empty(source.AccountSettingReads);
         Assert.Empty(source.PathQueries);
         Assert.Empty(source.ControlQueries);
-        Assert.Null(details.MembershipDetails);
+        Assert.Null(details.ServiceRegistration);
         Assert.All(source.FindingSelections, value => Assert.False(value.Membership));
         Assert.Equal(row.Saved.Reference!.Value, Assert.Single(source.ResourceDelegationReads).Reference);
         var rules = new RuleRowViewModel("SEC-013", new ResourceBasedDelegationOnRelevantResource().Definition, null);

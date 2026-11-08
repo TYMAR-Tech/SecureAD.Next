@@ -38,7 +38,7 @@ public sealed class Sec022FindingDetailTests
         Assert.Equal(selected.Saved.Reference!.Value, Assert.Single(source.AccountSettingReads));
         Assert.Empty(source.Reads.Where(read => read is "Attributes" or "Permissions" or "Classification"));
         Assert.False(detail.Finding.HasMembershipEvidence);
-        Assert.Null(detail.MembershipDetails);
+        Assert.Null(detail.ServiceRegistration);
         model.CloseFindingDetails();
         Assert.Same(selected, model.SelectedFinding);
         Assert.Null(detail.CapturedSetting);
@@ -182,18 +182,16 @@ public sealed class Sec022FindingDetailTests
             disabled ? "Misleading original prose says enabled." : "Misleading original prose says disabled.",
             EvidenceCompleteness.MayBeMissingConfidentialValues, new UserAccountControlEvidence(control)) { PrincipalName = "same-friendly-name" };
         var otherGuid = Guid.NewGuid();
-        var other = finding with
+        var other = FindingsViewTests.GenericServiceFinding(finding with
         {
-            RuleId = "SEC-031", RuleVersion = 3, Severity = Severity.Low, ObjectGuid = otherGuid, DomainFqdn = "two.example",
-            Subject = new(FindingSubjectKind.DirectoryObject, otherGuid.ToString("D")),
+            ObjectGuid = otherGuid, DomainFqdn = "two.example",
             DistinguishedName = "CN=Same name,OU=Accounts,DC=two,DC=example",
-            Evidence = new ObjectOwnershipEvidence("S-1-5-21-1-2-3-1100", "Recorded owner", ObjectOwnerStanding.Exists, objectClass, true),
             Detail = "Other rule's unchanged saved description.",
-        };
+        });
         var source = new FakeAssetSource
         {
             FindingsPage = new([finding, other], null, 2),
-            FilterValues = new([Severity.High, Severity.Low], ["SEC-022", "SEC-031"], 2),
+            FilterValues = new([finding.Severity, other.Severity], [finding.RuleId, other.RuleId], 2),
         };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         model.Show(@"C:\offline-fixture\sec022-detail", false);

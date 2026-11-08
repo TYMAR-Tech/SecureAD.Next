@@ -166,19 +166,15 @@ public sealed class FindingsViewTests
     public void WindowContentScrollsWhileItsActionsRemainVisible(int width, int height) => OnSta(() =>
     {
         var (model, source) = Model();
+        var longFinding = GenericServiceFinding(source.FindingsPage.Findings[0]) with
+        {
+            Detail = string.Join(Environment.NewLine, Enumerable.Range(1, 80).Select(index => $"Recorded observation {index}: retain this saved explanation.")),
+        };
         source.FindingsPage = source.FindingsPage with
         {
-            Findings = [source.FindingsPage.Findings[0] with
-            {
-                RuleId = "SEC-031",
-                RuleVersion = 3,
-                Severity = Severity.Low,
-                Subject = new(FindingSubjectKind.DirectoryObject, source.FindingsPage.Findings[0].ObjectGuid.ToString("D")),
-                Evidence = new ObjectOwnershipEvidence("S-1-5-21-1-2-3-1100", "Recorded owner", ObjectOwnerStanding.Exists, "user", true),
-                Detail = string.Join(Environment.NewLine, Enumerable.Range(1, 80).Select(index => $"Recorded observation {index}: retain this saved explanation.")),
-            }],
+            Findings = [longFinding],
         };
-        source.FilterValues = new([Severity.Low], ["SEC-031"], 1);
+        source.FilterValues = new([longFinding.Severity], [longFinding.RuleId], 1);
         model.Read();
         model.SelectedFinding = model.Findings[0];
         model.OpenFinding(model.SelectedFinding);
@@ -217,25 +213,22 @@ public sealed class FindingsViewTests
     [Fact]
     public void MembershipTextIsAbsentUntilTheExplicitAction() => OnSta(() =>
     {
-        var finding = ObjectFindingsPagingTests.Finding(1) with
-        {
-            RuleId = "SEC-021",
-            Evidence = new KerberoastableAccountEvidence("S-1-5-21-11-22-33-1100", ["HTTP/service"], 512)
-            { MembershipRoutes = MembershipRouteSummary.NotDerived },
-        };
+        var finding = ServiceRegistrationDetailTests.Finding(ObjectFindingsPagingTests.Finding(1));
         var (model, source) = Model(finding);
+        ServiceRegistrationDetailTests.Configure(source, model.Findings[0].Saved);
         model.OpenFinding(model.Findings[0]);
         var view = View(model, "FindingDetailView.xaml");
         Layout(view, 900, 430);
         Assert.False(Assert.Single(source.FindingSelections).Membership);
-        Assert.Null(model.FindingDetails!.MembershipDetails);
+        Assert.Null(model.FindingDetails!.ServiceRegistration!.Memberships);
         var action = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "View membership evidence"));
         Assert.True(action.IsEnabled);
         ((IInvokeProvider)new ButtonAutomationPeer(action).GetPattern(PatternInterface.Invoke)!).Invoke();
         Layout(view, 900, 430);
-        Assert.Equal(new[] { false, true }, source.FindingSelections.Select(read => read.Membership));
-        Assert.Contains("routes were not derived", model.FindingDetails.MembershipCompleteness, StringComparison.Ordinal);
-        Assert.Equal(model.FindingDetails.MembershipCompleteness, BoundText(view, "FindingDetails.MembershipCompleteness").Text);
+        Assert.Equal(new[] { false }, source.FindingSelections.Select(read => read.Membership));
+        Assert.Equal(new[] { "names", "groups" }, source.ServiceReads);
+        Assert.Contains("routes were not derived", model.FindingDetails.ServiceRegistration.MembershipCompleteness, StringComparison.Ordinal);
+        Assert.Equal(model.FindingDetails.ServiceRegistration.MembershipCompleteness, BoundText(view, "FindingDetails.ServiceRegistration.MembershipCompleteness").Text);
         Assert.False(action.IsEnabled);
     });
 
@@ -267,6 +260,18 @@ public sealed class FindingsViewTests
         Assert.Same(model.OpenSavedRoutesCommand, action.Command);
         Assert.Same(model.FindingDetails!.Finding, action.CommandParameter);
     });
+
+    internal static Finding GenericServiceFinding(Finding original)
+    {
+        var definition = new ServiceAccountWithNonExpiringPassword().Definition;
+        var account = new ServiceAccountAssociation(original.ObjectGuid, original.DistinguishedName, original.DomainFqdn,
+            DateTimeOffset.UnixEpoch, original.Coverage, ServiceAccountKind.SpnBearingUser,
+            [new(0, "top", null), new(1, "person", null), new(2, "user", null)],
+            [new(0, "HTTP/service", null)], [new(0, "66048", null)], 66048, []);
+        return original with { RuleId = definition.Id, RuleVersion = definition.Version, Severity = definition.Severity,
+            ObjectClass = "user", Subject = new(FindingSubjectKind.Account, original.ObjectGuid.ToString("D")),
+            Evidence = new ServiceAccountFindingEvidence(account, null) };
+    }
 
     private static (AssetsViewModel Model, FakeAssetSource Source) Model(Finding? finding = null)
     {

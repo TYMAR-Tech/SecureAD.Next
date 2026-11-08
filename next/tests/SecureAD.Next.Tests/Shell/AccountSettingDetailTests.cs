@@ -57,7 +57,7 @@ public sealed class AccountSettingDetailTests
         Assert.Equal(row.Saved, detail.Finding.Saved);
         Assert.Equal(row.Saved.Reference!.Value, Assert.Single(source.AccountSettingReads));
         Assert.False(detail.Finding.HasMembershipEvidence);
-        Assert.Null(detail.MembershipDetails);
+        Assert.Null(detail.ServiceRegistration);
         model.CloseFindingDetails();
         Assert.Same(row, model.SelectedFinding);
         Assert.Null(detail.CapturedSetting);

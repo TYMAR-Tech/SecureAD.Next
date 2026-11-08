@@ -44,7 +44,7 @@ public sealed class AttributeWritePermissionDetailTests
         Assert.Empty(source.ResourceDelegationReads);
         Assert.Empty(source.ControlQueries);
         Assert.Empty(source.PathQueries);
-        Assert.Null(details.MembershipDetails);
+        Assert.Null(details.ServiceRegistration);
         var rules = new RuleRowViewModel("SEC-014", new UnexpectedResourceBasedDelegationWrite().Definition, null);
         Assert.Equal(rules.WhyItMatters, details.Finding.WhyItMatters);
         Assert.Equal(rules.WhatToDo, details.Finding.WhatToDo);

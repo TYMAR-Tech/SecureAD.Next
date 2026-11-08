@@ -159,7 +159,7 @@ public static class RuleGuidanceCatalogue
             WhatToDo: CircularGroupMembership.Guidance,
             About: "These groups form a circular membership relationship.\n\n"
                 + "Review the recorded links and the membership or permissions that depend on them; this finding does not establish a route to Tier 0.",
-            MicrosoftReference: "https://learn.microsoft.com/windows/win32/ad/determining-a-user-s-or-group-s-membership-in-a-group"),
+            MicrosoftReference: "https://learn.microsoft.com/windows/win32/ad/determining-a-userampaposs-or-groupampaposs-membership-in-a-group"),
         new RuleGuidance(
             "SEC-071",
             "Tier 0",
@@ -336,34 +336,11 @@ public static class RuleGuidanceCatalogue
             "Credentials",
             "T1558.003",
             WhyItMatters:
-                "Any authenticated member of the domain can ask a domain controller for a ticket to "
-                + "this account's service, and that ticket is encrypted with this account's "
-                + "password. Compromising it exposes the authority it actually holds. AdminSDHolder "
-                + "protection alone does not prove domain administration: distribution-group paths "
-                + "can propagate protection without authorization. The request is ordinary protocol traffic, the account is never "
-                + "contacted, and the cracking leaves no failed logons, so nothing about it looks "
-                + "like an attack while it is happening.",
+                ServiceRegistrationPresentation.Why,
             WhatToDo:
-                "If the account does not actually run a service, remove the service name - a stale "
-                + "name left from a test is the commonest case and the only one where the exposure "
-                + "goes away rather than getting more expensive. If it does run a service, replace "
-                + "it with a group managed service account, whose password Windows generates and "
-                + "rotates itself; where that is not possible, give it a long random password. "
-                + "Consider whether the account needs its privilege at all. Removing the service "
-                + "name closes this route to the account and says nothing about any other. Review "
-                + "each initial membership in the supporting evidence, including longer routes. "
-                + "Changing a shared group can affect other accounts. Removing the listed memberships "
-                + "does not establish that every other form of privilege is gone.",
+                ServiceRegistrationPresentation.Action,
             About:
-                "Reports a service name registered on an account that AdminSDHolder protects.\n\n"
-                + "Ordinary service accounts with service names are not reported, and that "
-                + "is the rule rather than an omission: a service name on an ordinary account is "
-                + "what a service account is, and reporting every one would report the normal "
-                + "operation of every application in the estate. Microsoft scopes its own "
-                + "recommendation the same way. The key distribution centre's own account is "
-                + "excluded too - it carries a service name by default and cannot be changed. This "
-                + "rule does not measure password strength, which is what actually decides whether "
-                + "the offline attack succeeds.",
+                ServiceRegistrationPresentation.About,
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts"),
 
@@ -438,38 +415,11 @@ public static class RuleGuidanceCatalogue
             // exists to prevent.
             MitreTechnique: null,
             WhyItMatters:
-                "The owner of an object can rewrite that object's permissions whenever they like, "
-                + "and ownership does not appear in the permission list. You can review every "
-                + "entry on this object, find nothing wrong, and still miss that its owner can "
-                + "replace the whole list at will. Microsoft is blunt about it: no matter what "
-                + "permissions are set on an object, the owner can always change them. Objects "
-                + "created by an administrator are owned by the Administrators group; an object "
-                + "created by anybody else is owned by that person personally, and stays that way "
-                + "for the life of the object.",
+                SavedOwnershipAssessment.Risk,
             WhatToDo:
-                "Decide whether this owner should hold that standing. Where they should not, "
-                + "change the owner to a privileged and monitored principal - which is what "
-                + "Microsoft prescribes for the one case it covers directly. Where the owner is a "
-                + "service account or an application identity that your organisation manages "
-                + "deliberately, accept the finding rather than changing anything: that leaves a "
-                + "record, where a silent exclusion would not. Where the owning account no longer "
-                + "exists the object is orphaned and nobody can be asked to hand ownership over, "
-                + "so an administrator must take ownership before anything else can be done.",
+                SavedOwnershipAssessment.Action,
             About:
-                "Reports an object whose owner is not an administrative principal.\n\nThis is latent "
-                + "authority and not evidence of wrongdoing - the ordinary cause is that somebody "
-                + "was allowed to create the object, they created it, and they became its owner.\n\n"
-                + "An owner accepted through group membership is not reported within that "
-                + "acceptance's scope. The forest-root Schema Admins group and its members are "
-                + "accepted only in that forest's schema partition. Membership is consulted rather "
-                + "than the identifier alone.\n\nThe rule stays silent where the owner would not "
-                + "actually keep the power - an OWNER RIGHTS entry on the object switches off the "
-                + "owner's implicit rights, and so does the forest setting that blocks them, which "
-                + "applies to computer objects owned by non-administrators.\n\nObjects that "
-                + "AdminSDHolder protects are reported by SEC-032 instead and never by both, so no "
-                + "object appears twice.\n\nExpect this rule to be plentiful in a forest where "
-                + "delegated creation is normal; a large count is information about the estate "
-                + "rather than a defect.",
+                SavedOwnershipAssessment.ScopeNote,
             MicrosoftReference:
                 "https://learn.microsoft.com/windows/win32/secauthz/owner-of-a-new-object"),
 
@@ -478,45 +428,11 @@ public static class RuleGuidanceCatalogue
             "Permissions",
             MitreTechnique: null,
             WhyItMatters:
-                "This object is one AdminSDHolder protects, which means the directory treats it as "
-                + "conferring privilege - a member of Domain Admins, Enterprise Admins, "
-                + "Administrators or an operator group. Its owner is not an administrative "
-                + "principal, and an owner can rewrite an object's permissions whenever they like. "
-                + "What makes this worth your attention is that it should not have been possible "
-                + "to observe: AdminSDHolder restores the owner of a protected object roughly "
-                + "every hour, so finding a non-administrative one in a capture means either the "
-                + "change was made within about the last hour, or AdminSDHolder is not running at "
-                + "all. The second case is the serious one, because every privileged object in "
-                + "the domain would then be sitting unrepaired.",
+                SavedOwnershipAssessment.Risk + "\n\n" + SavedOwnershipAssessment.ProtectedRisk,
             WhatToDo:
-                "Look at this promptly, and expect the owner may already have been restored by "
-                + "the time you do - that does not mean the finding was wrong. First check "
-                + "whether AdminSDHolder is running: compare the owner now against the one "
-                + "reported here, and if it has been put back then the protection mechanism is "
-                + "working and what you are looking at is a recent change worth explaining. If "
-                + "the owner is still non-administrative an hour or more after the capture, "
-                + "treat AdminSDHolder itself as the problem and check the domain controller "
-                + "holding the PDC emulator role, because a stalled SDProp affects every "
-                + "privileged object at once. Either way, check how the owner came to hold that "
-                + "standing: an object created inside a privileged container by a delegated "
-                + "administrator is the usual route, and the delegation that allowed it will "
-                + "still be in place.",
+                SavedOwnershipAssessment.Action,
             About:
-                "Reports an object protected by AdminSDHolder whose owner is not an administrative "
-                + "principal.\n\nIt applies the same test as SEC-031 and covers the objects SEC-031 "
-                + "deliberately leaves alone, so the two never report the same object. Where the "
-                + "protection closure is incomplete neither rule reports, because an object that "
-                + "might be protected must not be quietly reported at the lower severity.\n\nThe "
-                + "owner is judged by membership as well as by identifier, and the rule stays "
-                + "silent where the owner would not actually keep the power to rewrite the list. "
-                + "Schema Admins and its members are accepted as owners only within the captured "
-                + "forest's schema, not on protected objects elsewhere unless independently accepted.\n\n"
-                + "This finding is time-sensitive in a way the other rules are not: because "
-                + "AdminSDHolder repairs ownership on its own schedule, the same object may be "
-                + "reported in one run and absent from the next without anybody having fixed "
-                + "anything. It does not check whether AdminSDHolder is running - it can only "
-                + "tell you that something it should have repaired had not been repaired when "
-                + "the directory was read.",
+                SavedOwnershipAssessment.ScopeNote + "\n\n" + SavedOwnershipAssessment.ProtectedRisk,
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory"),
 

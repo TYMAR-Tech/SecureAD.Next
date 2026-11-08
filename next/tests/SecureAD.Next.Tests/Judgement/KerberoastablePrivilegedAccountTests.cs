@@ -353,6 +353,15 @@ public sealed class KerberoastablePrivilegedAccountTests
 
     private static StoredJudgement JudgeStore(Subject subject)
     {
+        var directory = Publish(subject);
+        using var reader = JudgementReader.Open(directory).Value!;
+        return reader.Read();
+    }
+
+    internal static string ServiceRegistrationRun() => Publish(Svc() with { Privileged = true, MultipleRoutes = true });
+
+    private static string Publish(Subject subject)
+    {
         var directory = Build(subject);
 
         Assert.True(
@@ -371,8 +380,7 @@ public sealed class KerberoastablePrivilegedAccountTests
 
         Assert.True(judged.IsSuccess, judged.Error?.Description);
 
-        using var reader = JudgementReader.Open(directory).Value!;
-        return reader.Read();
+        return directory;
     }
 
     private static string Build(Subject subject)

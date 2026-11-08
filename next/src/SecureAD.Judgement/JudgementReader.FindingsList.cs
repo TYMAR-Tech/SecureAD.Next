@@ -9,13 +9,19 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    private const string ListColumns = """
+    private const string ListColumnPrefix = """
         f.finding_id,f.rule_id,f.subject_kind,f.subject_key,f.object_guid,f.severity,
-        f.distinguished_name,CASE WHEN f.rule_id IN ('SEC-012','SEC-013','SEC-014','SEC-024','SEC-025','SEC-026','SEC-027','SEC-030') THEN NULL ELSE f.detail END AS detail,
+        f.distinguished_name,
+        """;
+    private const string ListColumnSuffix = """
         f.coverage,f.domain_fqdn,f.object_class,f.principal_name,
         r.rule_version,f.list_kind,f.evidence_complete,f.protection_catalogue_version,
         f.direct_protection_entry_id,f.direct_protection_name
         """;
+    private const string ListColumns = ListColumnPrefix
+        + "CASE WHEN f.rule_id IN ('SEC-002','SEC-012','SEC-013','SEC-014','SEC-021','SEC-024','SEC-025','SEC-026','SEC-027','SEC-030','SEC-031','SEC-032','SEC-050','SEC-051','SEC-052') THEN NULL ELSE f.detail END AS detail,"
+        + ListColumnSuffix;
+    private const string FindingHeaderColumns = ListColumnPrefix + "NULL AS detail," + ListColumnSuffix;
 
     /// <summary>Reads saved display values and scalar completeness headers, without membership routes or full proof.</summary>
     public Result<FindingListPage> ReadListPage(FindingsQuery query)
@@ -41,7 +47,10 @@ public sealed partial class JudgementReader
     }
 
     /// <summary>Reads one saved explanation; membership support is read only when explicitly requested.</summary>
-    public Result<FindingListItem> ReadSelectedFinding(FindingReference reference, bool includeMembership = false)
+    public Result<FindingListItem> ReadSelectedFinding(FindingReference reference, bool includeMembership = false) =>
+        ReadSelectedFindingCore(reference, includeMembership, null);
+
+    private Result<FindingListItem> ReadSelectedFindingCore(FindingReference reference, bool includeMembership, string? statement)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();
@@ -51,7 +60,7 @@ public sealed partial class JudgementReader
                 "The selected finding does not belong to this saved judgement.", BundleDirectory));
         using var command = _connection.CreateCommand();
         command.CommandText = $"""
-            SELECT {ListColumns} FROM finding f
+            SELECT {(statement is null ? ListColumns : FindingHeaderColumns)} FROM finding f
             JOIN rule_execution r ON r.rule_id=f.rule_id WHERE f.finding_id=$id
             """;
         command.Parameters.AddWithValue("$id", reference.FindingId);
@@ -62,7 +71,7 @@ public sealed partial class JudgementReader
                 return Result<FindingListItem>.Failure(AuditError.Create(ErrorCategory.Evidence,
                     "FindingNotFound", ErrorSeverity.Failed,
                     "The selected saved finding is unavailable.", BundleDirectory));
-            item = ReadListItem(row, includeMembership);
+            item = ReadListItem(row, includeMembership, statement);
         }
         return Result<FindingListItem>.Success(item with
         {
@@ -162,7 +171,7 @@ public sealed partial class JudgementReader
         return complete == 1;
     }
 
-    private FindingListItem ReadListItem(SqliteDataReader row, bool includeMembership = false)
+    private FindingListItem ReadListItem(SqliteDataReader row, bool includeMembership = false, string? statement = null)
     {
         var kind = Enum.Parse<FindingListKind>(row.GetString(13));
         var complete = row.GetInt64(14);
@@ -192,16 +201,21 @@ public sealed partial class JudgementReader
         _readCancellation.ThrowIfCancellationRequested();
         var ruleId = row.GetString(1);
         // Structured windows read selected saved facts instead of complete delegation/permission prose.
-        var detail = ruleId switch
+        var detail = statement ?? (ruleId switch
         {
+            "SEC-002" => SavedReplicationPermission.Statement,
+            "SEC-021" => ServiceRegistrationPresentation.Why,
+            "SEC-050" or "SEC-051" => SavedGroupReview.Statement(ruleId),
+            "SEC-052" => CircularGroupMembership.Explanation,
             "SEC-012" => SavedDelegationConfiguration.ConstrainedStatement,
             "SEC-013" => SavedDelegationConfiguration.ResourceStatement,
             "SEC-014" or "SEC-024" or "SEC-025" => SavedAttributeWritePermission.ScopeNoteForRule(ruleId),
             "SEC-026" => SavedDuplicateSpn.Statement,
             "SEC-027" => SavedSidHistory.Statement,
             "SEC-030" => SavedProtectionMarker.Statement,
+            "SEC-031" or "SEC-032" => SavedOwnershipAssessment.ScopeNote,
             _ => row.GetString(7),
-        };
+        });
         return new(ruleId, row.GetInt32(12), severity, new(subjectKind, row.GetString(3)),
             Guid.Parse(row.GetString(4)), row.GetString(6), row.GetString(9), row.GetString(10), detail,
             coverage, row.GetString(11), kind, complete == 1, membership)

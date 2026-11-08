@@ -75,6 +75,7 @@ public sealed record FindingListItem(
     FindingMembershipDisplay? Membership)
 {
     public FindingReference? Reference { get; init; }
+    public bool? CircularInventoryComplete { get; init; }
 
     /// <summary>Projects an original finding without retaining its detailed proof.</summary>
     public static FindingListItem FromFinding(Finding finding)
@@ -86,11 +87,16 @@ public sealed record FindingListItem(
             : null;
         return new(finding.RuleId, finding.RuleVersion, finding.Severity, finding.Subject, finding.ObjectGuid,
             finding.DistinguishedName, finding.DomainFqdn, finding.ObjectClass,
-            finding.RuleId == "SEC-012" ? SavedDelegationConfiguration.ConstrainedStatement
+            finding.RuleId == "SEC-002" ? SavedReplicationPermission.Statement
+                : finding.RuleId == "SEC-021" ? ServiceRegistrationPresentation.Why
+                : finding.RuleId is "SEC-050" or "SEC-051" ? SavedGroupReview.Statement(finding.RuleId)
+                : finding.RuleId == "SEC-052" ? CircularGroupMembership.Explanation
+                : finding.RuleId == "SEC-012" ? SavedDelegationConfiguration.ConstrainedStatement
                 : finding.RuleId == "SEC-013" ? SavedDelegationConfiguration.ResourceStatement
                 : finding.RuleId == "SEC-026" ? SavedDuplicateSpn.Statement
                 : finding.RuleId == "SEC-027" ? SavedSidHistory.Statement
                 : finding.RuleId == "SEC-030" ? SavedProtectionMarker.Statement
+                : finding.RuleId is "SEC-031" or "SEC-032" ? SavedOwnershipAssessment.ScopeNote
                 : SavedAttributeWritePermission.SupportsRule(finding.RuleId)
                     ? SavedAttributeWritePermission.ScopeNoteForRule(finding.RuleId) : finding.Detail, finding.Coverage,
             finding.PrincipalName, membership is not null ? FindingListKind.Membership
@@ -103,6 +109,7 @@ public sealed record FindingListItem(
         KerberoastableAccountEvidence value => value.MembershipRoutes.IsComplete,
         BroadGroupMembershipEvidence value => value.IsComplete,
         GroupMembershipReviewEvidence value => value.IsComplete,
+        CircularMembershipEvidence value => value.InventoryComplete,
         DelegationConfigurationEvidence value => value.IsComplete,
         ServiceAccountFindingEvidence value => value.IsComplete,
         AttributeWritePermissionEvidence value => value.IsComplete,

@@ -82,6 +82,19 @@ internal sealed class SavedProofJsonReader
         return value;
     }
 
+    internal string ValueText()
+    {
+        Type("string");
+        return _json.ReadElementContentAsString();
+    }
+
+    internal long SignedNumber()
+    {
+        Type("number");
+        Require(long.TryParse(_json.ReadElementContentAsString(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value));
+        return value;
+    }
+
     internal string? OptionalText()
     {
         if (IsNull()) { _json.Skip(); return null; }

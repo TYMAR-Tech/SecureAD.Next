@@ -41,7 +41,7 @@ public sealed class ConstrainedDelegationDetailTests
         Assert.Empty(source.AccountSettingReads);
         Assert.Empty(source.PathQueries);
         Assert.Empty(source.ControlQueries);
-        Assert.Null(details.MembershipDetails);
+        Assert.Null(details.ServiceRegistration);
         Assert.All(source.FindingSelections, value => Assert.False(value.Membership));
         var rules = new RuleRowViewModel("SEC-012", new ConstrainedDelegationToRelevantService().Definition, null);
         Assert.Equal(rules.WhyItMatters, details.Finding.WhyItMatters);

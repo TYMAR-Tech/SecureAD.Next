@@ -208,6 +208,10 @@ internal sealed partial class AssetReadRequest(
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
             reader => reader.ReadAttributeWritePermission(reference, after), _readCancellation)));
 
+    public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadReplicationPermission(reference, after), _readCancellation)));
+
     public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadDuplicateSpn(reference, position), _readCancellation)));
 
@@ -216,6 +220,31 @@ internal sealed partial class AssetReadRequest(
 
     public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadProtectionMarker(reference), _readCancellation)));
+
+    public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadOwnershipAssessment(reference), _readCancellation)));
+
+    public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupReview(reference), _readCancellation)));
+    public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupReviewReferences(reference, after), _readCancellation)));
+
+    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipGroups(reference, after), _readCancellation)));
+    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipLinks(reference, after), _readCancellation)));
+    public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipWitnesses(reference, groupGuid, memberGuid, after), _readCancellation)));
+
+    public Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadServiceRegistrations(reference, after), _readCancellation)));
+    public Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadInitialMemberships(reference, after), _readCancellation)));
+    public Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadMembershipRoutes(reference, membershipOrdinal, after), _readCancellation)));
+    public Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadMembershipSteps(reference, membershipOrdinal, routeOrdinal, after), _readCancellation)));
 
     /// <inheritdoc/>
     public Result<StoredRuleExecutions> ReadRuleExecutions(string bundleDirectory) =>

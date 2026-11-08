@@ -253,7 +253,7 @@ public sealed partial class OpenedRunResultsTests
         var directory = LapsBundle.BuildMany(
             [(FirstDn, null, null, null, null, 512), (SecondDn, null, null, null, null, 512)], DateTimeOffset.UnixEpoch);
         using (var captured = BundleReader.Open(directory).Value)
-            finding = new(ruleId, 1, ruleId == "SEC-031" ? Severity.Low : ruleId == "SEC-032" ? Severity.Medium : Severity.High,
+            finding = new(ruleId, ruleId is "SEC-031" or "SEC-032" ? 3 : 1, ruleId == "SEC-031" ? Severity.Low : ruleId == "SEC-032" ? Severity.Medium : Severity.High,
                 ruleId == "SEC-027" ? new(FindingSubjectKind.Account, "Recorded principal")
                     : new(FindingSubjectKind.DirectoryObject, "saved coverage finding"),
                 Assert.IsType<Guid>(captured.ReadObjectAttributes(FirstDn)!.ObjectGuid), FirstDn, "ad.lab", "computer",

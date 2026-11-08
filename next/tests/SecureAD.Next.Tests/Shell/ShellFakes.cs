@@ -617,9 +617,65 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
+    public Func<FindingReference, Result<SavedGroupReview>>? GroupReviewRead { get; set; }
+    public Func<FindingReference, CircularMembershipGroupMark?, Result<SavedCircularMembershipGroups>>? CircularGroupsRead { get; set; }
+    public Func<FindingReference, CircularMembershipLinkMark?, Result<SavedCircularMembershipLinks>>? CircularLinksRead { get; set; }
+    public Func<FindingReference, Guid, Guid, CircularMembershipWitnessMark?, Result<SavedCircularMembershipWitnesses>>? CircularWitnessesRead { get; set; }
+    public List<string> CircularReads { get; } = [];
+    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after)
+    { CircularReads.Add("groups"); return CircularGroupsRead?.Invoke(reference, after) ?? Result<SavedCircularMembershipGroups>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestCircularGroupsUnavailable", ErrorSeverity.Failed, SavedCircularMembershipContext.InvalidDetails, bundleDirectory)); }
+    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after)
+    { CircularReads.Add("links"); return CircularLinksRead?.Invoke(reference, after) ?? Result<SavedCircularMembershipLinks>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestCircularLinksUnavailable", ErrorSeverity.Failed, SavedCircularMembershipContext.InvalidDetails, bundleDirectory)); }
+    public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after)
+    { CircularReads.Add("witnesses"); return CircularWitnessesRead?.Invoke(reference, groupGuid, memberGuid, after) ?? Result<SavedCircularMembershipWitnesses>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestCircularWitnessesUnavailable", ErrorSeverity.Failed, SavedCircularMembershipContext.InvalidDetails, bundleDirectory)); }
+    public Func<FindingReference, GroupReviewReferenceMark?, Result<SavedGroupReferences>>? GroupReviewReferencesRead { get; set; }
+    public List<string> GroupReviewReads { get; } = [];
+    public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference)
+    { GroupReviewReads.Add("header"); return GroupReviewRead?.Invoke(reference) ?? Result<SavedGroupReview>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestGroupReviewUnavailable", ErrorSeverity.Failed, SavedGroupReview.InvalidDetails("SEC-050"), bundleDirectory)); }
+    public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after)
+    { GroupReviewReads.Add("references"); return GroupReviewReferencesRead?.Invoke(reference, after) ?? Result<SavedGroupReferences>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestGroupReferencesUnavailable", ErrorSeverity.Failed, SavedGroupReview.InvalidDetails("SEC-050"), bundleDirectory)); }
+    public Func<FindingReference, ServiceNameMark?, Result<SavedServiceRegistrations>>? ServiceNamesRead { get; set; }
+    public Func<FindingReference, InitialMembershipMark?, Result<SavedInitialMemberships>>? InitialMembershipsRead { get; set; }
+    public Func<FindingReference, int, MembershipRouteMark?, Result<SavedMembershipRoutes>>? MembershipRoutesRead { get; set; }
+    public Func<FindingReference, int, int, MembershipStepMark?, Result<SavedMembershipSteps>>? MembershipStepsRead { get; set; }
+    public List<string> ServiceReads { get; } = [];
+    public Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after)
+    { ServiceReads.Add("names"); return ServiceNamesRead?.Invoke(reference, after) ?? Result<SavedServiceRegistrations>.Failure(UnsupportedServiceRead(bundleDirectory)); }
+    public Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after)
+    { ServiceReads.Add("groups"); return InitialMembershipsRead?.Invoke(reference, after) ?? Result<SavedInitialMemberships>.Failure(UnsupportedServiceRead(bundleDirectory)); }
+    public Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after)
+    { ServiceReads.Add("routes"); return MembershipRoutesRead?.Invoke(reference, membershipOrdinal, after) ?? Result<SavedMembershipRoutes>.Failure(UnsupportedServiceRead(bundleDirectory)); }
+    public Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after)
+    { ServiceReads.Add("steps"); return MembershipStepsRead?.Invoke(reference, membershipOrdinal, routeOrdinal, after) ?? Result<SavedMembershipSteps>.Failure(UnsupportedServiceRead(bundleDirectory)); }
+    private static AuditError UnsupportedServiceRead(string bundleDirectory) => AuditError.Create(ErrorCategory.Shell,
+        "TestServiceReadUnavailable", ErrorSeverity.Failed, SavedServiceRegistrations.InvalidDetails, bundleDirectory);
+    public Func<FindingReference, ReplicationPermissionMark?, Result<SavedReplicationPermission>>? ReplicationPermissionRead { get; set; }
+    public List<(FindingReference Reference, ReplicationPermissionMark? After)> ReplicationPermissionReads { get; } = [];
+    public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after)
+    {
+        ReplicationPermissionReads.Add((reference, after));
+        return ReplicationPermissionRead is { } read ? read(reference, after)
+            : Result<SavedReplicationPermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestReplicationUnavailable", ErrorSeverity.Failed, SavedReplicationPermission.InvalidDetails, bundleDirectory));
+    }
     public Func<FindingReference, DuplicateSpnMark?, Result<SavedDuplicateSpn>>? DuplicateSpnRead { get; set; }
     public Func<FindingReference, SidHistoryMark?, Result<SavedSidHistory>>? SidHistoryRead { get; set; }
     public Func<FindingReference, Result<SavedProtectionMarker>>? ProtectionMarkerRead { get; set; }
+    public Func<FindingReference, Result<SavedOwnershipAssessment>>? OwnershipAssessmentRead { get; set; }
+    public List<FindingReference> OwnershipAssessmentReads { get; } = [];
+    public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference)
+    {
+        OwnershipAssessmentReads.Add(reference);
+        return OwnershipAssessmentRead is { } read ? read(reference) : Result<SavedOwnershipAssessment>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestOwnershipAssessmentUnavailable", ErrorSeverity.Failed, SavedOwnershipAssessment.InvalidDetails, bundleDirectory));
+    }
     public List<FindingReference> ProtectionMarkerReads { get; } = [];
     public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference)
     {

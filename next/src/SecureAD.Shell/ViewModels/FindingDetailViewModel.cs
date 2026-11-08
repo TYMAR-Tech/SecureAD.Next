@@ -1,12 +1,13 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 
 namespace SecureAD.Shell.ViewModels;
 
-internal sealed record FindingDetailContent(FindingListItem Saved, string? Completeness, string? Membership)
+internal sealed record FindingDetailContent(FindingListItem Saved)
 {
     internal SavedAccountSetting? AccountSetting { get; init; }
     internal SavedDelegationConfiguration? DelegationConfiguration { get; init; }
@@ -14,13 +15,13 @@ internal sealed record FindingDetailContent(FindingListItem Saved, string? Compl
     internal SavedDuplicateSpn? DuplicateSpn { get; init; }
     internal SavedSidHistory? SidHistory { get; init; }
     internal SavedProtectionMarker? ProtectionMarker { get; init; }
+    internal SavedOwnershipAssessment? OwnershipAssessment { get; init; }
+    internal SavedReplicationPermission? ReplicationPermission { get; init; }
+    internal SavedServiceRegistrations? ServiceRegistration { get; init; }
+    internal SavedGroupReview? GroupReview { get; init; }
+    internal SavedCircularMembershipGroups? CircularMembership { get; init; }
 
-    internal static FindingDetailContent FromSaved(FindingListItem saved)
-    {
-        var row = new FindingRowViewModel(saved);
-        return new(saved, saved.Membership is null ? null : row.MembershipCompleteness,
-            saved.Membership is null ? null : row.MembershipDetails);
-    }
+    internal static FindingDetailContent FromSaved(FindingListItem saved) => new(saved);
 }
 
 internal sealed class CapturedAccountSettingViewModel(SavedAccountSetting setting)
@@ -37,27 +38,39 @@ internal sealed class CapturedAccountSettingViewModel(SavedAccountSetting settin
 internal sealed partial class FindingDetailViewModel : ObservableObject
 {
     private readonly FindingRowViewModel _selected;
-    private readonly Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> _read;
+    private readonly Func<CancellationToken, Task<Result<FindingDetailContent>>> _read;
     private readonly Func<bool> _current;
     private readonly Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? _readDelegation;
     private readonly Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? _readWritePermission;
     private readonly Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? _readDuplicateSpn;
     private readonly Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? _readSidHistory;
+    private readonly Func<ReplicationPermissionMark?, CancellationToken, Task<Result<SavedReplicationPermission>>>? _readReplication;
+    private readonly ServiceRegistrationReads? _serviceReads;
+    private readonly Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? _readGroupReferences;
+    private readonly CircularMembershipReads? _circularReads;
     private CancellationTokenSource? _pending;
     private bool _active = true;
 
     internal FindingDetailViewModel(FindingRowViewModel selected,
-        Func<bool, CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current,
+        Func<CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current,
         Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? readDelegation = null,
         Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission = null,
         Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? readDuplicateSpn = null,
-        Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? readSidHistory = null)
+        Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? readSidHistory = null,
+        Func<ReplicationPermissionMark?, CancellationToken, Task<Result<SavedReplicationPermission>>>? readReplication = null,
+        ServiceRegistrationReads? serviceReads = null,
+        Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? readGroupReferences = null,
+        CircularMembershipReads? circularReads = null)
     {
         (_selected, _read, _current, _readDelegation) = (selected, read, current, readDelegation);
         _readWritePermission = readWritePermission;
         _readDuplicateSpn = readDuplicateSpn;
         _readSidHistory = readSidHistory;
-        ReadCompletion = LoadAsync(false);
+        _readReplication = readReplication;
+        _serviceReads = serviceReads;
+        _readGroupReferences = readGroupReferences;
+        _circularReads = circularReads;
+        ReadCompletion = LoadAsync();
     }
 
     public string Title => _selected.Target + " - Finding details | SecureAD";
@@ -76,27 +89,22 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasSidHistory => SidHistory is not null;
     public ProtectionMarkerViewModel? ProtectionMarker { get; private set; }
     public bool HasProtectionMarker => ProtectionMarker is not null;
-    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker;
+    public OwnershipAssessmentViewModel? OwnershipAssessment { get; private set; }
+    public bool HasOwnershipAssessment => OwnershipAssessment is not null;
+    public ReplicationPermissionViewModel? ReplicationPermission { get; private set; }
+    public bool HasReplicationPermission => ReplicationPermission is not null;
+    public ServiceRegistrationViewModel? ServiceRegistration { get; private set; }
+    public bool HasServiceRegistration => ServiceRegistration is not null;
+    public GroupReviewViewModel? GroupReview { get; private set; }
+    public bool HasGroupReview => GroupReview is not null;
+    public CircularMembershipViewModel? CircularMembership { get; private set; }
+    public bool HasCircularMembership => CircularMembership is not null;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
-    public bool IsLoadingMembership { get; private set; }
-    public string? MembershipRefusal { get; private set; }
-    public bool HasMembershipRefusal => MembershipRefusal is not null;
-    public string? MembershipCompleteness { get; private set; }
-    public string? MembershipDetails { get; private set; }
-    public bool HasMembershipDetails => MembershipDetails is not null;
     public Task ReadCompletion { get; private set; }
-
-    private bool CanLoadMembership() => _active && !IsLoading && !IsLoadingMembership
-        && Finding?.HasMembershipEvidence == true && !HasMembershipDetails;
-
-    [RelayCommand(CanExecute = nameof(CanLoadMembership))]
-    private void LoadMembership()
-    {
-        if (CanLoadMembership()) ReadCompletion = LoadAsync(true);
-    }
 
     internal bool CheckCurrent()
     {
@@ -113,41 +121,37 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         SidHistory?.Suspend();
         SidHistory = null;
         ProtectionMarker = null;
-        MembershipCompleteness = MembershipDetails = null;
+        OwnershipAssessment = null;
+        ReplicationPermission?.Suspend();
+        ReplicationPermission = null;
+        ServiceRegistration?.Suspend();
+        ServiceRegistration = null;
+        GroupReview?.Suspend(); GroupReview = null;
+        CircularMembership?.Suspend(); CircularMembership = null;
         Announce();
         return false;
     }
 
-    private async Task LoadAsync(bool membership)
+    private async Task LoadAsync()
     {
         _pending?.Cancel();
         using var pending = new CancellationTokenSource();
         _pending = pending;
-        IsLoading = !membership;
-        IsLoadingMembership = membership;
-        if (membership) MembershipRefusal = null;
-        else Refusal = null;
+        IsLoading = true;
+        Refusal = null;
         Announce();
         try
         {
             if (!_active || !_current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
-            var answer = await _read(membership, pending.Token);
+            var answer = await _read(pending.Token);
             if (!_active || pending.IsCancellationRequested || !ReferenceEquals(_pending, pending)) return;
             if (!_current()) throw new InvalidOperationException(SavedPathText.Get("GenerationChanged"));
             if (!answer.IsSuccess) throw new InvalidDataException(answer.Error.Description);
             var content = answer.Value;
             if ((content.Saved with { Membership = null }) != (_selected.Saved with { Membership = null }))
                 throw new InvalidDataException("The saved explanation does not match the selected finding.");
-            if (membership)
             {
-                if (content.Saved.Membership is null || content.Completeness is null || content.Membership is null)
-                    throw new InvalidDataException("The selected finding's saved membership support is unavailable.");
-                MembershipCompleteness = content.Completeness;
-                MembershipDetails = content.Membership;
-            }
-            else
-            {
-                if (content.Saved.Membership is not null || content.Membership is not null || content.Completeness is not null)
+                if (content.Saved.Membership is not null)
                     throw new InvalidDataException("The finding explanation unexpectedly loaded membership support.");
                 if (SavedAccountSetting.SupportsRule(content.Saved.RuleId))
                 {
@@ -206,7 +210,52 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.ProtectionMarker is not null)
                     throw new InvalidDataException(SavedProtectionMarker.InvalidDetails);
-                Finding = new(content.Saved, _current);
+                if (content.Saved.RuleId is "SEC-031" or "SEC-032")
+                {
+                    if (content.OwnershipAssessment is not { } ownership || !ownership.Matches(content.Saved))
+                        throw new InvalidDataException(SavedOwnershipAssessment.InvalidDetails);
+                    OwnershipAssessment = new(ownership);
+                }
+                else if (content.OwnershipAssessment is not null)
+                    throw new InvalidDataException(SavedOwnershipAssessment.InvalidDetails);
+                if (content.Saved.RuleId == "SEC-002")
+                {
+                    if (content.ReplicationPermission is not { Context: not null } replication || _readReplication is null
+                        || !replication.Context.Matches(content.Saved) || !replication.IsExpectedPage(-1))
+                        throw new InvalidDataException(SavedReplicationPermission.InvalidDetails);
+                    ReplicationPermission = new(replication, _readReplication, CheckCurrent);
+                }
+                else if (content.ReplicationPermission is not null)
+                    throw new InvalidDataException(SavedReplicationPermission.InvalidDetails);
+                if (content.Saved.RuleId == "SEC-021")
+                {
+                    if (content.ServiceRegistration is not { Context: not null } service || _serviceReads is null
+                        || !service.Context.Matches(content.Saved) || !ServiceRegistrationViewModel.ValidNames(service, service.Context, null))
+                        throw new InvalidDataException(SavedServiceRegistrations.InvalidDetails);
+                    ServiceRegistration = new(service, _serviceReads, CheckCurrent);
+                }
+                else if (content.ServiceRegistration is not null) throw new InvalidDataException(SavedServiceRegistrations.InvalidDetails);
+                if (content.Saved.RuleId is "SEC-050" or "SEC-051")
+                {
+                    if (content.GroupReview is not { } review || _readGroupReferences is null || !review.Matches(content.Saved))
+                        throw new InvalidDataException(SavedGroupReview.InvalidDetails(content.Saved.RuleId));
+                    GroupReview = new(review, _readGroupReferences, CheckCurrent);
+                }
+                else if (content.GroupReview is not null) throw new InvalidDataException("The selected finding has unrelated membership-review details.");
+                if (content.Saved.RuleId == "SEC-052")
+                {
+                    if (content.CircularMembership is not { Context: not null } circular || _circularReads is null
+                        || !circular.Context.Matches(content.Saved) || !circular.IsExpectedPage(null))
+                        throw new InvalidDataException(SavedCircularMembershipContext.InvalidDetails);
+                    CircularMembership = new(circular, _circularReads, CheckCurrent);
+                    Finding = new(content.Saved with { CircularInventoryComplete = circular.Context.InventoryComplete,
+                        EvidenceIsComplete = circular.Context.InventoryComplete }, _current);
+                }
+                else
+                {
+                    if (content.CircularMembership is not null) throw new InvalidDataException("The selected finding has unrelated circular-membership details.");
+                    Finding = new(content.Saved, _current);
+                }
             }
         }
         catch (OperationCanceledException) when (pending.IsCancellationRequested) { }
@@ -229,9 +278,14 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     SidHistory?.Suspend();
                     SidHistory = null;
                     ProtectionMarker = null;
-                    MembershipCompleteness = MembershipDetails = null;
+                    OwnershipAssessment = null;
+                    ReplicationPermission?.Suspend();
+                    ReplicationPermission = null;
+                    ServiceRegistration?.Suspend();
+                    ServiceRegistration = null;
+                    GroupReview?.Suspend(); GroupReview = null;
+                    CircularMembership?.Suspend(); CircularMembership = null;
                 }
-                else if (membership) MembershipRefusal = error.Message;
                 else Refusal = error.Message;
             }
         }
@@ -240,7 +294,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
             if (ReferenceEquals(_pending, pending))
             {
                 _pending = null;
-                IsLoading = IsLoadingMembership = false;
+                IsLoading = false;
                 Announce();
             }
         }
@@ -261,7 +315,13 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         SidHistory?.Suspend();
         SidHistory = null;
         ProtectionMarker = null;
-        MembershipCompleteness = MembershipDetails = null;
+        OwnershipAssessment = null;
+        ReplicationPermission?.Suspend();
+        ReplicationPermission = null;
+        ServiceRegistration?.Suspend();
+        ServiceRegistration = null;
+        GroupReview?.Suspend(); GroupReview = null;
+        CircularMembership?.Suspend(); CircularMembership = null;
         Announce();
     }
 
@@ -281,17 +341,18 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSidHistory));
         OnPropertyChanged(nameof(ProtectionMarker));
         OnPropertyChanged(nameof(HasProtectionMarker));
+        OnPropertyChanged(nameof(OwnershipAssessment));
+        OnPropertyChanged(nameof(HasOwnershipAssessment));
+        OnPropertyChanged(nameof(ReplicationPermission));
+        OnPropertyChanged(nameof(HasReplicationPermission));
         OnPropertyChanged(nameof(ShowsStandardIdentity));
         OnPropertyChanged(nameof(ShowsSavedDescription));
         OnPropertyChanged(nameof(IsLoading));
         OnPropertyChanged(nameof(Refusal));
         OnPropertyChanged(nameof(HasRefusal));
-        OnPropertyChanged(nameof(IsLoadingMembership));
-        OnPropertyChanged(nameof(MembershipRefusal));
-        OnPropertyChanged(nameof(HasMembershipRefusal));
-        OnPropertyChanged(nameof(MembershipCompleteness));
-        OnPropertyChanged(nameof(MembershipDetails));
-        OnPropertyChanged(nameof(HasMembershipDetails));
-        LoadMembershipCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ServiceRegistration));
+        OnPropertyChanged(nameof(HasServiceRegistration));
+        OnPropertyChanged(nameof(GroupReview)); OnPropertyChanged(nameof(HasGroupReview));
+        OnPropertyChanged(nameof(CircularMembership)); OnPropertyChanged(nameof(HasCircularMembership));
     }
 }

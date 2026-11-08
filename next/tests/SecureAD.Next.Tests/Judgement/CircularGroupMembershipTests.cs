@@ -428,6 +428,8 @@ public sealed class CircularGroupMembershipTests
         Assert.DoesNotContain("infinite", guidance.WhyItMatters, StringComparison.OrdinalIgnoreCase);
     }
 
+    internal static string FindingsRun(string variant = "pair") => Prepared(variant);
+
     private static string Prepared(string variant, bool reverse = false)
     {
         var directory = Capture(variant, reverse);
@@ -501,11 +503,15 @@ public sealed class CircularGroupMembershipTests
             }
             else if (variant != "empty-partial")
             {
-                var definitions = new[] { A, B, C, D };
+                var definitions = variant == "wide" ? Enumerable.Range(0, 57).Select(index => "CN=Cycle " + index + "," + Root).ToArray()
+                    : new[] { A, B, C, D };
                 if (reverse) Array.Reverse(definitions);
                 foreach (var dn in definitions)
                 {
-                    string[] members = variant switch
+                    string[] members = variant == "wide"
+                        ? Enumerable.Repeat(definitions[(Array.IndexOf(definitions, dn) + 1) % definitions.Length], 57)
+                            .Select((value, index) => index % 2 == 0 ? value : value.ToUpperInvariant()).ToArray()
+                        : variant switch
                     {
                         "self" => dn == A ? [A] : [],
                         "unresolved" => dn == A ? ["CN=Missing," + Root] : [],
@@ -516,8 +522,10 @@ public sealed class CircularGroupMembershipTests
                         _ => dn == A ? [B] : dn == B ? [A] : [],
                     };
                     if (variant == "partial-input" && dn == C) members = ["CN=Missing," + Root];
-                    string[] memberOf = variant is "member-of" or "both-sources" ? dn == A ? [B] : dn == B ? [A] : [] : [];
-                    var sid = DomainSid + (variant == "privileged" && dn == A ? "-512"
+                    string[] memberOf = variant == "wide" ? [definitions[(Array.IndexOf(definitions, dn) + definitions.Length - 1) % definitions.Length]]
+                        : variant is "member-of" or "both-sources" ? dn == A ? [B] : dn == B ? [A] : [] : [];
+                    var sid = variant == "wide" ? DomainSid + "-" + (2000 + Array.IndexOf(definitions, dn))
+                        : DomainSid + (variant == "privileged" && dn == A ? "-512"
                         : dn == A ? "-1100" : dn == B ? "-1200" : dn == C ? "-1300" : "-1400");
                     Write(dn, ["top", "group"], sid,
                         [Text("groupType", variant == "distribution" ? "2" : "-2147483646"), Values("member", members), Values("memberOf", memberOf)],

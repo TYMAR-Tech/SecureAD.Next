@@ -1,0 +1,10 @@
+namespace SecureAD.Judgement;
+
+public static class ServiceRegistrationPresentation
+{
+    public static string Title => "Protected user account with service names registered";
+    public const string Why = "Service tickets associated with a user account can provide material for offline password guessing. The saved assessment reports registered service names and AdminSDHolder protection; neither proves service use, domain-administrator authority or a successful attack. The impact of compromise depends on the account's actual rights. This finding does not establish ticket issuance, ticket encryption, password weakness, credential theft or a completed Tier 0 path.";
+    public const string Action = "When authorised, confirm which registered service names and services are still required, and check dependencies before changing anything. Remove only registrations confirmed unnecessary; if a valid SPN remains, this exposure may remain. For a service that needs a dedicated identity, assess a supported, appropriately restricted group managed service account (gMSA). Otherwise, coordinate a long, random password change and check dependent services. Review unnecessary authority through the recorded initial memberships, treating primary-group links and direct protection separately. Changing a shared group may affect other accounts. Removing the displayed registrations or memberships does not establish that every other form of access is gone.";
+    public const string About = "Reports the existing saved SEC-021 assessment for an ordinary user account; computers, managed service-account classes and the domain's krbtgt account remain outside this rule's current scope. Saved protection, membership-based authorization and owner acceptance are separate answers. This window reads saved results and does not request tickets, expand memberships, reassess permissions or query Active Directory.";
+    public static string MembershipNote => "Saved supporting chains are grouped by the first group the account belongs to. Longer independent memberships are retained. These chains are not every possible path and are not a minimum set of changes.";
+}

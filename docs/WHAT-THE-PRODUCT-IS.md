@@ -585,6 +585,204 @@ After the 126-pass short checkpoint (31 new cases), the owner explicitly approve
 restorations, final affected Release build/tests with coverage, exact source/binary preservation
 and cleanup, with interrupting process deadlines and the WPF application-lifecycle test isolated.
 
+**SEC-031/032 saved-ownership presentation - owner-approved 2026-11-04.**
+The owner requested first-party Learn verification of this batch's AD claims and explicitly chose
+presentation only with saved-assessment limits, leaving SCOUT-07 calculation issues separate.
+Retain current rule version 3, Low for SEC-031, Medium for SEC-032, finding grain and every historical
+positive; replace the misleading non-administrator titles with Object ownership outside the saved
+owner policy and Protected-object ownership outside the saved owner policy.
+Reuse one Saved ownership assessment panel from both grids, showing Affected object, Object type,
+Domain, Location, recorded owner name/exact SID, recorded owner status and saved target classification.
+Owner status is Present in captured evidence or Recorded as missing in the saved assessment;
+a missing name says "Name not resolved from saved evidence."
+Saved target classification is Outside the AdminSDHolder-protected set or In the AdminSDHolder-protected set,
+according to the selected saved rule, not a new protection check.
+Owner-policy membership evidence says Complete or May be incomplete for that saved input alone.
+The record stores owner identity/standing/class/membership completeness, not detailed OWNER RIGHTS/
+WRITE_DAC proof or protection membership routes; do not invent those fields or replay analysis.
+Share the following exact wording between Findings and Rules:
+- **Why it matters:** "The saved assessment flagged the recorded owner under the product's target-scoped owner policy. Ownership can provide permission-changing authority, but not unconditionally: OWNER RIGHTS entries, separately granted permissions and applicable directory-server restrictions matter. A recorded missing owner is not an actor that can exercise rights. This is an ownership observation at capture time, not proof of full control, abuse, a successful operation, takeover or a completed Tier 0 path."
+- **SEC-032 addition:** "The saved assessment also classified this target as AdminSDHolder-protected. This does not date an ownership change, establish that SDProp stopped or promise automatic repair within an hour."
+- **What to do:** "Confirm the intended owner and administrative responsibility for this object. When authorised, verify current ownership and relevant permission-changing rights, including OWNER RIGHTS and independent grants, before acting. If ownership is inappropriate, change it to a valid, monitored principal appropriate to this object's administrative scope, under change control, then test dependent management and services. Do not blanket-replace computer or service-account owners or delete legitimate permission entries. Changing the owner does not remove other grants or establish that all unwanted access is gone."
+For a recorded missing owner say "Verify absence against the authorised scope before treating the
+owner as deleted; an unresolved name alone is not enough. Other principals may still have management rights."
+The scope note is "Owner acceptance is a product policy, not proof that the owner lacks administrative
+rights. This finding does not store a detailed permission-changing proof. This window does not
+reassess owner authorisation, protection or live server behaviour."
+Only applicable membership limits say "The saved owner-policy membership evidence is incomplete.
+Do not treat this as proof that no accepted administrative relationship exists."
+Unavailable details say "The selected finding's saved ownership details are missing, invalid or inconsistent."
+Retain loading/cancellation/generation/coverage wording, Open affected object, Close and intentional
+original-data investigation screens without new membership graphs or independent authorization claims.
+Learn anchors include [MS-DTYP OWNER RIGHTS](https://learn.microsoft.com/openspecs/windows_protocols/ms-dtyp/81d92bba-d22b-4a8c-908a-554ab29148ab),
+[ordered access checks](https://learn.microsoft.com/openspecs/windows_protocols/ms-dtyp/4f1bbcbb-814a-4c70-a11e-2a5b8779a6f9),
+[MS-ADTS implicit-owner restrictions](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/fb7c101d-ec8b-4fbf-bca8-7d7c2d747d0c),
+[Appendix C](https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory),
+[descriptor enforcement](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/a-batch-of-event-4780-logged-pdc),
+[security versus distribution groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups)
+and [certificate-template-specific owner guidance](https://learn.microsoft.com/defender-for-identity/security-posture-assessments/certificates#edit-misconfigured-certificate-templates-owner-esc4).
+Initial approval covers implementation and short checks with a 45-minute checkpoint, not long
+verification; no CI, live work, new analysis/catalogue/format changes, measurements, package,
+merge, commit or push is authorized.
+After the 122-check initial checkpoint, the owner explicitly approved the warned longer offline
+verification with a 75-minute maximum including close-out: isolated rebuilt fault controls for
+64 new plus seven directly adapted cases, restoration/rebuild and the final affected checks.
+This does not authorize CI, live work, measurements, packaging, merge, commit or push.
+
+**SEC-002 selected saved-permission presentation - owner-approved 2026-11-04.**
+The owner reported SEC-031/032 "tested-works" and approved this next presentation with a
+45-minute implementation/short-check checkpoint; longer verification needs a separate warning
+and explicit approval, and no CI, live work, new analysis/formats, measurements, package, merge,
+commit or push is authorized.
+Keep current SEC-002 version 1, Critical severity, one holder/domain-root finding and the previously
+approved title, explanation, scope limits and conditional review advice unchanged.
+Use one Saved replication-permission assessment panel from both grids, showing Permission holder,
+exact SID, Domain, Domain root, Replicating Directory Changes: Established,
+Replicating Directory Changes All: Established and Reason for review from the saved answer only.
+Reuse the existing readable permission-policy reasons and "Name not resolved from saved evidence."
+The new policy note is "Unexpected is the product's saved review result, not proof of malicious use
+or that the permission is unnecessary."
+Saved permission entries uses 50-entry pages in original order with every occurrence preserved,
+showing assigned identity/SID, recorded Allow/Deny or explicitly unassessed other entry type,
+named replication-right scope or All extended rights, and Explicit/Inherited status.
+Unsupported scope is explicitly labelled rather than guessed.
+The entry note is "These are original permission entries supporting the saved assessment, not
+separate findings or authorization for individual group members."
+Reuse the approved inherited-source warning, explicit NULL-DACL explanation and SEC-002 incomplete
+wording; do not invent an Everyone entry, or confuse unloaded pages with missing evidence.
+Unavailable details say "The selected finding's saved replication-permission details are missing,
+invalid or inconsistent."
+Retain Open affected object, Close, exact generation/resource/source binding and return context
+without membership expansion, permission/requester replay or a new format.
+Microsoft's [authorization procedure](https://learn.microsoft.com/openspecs/windows_protocols/ms-drsr/15bbda52-7742-4ce3-9327-018647b0fc26)
+confirms the two required rights and separate constrained/filtered paths;
+[connector guidance](https://learn.microsoft.com/entra/identity/hybrid/connect/how-to-connect-configure-ad-ds-connector-account#permissions-for-password-hash-synchronization)
+documents legitimate use of both rights, so this is not blanket-removal advice.
+After the 161-check initial checkpoint, the owner explicitly approved longer offline verification
+with a 75-minute maximum including cleanup and handoff: rebuilt isolated faults for all 50 new
+checks, restored correct code and the final prior/replication/Microsoft checks.
+This changes none of the authorization boundaries above.
+
+**SEC-021 selected reads and requested-branch presentation - owner direction, 2026-11-04.**
+The owner reported SEC-002 "tested-works" and approved the proposed SEC-021 plan/wording, beginning
+Stage 1 only: a maximum 45-minute checkpoint for selected saved account/protection reads and
+50-row pages of SPNs, initial memberships, one membership's routes and one route's steps.
+Stage 1 changes no screen and does not complete the presentation; Stage 2 requires a new
+go-ahead after its checkpoint, and longer final verification needs a fresh warning and approval.
+After Stage 1's 153 passing checks and unchanged-screen confirmation, the owner explicitly approved
+Stage 2 implementation and a short-check checkpoint with a separate 45-minute maximum.
+After Stage 2's 270 passing checks, the owner explicitly confirmed final offline verification with
+a 90-minute maximum including cleanup and handoff on 2026-11-05; isolated rebuilt faults must
+qualify the new/adapted checks before the correct-source affected run is accepted.
+Retain Critical version 2, one finding per account, existing exclusions and every saved independent
+membership including longer routes, with direct protection, authorization and completeness separate.
+Use existing indexed rows, not a whole-summary read followed by in-memory paging.
+Normal finding grids already avoid full membership hydration; replace the remaining explicit
+whole-summary string path in Stage 2 without restarting navigation or mockups.
+The approved Stage 2 title direction is Protected user account with service names registered,
+with Saved service-registration assessment and Registered service names (SPNs).
+View membership evidence first shows initial groups; View supporting chains requests one selected
+group, and View chain requests only the selected chain's paged steps.
+Keep primary-group links, security-enabled/distribution/unknown types, saved protection results and
+named stopping reasons distinct; unopened is not incomplete and partial counts are not totals.
+Direct protection says "Protected in its own right: {saved name}. Membership changes do not remove
+this direct protection basis."
+The old account-control default zero must say "Not established by this finding.", never inferred
+Enabled; no new capture or format is authorized to disambiguate it.
+Approved Why it matters: "Service tickets associated with a user account can provide material for
+offline password guessing. The saved assessment reports registered service names and AdminSDHolder
+protection; neither proves service use, domain-administrator authority or a successful attack.
+The impact of compromise depends on the account's actual rights. This finding does not establish
+ticket issuance, ticket encryption, password weakness, credential theft or a completed Tier 0 path."
+Approved What to do: "When authorised, confirm which registered service names and services are still
+required, and check dependencies before changing anything. Remove only registrations confirmed
+unnecessary; if a valid SPN remains, this exposure may remain. For a service that needs a dedicated
+identity, assess a supported, appropriately restricted group managed service account (gMSA).
+Otherwise, coordinate a long, random password change and check dependent services. Review unnecessary
+authority through the recorded initial memberships, treating primary-group links and direct
+protection separately. Changing a shared group may affect other accounts. Removing the displayed
+registrations or memberships does not establish that every other form of access is gone."
+Learn's [Kerberoasting detection](https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts)
+and [4769 auditing](https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4769)
+do not support the old implication that the activity is undetectable.
+Keep `0118`'s accepted primary-group-only protection answer labelled lab-verified, not relabelled
+as a new Microsoft claim; no analysis, budgets, formats, live work, measurement campaign, LAPS work,
+CI, package, merge, commit or push is authorized.
+
+**SEC-050/051 saved review presentation - owner-approved 2026-11-05.**
+The owner reported SEC-021 "tested-works" and approved the saved group-size/direct-nesting
+presentation with a maximum 45-minute implementation and short-check checkpoint.
+Keep Low version 1, existing titles/core copy/review advice, strictly-above saved review thresholds,
+counting meanings and one-group/one-direct-pair finding grain unchanged.
+Saved group-size review shows affected group/SID/domain/location, Direct count, saved Review threshold,
+Known total and separate Unresolved references / Unreadable references.
+Direct means distinct recorded member references, not people; a nested group counts once.
+Known total counts distinct captured objects through member links, including nested groups but
+excluding the starting group; primary-group relationships remain separate.
+Unresolved/unreadable references are limitations, not additional resolved objects, and Known total
+can be lower than Direct count.
+The new policy note says "Review thresholds are product policy, not Microsoft limits, a safe group
+size or a processing cap. Being below a threshold does not establish safety."
+Retain Incomplete membership evidence and saved reasons; missing required saved totals are refusal,
+never zero or a new recount.
+Saved direct group nesting shows both actual identities/SIDs/domains/locations and "{nested group}
+is a member of {actual destination group}.", retaining a renamed destination's captured name.
+Show the recorded nested-group type as Security-enabled group, Distribution group or
+"Not established from saved evidence.", where membership was recorded, and its member attribute.
+Its scope note says "This is a recorded direct membership relationship, not an effective-access
+calculation for the nested group's members or proof of a completed Tier 0 path."
+Where applicable say "Some saved membership references identify the nested group through a
+foreign-security-principal object."
+Both windows retain Open affected object, Close and return context; View saved direct references
+opens requested 50-row pages only, preserving original order/occurrences and "Unreadable saved reference."
+Do not prepare whole membership lists to show counts, infer counts from pages, or replace saved
+thresholds with current defaults; current proof scanning is not a measured performance improvement.
+Longer verification requires a fresh warning and approval; no new analysis/formats, thresholds,
+production limits, live work, measurement campaign, LAPS work, CI, package, merge, commit or push.
+After the 233-check implementation checkpoint, the owner explicitly approved
+"approve-75-minute-verification" for isolated deliberate-fault qualification and final affected
+offline checks, including cleanup, with a firm 75-minute stop and the same boundaries.
+
+**SEC-052 saved circular-membership presentation - owner-approved 2026-11-05.**
+The owner reported SEC-050/051 "tested-works" and approved the proposed presentation direction,
+with only a maximum 45-minute saved-reader and focused-offline-check stage authorized initially.
+Keep Medium version 1, the existing Circular group membership title/explanation/advice and one
+finding per saved group set, including overlapping loops and recorded self-membership.
+Saved circular membership shows Groups in this finding, with group/SID/domain/location, 50 groups
+per page and Open group; the display order is not a membership path.
+View recorded nesting links requests 50 direct links per page, phrased "{member group}
+({member domain}) is a member of {containing group} ({containing domain})."
+These are not one ordered path or a minimum set of changes.
+View saved supporting values requests only the selected link's original member/memberOf values,
+50 per page, preserving source, spelling, order and repeated occurrences with Recorded on,
+Recorded attribute and Saved value; memberOf records the same relationship from the member side.
+Include the previously deferred circular completeness correction: ordinary grids say
+"Cycle inventory: open details", retaining known capture warnings, rather than claiming Complete
+without reading the original flag or scanning bulky cycle proof for every row.
+Details show "Saved cycle inventory: Complete" or "Saved cycle inventory: Incomplete"; the latter
+says "The saved cycle inventory is incomplete. Additional groups, links or circular membership
+sets may be missing."
+Only a yes/no inventory flag is saved, so do not invent detailed gap reasons or confuse unopened
+pages with missing captured evidence.
+Missing or inconsistent details explicitly refuse with "The selected finding's saved
+circular-membership details are missing, invalid or inconsistent."
+Keep both finding entry points, Open affected object, Close and return context; identify which
+saved group Open affected object opens, while the finding still applies to every involved group.
+Correct the existing broken SEC-052 Learn link to Microsoft's working canonical article without
+changing the core advice; Learn explicitly documents loops in nested group membership, not
+infinite Windows recursion or a completed Tier 0 path.
+The screen/navigation/coverage wording stage requires a separate go-ahead after the reader
+checkpoint, and longer final verification requires a fresh warning, estimate and approval.
+After the reader checkpoint, the owner explicitly answered true to a maximum 45-minute
+screen/navigation/coverage stage with focused offline checks; the first form returned no values
+and was not treated as approval.
+This does not authorize the longer final qualification campaign.
+After the screen checkpoint, the owner explicitly answered true to a maximum 75-minute final
+offline verification stage, including isolated rebuilt-fault qualification, affected checks,
+provenance and cleanup; its first form also returned no values and was not treated as approval.
+No new analysis/formats, thresholds/severity, production limits, live work, recapture, existing-run
+rejudging, measurements, LAPS analysis, CI, package, merge, commit or push are authorized.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

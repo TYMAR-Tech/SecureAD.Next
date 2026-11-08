@@ -217,6 +217,10 @@ internal interface IAssetReader
     Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
         AttributeWritePermissionMark? after);
 
+    /// <summary>Reads one saved replication assessment and a bounded original-entry page, without authorization replay.</summary>
+    Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after);
+
     /// <summary>Reads one saved duplicated SPN and the requested original owner or registration page.</summary>
     Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position);
 
@@ -225,6 +229,31 @@ internal interface IAssetReader
 
     /// <summary>Reads the exact saved SEC-030 assessment identity without protection re-derivation.</summary>
     Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference);
+
+    /// <summary>Reads one saved owner/standing/membership header without permission or protection replay.</summary>
+    Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference);
+
+    /// <summary>Reads one saved group-size or direct-nesting header without materializing its original member list.</summary>
+    Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference);
+    /// <summary>Reads one requested page of original member-reference occurrences.</summary>
+    Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after);
+
+    /// <summary>Reads one circular finding's saved inventory flag and a bounded group page.</summary>
+    Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after);
+    /// <summary>Reads one requested page of recorded direct links, without their original witness values.</summary>
+    Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after);
+    /// <summary>Reads one requested page of original values supporting the selected direct relationship.</summary>
+    Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after);
+
+    /// <summary>Reads one saved SEC-021 header and a bounded original SPN page.</summary>
+    Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after);
+    /// <summary>Reads initial memberships only; no route or step expansion.</summary>
+    Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after);
+    /// <summary>Reads route headers for one requested initial membership.</summary>
+    Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after);
+    /// <summary>Reads steps for one requested stored route.</summary>
+    Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after);
 
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>

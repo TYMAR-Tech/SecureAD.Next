@@ -207,6 +207,10 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         AttributeWritePermissionMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadAttributeWritePermission(bundleDirectory, reference, after));
 
+    public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadReplicationPermission(bundleDirectory, reference, after));
+
     public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
         WithRun(bundleDirectory, reader => reader.ReadDuplicateSpn(bundleDirectory, reference, position));
 
@@ -215,6 +219,31 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 
     public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
         WithRun(bundleDirectory, reader => reader.ReadProtectionMarker(bundleDirectory, reference));
+
+    public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadOwnershipAssessment(bundleDirectory, reference));
+
+    public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadGroupReview(bundleDirectory, reference));
+    public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGroupReviewReferences(bundleDirectory, reference, after));
+
+    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipGroups(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipLinks(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipWitnesses(bundleDirectory, reference, groupGuid, memberGuid, after));
+
+    public Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceRegistrations(bundleDirectory, reference, after));
+    public Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadInitialMemberships(bundleDirectory, reference, after));
+    public Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadMembershipRoutes(bundleDirectory, reference, membershipOrdinal, after));
+    public Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadMembershipSteps(bundleDirectory, reference, membershipOrdinal, routeOrdinal, after));
 
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {

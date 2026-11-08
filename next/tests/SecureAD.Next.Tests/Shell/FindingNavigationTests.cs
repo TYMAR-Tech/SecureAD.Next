@@ -111,16 +111,16 @@ public sealed class FindingNavigationTests
         model.OpenFinding(selected);
         var details = model.FindingDetails!;
         Assert.True(details.HasFinding);
-        Assert.Null(details.MembershipDetails);
-        Assert.Null(details.MembershipCompleteness);
+        Assert.Null(details.ServiceRegistration!.Memberships);
         Assert.False(Assert.Single(source.FindingSelections).Membership);
-        details.LoadMembershipCommand.Execute(null);
-        Assert.True(details.ReadCompletion.IsCompletedSuccessfully);
-        Assert.Equal(new[] { false, true }, source.FindingSelections.Select(read => read.Membership));
-        Assert.Contains("routes were not derived", details.MembershipCompleteness, StringComparison.Ordinal);
-        Assert.Contains("not every possible path", details.MembershipDetails, StringComparison.Ordinal);
+        details.ServiceRegistration.ViewMembershipCommand.Execute(null);
+        Assert.True(details.ServiceRegistration.ReadCompletion.IsCompletedSuccessfully);
+        Assert.Equal(new[] { false }, source.FindingSelections.Select(read => read.Membership));
+        Assert.Equal(new[] { "names", "groups" }, source.ServiceReads);
+        Assert.Contains("routes were not derived", details.ServiceRegistration.MembershipCompleteness, StringComparison.Ordinal);
+        Assert.Contains("not every possible path", details.ServiceRegistration.MembershipNote, StringComparison.Ordinal);
         Assert.Null(selected.Saved.Membership);
-        Assert.False(details.LoadMembershipCommand.CanExecute(null));
+        Assert.False(details.ServiceRegistration.ViewMembershipCommand.CanExecute(null));
     }
 
     [Theory]
@@ -131,14 +131,15 @@ public sealed class FindingNavigationTests
         var (model, source) = Model(membership);
         var selected = model.Findings[0];
         if (membership) model.OpenFinding(selected);
-        source.SelectedFindingRead = (_, _) => Result<FindingListItem>.Failure(AuditError.Create(
-            ErrorCategory.Shell, "ExpectedRefusal", ErrorSeverity.Failed, "Saved facts are unavailable.", "test"));
-        if (membership) model.FindingDetails!.LoadMembershipCommand.Execute(null);
+        var error = AuditError.Create(ErrorCategory.Shell, "ExpectedRefusal", ErrorSeverity.Failed, "Saved facts are unavailable.", "test");
+        source.SelectedFindingRead = (_, _) => Result<FindingListItem>.Failure(error);
+        source.InitialMembershipsRead = (_, _) => Result<SavedInitialMemberships>.Failure(error);
+        if (membership) model.FindingDetails!.ServiceRegistration!.ViewMembershipCommand.Execute(null);
         else model.OpenFinding(selected);
         var details = model.FindingDetails!;
-        Assert.Equal("Saved facts are unavailable.", membership ? details.MembershipRefusal : details.Refusal);
+        Assert.Equal("Saved facts are unavailable.", membership ? details.ServiceRegistration!.Refusal : details.Refusal);
         Assert.Equal(membership, details.HasFinding);
-        Assert.Null(details.MembershipDetails);
+        Assert.Null(details.ServiceRegistration?.Memberships);
         Assert.Equal(2, model.Findings.Count);
     }
 
@@ -158,15 +159,15 @@ public sealed class FindingNavigationTests
         CancellationToken observed = default;
         source.CompleteRead = (value, token) =>
         {
-            if (value is not Result<FindingDetailContent>) return Task.FromResult(value);
+            if (membership ? value is not Result<SavedInitialMemberships> : value is not Result<FindingDetailContent>) return Task.FromResult(value);
             answer = value;
             observed = token;
             return release.Task;
         };
-        if (membership) model.FindingDetails!.LoadMembershipCommand.Execute(null);
+        if (membership) model.FindingDetails!.ServiceRegistration!.ViewMembershipCommand.Execute(null);
         else model.OpenFinding(model.Findings[0]);
         var old = model.FindingDetails!;
-        var pending = old.ReadCompletion;
+        var pending = membership ? old.ServiceRegistration!.ReadCompletion : old.ReadCompletion;
         Assert.NotNull(answer);
         source.CompleteRead = null;
         if (action == "close") model.CloseFindingDetails();
@@ -176,7 +177,7 @@ public sealed class FindingNavigationTests
         release.SetResult(answer);
         await pending;
         Assert.False(old.HasFinding);
-        Assert.Null(old.MembershipDetails);
+        Assert.Null(old.ServiceRegistration);
         if (action == "replace") Assert.Equal(model.Findings[1].Saved, model.FindingDetails!.Finding!.Saved);
         else Assert.False(model.HasFindingPresentation);
     }
@@ -187,7 +188,7 @@ public sealed class FindingNavigationTests
         var (model, _) = Model();
         var selected = model.Findings[0];
         var current = true;
-        Task<Result<FindingDetailContent>> Read(bool membership, CancellationToken token)
+        Task<Result<FindingDetailContent>> Read(CancellationToken token)
         {
             current = false;
             return Task.FromResult(Result<FindingDetailContent>.Success(FindingDetailContent.FromSaved(selected.Saved)));
@@ -204,26 +205,34 @@ public sealed class FindingNavigationTests
     {
         var (model, source) = Model(membership);
         var selected = model.Findings[0];
-        var content = FindingDetailContent.FromSaved(source.ReadSelectedFinding(
-            @"C:\offline-fixture\finding-navigation", selected.Saved.Reference!.Value, membership).Value);
-        var release = new TaskCompletionSource<Result<FindingDetailContent>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var delay = !membership;
-        var details = new FindingDetailViewModel(selected, (_, _) => delay ? release.Task
-            : Task.FromResult(Result<FindingDetailContent>.Success(FindingDetailContent.FromSaved(selected.Saved))), () => true);
         if (membership)
         {
-            Assert.True(details.HasFinding);
-            delay = true;
-            details.LoadMembershipCommand.Execute(null);
+            var first = source.ServiceNamesRead!(selected.Saved.Reference!.Value, null).Value;
+            var releaseGroup = new TaskCompletionSource<Result<SavedInitialMemberships>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var readers = new ServiceRegistrationReads(
+                (after, _) => Task.FromResult(source.ServiceNamesRead!(selected.Saved.Reference.Value, after)),
+                (_, _) => releaseGroup.Task,
+                (group, after, _) => Task.FromResult(source.MembershipRoutesRead!(selected.Saved.Reference.Value, group, after)),
+                (group, route, after, _) => Task.FromResult(source.MembershipStepsRead!(selected.Saved.Reference.Value, group, route, after)));
+            var panel = new ServiceRegistrationViewModel(first, readers, () => true);
+            panel.ViewMembershipCommand.Execute(null); var pendingGroup = panel.ReadCompletion;
+            Assert.False(pendingGroup.IsCompleted); panel.Suspend();
+            releaseGroup.SetResult(source.InitialMembershipsRead!(selected.Saved.Reference.Value, null));
+            await pendingGroup;
+            Assert.Null(panel.Memberships); Assert.Empty(panel.Names.Rows);
+            return;
         }
+        var content = FindingDetailContent.FromSaved(source.ReadSelectedFinding(
+            @"C:\offline-fixture\finding-navigation", selected.Saved.Reference!.Value, false).Value);
+        var release = new TaskCompletionSource<Result<FindingDetailContent>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var details = new FindingDetailViewModel(selected, _ => release.Task, () => true);
         var pending = details.ReadCompletion;
         Assert.False(pending.IsCompleted);
         details.Suspend();
         release.SetResult(Result<FindingDetailContent>.Success(content));
         await pending;
         Assert.False(details.HasFinding);
-        Assert.Null(details.MembershipDetails);
-        Assert.Null(details.MembershipCompleteness);
+        Assert.Null(details.ServiceRegistration);
     }
 
     [Fact]
@@ -256,12 +265,7 @@ public sealed class FindingNavigationTests
     private static (AssetsViewModel Model, FakeAssetSource Source) Model(bool membership = false)
     {
         var first = ObjectFindingsPagingTests.Finding(1);
-        if (membership) first = first with
-        {
-            RuleId = "SEC-021",
-            Evidence = new KerberoastableAccountEvidence("S-1-5-21-11-22-33-1100", ["HTTP/service"], 512)
-            { MembershipRoutes = MembershipRouteSummary.NotDerived },
-        };
+        if (membership) first = ServiceRegistrationDetailTests.Finding(first);
         var source = new FakeAssetSource
         {
             FindingsPage = new([first, ObjectFindingsPagingTests.Finding(2)],
@@ -270,6 +274,7 @@ public sealed class FindingNavigationTests
         };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         model.Show(@"C:\offline-fixture\finding-navigation", false);
+        if (membership) ServiceRegistrationDetailTests.Configure(source, model.Findings[0].Saved);
         return (model, source);
     }
 }

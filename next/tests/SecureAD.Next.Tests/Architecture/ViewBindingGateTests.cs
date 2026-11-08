@@ -166,12 +166,13 @@ public sealed class ViewBindingGateTests
         {
             var paths = Paths(grid);
             Assert.Contains(nameof(AssetsViewModel.OpenFindingCommand), paths);
-            Assert.DoesNotContain(paths, path => path.EndsWith(nameof(FindingRowViewModel.MembershipDetails), StringComparison.Ordinal)
-               || path.EndsWith(nameof(FindingRowViewModel.MembershipCompleteness), StringComparison.Ordinal));
+            Assert.DoesNotContain(paths, path => path.EndsWith("MembershipDetails", StringComparison.Ordinal)
+               || path.EndsWith("MembershipCompleteness", StringComparison.Ordinal) || path.Contains(".ServiceRegistration.", StringComparison.Ordinal));
         }
         var detail = Paths(Root("FindingDetailView.xaml"));
-        foreach (var member in new[] { "FindingDetails.Finding.HasMembershipEvidence", "FindingDetails.LoadMembershipCommand",
-            "FindingDetails.MembershipCompleteness", "FindingDetails.MembershipDetails" })
+        foreach (var member in new[] { "FindingDetails.HasServiceRegistration", "FindingDetails.ServiceRegistration.ViewMembershipCommand",
+            "FindingDetails.ServiceRegistration.MembershipCompleteness", "FindingDetails.ServiceRegistration.Memberships.Rows",
+            "FindingDetails.ServiceRegistration.Routes.Rows", "FindingDetails.ServiceRegistration.Steps.Rows" })
             Assert.Contains(member, detail);
     }
 
