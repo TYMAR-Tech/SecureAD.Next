@@ -53,6 +53,7 @@ public sealed class ShellMvvmGateTests
     {
         var offences = RebuildTree
             .Scan(ViewModelFiles(), ForbiddenInViewModels)
+            .Where(s => !IsLiteralStringProperty(s.Text))
             .Select(s => $"{Path.GetFileName(s.File)}:{s.Line} {s.Text.Trim()}")
             .ToList();
 
@@ -62,6 +63,18 @@ public sealed class ShellMvvmGateTests
             + "seam so that it can be tested without one, and so that logic cannot hide in a view. "
             + "Found: " + string.Join("; ", offences));
     }
+
+    private static bool IsLiteralStringProperty(string line) =>
+        Regex.IsMatch(line, """^\s*public\s+string\s+\w+\s*=>\s*"(?:\\.|[^"\\])*"\s*;\s*$""");
+
+    [Theory]
+    [InlineData("""public string Note => "It does not contact Active Directory.";""", true)]
+    [InlineData("""public string Note => "File and Directory are words in this note.";""", true)]
+    [InlineData("""public string Note => File.ReadAllText(path);""", false)]
+    [InlineData("""public string Note => $"{File.ReadAllText(path)}";""", false)]
+    [InlineData("""public string Note => "Directory"; File.ReadAllText(path);""", false)]
+    public void LiteralUiTextIsNotMistakenForACapabilityReference(string line, bool expected) =>
+        Assert.Equal(expected, IsLiteralStringProperty(line));
 
     [Fact]
     public void CodeBehindDoesNothingButInitialiseItsComponent()

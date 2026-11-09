@@ -7,6 +7,47 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
+    /// <summary>Shows one recorded loop, retaining one successor per group rather than enumerating every possible cycle.</summary>
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(FindingReference reference, CircularMembershipLoopMark? after = null)
+    {
+        var selected = ReadCircularSelection(reference);
+        if (!selected.IsSuccess) return Result<SavedCircularMembershipLoop>.Failure(selected.Error);
+        var finding = selected.Value;
+        RequireCircularPosition(finding, after?.GenerationId, after?.FindingId, after?.ComponentKey, after?.Offset);
+        var read = ReadCircularProof(finding, CircularMembershipReadKind.Loop, 0);
+        if (read.FirstLinks.Count != read.Context.GroupCount
+            || read.FirstLinks.Values.Any(value => !read.FirstLinks.ContainsKey(value.MemberGuid))) throw CircularInvalid();
+        var visited = new Dictionary<Guid, int>();
+        var path = new List<CircularMembershipLinkHeader>();
+        var current = read.Context.Anchor.ObjectGuid;
+        while (!visited.ContainsKey(current))
+        {
+            _readCancellation.ThrowIfCancellationRequested();
+            if (!read.FirstLinks.TryGetValue(current, out var link)) throw CircularInvalid();
+            visited.Add(current, path.Count); path.Add(link); current = link.MemberGuid;
+        }
+        var cycle = path.Skip(visited[current]).ToArray();
+        var key = Tier0PathCalculation.Fingerprint(cycle.Select(link => link.GroupGuid.ToString("D") + ":" + link.MemberGuid.ToString("D")));
+        var start = after?.Offset ?? 0;
+        if (cycle.Length == 0 || start >= cycle.Length || after is { } mark && mark.LoopKey != key) throw CircularInvalid();
+        var headers = cycle.Skip(checked((int)start)).Take(SavedCircularMembershipContext.PageSize).ToArray();
+        var positions = headers.SelectMany(link => new[] { link.GroupGuid, link.MemberGuid }).Distinct()
+            .ToDictionary(guid => guid, guid => CircularGroupPosition(reference.FindingId, guid));
+        var identities = ReadCircularProof(finding, CircularMembershipReadKind.Identities, 0, positions.Values.ToHashSet());
+        if (identities.Context != read.Context) throw CircularInvalid();
+        var steps = headers.Select((link, index) => new SavedCircularMembershipLoopStep(start + index,
+            new(link.Position, Identity(link.GroupGuid), Identity(link.MemberGuid), link.WitnessCount))).ToArray();
+        CircularMembershipLoopMark? next = start + steps.Length < cycle.Length
+            ? new(reference.GenerationId, reference.FindingId, finding.Subject.Key, key, start + steps.Length) : null;
+        var page = new SavedCircularMembershipLoop(read.Context, key, cycle[0].GroupGuid, cycle.Length,
+            read.Context.GroupCount > cycle.Length || read.Context.LinkCount > cycle.Length, steps, next);
+        if (!page.IsExpectedPage(after)) throw CircularInvalid();
+        return Result<SavedCircularMembershipLoop>.Success(page);
+
+        CircularMembershipGroup Identity(Guid guid) => identities.Groups.TryGetValue(positions[guid], out var group) && group.ObjectGuid == guid
+            ? group : throw CircularInvalid();
+    }
+
     /// <summary>Reads the original cycle-inventory flag and one saved group page, without reconstructing the graph.</summary>
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(FindingReference reference, CircularMembershipGroupMark? after = null)
     {

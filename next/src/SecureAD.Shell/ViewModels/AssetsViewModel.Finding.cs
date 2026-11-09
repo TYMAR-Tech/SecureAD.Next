@@ -93,7 +93,7 @@ internal sealed partial class AssetsViewModel
                 }
                 if (answer.Value.RuleId == "SEC-052")
                 {
-                    var circular = reader.ReadCircularMembershipGroups(bundle, reference, null);
+                    var circular = reader.ReadCircularMembershipLoop(bundle, reference, null);
                     if (!circular.IsSuccess) return Result<FindingDetailContent>.Failure(circular.Error);
                     content = content with { CircularMembership = circular.Value };
                 }
@@ -146,12 +146,14 @@ internal sealed partial class AssetsViewModel
                 reader => reader.ReadGroupReviewReferences(bundle, finding.Saved.Reference!.Value, after), token, "read saved direct references"),
             new CircularMembershipReads(
                 (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadCircularMembershipLoop(bundle, finding.Saved.Reference!.Value, after), token, "read saved circular loop"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadCircularMembershipGroups(bundle, finding.Saved.Reference!.Value, after), token, "read saved circular groups"),
                 (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadCircularMembershipLinks(bundle, finding.Saved.Reference!.Value, after), token, "read recorded circular membership links"),
                 (group, member, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadCircularMembershipWitnesses(bundle, finding.Saved.Reference!.Value, group, member, after), token, "read selected circular membership values"),
-                OpenCircularGroup));
+                OpenCircularGroup, ReviewCircularMembership));
     }
 
     [RelayCommand]
@@ -177,5 +179,12 @@ internal sealed partial class AssetsViewModel
         if (FindingDetails is not { } details || !details.CheckCurrent() || details.CircularMembership is not { } circular
             || !circular.ContainsGroup(group)) return;
         Open(group.DistinguishedName, ObjectSectionCatalog.Overview, group.ObjectGuid);
+    }
+
+    private void ReviewCircularMembership(SavedCircularMembershipLink link)
+    {
+        if (FindingDetails is not { } details || !details.CheckCurrent() || details.CircularMembership is not { } circular
+            || !circular.ContainsLoopLink(link)) return;
+        Open(link.ContainingGroup.DistinguishedName, ObjectSectionCatalog.Membership, link.ContainingGroup.ObjectGuid);
     }
 }

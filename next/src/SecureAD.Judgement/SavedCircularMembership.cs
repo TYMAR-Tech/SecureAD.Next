@@ -28,6 +28,34 @@ public sealed record SavedCircularMembershipContext(FindingReference Reference, 
 
 public readonly record struct CircularMembershipGroupMark(Guid GenerationId, long FindingId, string ComponentKey, long Offset);
 public readonly record struct CircularMembershipLinkMark(Guid GenerationId, long FindingId, string ComponentKey, long Offset);
+public readonly record struct CircularMembershipLoopMark(Guid GenerationId, long FindingId, string ComponentKey, string LoopKey, long Offset);
+public sealed record SavedCircularMembershipLoopStep(long Position, SavedCircularMembershipLink Link);
+public sealed record SavedCircularMembershipLoop(SavedCircularMembershipContext Context, string LoopKey, Guid StartGroupGuid,
+    int StepCount, bool HasOtherLoops, IReadOnlyList<SavedCircularMembershipLoopStep> Steps, CircularMembershipLoopMark? Next)
+{
+    public bool IsExpectedPage(CircularMembershipLoopMark? after)
+    {
+        var start = after?.Offset ?? 0;
+        if (Context is null || Steps is null || string.IsNullOrWhiteSpace(LoopKey) || StartGroupGuid == Guid.Empty
+            || StepCount <= 0 || StepCount > Context.GroupCount || start < 0 || start >= StepCount
+            || HasOtherLoops != (Context.GroupCount > StepCount || Context.LinkCount > StepCount)
+            || after is { } previous && (!Matches(previous) || previous.Offset != start)
+            || Steps.Count != Math.Min(SavedCircularMembershipContext.PageSize, StepCount - start)
+            || (Next is not null) != (start + Steps.Count < StepCount)) return false;
+        for (var index = 0; index < Steps.Count; index++)
+        {
+            var step = Steps[index];
+            if (step is null || step.Position != start + index || step.Link is not { WitnessCount: > 0 } link
+                || !SavedCircularMembershipContext.ValidGroup(link.ContainingGroup) || !SavedCircularMembershipContext.ValidGroup(link.Member)
+                || index > 0 && Steps[index - 1].Link.Member != link.ContainingGroup) return false;
+        }
+        return (start != 0 || Steps[0].Link.ContainingGroup.ObjectGuid == StartGroupGuid)
+            && (start + Steps.Count != StepCount || Steps[^1].Link.Member.ObjectGuid == StartGroupGuid)
+            && (Next is not { } next || Matches(next) && next.Offset == start + Steps.Count);
+    }
+    private bool Matches(CircularMembershipLoopMark mark) =>
+        Context.MatchesPosition(mark.GenerationId, mark.FindingId, mark.ComponentKey, mark.Offset, StepCount) && mark.LoopKey == LoopKey;
+}
 public readonly record struct CircularMembershipWitnessMark(Guid GenerationId, long FindingId, string ComponentKey,
     Guid GroupGuid, Guid MemberGuid, long Offset);
 public sealed record SavedCircularMembershipGroup(long Position, CircularMembershipGroup Group);

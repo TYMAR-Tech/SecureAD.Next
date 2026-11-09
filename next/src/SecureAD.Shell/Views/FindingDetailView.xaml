@@ -500,10 +500,45 @@
                 <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.HasCircularMembership,Converter={StaticResource Shown}}">
                     <StackPanel>
-                        <TextBlock Text="Saved circular membership" Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding FindingDetails.CircularMembership.InventoryLabel}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="The circular nesting" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Chain,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 FontSize="20" FontWeight="SemiBold" Margin="0,6,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.ArrowNote}" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding FindingDetails.CircularMembership.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0"
                                    Visibility="{Binding FindingDetails.CircularMembership.IsIncomplete,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.OtherLoopsNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CircularMembership.HasOtherLoops,Converter={StaticResource Shown}}" />
+                        <WrapPanel Visibility="{Binding FindingDetails.CircularMembership.IsPagedLoop,Converter={StaticResource Shown}}" Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.CircularMembership.Loop.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.Loop.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.CircularMembership.Loop.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.Loop.LoadingText}"
+                                   Visibility="{Binding FindingDetails.CircularMembership.Loop.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Loop.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Loop.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="How to break the loop shown" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.BreakNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Containing group" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1" Text="Member to review for removal" FontWeight="SemiBold" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding FindingDetails.CircularMembership.Loop.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding ContainingGroup}" TextWrapping="Wrap" Margin="0,0,10,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Member}" TextWrapping="Wrap" Margin="0,0,10,0" />
+                                    <Button Grid.Column="2" Content="Review membership" Command="{Binding ReviewCommand}" />
+                                </Grid>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.ReviewNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                        <Button Content="Group details and original evidence" Command="{Binding FindingDetails.CircularMembership.ViewDetailsCommand}"
+                                HorizontalAlignment="Left" Margin="0,6,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.CircularMembership.HasDetails,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.InventoryLabel}" TextWrapping="Wrap" Margin="0,6,0,0" />
                         <TextBlock Text="{Binding FindingDetails.CircularMembership.AffectedObjectNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
                         <TextBlock Text="Groups in this finding" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
                         <TextBlock Text="{Binding FindingDetails.CircularMembership.GroupNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
@@ -578,6 +613,7 @@
                                        Visibility="{Binding FindingDetails.CircularMembership.Witnesses.IsLoading,Converter={StaticResource Shown}}" />
                             <TextBox Text="{Binding FindingDetails.CircularMembership.Witnesses.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
                                      Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Witnesses.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
                         </StackPanel>
                         <TextBlock Text="{Binding FindingDetails.CircularMembership.LoadingText}"
                                    Visibility="{Binding FindingDetails.CircularMembership.IsLoading,Converter={StaticResource Shown}}" />

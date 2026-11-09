@@ -783,6 +783,68 @@ provenance and cleanup; its first form also returned no values and was not treat
 No new analysis/formats, thresholds/severity, production limits, live work, recapture, existing-run
 rejudging, measurements, LAPS analysis, CI, package, merge, commit or push are authorized.
 
+**SEC-052 loop-first readability feedback - owner-reported 2026-11-08.**
+The owner compared the predecessor's concise nesting-chain and break guidance with the new
+SEC-052 group-card inventory and said the new presentation is harder to read.
+This is negative usability feedback, not SEC-052 acceptance: show the circular nesting and what
+membership to review for removal before SIDs, full locations or original evidence.
+The predecessor is read-only presentation evidence, not permission to copy its analysis,
+privilege-based severity or unqualified "any link fixes everything" wording.
+For a displayed simple loop, a direct membership removal can break that loop; overlapping loops
+can remain, and the current saved group set and incomplete evidence must still be respected.
+Prepare a compact loop-first visual correction using fictional data, then obtain explicit owner
+approval of its scope and wording before application changes or tests.
+Keep SEC-061/062 implementation paused, preserve the verified commit, subsequent direction records
+and all historical evidence, and do not perform live changes, measurements, CI or Git delivery.
+After viewing the fictional loop-first preview, the owner said "i like that much better".
+Record this as approval of the loop-first visual direction: the chain and containing-group/member
+review choices come first, with identity/evidence detail secondary.
+This feedback alone is not application implementation or longer-test approval.
+The owner then explicitly requested "implement it" for this loop-first correction.
+Implement the liked presentation from saved relationships only: arrows mean contains, and the
+review choices name the containing group and its member, never perform a directory change.
+Keep one representative loop distinct from the full connected group set; breaking the loop
+shown does not promise that overlapping loops or gaps in captured evidence are resolved.
+Identity/original-evidence details remain requested and paged, and longer final verification
+still requires a fresh warning and approval.
+After the 243-pass implementation checkpoint, the owner explicitly approved a maximum 75-minute
+final offline verification stage, including isolated rebuilt faults, affected checks, provenance
+and cleanup; no live work, measurements, CI, packaging, commit or push are included.
+
+**SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
+While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
+direction only, not application implementation or tests.
+Keep existing titles, Medium/High version 1, affected-group finding grain, broad-principal
+policy, scoped administrative roles, calculations, exclusions and core advice unchanged.
+Saved broad group membership shows the affected group/SID/domain/location and Broad identities
+with saved names/SIDs and separately recorded SID scope where present, 50 identities per page.
+Say "These are the broad identities recorded by this finding. Their members are not expanded
+into accounts here."
+View recorded membership links requests 50 original direct links per page, saying "{member
+identity} is a member of {containing group}.", with actual endpoint identities/domains/locations.
+Say "These are saved direct links supporting this broad-membership finding. Alternative links
+are retained; this is not a count of every possible route or a minimum set of changes."
+Recorded through identifies a separate captured foreign-security-principal reference where
+applicable; do not merge it with the resolved member, infer a missing domain or count it as
+another grant/population.
+View saved supporting values requests only the selected link's original member/memberOf values,
+50 per page, retaining source, order and spelling with Recorded on, Recorded attribute and Saved
+value; these values are not a complete membership list.
+Incomplete membership evidence retains saved reasons/locations and separates capture gaps from
+unsupported type/scope or unresolved identity, saying "Recorded positive links remain findings.
+Other membership may not have been fully assessed."
+Unopened pages are not capture gaps; missing or inconsistent detail explicitly refuses with
+"The selected finding's saved broad-membership details are missing, invalid or inconsistent."
+Retain both finding entry points, Open affected object, Close, original browsers and return context.
+SEC-061 reviews legitimate compatibility dependencies rather than prescribing blanket removal;
+special identities remain symbolic and Everyone is not automatically anonymous access.
+No new requester authorization, object-specific read access, logon, takeover or completed Tier 0
+path is established by this presentation.
+Wait for SEC-052 testing feedback and a separate bounded implementation go-ahead; later longer
+verification needs its own warning, estimate and explicit approval.
+No new analysis/formats, thresholds/severities, production limits, live work, recapture, existing-run
+rejudging, measurements, LAPS work, tests, CI, packaging, merge, commit or push are authorized.
+
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
 pushing it and retiring the old work branches before continuing on a fresh Findings branch.

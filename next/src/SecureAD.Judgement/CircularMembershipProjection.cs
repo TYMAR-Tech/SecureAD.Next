@@ -2,12 +2,16 @@ using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
 
-internal enum CircularMembershipReadKind { Groups, Links, FindLink, Witnesses, Identities }
+internal enum CircularMembershipReadKind { Groups, Links, FindLink, Witnesses, Identities, Loop }
 internal sealed record CircularMembershipLinkHeader(long Position, Guid GroupGuid, Guid MemberGuid, int WitnessCount);
 internal sealed record CircularMembershipWitnessValue(long Position, Guid SourceGuid, string Attribute, int Ordinal, string Value);
 internal sealed record CircularMembershipProjectionResult(SavedCircularMembershipContext Context,
     IReadOnlyDictionary<long, CircularMembershipGroup> Groups, IReadOnlyList<CircularMembershipLinkHeader> Links,
-    IReadOnlyList<CircularMembershipWitnessValue> Witnesses);
+    IReadOnlyList<CircularMembershipWitnessValue> Witnesses)
+{
+    internal IReadOnlyDictionary<Guid, CircularMembershipLinkHeader> FirstLinks { get; init; } =
+        new Dictionary<Guid, CircularMembershipLinkHeader>();
+}
 
 internal sealed class CircularMembershipProjection(SavedProofJsonReader json, FindingListItem selected,
     JudgementDescription description, CircularMembershipReadKind kind, long offset, IReadOnlySet<long>? groupPositions,
@@ -16,6 +20,7 @@ internal sealed class CircularMembershipProjection(SavedProofJsonReader json, Fi
     private readonly Dictionary<long, CircularMembershipGroup> _groups = [];
     private readonly List<CircularMembershipLinkHeader> _links = [];
     private readonly List<CircularMembershipWitnessValue> _witnesses = [];
+    private readonly Dictionary<Guid, CircularMembershipLinkHeader> _firstLinks = [];
     private int _groupCount, _linkCount;
     private bool _inventoryComplete, _complete;
 
@@ -45,7 +50,7 @@ internal sealed class CircularMembershipProjection(SavedProofJsonReader json, Fi
         var context = new SavedCircularMembershipContext(selected.Reference!.Value, selected.Subject, anchor!,
             _groupCount, _linkCount, _inventoryComplete, selected.Coverage);
         json.Require(context.Matches(selected));
-        return new(context, _groups, _links, _witnesses);
+        return new(context, _groups, _links, _witnesses) { FirstLinks = _firstLinks };
     }
 
     private void Groups()
@@ -85,7 +90,7 @@ internal sealed class CircularMembershipProjection(SavedProofJsonReader json, Fi
         long position = 0;
         _linkCount = Count(json.Array(() =>
         {
-            var requested = kind == CircularMembershipReadKind.FindLink
+            var requested = kind is CircularMembershipReadKind.FindLink or CircularMembershipReadKind.Loop
                 || kind == CircularMembershipReadKind.Links && position >= offset && position < offset + SavedCircularMembershipContext.PageSize
                 || kind == CircularMembershipReadKind.Witnesses && position == selectedLinkPosition;
             if (!requested) json.Skip("object");
@@ -114,7 +119,9 @@ internal sealed class CircularMembershipProjection(SavedProofJsonReader json, Fi
                 });
                 json.RequireKeys(keys, "GroupGuid", "MemberGuid", "Witnesses", "IsComplete");
                 json.Require(witnesses > 0 && complete);
-                if (kind == CircularMembershipReadKind.FindLink)
+                if (kind == CircularMembershipReadKind.Loop)
+                    _firstLinks.TryAdd(group, new(position, group, member, witnesses));
+                else if (kind == CircularMembershipReadKind.FindLink)
                 {
                     if (group == selectedGroup && member == selectedMember)
                     {

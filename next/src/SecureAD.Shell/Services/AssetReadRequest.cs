@@ -231,6 +231,8 @@ internal sealed partial class AssetReadRequest(
 
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipGroups(reference, after), _readCancellation)));
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipLoop(reference, after), _readCancellation)));
     public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipLinks(reference, after), _readCancellation)));
     public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,

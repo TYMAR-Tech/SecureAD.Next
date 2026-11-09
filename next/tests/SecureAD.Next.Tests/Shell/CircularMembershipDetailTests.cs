@@ -33,14 +33,15 @@ public sealed class CircularMembershipDetailTests
         Assert.Equal(complete ? "Complete" : "May be incomplete", details.Finding.Coverage);
         Assert.Equal(complete ? "Saved cycle inventory: Complete" : "Saved cycle inventory: Incomplete", panel.InventoryLabel);
         Assert.Equal(!complete, panel.IsIncomplete);
-        Assert.Equal(new[] { "groups" }, source.CircularReads);
+        Assert.Equal(new[] { "loop" }, source.CircularReads);
         Assert.False(details.ShowsSavedDescription); Assert.False(details.ShowsStandardIdentity);
-        Assert.Equal(50, panel.Groups.Rows.Count); Assert.Null(panel.Links); Assert.Null(panel.Witnesses);
+        Assert.Equal(50, panel.Loop.Rows.Count); Assert.Null(panel.Groups); Assert.Null(panel.Links); Assert.Null(panel.Witnesses);
         Assert.Null(row.Saved.CircularInventoryComplete);
         Assert.Empty(source.ControlQueries); Assert.Empty(source.PathQueries);
     }
 
     [Theory]
+    [InlineData("loop")]
     [InlineData("groups")]
     [InlineData("links")]
     [InlineData("witnesses")]
@@ -48,12 +49,32 @@ public sealed class CircularMembershipDetailTests
     {
         var (model, source) = Model(); model.OpenFinding(Assert.Single(model.Findings));
         var panel = model.FindingDetails!.CircularMembership!;
+        if (level == "loop")
+        {
+            var first = panel.Loop.Rows.Select(value => value.Saved).ToArray();
+            var held = panel.Loop.Rows[0].ReviewCommand;
+            var announced = new List<string?>();
+            panel.PropertyChanged += (_, change) => announced.Add(change.PropertyName);
+            panel.Loop.NextPageCommand.Execute(null);
+            Assert.Equal(5, panel.Loop.Rows.Count);
+            Assert.Equal(50, panel.Loop.Rows[0].Saved.Position);
+            Assert.False(held.CanExecute(null));
+            Assert.Contains(nameof(panel.Chain), announced);
+            Assert.StartsWith("Group 50 (contoso.com)", panel.Chain, StringComparison.Ordinal);
+            Assert.Equal("Arrow means contains.", panel.ArrowNote);
+            panel.Loop.PreviousPageCommand.Execute(null);
+            Assert.Equal(first, panel.Loop.Rows.Select(value => value.Saved));
+            Assert.Equal(new[] { "loop", "loop", "loop" }, source.CircularReads);
+            Assert.Null(panel.Groups); Assert.Null(panel.Links); Assert.Null(panel.Witnesses);
+            return;
+        }
+        panel.ViewDetailsCommand.Execute(null);
         if (level == "groups")
         {
-            var first = panel.Groups.Rows.Select(value => value.Saved).ToArray();
+            var first = panel.Groups!.Rows.Select(value => value.Saved).ToArray();
             panel.Groups.NextPageCommand.Execute(null); Assert.Equal(5, panel.Groups.Rows.Count);
             panel.Groups.PreviousPageCommand.Execute(null); Assert.Equal(first, panel.Groups.Rows.Select(value => value.Saved));
-            Assert.Equal(new[] { "groups", "groups", "groups" }, source.CircularReads);
+            Assert.Equal(new[] { "loop", "groups", "groups", "groups" }, source.CircularReads);
         }
         else
         {
@@ -84,13 +105,13 @@ public sealed class CircularMembershipDetailTests
     [InlineData("page")]
     public void InvalidInitialSavedGroupPagesCannotBecomeGenericOrRawProseSuccess(string defect)
     {
-        var (model, source) = Model(); var read = source.CircularGroupsRead!;
-        source.CircularGroupsRead = (reference, after) =>
+        var (model, source) = Model(); var read = source.CircularLoopRead!;
+        source.CircularLoopRead = (reference, after) =>
         {
-            if (defect == "missing") return Result<SavedCircularMembershipGroups>.Failure(AuditError.Create(ErrorCategory.Evidence,
+            if (defect == "missing") return Result<SavedCircularMembershipLoop>.Failure(AuditError.Create(ErrorCategory.Evidence,
                 "MissingCircularDetails", ErrorSeverity.Failed, SavedCircularMembershipContext.InvalidDetails, null));
             var page = read(reference, after).Value;
-            return Result<SavedCircularMembershipGroups>.Success(defect switch
+            return Result<SavedCircularMembershipLoop>.Success(defect switch
             {
                 "generation" => page with { Context = page.Context with { Reference = reference with { GenerationId = Guid.NewGuid() } } },
                 "group" => page with { Context = page.Context with { Anchor = page.Context.Anchor with { ObjectGuid = Guid.NewGuid() } } },
@@ -149,8 +170,9 @@ public sealed class CircularMembershipDetailTests
     {
         var (model, source) = Model(); model.OpenFinding(Assert.Single(model.Findings));
         var panel = model.FindingDetails!.CircularMembership!;
+        panel.ViewDetailsCommand.Execute(null);
         panel.ViewLinksCommand.Execute(null); panel.Links!.Rows[0].ViewCommand.Execute(null);
-        var groups = panel.Groups; var group = groups.Rows[1]; var links = panel.Links; var values = panel.Witnesses!;
+        var groups = panel.Groups!; var group = groups.Rows[1]; var links = panel.Links; var values = panel.Witnesses!;
         if (expire) { source.IsCurrent = false; Assert.False(model.FindingDetails.CheckCurrent()); } else model.CloseFindingDetails();
         Assert.Empty(groups.Rows); Assert.Empty(links.Rows); Assert.Empty(values.Rows);
         Assert.False(group.OpenCommand.CanExecute(null)); Assert.False(panel.ViewLinksCommand.CanExecute(null));
@@ -162,7 +184,8 @@ public sealed class CircularMembershipDetailTests
     {
         var (model, source) = Model(); var selected = Assert.Single(model.Findings); model.SelectedFinding = selected;
         model.OpenFinding(selected); var panel = model.FindingDetails!.CircularMembership!;
-        var child = panel.Groups.Rows[1];
+        panel.ViewDetailsCommand.Execute(null);
+        var child = panel.Groups!.Rows[1];
         source.Attributes = FakeAssetSource.CapturedObject(child.Location, "group") with { ObjectGuid = child.Saved.Group.ObjectGuid };
         child.OpenCommand.Execute(null); await model.ObjectReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(model.Opened);
@@ -174,7 +197,7 @@ public sealed class CircularMembershipDetailTests
         model.CloseFindingDetails(); model.OpenFinding(objectRow);
         Assert.Equal(selected.Saved.Reference, model.FindingDetails!.Finding!.Saved.Reference);
         Assert.Same(section, opened.Content); Assert.Same(objectRow, section.SelectedFinding);
-        Assert.Equal(new[] { "groups", "groups" }, source.CircularReads);
+        Assert.Equal(new[] { "loop", "groups", "loop" }, source.CircularReads);
     });
 
     [Fact]
@@ -195,12 +218,31 @@ public sealed class CircularMembershipDetailTests
     {
         var (model, source) = Model(); var reference = Assert.Single(model.Findings).Saved.Reference!.Value;
         var pending = new TaskCompletionSource<Result<SavedCircularMembershipLinks>>();
-        var panel = new CircularMembershipViewModel(source.CircularGroupsRead!(reference, null).Value,
-            new((after, _) => Task.FromResult(source.CircularGroupsRead(reference, after)), (_, _) => pending.Task,
-                (group, member, after, _) => Task.FromResult(source.CircularWitnessesRead!(reference, group, member, after)), _ => { }), () => true);
+        var panel = new CircularMembershipViewModel(source.CircularLoopRead!(reference, null).Value,
+            new((after, _) => Task.FromResult(source.CircularLoopRead(reference, after)),
+                (after, _) => Task.FromResult(source.CircularGroupsRead!(reference, after)), (_, _) => pending.Task,
+                (group, member, after, _) => Task.FromResult(source.CircularWitnessesRead!(reference, group, member, after)), _ => { }, _ => { }), () => true);
         panel.ViewLinksCommand.Execute(null); var work = panel.ReadCompletion;
         panel.Suspend(); pending.SetResult(source.CircularLinksRead!(reference, null)); await work;
-        Assert.Null(panel.Links); Assert.Empty(panel.Groups.Rows); Assert.False(panel.ViewLinksCommand.CanExecute(null));
+        Assert.Null(panel.Links); Assert.Empty(panel.Loop.Rows); Assert.False(panel.ViewLinksCommand.CanExecute(null));
+    });
+
+    [Fact]
+    public void LoopFirstReviewOpensTheContainingGroupsCapturedMembershipWithoutLoadingEvidence() => OneThread.Run(async () =>
+    {
+        var (model, source) = Model(size: 3); model.OpenFinding(Assert.Single(model.Findings));
+        var panel = model.FindingDetails!.CircularMembership!;
+        var choice = panel.Loop.Rows[0];
+        source.Attributes = FakeAssetSource.CapturedObject(choice.Saved.Link.ContainingGroup.DistinguishedName, "group")
+            with { ObjectGuid = choice.Saved.Link.ContainingGroup.ObjectGuid };
+        choice.ReviewCommand.Execute(null); await model.ObjectReadCompletion;
+        Assert.Equal(choice.Saved.Link.ContainingGroup.DistinguishedName, source.OpenedObject);
+        var opened = Assert.IsType<ObjectViewModel>(model.Opened);
+        Assert.Equal(choice.Saved.Link.ContainingGroup.ObjectGuid, opened.ObjectGuid);
+        Assert.Equal(ObjectSectionCatalog.Membership, opened.SelectedKey);
+        Assert.Equal(new[] { "loop" }, source.CircularReads);
+        Assert.Null(panel.Groups); Assert.Null(panel.Links); Assert.Null(panel.Witnesses);
+        Assert.Contains("breaks the loop shown", panel.BreakNote, StringComparison.Ordinal);
     });
 
     [Theory]
@@ -210,13 +252,32 @@ public sealed class CircularMembershipDetailTests
     [InlineData(1300, false)]
     public void RealWindowShowsSavedCoverageAndRequestedRelationshipsWithoutRawProof(int width, bool complete) => OnSta(() =>
     {
-        var (model, _) = Model(complete); model.OpenFinding(Assert.Single(model.Findings));
+        var (model, _) = Model(complete, size: 3, otherLoops: !complete); model.OpenFinding(Assert.Single(model.Findings));
+        var panel = model.FindingDetails!.CircularMembership!;
         var view = FindingsViewTests.View(model, "FindingDetailView.xaml");
         var host = new Window { Content = view, Width = width, Height = 750, Left = -20000, Top = -20000, ShowActivated = false, ShowInTaskbar = false };
         try
         {
             host.Show(); Layout(view, width, 700);
-            Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Saved circular membership");
+            Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "The circular nesting");
+            var how = Assert.Single(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "How to break the loop shown");
+            var bounds = how.TransformToAncestor(view).TransformBounds(new Rect(how.RenderSize));
+            Assert.InRange(bounds.Top, 0, 700 - how.ActualHeight);
+            Assert.Contains(Descendants<TextBox>(view), value => value.IsVisible && value.Text ==
+                "Anchor (contoso.com) \u2192 Child nested (child.contoso.com) \u2192 Group 2 (contoso.com) \u2192 Anchor (contoso.com)");
+            Assert.Equal(!complete, Descendants<TextBlock>(view).Any(value => value.IsVisible && value.Text == panel.IncompleteNote));
+            Assert.Equal(!complete, Descendants<TextBlock>(view).Any(value => value.IsVisible && value.Text == panel.OtherLoopsNote));
+            var choices = Descendants<Button>(view).Where(value => value.IsVisible && Equals(value.Content, "Review membership")).ToArray();
+            Assert.Equal(3, choices.Length);
+            var viewport = Assert.Single(Descendants<ScrollViewer>(view), value => value.Name == "FindingDetailsScroll");
+            var visible = viewport.TransformToAncestor(view).TransformBounds(new Rect(viewport.RenderSize));
+            Assert.All(choices, choice =>
+            {
+                var choiceBounds = choice.TransformToAncestor(view).TransformBounds(new Rect(choice.RenderSize));
+                Assert.InRange(choiceBounds.Top, visible.Top, visible.Bottom - choice.ActualHeight);
+            });
+            var details = Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "Group details and original evidence"));
+            details.Command.Execute(null); Layout(view, width, 700);
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == (complete ? "Saved cycle inventory: Complete" : "Saved cycle inventory: Incomplete"));
             Assert.DoesNotContain(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Recorded nesting links");
             var button = Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "View recorded nesting links"));
@@ -228,9 +289,9 @@ public sealed class CircularMembershipDetailTests
         finally { host.Close(); }
     });
 
-    internal static (AssetsViewModel Model, FakeAssetSource Source) Model(bool complete = true, bool self = false)
+    internal static (AssetsViewModel Model, FakeAssetSource Source) Model(bool complete = true, bool self = false, int size = 55, bool otherLoops = false)
     {
-        var count = self ? 1 : 55;
+        var count = self ? 1 : size;
         var groups = Enumerable.Range(0, count).Select(index =>
         {
             var domain = index == 1 ? "child.contoso.com" : "contoso.com";
@@ -242,13 +303,27 @@ public sealed class CircularMembershipDetailTests
             Enumerable.Range(0, 55).Select(ordinal => ordinal % 2 == 0
                 ? new CircularMembershipWitness(group.ObjectGuid, "member", ordinal, groups[(index + 1) % count].DistinguishedName)
                 : new CircularMembershipWitness(groups[(index + 1) % count].ObjectGuid, "memberOf", ordinal, group.DistinguishedName)).ToArray())).ToArray();
+        CircularMembershipLink[] allLinks = otherLoops
+            ? [.. originals, new(groups[0].ObjectGuid, groups[^1].ObjectGuid,
+                [new(groups[0].ObjectGuid, "member", 55, groups[^1].DistinguishedName)])]
+            : originals;
         var subject = new FindingSubject(FindingSubjectKind.DirectoryObject, CircularMembershipIndex.Key(groups));
-        var evidence = new CircularMembershipEvidence(new string('a', 64), Guid.NewGuid(), subject.Key, groups, originals, complete);
+        var evidence = new CircularMembershipEvidence(new string('a', 64), Guid.NewGuid(), subject.Key, groups, allLinks, complete);
         var finding = new Finding("SEC-052", 1, Severity.Medium, subject, groups[0].ObjectGuid, groups[0].DistinguishedName,
             groups[0].DomainFqdn, "group", "Raw cycle proof must not be displayed", EvidenceCompleteness.Complete, evidence);
         var source = new FakeAssetSource { FindingsPage = new([finding], null, 1), FilterValues = new([Severity.Medium], ["SEC-052"], 1) };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings }; model.Show(@"C:\offline-fixture\circular-membership", false);
-        SavedCircularMembershipContext Context(FindingReference reference) => new(reference, subject, groups[0], count, count, complete, EvidenceCompleteness.Complete);
+        SavedCircularMembershipContext Context(FindingReference reference) => new(reference, subject, groups[0], count, allLinks.Length, complete, EvidenceCompleteness.Complete);
+        var loopKey = Tier0PathCalculation.Fingerprint(originals.Select(link => link.GroupGuid.ToString("D") + ":" + link.MemberGuid.ToString("D")));
+        source.CircularLoopRead = (reference, after) =>
+        {
+            var start = after?.Offset ?? 0;
+            var steps = originals.Skip((int)start).Take(50).Select((link, index) => new SavedCircularMembershipLoopStep(start + index,
+                new(start + index, groups.Single(group => group.ObjectGuid == link.GroupGuid),
+                    groups.Single(group => group.ObjectGuid == link.MemberGuid), 55))).ToArray();
+            return Result<SavedCircularMembershipLoop>.Success(new(Context(reference), loopKey, groups[0].ObjectGuid, count, otherLoops,
+                steps, start + steps.Length < count ? new(reference.GenerationId, reference.FindingId, subject.Key, loopKey, start + steps.Length) : null));
+        };
         source.CircularGroupsRead = (reference, after) =>
         {
             var start = after?.Offset ?? 0;
@@ -259,20 +334,20 @@ public sealed class CircularMembershipDetailTests
         source.CircularLinksRead = (reference, after) =>
         {
             var start = after?.Offset ?? 0;
-            var rows = originals.Skip((int)start).Take(50).Select((link, index) => new SavedCircularMembershipLink(start + index,
-                groups.Single(group => group.ObjectGuid == link.GroupGuid), groups.Single(group => group.ObjectGuid == link.MemberGuid), 55)).ToArray();
-            return Result<SavedCircularMembershipLinks>.Success(new(Context(reference), rows, start + rows.Length < count
+            var rows = allLinks.Skip((int)start).Take(50).Select((link, index) => new SavedCircularMembershipLink(start + index,
+                groups.Single(group => group.ObjectGuid == link.GroupGuid), groups.Single(group => group.ObjectGuid == link.MemberGuid), link.Witnesses.Count)).ToArray();
+            return Result<SavedCircularMembershipLinks>.Success(new(Context(reference), rows, start + rows.Length < allLinks.Length
                 ? new(reference.GenerationId, reference.FindingId, subject.Key, start + rows.Length) : null));
         };
         source.CircularWitnessesRead = (reference, group, member, after) =>
         {
-            var position = Array.FindIndex(originals, link => link.GroupGuid == group && link.MemberGuid == member);
-            var original = originals[position];
-            var saved = new SavedCircularMembershipLink(position, groups.Single(value => value.ObjectGuid == group), groups.Single(value => value.ObjectGuid == member), 55);
+            var position = Array.FindIndex(allLinks, link => link.GroupGuid == group && link.MemberGuid == member);
+            var original = allLinks[position];
+            var saved = new SavedCircularMembershipLink(position, groups.Single(value => value.ObjectGuid == group), groups.Single(value => value.ObjectGuid == member), original.Witnesses.Count);
             var start = after?.Offset ?? 0;
             var rows = original.Witnesses.Skip((int)start).Take(50).Select((value, index) => new SavedCircularMembershipWitness(start + index,
                 groups.Single(identity => identity.ObjectGuid == value.SourceObjectGuid), value.Attribute, value.Ordinal, value.Value)).ToArray();
-            return Result<SavedCircularMembershipWitnesses>.Success(new(Context(reference), saved, rows, start + rows.Length < 55
+            return Result<SavedCircularMembershipWitnesses>.Success(new(Context(reference), saved, rows, start + rows.Length < original.Witnesses.Count
                 ? new(reference.GenerationId, reference.FindingId, subject.Key, group, member, start + rows.Length) : null));
         };
         return (model, source);

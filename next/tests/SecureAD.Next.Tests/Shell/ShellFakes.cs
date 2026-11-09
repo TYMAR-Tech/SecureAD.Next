@@ -619,6 +619,10 @@ internal sealed class FakeAssetSource : IAssetSource
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
     public Func<FindingReference, Result<SavedGroupReview>>? GroupReviewRead { get; set; }
     public Func<FindingReference, CircularMembershipGroupMark?, Result<SavedCircularMembershipGroups>>? CircularGroupsRead { get; set; }
+    public Func<FindingReference, CircularMembershipLoopMark?, Result<SavedCircularMembershipLoop>>? CircularLoopRead { get; set; }
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after)
+    { CircularReads.Add("loop"); return CircularLoopRead?.Invoke(reference, after) ?? Result<SavedCircularMembershipLoop>.Failure(
+        AuditError.Create(ErrorCategory.Shell, "TestCircularLoopUnavailable", ErrorSeverity.Failed, SavedCircularMembershipContext.InvalidDetails, bundleDirectory)); }
     public Func<FindingReference, CircularMembershipLinkMark?, Result<SavedCircularMembershipLinks>>? CircularLinksRead { get; set; }
     public Func<FindingReference, Guid, Guid, CircularMembershipWitnessMark?, Result<SavedCircularMembershipWitnesses>>? CircularWitnessesRead { get; set; }
     public List<string> CircularReads { get; } = [];

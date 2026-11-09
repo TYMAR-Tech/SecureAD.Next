@@ -240,6 +240,8 @@ internal interface IAssetReader
 
     /// <summary>Reads one circular finding's saved inventory flag and a bounded group page.</summary>
     Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after);
+    /// <summary>Reads one ordered representative loop page from the selected saved group set.</summary>
+    Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after);
     /// <summary>Reads one requested page of recorded direct links, without their original witness values.</summary>
     Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after);
     /// <summary>Reads one requested page of original values supporting the selected direct relationship.</summary>

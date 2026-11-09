@@ -19,7 +19,7 @@ internal sealed record FindingDetailContent(FindingListItem Saved)
     internal SavedReplicationPermission? ReplicationPermission { get; init; }
     internal SavedServiceRegistrations? ServiceRegistration { get; init; }
     internal SavedGroupReview? GroupReview { get; init; }
-    internal SavedCircularMembershipGroups? CircularMembership { get; init; }
+    internal SavedCircularMembershipLoop? CircularMembership { get; init; }
 
     internal static FindingDetailContent FromSaved(FindingListItem saved) => new(saved);
 }

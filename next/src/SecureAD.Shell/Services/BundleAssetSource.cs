@@ -230,6 +230,8 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadCircularMembershipGroups(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipLoop(bundleDirectory, reference, after));
     public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadCircularMembershipLinks(bundleDirectory, reference, after));
     public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
