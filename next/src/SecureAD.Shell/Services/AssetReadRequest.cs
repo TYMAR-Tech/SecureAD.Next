@@ -229,6 +229,15 @@ internal sealed partial class AssetReadRequest(
     public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupReviewReferences(reference, after), _readCancellation)));
 
+    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadBroadMembershipSources(reference, after), _readCancellation)));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadBroadMembershipLinks(reference, after), _readCancellation)));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadBroadMembershipValues(reference, linkPosition, after), _readCancellation)));
+    public Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadBroadMembershipLimitations(reference, after), _readCancellation)));
+
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadCircularMembershipGroups(reference, after), _readCancellation)));
     public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>

@@ -238,6 +238,15 @@ internal interface IAssetReader
     /// <summary>Reads one requested page of original member-reference occurrences.</summary>
     Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after);
 
+    /// <summary>Reads the selected broad-membership answer and one bounded symbolic-source page.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+    /// <summary>Reads requested original direct links with their actual endpoints and separate foreign references.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+    /// <summary>Reads original supporting occurrences for exactly one saved direct link.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after);
+    /// <summary>Reads a bounded page of the saved input gaps and unsupported-analysis reasons.</summary>
+    Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+
     /// <summary>Reads one circular finding's saved inventory flag and a bounded group page.</summary>
     Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after);
     /// <summary>Reads one ordered representative loop page from the selected saved group set.</summary>

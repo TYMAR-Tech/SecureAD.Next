@@ -20,6 +20,8 @@ internal sealed record FindingDetailContent(FindingListItem Saved)
     internal SavedServiceRegistrations? ServiceRegistration { get; init; }
     internal SavedGroupReview? GroupReview { get; init; }
     internal SavedCircularMembershipLoop? CircularMembership { get; init; }
+    internal SavedBroadMembershipPage<SavedBroadIdentity>? BroadMembership { get; init; }
+    internal SavedBroadMembershipPage<AdministrativeMembershipLimitation>? BroadMembershipLimitations { get; init; }
 
     internal static FindingDetailContent FromSaved(FindingListItem saved) => new(saved);
 }
@@ -48,6 +50,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     private readonly ServiceRegistrationReads? _serviceReads;
     private readonly Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? _readGroupReferences;
     private readonly CircularMembershipReads? _circularReads;
+    private readonly BroadMembershipReads? _broadReads;
     private CancellationTokenSource? _pending;
     private bool _active = true;
 
@@ -60,7 +63,8 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         Func<ReplicationPermissionMark?, CancellationToken, Task<Result<SavedReplicationPermission>>>? readReplication = null,
         ServiceRegistrationReads? serviceReads = null,
         Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? readGroupReferences = null,
-        CircularMembershipReads? circularReads = null)
+        CircularMembershipReads? circularReads = null,
+        BroadMembershipReads? broadReads = null)
     {
         (_selected, _read, _current, _readDelegation) = (selected, read, current, readDelegation);
         _readWritePermission = readWritePermission;
@@ -70,6 +74,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         _serviceReads = serviceReads;
         _readGroupReferences = readGroupReferences;
         _circularReads = circularReads;
+        _broadReads = broadReads;
         ReadCompletion = LoadAsync();
     }
 
@@ -99,8 +104,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasGroupReview => GroupReview is not null;
     public CircularMembershipViewModel? CircularMembership { get; private set; }
     public bool HasCircularMembership => CircularMembership is not null;
-    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership;
+    public BroadMembershipViewModel? BroadMembership { get; private set; }
+    public bool HasBroadMembership => BroadMembership is not null;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
@@ -128,6 +135,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         ServiceRegistration = null;
         GroupReview?.Suspend(); GroupReview = null;
         CircularMembership?.Suspend(); CircularMembership = null;
+        BroadMembership?.Suspend(); BroadMembership = null;
         Announce();
         return false;
     }
@@ -242,6 +250,17 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     GroupReview = new(review, _readGroupReferences, CheckCurrent);
                 }
                 else if (content.GroupReview is not null) throw new InvalidDataException("The selected finding has unrelated membership-review details.");
+                if (content.Saved.RuleId is "SEC-061" or "SEC-062")
+                {
+                    if (content.BroadMembership is not { Context: not null } broad || _broadReads is null
+                        || !broad.Context.Matches(content.Saved) || !broad.IsExpectedPage(null)
+                        || (broad.Context.LimitationCount > 0) != (content.BroadMembershipLimitations is not null)
+                        || content.BroadMembershipLimitations is { } limits && (limits.Context != broad.Context || !limits.IsExpectedPage(null)))
+                        throw new InvalidDataException(SavedBroadMembershipContext.InvalidDetails);
+                    BroadMembership = new(broad, content.BroadMembershipLimitations, _broadReads, CheckCurrent);
+                }
+                else if (content.BroadMembership is not null || content.BroadMembershipLimitations is not null)
+                    throw new InvalidDataException(SavedBroadMembershipContext.InvalidDetails);
                 if (content.Saved.RuleId == "SEC-052")
                 {
                     if (content.CircularMembership is not { Context: not null } circular || _circularReads is null
@@ -285,6 +304,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     ServiceRegistration = null;
                     GroupReview?.Suspend(); GroupReview = null;
                     CircularMembership?.Suspend(); CircularMembership = null;
+                    BroadMembership?.Suspend(); BroadMembership = null;
                 }
                 else Refusal = error.Message;
             }
@@ -322,6 +342,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         ServiceRegistration = null;
         GroupReview?.Suspend(); GroupReview = null;
         CircularMembership?.Suspend(); CircularMembership = null;
+        BroadMembership?.Suspend(); BroadMembership = null;
         Announce();
     }
 
@@ -354,5 +375,6 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasServiceRegistration));
         OnPropertyChanged(nameof(GroupReview)); OnPropertyChanged(nameof(HasGroupReview));
         OnPropertyChanged(nameof(CircularMembership)); OnPropertyChanged(nameof(HasCircularMembership));
+        OnPropertyChanged(nameof(BroadMembership)); OnPropertyChanged(nameof(HasBroadMembership));
     }
 }

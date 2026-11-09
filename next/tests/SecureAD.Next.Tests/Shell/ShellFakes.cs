@@ -618,6 +618,23 @@ internal sealed class FakeAssetSource : IAssetSource
     public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
     public Func<FindingReference, Result<SavedGroupReview>>? GroupReviewRead { get; set; }
+    public Func<FindingReference, BroadMembershipMark?, Result<SavedBroadMembershipPage<SavedBroadIdentity>>>? BroadSourcesRead { get; set; }
+    public Func<FindingReference, BroadMembershipMark?, Result<SavedBroadMembershipPage<SavedBroadMembershipLink>>>? BroadLinksRead { get; set; }
+    public Func<FindingReference, long, BroadMembershipMark?, Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>>>? BroadValuesRead { get; set; }
+    public Func<FindingReference, BroadMembershipMark?, Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>>>? BroadLimitationsRead { get; set; }
+    public List<string> BroadReads { get; } = [];
+    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after)
+    { BroadReads.Add("sources"); return BroadSourcesRead?.Invoke(reference, after) ?? MissingBroadMembership<SavedBroadIdentity>(bundleDirectory); }
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after)
+    { BroadReads.Add("links"); return BroadLinksRead?.Invoke(reference, after) ?? MissingBroadMembership<SavedBroadMembershipLink>(bundleDirectory); }
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after)
+    { BroadReads.Add("values"); return BroadValuesRead?.Invoke(reference, linkPosition, after) ?? MissingBroadMembership<SavedBroadMembershipWitness>(bundleDirectory); }
+    public Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after)
+    { BroadReads.Add("limitations"); return BroadLimitationsRead?.Invoke(reference, after) ?? MissingBroadMembership<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>(bundleDirectory); }
+    private static Result<SavedBroadMembershipPage<T>> MissingBroadMembership<T>(string directory) =>
+        Result<SavedBroadMembershipPage<T>>.Failure(AuditError.Create(ErrorCategory.Shell, "TestBroadMembershipUnavailable",
+            ErrorSeverity.Failed, SavedBroadMembershipContext.InvalidDetails, directory));
+
     public Func<FindingReference, CircularMembershipGroupMark?, Result<SavedCircularMembershipGroups>>? CircularGroupsRead { get; set; }
     public Func<FindingReference, CircularMembershipLoopMark?, Result<SavedCircularMembershipLoop>>? CircularLoopRead { get; set; }
     public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after)

@@ -97,6 +97,18 @@ internal sealed partial class AssetsViewModel
                     if (!circular.IsSuccess) return Result<FindingDetailContent>.Failure(circular.Error);
                     content = content with { CircularMembership = circular.Value };
                 }
+                if (answer.Value.RuleId is "SEC-061" or "SEC-062")
+                {
+                    var broad = reader.ReadBroadMembershipSources(bundle, reference, null);
+                    if (!broad.IsSuccess) return Result<FindingDetailContent>.Failure(broad.Error);
+                    content = content with { BroadMembership = broad.Value };
+                    if (broad.Value.Context.LimitationCount > 0)
+                    {
+                        var limitations = reader.ReadBroadMembershipLimitations(bundle, reference, null);
+                        if (!limitations.IsSuccess) return Result<FindingDetailContent>.Failure(limitations.Error);
+                        content = content with { BroadMembershipLimitations = limitations.Value };
+                    }
+                }
                 return Result<FindingDetailContent>.Success(content);
             }, token, "read selected finding"),
             finding.IsCurrent,
@@ -153,7 +165,16 @@ internal sealed partial class AssetsViewModel
                     reader => reader.ReadCircularMembershipLinks(bundle, finding.Saved.Reference!.Value, after), token, "read recorded circular membership links"),
                 (group, member, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadCircularMembershipWitnesses(bundle, finding.Saved.Reference!.Value, group, member, after), token, "read selected circular membership values"),
-                OpenCircularGroup, ReviewCircularMembership));
+                OpenCircularGroup, ReviewCircularMembership),
+            new BroadMembershipReads(
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadBroadMembershipSources(bundle, finding.Saved.Reference!.Value, after), token, "read saved broad identities"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadBroadMembershipLinks(bundle, finding.Saved.Reference!.Value, after), token, "read saved broad membership links"),
+                (link, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadBroadMembershipValues(bundle, finding.Saved.Reference!.Value, link, after), token, "read saved broad membership values"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadBroadMembershipLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved broad membership limitations")));
     }
 
     [RelayCommand]

@@ -19,7 +19,7 @@ public sealed partial class JudgementReader
         f.direct_protection_entry_id,f.direct_protection_name
         """;
     private const string ListColumns = ListColumnPrefix
-        + "CASE WHEN f.rule_id IN ('SEC-002','SEC-012','SEC-013','SEC-014','SEC-021','SEC-024','SEC-025','SEC-026','SEC-027','SEC-030','SEC-031','SEC-032','SEC-050','SEC-051','SEC-052') THEN NULL ELSE f.detail END AS detail,"
+        + "CASE WHEN f.rule_id IN ('SEC-002','SEC-012','SEC-013','SEC-014','SEC-021','SEC-024','SEC-025','SEC-026','SEC-027','SEC-030','SEC-031','SEC-032','SEC-050','SEC-051','SEC-052','SEC-061','SEC-062') THEN NULL ELSE f.detail END AS detail,"
         + ListColumnSuffix;
     private const string FindingHeaderColumns = ListColumnPrefix + "NULL AS detail," + ListColumnSuffix;
 
@@ -207,6 +207,8 @@ public sealed partial class JudgementReader
             "SEC-021" => ServiceRegistrationPresentation.Why,
             "SEC-050" or "SEC-051" => SavedGroupReview.Statement(ruleId),
             "SEC-052" => CircularGroupMembership.Explanation,
+            "SEC-061" => BroadPreWindows2000Membership.Explanation,
+            "SEC-062" => BroadAdministrativeGroupMembership.Explanation,
             "SEC-012" => SavedDelegationConfiguration.ConstrainedStatement,
             "SEC-013" => SavedDelegationConfiguration.ResourceStatement,
             "SEC-014" or "SEC-024" or "SEC-025" => SavedAttributeWritePermission.ScopeNoteForRule(ruleId),

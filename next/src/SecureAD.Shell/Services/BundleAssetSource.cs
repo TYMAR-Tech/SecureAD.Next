@@ -228,6 +228,15 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadGroupReviewReferences(bundleDirectory, reference, after));
 
+    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipSources(bundleDirectory, reference, after));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipLinks(bundleDirectory, reference, after));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipValues(bundleDirectory, reference, linkPosition, after));
+    public Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipLimitations(bundleDirectory, reference, after));
+
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadCircularMembershipGroups(bundleDirectory, reference, after));
     public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>

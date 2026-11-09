@@ -90,18 +90,8 @@ internal static class GroupMembershipFindingStorage
         if (evidence.Principals.Where(identity => identity.ObjectClass == "group")
             .GroupBy(identity => (identity.Sid.ToUpperInvariant(), identity.SidScope?.ToUpperInvariant()))
             .Any(group => group.Count() != 1)) throw Invalid();
-        var definition = PrincipalClassificationRegistry.For(target.Sid);
-        var targetScope = target.GroupType.GetValueOrDefault() & 0x0f;
-        var scopeMatches = evidence.TargetKind == BroadMembershipTarget.PreWindows2000CompatibleAccess
-            ? Same(target.Sid, CapturedGroupMembershipIndex.LegacyGroupSid) && targetScope == 5
-            : CapturedGroupMembershipIndex.IsTarget(definition) && (definition.Tier0Scope switch
-            {
-                Tier0IdentityScope.Domain => targetScope == 2,
-                Tier0IdentityScope.BuiltinDomain => targetScope == 5,
-                Tier0IdentityScope.ForestRoot => targetScope is 2 or 8 && Same(target.NamingContext, evidence.ForestRootNamingContext),
-                _ => false,
-            });
-        if (!scopeMatches || target.ObjectClass != "group" || target.DomainFqdn is null) throw Invalid();
+        if (!MatchesTarget(evidence.TargetKind, target.Sid, target.GroupType, target.NamingContext, evidence.ForestRootNamingContext)
+            || target.ObjectClass != "group" || target.DomainFqdn is null) throw Invalid();
         var sourceKeys = new HashSet<(string Sid, string Scope)>();
         var broadIds = new HashSet<Guid>();
         foreach (var source in evidence.BroadSources)
@@ -154,6 +144,22 @@ internal static class GroupMembershipFindingStorage
         if (all.Any(identity => identity.Completeness != EvidenceCompleteness.Complete
             && !evidence.Limitations.Any(limit => Same(limit.DistinguishedName, identity.DistinguishedName)
                 && limit.Reason == AdministrativeMembershipReason.SourceIncomplete))) throw Invalid();
+    }
+
+    internal static bool MatchesTarget(BroadMembershipTarget kind, string sid, long? groupType, string namingContext, string? forestRoot)
+    {
+        var definition = PrincipalClassificationRegistry.For(sid);
+        var scope = groupType.GetValueOrDefault() & 0x0f;
+        return kind == BroadMembershipTarget.PreWindows2000CompatibleAccess
+            ? Same(sid, CapturedGroupMembershipIndex.LegacyGroupSid) && scope == 5
+            : kind == BroadMembershipTarget.AdministrativeGroup && CapturedGroupMembershipIndex.IsTarget(definition)
+                && (definition.Tier0Scope switch
+                {
+                    Tier0IdentityScope.Domain => scope == 2,
+                    Tier0IdentityScope.BuiltinDomain => scope == 5,
+                    Tier0IdentityScope.ForestRoot => scope is 2 or 8 && Same(namingContext, forestRoot),
+                    _ => false,
+                });
     }
 
     internal static Dictionary<string, AdministrativeMembershipIdentity> ValidateDomains(IReadOnlyList<AdministrativeMembershipIdentity> identities)
@@ -260,7 +266,7 @@ internal static class GroupMembershipFindingStorage
 
     private static bool Seal(string value) => value is { Length: 64 } && value.All(char.IsAsciiHexDigit);
     private static bool Same(string? first, string? second) => string.Equals(first, second, StringComparison.OrdinalIgnoreCase);
-    private static bool Within(string dn, string context)
+    internal static bool Within(string dn, string context)
     {
         for (string? current = dn; current is not null; current = DnHelper.GetParentDn(current))
             if (Same(current, context)) return true;

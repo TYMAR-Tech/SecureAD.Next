@@ -497,6 +497,122 @@
                                  Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.GroupReview.HasRefusal,Converter={StaticResource Shown}}" />
                     </StackPanel>
                 </Border>
+                <Border Style="{StaticResource Card}" Visibility="{Binding FindingDetails.HasBroadMembership,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved broad group membership" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Group,StringFormat=Affected group: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.GroupingNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                        <TextBlock Text="Broad identities" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.SourcesNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Sources.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Name,StringFormat=Broad identity: {0}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    <TextBlock Text="{Binding SidScope,StringFormat=Recorded SID scope: {0}}" TextWrapping="Wrap"
+                                               Visibility="{Binding HasSidScope,Converter={StaticResource Shown}}" />
+                                </StackPanel>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel>
+                            <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Sources.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Sources.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Sources.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Sources.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Sources.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Sources.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Sources.HasRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Incomplete membership evidence" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.LimitationsNote}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Limitations.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Location}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Limitations.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Limitations.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Limitations.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Limitations.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Limitations.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Limitations.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Limitations.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <Button Content="View recorded membership links" Command="{Binding FindingDetails.BroadMembership.ViewLinksCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasLinks,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Recorded membership links" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.LinksNote}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Links.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Direction}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="Member identity" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding Member.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding Member.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasMemberDomain,Converter={StaticResource Shown}}" />
+                                        <TextBlock Text="{Binding Member.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Containing group" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding ContainingGroup.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding ContainingGroup.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ContainingGroup.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        <StackPanel Visibility="{Binding HasForeignReference,Converter={StaticResource Shown}}">
+                                            <TextBlock Text="Recorded through" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                            <TextBlock Text="{Binding ForeignReferenceNote}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding RecordedThrough.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding RecordedThrough.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap"
+                                                       Visibility="{Binding HasReferenceDomain,Converter={StaticResource Shown}}" />
+                                            <TextBlock Text="{Binding RecordedThrough.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Content="View saved supporting values" Command="{Binding ViewCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Links.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Links.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Links.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Links.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Links.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Links.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Links.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasValues,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved supporting values" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.SelectedRelationship}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.ValuesNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.MemberOfNote}" TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.BroadMembership.HasMemberOf,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Values.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding Source,StringFormat=Recorded on: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Attribute,StringFormat=Recorded attribute: {0}}" TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding Value,Mode=OneWay,StringFormat=Saved value: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Values.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Values.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Values.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Values.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Values.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Values.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Values.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
                 <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.HasCircularMembership,Converter={StaticResource Shown}}">
                     <StackPanel>

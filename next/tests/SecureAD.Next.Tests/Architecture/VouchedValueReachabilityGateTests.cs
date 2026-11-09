@@ -524,6 +524,10 @@ public sealed class VouchedValueReachabilityGateTests
     /// Empty versus nonempty saved execution/phase lists drive both values without hydrating proof.
     /// 83 adds <c>FindingListPage.DidNotRun</c>: zero versus nonzero saved executions qualify
     /// the lightweight collection independently of whether any finding matched.
+    /// 84 adds <c>SavedGroupReview.IsComplete</c>: the selected saved group review retains its
+    /// assessment flag; true and false constructor inputs remain distinguishable on readback.
+    /// 85 adds <c>SavedBroadMembershipContext.IsComplete</c>: saved positive broad membership
+    /// retains input/scope gaps; the flag can be read both ways and is checked against saved counts.
     /// </para>
     /// </summary>
     [Fact]
@@ -538,7 +542,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -553,6 +557,8 @@ public sealed class VouchedValueReachabilityGateTests
         foreach (var name in new[] { "CapturedMembershipInput", "MemberAttribution", "MemberAttributionDetail", "MemberPermissionPage" })
             Assert.Contains(found, v => v.Type.Name == name && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "SavedGroupReview" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "SavedBroadMembershipContext" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "PrincipalClassification" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlEdge" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlObjectEvaluation" && v.Name == "IsComplete");

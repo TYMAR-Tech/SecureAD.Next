@@ -810,6 +810,9 @@ still requires a fresh warning and approval.
 After the 243-pass implementation checkpoint, the owner explicitly approved a maximum 75-minute
 final offline verification stage, including isolated rebuilt faults, affected checks, provenance
 and cleanup; no live work, measurements, CI, packaging, commit or push are included.
+After the correction was committed, the owner explicitly reported "52 screen is verified ok".
+This accepts the reported SEC-052 screen result, not unreported physical-display scenarios or
+production-performance measurements.
 
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
@@ -844,6 +847,25 @@ Wait for SEC-052 testing feedback and a separate bounded implementation go-ahead
 verification needs its own warning, estimate and explicit approval.
 No new analysis/formats, thresholds/severities, production limits, live work, recapture, existing-run
 rejudging, measurements, LAPS work, tests, CI, packaging, merge, commit or push are authorized.
+The owner then requested committing SEC-052 and moving to this batch, without reporting the
+outstanding SEC-052 lab/display checks as accepted.
+He explicitly approved a maximum 45-minute first implementation stage for selected saved readers
+and focused offline checks only; screens remain unchanged and later screen/final-verification
+stages still need their own go-aheads.
+Keep existing evidence, formats, analysis, boundaries and historical verification intact, with
+no live work, measurements, CI, packaging or further Git delivery in this stage.
+After clarification that only the readers were built, the owner explicitly requested continuing
+with the already-approved SEC-061/062 screens before final checks.
+Implement that recorded grouping and wording without another content review or mockup round;
+keep screen implementation separate from longer final qualification and its fresh approval.
+After the screen checkpoint, the owner explicitly approved final offline verification with a
+maximum 75 minutes including rebuilt isolated faults, affected checks, provenance and cleanup.
+This does not authorize live work, measurements, CI, packaging, commit or push.
+After final offline verification, the owner reported "61 looks ok" but no SEC-062 finding in
+his lab, and requested a local commit.
+Record positive SEC-061 screen feedback only; SEC-062 has no positive lab verification, not a pass.
+Neither unreported physical-display scenarios nor production performance are accepted, and this
+commit request does not authorize a push, package or the next implementation batch.
 
 **Consolidate approved work while lab testing continues - owner direction, 2026-10-22.**
 The owner requested committing the approved pending work, bringing the tested line into `main`,
