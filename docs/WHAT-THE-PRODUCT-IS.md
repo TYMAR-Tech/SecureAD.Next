@@ -880,6 +880,61 @@ commit followed by the next batch proposal; neither rule has positive lab verifi
 Do not require lab setup, recapture or re-judgement before proposing that next batch, and do not
 treat this commit request as permission to push or implement the next presentation.
 
+**SEC-060 saved permission-control presentation - scope and wording owner-approved 2026-11-09.**
+After the local SEC-100/101 commit, the owner approved the concrete SEC-060 presentation-only
+scope and wording below; retain High version 2, all-object scope, original finding identities,
+broad-principal/target grain and saved positives, without treating this presentation as a SCOUT-06
+calculation correction or a new Stage 6 permission proof or completed Tier 0 route.
+Reuse the current charcoal window from both Findings grids and read the selected existing header
+directly, requesting its saved supporting chain in indexed 50-row Previous/Page {number}/Next pages
+rather than loading the full chain.
+Preserve exact result/object binding, saved completeness, cancellation and return context, with
+no new analysis/formats, permission replay, membership expansion or live lookup.
+The title is Broad identity flagged for permission-list control and the panel is Saved
+permission-control assessment.
+The finding statement is "The saved assessment flags a broad identity under permission-changing
+or ownership-related rights on this object."
+Use Affected object, Object type, Domain, Location, Permission holder, Holder SID, Broad identity,
+Broad identity SID and Reported right; missing names say "Name not resolved from saved evidence."
+Reported right is Modify permissions (WRITE_DAC), Change owner (WRITE_OWNER), or Full-control
+category reported by the legacy assessment, according to the original saved value.
+For the full-control category say "This is not an independently verified full-control proof."
+Known calculation limits says "This saved finding uses an older permission calculation with
+known limitations in deny ordering, conditional entries and permission scope. It must not be
+treated as independently verified effective access."
+View saved supporting chain shows saved names/exact SIDs in their original order with "These
+identifiers are recorded in order from the permission holder towards the broad identity. This is
+not every possible route or a list of directly removable membership entries."
+Recorded entry context is Explicit or Inherited, qualified by "This describes the entry context
+recorded by the older calculation. It does not identify the exact entry supporting the reported
+right or establish an inherited source container."
+Saved membership expansion is Complete or May be incomplete, with "Complete describes the saved
+membership expansion only, not corrected permission calculation or current access."
+For Change owner say "Changing the owner does not by itself establish permission-list control.
+OWNER RIGHTS entries - permissions specifically for an object's owner - and directory-server
+restrictions matter. This finding does not save a completed owner-transition assessment.
+Independently granted Modify permissions rights must be assessed separately."
+Share this exact guidance between Findings and Rules:
+- **Why it matters:** "If an applicable permission can be exercised, it may allow the object's permission list to be changed. Where a broad identity is involved, that possibility warrants review. This saved assessment is not proof of effective access for an individual account, a directory change, successful takeover or a completed path to Tier 0."
+- **What to do:** "Confirm the intended delegation and the actual permission entries on the affected object. When authorised, verify allow/deny ordering, entry scope, conditions and inheritance before acting. If access is unintended, narrow only unnecessary rights or change a confirmed unintended membership after reviewing shared-group impact and service dependencies. Establish the original source before changing inherited permissions. Do not blanket-delete legitimate delegation or assume removing this recorded chain eliminates every route."
+Retain Open affected object, Close and intentional original-data investigation screens; the
+selected saved data does not contain exact supporting permission entries or a proven inherited
+source container, and must not invent either.
+Microsoft anchors are [AD rights](https://learn.microsoft.com/windows/win32/api/iads/ne-iads-ads_rights_enum),
+[OWNER RIGHTS](https://learn.microsoft.com/openspecs/windows_protocols/ms-dtyp/81d92bba-d22b-4a8c-908a-554ab29148ab)
+and [implicit-owner restrictions](https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/fb7c101d-ec8b-4fbf-bca8-7d7c2d747d0c).
+The approved batch includes short focused checks; longer verification requires its own warning
+and explicit approval, and no new analysis/formats, live work, re-judgement, measurements, CI,
+packaging, merge, commit or push is included; full LAPS analysis remains deferred.
+The owner subsequently requested continuing this implementation, using the already-approved
+scope/copy without another content review, mockup or approval round.
+After the 178-pass focused checkpoint, including all 49 new cases, the owner explicitly approved
+the warned 45-65-minute remaining offline verification with a maximum of 65 minutes including
+cleanup: isolated rebuilt faults and restored controls for new/changed behaviour checks, a final
+correct-source Release rebuild and directly affected checks, and preservation records.
+Use an interrupting deadline and stop/report unfinished work rather than silently extending it;
+this is not a full-suite or historical-campaign replay approval and changes none of the boundaries above.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.

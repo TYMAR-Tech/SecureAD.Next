@@ -73,6 +73,12 @@ internal sealed partial class AssetsViewModel
                     if (!ownership.IsSuccess) return Result<FindingDetailContent>.Failure(ownership.Error);
                     content = content with { OwnershipAssessment = ownership.Value };
                 }
+                if (answer.Value.RuleId == "SEC-060")
+                {
+                    var control = reader.ReadPermissionControl(bundle, reference);
+                    if (!control.IsSuccess) return Result<FindingDetailContent>.Failure(control.Error);
+                    content = content with { PermissionControl = control.Value };
+                }
                 if (answer.Value.RuleId == "SEC-002")
                 {
                     var replication = reader.ReadReplicationPermission(bundle, reference, null);
@@ -191,7 +197,9 @@ internal sealed partial class AssetsViewModel
                 (link, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadServiceAccountValues(bundle, finding.Saved.Reference!.Value, link, after), token, "read saved service-account values"),
                 (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
-                    reader => reader.ReadServiceAccountLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved service-account limitations")));
+                    reader => reader.ReadServiceAccountLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved service-account limitations")),
+            (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                reader => reader.ReadPermissionControlChain(bundle, finding.Saved.Reference!.Value, after), token, "read saved permission-control chain"));
     }
 
     [RelayCommand]

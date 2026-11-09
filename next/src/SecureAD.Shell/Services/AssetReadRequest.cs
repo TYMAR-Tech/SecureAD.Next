@@ -223,6 +223,10 @@ internal sealed partial class AssetReadRequest(
 
     public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadOwnershipAssessment(reference), _readCancellation)));
+    public Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadPermissionControl(reference), _readCancellation)));
+    public Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadPermissionControlChain(reference, after), _readCancellation)));
 
     public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupReview(reference), _readCancellation)));

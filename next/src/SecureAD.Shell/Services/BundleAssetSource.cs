@@ -222,6 +222,10 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
 
     public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
         WithRun(bundleDirectory, reader => reader.ReadOwnershipAssessment(bundleDirectory, reference));
+    public Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadPermissionControl(bundleDirectory, reference));
+    public Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadPermissionControlChain(bundleDirectory, reference, after));
 
     public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
         WithRun(bundleDirectory, reader => reader.ReadGroupReview(bundleDirectory, reference));

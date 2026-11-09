@@ -712,6 +712,15 @@ internal sealed class FakeAssetSource : IAssetSource
     public Func<FindingReference, SidHistoryMark?, Result<SavedSidHistory>>? SidHistoryRead { get; set; }
     public Func<FindingReference, Result<SavedProtectionMarker>>? ProtectionMarkerRead { get; set; }
     public Func<FindingReference, Result<SavedOwnershipAssessment>>? OwnershipAssessmentRead { get; set; }
+    public Func<FindingReference, Result<SavedPermissionControl>>? PermissionControlRead { get; set; }
+    public Func<FindingReference, PermissionControlMark?, Result<SavedPermissionControlChain>>? PermissionControlChainRead { get; set; }
+    public List<string> PermissionControlReads { get; } = [];
+    public Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference)
+    { PermissionControlReads.Add("header"); return PermissionControlRead?.Invoke(reference) ?? Result<SavedPermissionControl>.Failure(MissingPermissionControl(bundleDirectory)); }
+    public Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after)
+    { PermissionControlReads.Add("chain"); return PermissionControlChainRead?.Invoke(reference, after) ?? Result<SavedPermissionControlChain>.Failure(MissingPermissionControl(bundleDirectory)); }
+    private static AuditError MissingPermissionControl(string directory) => AuditError.Create(ErrorCategory.Shell,
+        "TestPermissionControlUnavailable", ErrorSeverity.Failed, SavedPermissionControl.InvalidDetails, directory);
     public List<FindingReference> OwnershipAssessmentReads { get; } = [];
     public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference)
     {

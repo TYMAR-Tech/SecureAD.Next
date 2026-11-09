@@ -91,6 +91,7 @@ public sealed record FindingListItem(
                 : finding.RuleId == "SEC-021" ? ServiceRegistrationPresentation.Why
                 : finding.RuleId is "SEC-050" or "SEC-051" ? SavedGroupReview.Statement(finding.RuleId)
                 : finding.RuleId == "SEC-052" ? CircularGroupMembership.Explanation
+                : finding.RuleId == "SEC-060" ? SavedPermissionControl.Statement
                 : finding.RuleId == "SEC-012" ? SavedDelegationConfiguration.ConstrainedStatement
                 : finding.RuleId == "SEC-013" ? SavedDelegationConfiguration.ResourceStatement
                 : finding.RuleId == "SEC-026" ? SavedDuplicateSpn.Statement

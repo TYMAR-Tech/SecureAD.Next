@@ -263,12 +263,11 @@ public sealed class FindingsViewTests
 
     internal static Finding GenericFinding(Finding original)
     {
-        var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == "SEC-060").Definition;
-        const string sid = "S-1-5-21-9-8-7-513";
+        var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == "SEC-091").Definition;
         return original with { RuleId = definition.Id, RuleVersion = definition.Version, Severity = definition.Severity,
-            ObjectClass = "user", Subject = new(FindingSubjectKind.Account, sid),
-            Evidence = new ObjectTakeoverEvidence(sid, original.PrincipalName, sid, original.PrincipalName,
-                [new(sid, original.PrincipalName)], ObjectTakeoverRight.WriteDacl, null, true) };
+            ObjectClass = "computer", Subject = new(FindingSubjectKind.DirectoryObject, original.ObjectGuid.ToString("D")),
+            Evidence = new LapsDeploymentEvidence(null, null,
+                new(LapsCapabilityKind.WindowsLapsCapable, LapsCapabilityBasis.OperatingSystemVersion, "Windows 11", "10.0 (22631)")) };
     }
 
     private static (AssetsViewModel Model, FakeAssetSource Source) Model(Finding? finding = null)

@@ -232,6 +232,8 @@ internal interface IAssetReader
 
     /// <summary>Reads one saved owner/standing/membership header without permission or protection replay.</summary>
     Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference);
+    Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference);
+    Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after);
 
     /// <summary>Reads one saved group-size or direct-nesting header without materializing its original member list.</summary>
     Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference);

@@ -363,45 +363,14 @@ public static class RuleGuidanceCatalogue
             "SEC-060",
             "Permissions",
 
-            // T1222 is permission modification, which is what holding WriteDacl or WriteOwner lets
-            // somebody do. Claimed rather than omitted because the mapping is direct: the technique
-            // describes modifying object permissions to enable follow-on access, and that is
-            // exactly the capability being reported.
             MitreTechnique: "T1222",
-            WhyItMatters:
-                "A principal that is broad in every organisation - Everyone, Authenticated Users, "
-                + "Domain Users, Domain Computers, Guests or Anonymous - can rewrite this object's "
-                + "permission list. That means any person who can log on can grant themselves, or "
-                + "anybody else, full control of this object, and nothing about it will look "
-                + "unusual afterwards. A permission list shows what was granted; it does not show "
-                + "what the grant is worth. The principal is usually not the one named in the "
-                + "permission - it falls out of the group nesting underneath, which is why nobody "
-                + "notices.",
-            WhatToDo:
-                "Follow every membership path on the finding and cut the links that bring broad "
-                + "principal into the group the permission names, or narrow the permission so it "
-                + "names only the administrators who need it. Do not simply delete the entry: this "
-                + "product cannot know which principals your organisation intended to hold this "
-                + "access, and the group named may be entirely legitimate apart from what is "
-                + "nested inside it. Where the entry was inherited, the container it came from is "
-                + "named on the finding, and changing it there will affect everything beneath it.",
-            About:
-                "Reports an object over which a principal broad in every organisation effectively "
-                + "holds Full Control, Write DACL, or the ability to take ownership - found by "
-                + "expanding whichever principal the permission actually names all the way down.\n\n"
-                + "GenericWrite is deliberately excluded: Microsoft's generic mapping shows it "
-                + "does not include the right to change permissions, so it cannot yield control of "
-                + "the list.\n\nTaking ownership is reported only where an owner would actually keep "
-                + "the implicit right to rewrite permissions; where the object carries an OWNER "
-                + "RIGHTS entry, or the forest has blocked implicit owner rights for computer "
-                + "objects, that route reaches nothing and is not reported.\n\nEntries that sit on an "
-                + "object only to be inherited by the objects beneath it grant nothing where they "
-                + "sit and are not counted. Deny entries are applied in the order the directory "
-                + "stores them, which is how Windows itself evaluates them.\n\nWhere the object's "
-                + "permissions could not be read, or the membership walk did not finish, the rule "
-                + "says so rather than reporting the object as safe.",
+            WhyItMatters: SavedPermissionControl.Risk,
+            WhatToDo: SavedPermissionControl.Action,
+            About: SavedPermissionControl.Statement + "\n\n" + SavedPermissionControl.CalculationLimits
+                + "\n\n" + SavedPermissionControl.ExpansionNote + " " + SavedPermissionControl.ChainNote
+                + "\n\n" + SavedPermissionControl.OwnerNote,
             MicrosoftReference:
-                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/certificates"),
+                "https://learn.microsoft.com/windows/win32/api/iads/ne-iads-ads_rights_enum"),
 
         new RuleGuidance(
             "SEC-031",

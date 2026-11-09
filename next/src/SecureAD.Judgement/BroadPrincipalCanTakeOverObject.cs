@@ -48,7 +48,7 @@ public sealed class BroadPrincipalCanTakeOverObject : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         RuleId,
-        "A broad principal can take over an object",
+        SavedPermissionControl.Title,
         Severity.High,
         Version: RuleVersion,
 
@@ -324,7 +324,7 @@ public sealed class BroadPrincipalCanTakeOverObject : IObjectRule
     /// How a broad principal is named as the subject of a finding: the name it is known by, with
     /// its security identifier, which is what makes the key unique and stable.
     /// </summary>
-    private static string SubjectKeyFor(string sid) =>
+    internal static string SubjectKeyFor(string sid) =>
         BroadPrincipalCatalogue.NameOf(sid) is { } known ? $"{known} ({sid})" : sid;
 
     /// <summary>What the operator is told.</summary>
