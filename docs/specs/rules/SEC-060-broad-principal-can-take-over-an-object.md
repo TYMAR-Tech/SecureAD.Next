@@ -3,6 +3,29 @@
 > **Status: specified, not built.** This document states what the rule must do and why. Nothing in
 > it is authoritative until a decision record says so; read it as argument. Written 2026-09-04.
 
+## Version 3 amendment - owner-approved 2026-11-09
+
+The original specification and lab observations below describe version 2 and remain historical
+evidence; this amendment governs conflicting permission and ownership claims in version 3.
+SEC-060 must retain High severity, every-object coverage and broad-identity/target finding identity,
+while evaluating ordered cross-trustee denies, unsupported conditional entries, operation scope
+and inheritance through shared permission-proof machinery.
+A known applicable deny before a grant blocks that right, a completed earlier grant survives
+later entries, and unsupported applicability remains explicitly unresolved rather than becoming
+either unconditional access or a clean object.
+Full control requires the separate all-rights assessment, including scoped restrictions;
+independently established WRITE_DAC survives an unresolved full-control or owner-change assessment.
+WRITE_OWNER is reported as its own established permission, with OWNER RIGHTS, class, exemption,
+heuristic and serving-server conditions saved separately, never as a completed controlled-owner
+transition or an individual requester's authorization.
+Membership completeness must remain separate from permission conclusions and their limitations,
+and inherited-entry context must not identify an unproven source container.
+Corrected answers must carry a new calculation version and exact evidence, derivation, judgement,
+resource and original-entry references without rewriting historical results or copying descriptors.
+Reuse loaded inputs during judging, assess only relevant candidates, and keep whole-engine
+evaluation, new requester expansion and permission replay out of ordinary browsing.
+New-version display adoption and long verification campaigns require separate approval.
+
 ## For a reviewer
 
 **What this rule says in one sentence.** *Everyone can take over this object* ΓÇö where "take over"

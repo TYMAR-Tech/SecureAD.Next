@@ -1399,7 +1399,11 @@ public sealed partial class JudgementReader : IDisposable
                 Enum.Parse<ObjectTakeoverRight>(
                     reader.GetString(reader.GetOrdinal("t_takeover_right"))),
                 reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
-                reader.GetInt64(reader.GetOrdinal("t_expansion_was_complete")) != 0);
+                reader.GetInt64(reader.GetOrdinal("t_expansion_was_complete")) != 0)
+            {
+                Calculation = ruleId == "SEC-060" && versions[ruleId] == BroadPrincipalCanTakeOverObject.RuleVersion
+                    ? PermissionControlCalculationStorage.Read(_connection, findingId) : null,
+            };
         }
         else if (!reader.IsDBNull(ownershipOwner))
         {
@@ -1438,7 +1442,7 @@ public sealed partial class JudgementReader : IDisposable
                 + "with no evidence row, so what it rests on has been lost. A finding that cannot "
                 + "say what it rests on must not be presented as one.");
         }
-        return new Finding(
+        var finding = new Finding(
             ruleId,
             versions[ruleId],
             Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))),
@@ -1452,6 +1456,16 @@ public sealed partial class JudgementReader : IDisposable
             reader.GetString(reader.GetOrdinal("detail")),
             Enum.Parse<EvidenceCompleteness>(reader.GetString(reader.GetOrdinal("coverage"))),
             evidence) { PrincipalName = reader.GetString(reader.GetOrdinal("principal_name")) };
+        if (ruleId == "SEC-060" && (versions[ruleId] == BroadPrincipalCanTakeOverObject.RuleVersion
+            || evidence is ObjectTakeoverEvidence { Calculation: not null }))
+        {
+            PermissionControlCalculationStorage.Validate(finding, Description.GenerationId, Description.EvidenceSeal,
+                Description.DerivationGenerationId);
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            if (((ObjectTakeoverEvidence)evidence).Calculation!.DerivationSeal != _findingDerivationSeal)
+                throw PermissionControlCalculationStorage.Invalid();
+        }
+        return finding;
     }
 
     private MembershipRouteSummary ReadMembershipRoutes(long findingId)

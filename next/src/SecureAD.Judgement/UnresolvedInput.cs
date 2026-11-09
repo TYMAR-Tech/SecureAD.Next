@@ -83,6 +83,8 @@ public enum UnresolvedReason
     OwnerHeuristicNotRead,
     /// <summary>The named ownership modification has unresolved class, scope or requester applicability.</summary>
     OwnerRightsNotEvaluated,
+    /// <summary>A relevant permission entry, holder or operation scope remains unresolved.</summary>
+    PermissionControlNotEvaluated,
 
     /// <summary>
     /// This account's own domain was not read in full, so nothing was established about it.

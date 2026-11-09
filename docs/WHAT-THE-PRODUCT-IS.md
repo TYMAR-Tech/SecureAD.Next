@@ -935,6 +935,29 @@ correct-source Release rebuild and directly affected checks, and preservation re
 Use an interrupting deadline and stop/report unfinished work rather than silently extending it;
 this is not a full-suite or historical-campaign replay approval and changes none of the boundaries above.
 
+**SCOUT-06 calculation-only correction - owner-approved 2026-11-09.**
+After the verified SEC-060 presentation was committed and pushed, the owner requested a separate
+calculation branch and then said "begin" to the bounded correction.
+Replace SEC-060's legacy calculation using shared ordered proof machinery for denies, conditional
+entries, operation scope and ownership conditions, preserving independently established Modify
+permissions rights and explicit uncertainty; a broad group is not an individual requester, and
+SEC-060 still covers every object rather than only Tier 0.
+Reuse permissions already loaded during judging, evaluate only relevant candidates and rights,
+and do not run the whole control engine for every object, expand individual requesters, copy
+permission lists into another product or add calculation to browsing.
+Version the corrected calculation and its compact saved right outcomes/reasons separately from
+membership completeness, retaining exact source/resource/generation binding and historical results.
+This approves backend implementation and short focused synthetic checks, not new-version screen
+wording/layout or display adoption; do not present corrected results as legacy version 2.
+Warn with scope and duration and obtain approval before a long verification run.
+After the 222-pass focused checkpoint, the owner approved the warned 45-65-minute isolated
+rebuilt-fault/restored-control qualification for all 36 new plus three adapted cases, with a hard
+maximum of 65 minutes including final correct-source Release rebuild, affected checks and cleanup.
+Stop starting new variants early enough to leave the correct sources rebuilt, retain unfinished
+qualification rather than extending the window, and keep source-tree/collector negative controls.
+The completed presentation campaign is not repeated, LAPS remains deferred, and no live work,
+owner-data re-judging, measurements, CI, packaging, commit or push is authorized by this approval.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.

@@ -135,7 +135,7 @@ internal static class OwnershipControlDeriver
             eligible, exemption, canSetOwner, primitiveUncertainty,
             !Sid.IsBuiltinDomain(holder.Sid) || ControlEdgeDeriver.IsDomainTarget(subject, context.ForestFqdn));
 
-    private static ControlEvaluationState Exemption(string holder, MembershipRouteSummary routes, ObjectAttributes subject,
+    internal static ControlEvaluationState Exemption(string holder, MembershipRouteSummary routes, ObjectAttributes subject,
         string? forest, Func<string, string?> domainSid)
     {
         var domain = subject.DomainFqdn is { } targetDomain && ControlEdgeDeriver.IsDomainTarget(subject, forest) ? domainSid(targetDomain) : null;

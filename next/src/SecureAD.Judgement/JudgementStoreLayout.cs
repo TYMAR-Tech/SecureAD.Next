@@ -19,6 +19,7 @@ internal static class JudgementStoreLayout
         "finding_privileged_sid_history", "finding_privileged_sid_history_value", "finding_kerberoastable_account",
         "finding_kerberoastable_account_spn", "finding_laps_deployment", "finding_laps_password_reader",
         "finding_laps_password_reader_path", "finding_object_takeover", "finding_object_takeover_path",
+        "finding_object_takeover_calculation",
         "finding_object_ownership", "finding_laps_decryptor", "finding_replication_permission",
         "finding_service_account", "finding_tier0_route",
     ];

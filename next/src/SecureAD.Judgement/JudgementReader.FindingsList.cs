@@ -145,6 +145,13 @@ public sealed partial class JudgementReader
             "SEC-031" or "SEC-032" => """
                 SELECT membership_was_complete FROM finding_object_ownership WHERE finding_id=$id
                 """,
+            "SEC-060" when item.RuleVersion == BroadPrincipalCanTakeOverObject.RuleVersion => """
+                SELECT CASE WHEN typeof(c.calculation_complete)='integer' AND c.calculation_complete IN (0,1)
+                    AND typeof(t.expansion_was_complete)='integer' AND t.expansion_was_complete IN (0,1)
+                    THEN c.calculation_complete AND t.expansion_was_complete END
+                FROM finding_object_takeover t
+                JOIN finding_object_takeover_calculation c ON c.finding_id=t.finding_id WHERE t.finding_id=$id
+                """,
             "SEC-060" => """
                 SELECT expansion_was_complete FROM finding_object_takeover WHERE finding_id=$id
                 """,

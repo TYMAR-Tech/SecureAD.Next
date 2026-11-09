@@ -44,6 +44,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly PreparedStatements _statements;
     private readonly Guid? _derivationGenerationId;
     private string _evidenceSeal = "";
+    private string? _permissionControlDerivationSeal;
     private readonly PermissionWriteSession _session = new();
     private SqliteTransaction? _batch;
     private int _batchObjects;
@@ -793,6 +794,14 @@ public sealed class JudgementWriter : IDisposable
 
     private void WriteFinding(SqliteTransaction transaction, Finding finding)
     {
+        if (finding.RuleId == "SEC-060" && (finding.RuleVersion == BroadPrincipalCanTakeOverObject.RuleVersion
+            || finding.Evidence is ObjectTakeoverEvidence { Calculation: not null }))
+        {
+            PermissionControlCalculationStorage.Validate(finding, GenerationId, _evidenceSeal, _derivationGenerationId);
+            _permissionControlDerivationSeal ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId);
+            if (((ObjectTakeoverEvidence)finding.Evidence).Calculation!.DerivationSeal != _permissionControlDerivationSeal)
+                throw PermissionControlCalculationStorage.Invalid();
+        }
         var findingId = _nextFindingId++;
         var list = FindingListItem.FromFinding(finding);
 
@@ -1077,6 +1086,15 @@ public sealed class JudgementWriter : IDisposable
                 return;
 
             case ObjectTakeoverEvidence takeover:
+                if (takeover.Calculation is { } calculation)
+                    Execute(transaction,
+                        "INSERT INTO finding_object_takeover_calculation (finding_id,calculation_complete,payload) VALUES ($id,$complete,$payload)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$complete", calculation.IsComplete ? 1 : 0);
+                            command.Parameters.AddWithValue("$payload", System.Text.Json.JsonSerializer.Serialize(calculation, ProofSerialization.Options));
+                        });
                 Execute(
                     transaction,
                     "INSERT INTO finding_object_takeover (finding_id, trustee_sid, "

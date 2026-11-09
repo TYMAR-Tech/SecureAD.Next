@@ -13,6 +13,9 @@ public sealed partial class JudgementReader
         if (selected.Value.RuleId != "SEC-060")
             return Result<SavedPermissionControl>.Failure(AuditError.Create(ErrorCategory.Evidence, "FindingSelectionChanged",
                 ErrorSeverity.Failed, SavedPermissionControl.InvalidDetails, BundleDirectory));
+        if (selected.Value.RuleVersion != 2)
+            return Result<SavedPermissionControl>.Failure(AuditError.Create(ErrorCategory.Evidence, "UnsupportedFindingVersion",
+                ErrorSeverity.Failed, "This calculation version has no approved finding-detail presentation.", BundleDirectory));
         OpenPart(StoreSegmentRole.PermissionProof);
         using var command = _connection.CreateCommand();
         command.CommandText = """

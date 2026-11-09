@@ -1025,6 +1025,8 @@ public static class JudgingRun
         var replicationRule = rules.Any(rule => rule is UnexpectedDomainSecretReplication);
         var replicationBinding = replicationRule ? inputs.Binding() : null;
         var replicationInput = replicationRule ? inputs.ReadMembershipInput() : null;
+        var permissionControlInputs = rules.Any(rule => rule is BroadPrincipalCanTakeOverObject)
+            ? new PermissionControlInputs(writer.GenerationId, inputs.Binding(), domainSids) : null;
         progress.BeginOperation("read-object");
         foreach (var subject in descriptors.Objects)
         {
@@ -1114,7 +1116,11 @@ public static class JudgingRun
                         ? permissions : readPermissions(dn),
                 }
                 : context;
-            objectContext = objectContext with { NamingContexts = controlContext.NamingContexts };
+            objectContext = objectContext with
+            {
+                NamingContexts = controlContext.NamingContexts,
+                PermissionControlInputs = permissionControlInputs,
+            };
             if (attributeWriteRules && AttributeWriteRules.IsAccount(subject))
             {
                 ControlObjectEvaluation attributePermissions;

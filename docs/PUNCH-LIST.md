@@ -177,8 +177,8 @@ SEC-010/011 suppress real unconstrained-delegation configurations from OU placem
 Correct the exclusion/presentation mismatch using captured authoritative evidence and explicit uncertainty rather than silently trusting an OU name or inventing a separate controller definition.
 Propose exact disagreement wording before UI edits, and obtain an owner decision before moving managed service accounts between rule identities when their class ancestry currently selects host wording.
 
-**SCOUT-06 - legacy permission calculation - HIGH, open.**
-SEC-060 reports complete takeover for the reproduced ordered Everyone WRITE_DAC deny followed by an Authenticated Users allow, and the shared legacy calculator also credits unsupported callback entries as unconditional rights.
+**SCOUT-06 - legacy permission calculation - HIGH, bounded SEC-060 backend correction [offline verified](C:/Users/jistrand/.copilot/session-state/19c0f17a-fd7c-4436-82b3-4fd4a4765d6d/files/scout06-calculation/verified-scout06.json), 2026-11-09: correct-source Release rebuild with zero errors, 222 affected passes, and all 36 new plus three adapted cases rejecting 24 rebuilt faults through 41 intended failures and 58 restored passes; rule version 3/Judgement 78, new-version display adoption, other shared-legacy callers and lab/performance acceptance remain separate.**
+The retained version-2 counterexample reports complete takeover for an ordered Everyone WRITE_DAC deny followed by an Authenticated Users allow, and the shared legacy calculator also credits unsupported callback entries as unconditional rights.
 Reuse the stronger ordered, operation-aware proof machinery for cross-trustee denies, unsupported entries, scope and inheritance, preserving independently established WRITE_DAC rather than importing uncertainty from a hypothetical owner transition.
 Verify deny and independent-grant controls through saved output, label full control only when the separate stronger assessment establishes it rather than when a whole-object mask summary hides a scoped restriction, and do not claim the inherited source container is known from SEC-060's inherited-class/scope marker.
 

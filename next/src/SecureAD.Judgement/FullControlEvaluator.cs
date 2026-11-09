@@ -96,7 +96,11 @@ internal static class FullControlEvaluator
                 || edge.DerivationGenerationId != value.DerivationGenerationId)) throw InvalidProof();
     }
 
-    private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope)
+    internal static FullControlRight AssessStandardRight(FullControlSource source, int right,
+        Func<PermissionEntry, bool?> matchDeny) => Check(source, right, null, true, matchDeny, includeScoped: true);
+
+    private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope,
+        Func<PermissionEntry, bool?>? matchDeny = null, bool includeScoped = false)
     {
         var unknown = source.Availability != DescriptorAvailability.Read || source.Dacl == DaclState.Unreadable
             ? ControlUncertainty.DescriptorUnreadable
@@ -113,13 +117,17 @@ internal static class FullControlEvaluator
             return new(right, scope, unknown == ControlUncertainty.None && Same(source.Holder.Sid, "S-1-1-0")
                 ? ControlEvaluationState.Established : ControlEvaluationState.Unknown, unknown, grants, blockers);
         var boundary = false;
+        var denied = false;
+        var uncertainGrant = ControlUncertainty.None;
         foreach (var entry in source.Entries)
         {
-            if (!Applies(entry) || (entry.AccessMask & right) == 0) continue;
+            if (denied || !Applies(entry) || (entry.AccessMask & right) == 0) continue;
             var sameHolder = Same(entry.Trustee.Sid == "S-1-5-10" && source.TargetSid is not null
                 ? source.TargetSid : entry.Trustee.Sid, source.Holder.Sid);
             if (!sameHolder && !IsDeny(entry)) continue;
-            if (scope is null && entry.HasObjectType) continue;
+            var matches = sameHolder ? true : matchDeny?.Invoke(entry);
+            if (IsDeny(entry) && matches == false) continue;
+            if (scope is null && entry.HasObjectType && !includeScoped) continue;
             if (scope is not null && entry.HasObjectType && !Same(entry.ObjectTypeGuid ?? "", scope))
             {
                 // Overlapping property sets and object-type scopes are not unioned into an authorization answer.
@@ -127,11 +135,18 @@ internal static class FullControlEvaluator
                 continue;
             }
             var limit = !Supported(entry) ? ControlUncertainty.ConditionalOrUnsupportedAce
-                : !sameHolder ? ControlUncertainty.CrossTrusteeDeny
-                : scope is not null && entry.HasObjectType && !knownScope ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
+                : !sameHolder && matches != true ? ControlUncertainty.CrossTrusteeDeny
+                : entry.HasObjectType && (includeScoped || !knownScope) ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
                 : ControlUncertainty.None;
             if (limit != ControlUncertainty.None)
             {
+                if (!boundary && grants.Count == 0 && entry.AceType is
+                    "AccessAllowed" or "AccessAllowedObject" or "AccessAllowedCallback" or "AccessAllowedCallbackObject")
+                {
+                    uncertainGrant |= limit;
+                    blockers.Add(entry.Ordinal);
+                    continue;
+                }
                 if (grants.Count == 0) unknown |= limit;
                 blockers.Add(entry.Ordinal);
                 boundary = true;
@@ -140,9 +155,11 @@ internal static class FullControlEvaluator
             {
                 blockers.Add(entry.Ordinal);
                 boundary = true;
+                denied = grants.Count == 0;
             }
             else if (!boundary) grants.Add(entry.Ordinal);
         }
+        if (grants.Count == 0) unknown |= uncertainGrant;
         var state = unknown != ControlUncertainty.None ? ControlEvaluationState.Unknown
             : grants.Count != 0 ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished;
         return new(right, scope, state, unknown, grants, blockers);
