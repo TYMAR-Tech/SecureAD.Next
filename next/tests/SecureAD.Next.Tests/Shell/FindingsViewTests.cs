@@ -166,7 +166,7 @@ public sealed class FindingsViewTests
     public void WindowContentScrollsWhileItsActionsRemainVisible(int width, int height) => OnSta(() =>
     {
         var (model, source) = Model();
-        var longFinding = GenericServiceFinding(source.FindingsPage.Findings[0]) with
+        var longFinding = GenericFinding(source.FindingsPage.Findings[0]) with
         {
             Detail = string.Join(Environment.NewLine, Enumerable.Range(1, 80).Select(index => $"Recorded observation {index}: retain this saved explanation.")),
         };
@@ -261,16 +261,14 @@ public sealed class FindingsViewTests
         Assert.Same(model.FindingDetails!.Finding, action.CommandParameter);
     });
 
-    internal static Finding GenericServiceFinding(Finding original)
+    internal static Finding GenericFinding(Finding original)
     {
-        var definition = new ServiceAccountWithNonExpiringPassword().Definition;
-        var account = new ServiceAccountAssociation(original.ObjectGuid, original.DistinguishedName, original.DomainFqdn,
-            DateTimeOffset.UnixEpoch, original.Coverage, ServiceAccountKind.SpnBearingUser,
-            [new(0, "top", null), new(1, "person", null), new(2, "user", null)],
-            [new(0, "HTTP/service", null)], [new(0, "66048", null)], 66048, []);
+        var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == "SEC-060").Definition;
+        const string sid = "S-1-5-21-9-8-7-513";
         return original with { RuleId = definition.Id, RuleVersion = definition.Version, Severity = definition.Severity,
-            ObjectClass = "user", Subject = new(FindingSubjectKind.Account, original.ObjectGuid.ToString("D")),
-            Evidence = new ServiceAccountFindingEvidence(account, null) };
+            ObjectClass = "user", Subject = new(FindingSubjectKind.Account, sid),
+            Evidence = new ObjectTakeoverEvidence(sid, original.PrincipalName, sid, original.PrincipalName,
+                [new(sid, original.PrincipalName)], ObjectTakeoverRight.WriteDacl, null, true) };
     }
 
     private static (AssetsViewModel Model, FakeAssetSource Source) Model(Finding? finding = null)
@@ -300,13 +298,18 @@ public sealed class FindingsViewTests
         var root = XDocument.Load(Path.Combine(shell, "Views", file)).Root!;
         root.Attribute(xaml + "Class")!.Remove();
         root.Attribute(xaml + "ClassModifier")!.Remove();
-        root.Element(wpf + "UserControl.Resources")?.Remove();
+        var ownedResources = root.Element(wpf + "UserControl.Resources");
+        var dictionary = ownedResources?.Element(wpf + "ResourceDictionary")
+            ?? new XElement(wpf + "ResourceDictionary", ownedResources?.Elements());
+        ownedResources?.Remove();
         var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
-        root.AddFirst(new XElement(wpf + "UserControl.Resources", new XElement(wpf + "ResourceDictionary",
-            new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source => new XElement(wpf + "ResourceDictionary",
-                new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source)))))));
+        var merged = dictionary.Element(wpf + "ResourceDictionary.MergedDictionaries");
+        if (merged is null) { merged = new XElement(wpf + "ResourceDictionary.MergedDictionaries"); dictionary.AddFirst(merged); }
+        merged.AddFirst(sources.Select(source => new XElement(wpf + "ResourceDictionary",
+            new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source))));
+        root.AddFirst(new XElement(wpf + "UserControl.Resources", dictionary));
         using var xml = System.Xml.XmlReader.Create(new StringReader(root.ToString()));
         using var reader = new System.Xaml.XamlXmlReader(xml, XamlReader.GetWpfSchemaContext(), new System.Xaml.XamlXmlReaderSettings
         { LocalAssembly = typeof(AssetsViewModel).Assembly });

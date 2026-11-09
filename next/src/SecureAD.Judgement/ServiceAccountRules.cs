@@ -10,8 +10,6 @@ public sealed class ServiceAccountWithAdministrativeMembership : IObjectRule
     internal const int PolicyVersion = 1;
     internal const string ScopeNote = "Service association is identified from the captured account class or SPN registration, not observed service usage. "
         + "Membership does not prove account takeover or a completed path to Tier 0.";
-    internal const string Guidance = "Review the recorded membership links and service dependencies before removing unintended administrative membership. "
-        + "Grant only the permissions the service needs, and review other membership routes before concluding the exposure is removed.";
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new("SEC-100", "Service-associated account with administrative membership", Severity.High, 1,
@@ -69,8 +67,6 @@ public sealed class ServiceAccountWithNonExpiringPassword : IObjectRule
     internal const uint DontExpirePassword = 0x00010000;
     internal const string ScopeNote = "A captured SPN associates this ordinary user with a service name, not observed service usage. "
         + "The setting does not prove that its password has never been rotated, account takeover or a completed path to Tier 0.";
-    internal const string Guidance = "Review why Password never expires is enabled and how this account's password is managed. "
-        + "If it runs a service, check dependencies before changing the setting or moving the service to a managed service account.";
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new("SEC-101", "SPN-bearing user with Password never expires", Severity.Medium, 1,

@@ -528,6 +528,8 @@ public sealed class VouchedValueReachabilityGateTests
     /// assessment flag; true and false constructor inputs remain distinguishable on readback.
     /// 85 adds <c>SavedBroadMembershipContext.IsComplete</c>: saved positive broad membership
     /// retains input/scope gaps; the flag can be read both ways and is checked against saved counts.
+    /// 86 adds <c>SavedServiceAccountContext.IsComplete</c>: selected service-account readback
+    /// retains account and membership gaps independently of which supporting pages are loaded.
     /// </para>
     /// </summary>
     [Fact]
@@ -542,7 +544,7 @@ public sealed class VouchedValueReachabilityGateTests
         // cheapest way out - which is how a self-test stops being one. The expected total is held in
         // one place so the condition and the message cannot disagree, which they did on the first
         // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1 + 1 + 1;
+        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1 + 1 + 1 + 1;
 
         Assert.True(
             found.Count == accountedFor,
@@ -559,6 +561,7 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "SavedGroupReview" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "SavedBroadMembershipContext" && v.Name == "IsComplete");
+        Assert.Contains(found, v => v.Type.Name == "SavedServiceAccountContext" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "PrincipalClassification" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlEdge" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "ControlObjectEvaluation" && v.Name == "IsComplete");

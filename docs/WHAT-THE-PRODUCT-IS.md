@@ -814,6 +814,72 @@ After the correction was committed, the owner explicitly reported "52 screen is 
 This accepts the reported SEC-052 screen result, not unreported physical-display scenarios or
 production-performance measurements.
 
+**SEC-100/101 service-account presentation - owner-approved 2026-11-09.**
+After first-party Microsoft verification, the owner explicitly requested implementing the proposed
+two-rule presentation, selected saved readers and matching Rules guidance, with short focused checks.
+Reuse the charcoal window from both Findings grids, retaining Service-associated account with
+administrative membership and SPN-bearing user with Password never expires, High/Medium version 1,
+the existing authoritative administrative destinations, finding grain, coverage and return context.
+Use Account, Object type, Domain, Location, Captured at, Account state at capture and Service
+association; state is Enabled, Disabled or "Not established from captured evidence."
+Association is Ordinary user with captured service principal names, Standalone managed service
+account (sMSA), or Group managed service account (gMSA), from the saved account kind.
+The common note is "Service association is based on captured account class or service principal
+names, not observed service use."
+View captured service names explicitly loads Captured service principal names (SPNs), 50 values
+per Previous/Page {number}/Next page, retaining complete values, original order/occurrences and
+explicit unreadable values rather than silently dropping them.
+SEC-100's Saved administrative membership panel says "The saved assessment records security
+membership from this service-associated account to the administrative group shown."
+Show Administrative group, Group SID, Group domain and Group location, leading with 50-row
+Entry memberships containing the account's recorded initial relationships supporting this destination.
+View recorded membership links requests other saved links in 50-row pages, saying
+"{member} is a member of {containing group}."
+Distinguish Primary-group membership and Recorded through: {foreign-reference identity}; the
+foreign reference is not merged with the resolved account.
+View saved supporting values requests only the selected link's original values in 50-row pages,
+labelled Recorded on, Recorded attribute and Saved value.
+Saved evidence limitations retain original reasons/locations, separating captured gaps,
+unsupported/unresolved membership and recorded processing limits, with "Recorded positive
+membership remains a finding. Other routes or administrative destinations may not have been fully assessed."
+Share this exact SEC-100 guidance between Findings and Rules:
+- **Why it matters:** "Administrative membership can give a service-associated account more authority than its service needs. A managed password does not make excessive membership safe. This finding does not prove effective access to a particular object, a successful operation, account takeover or a completed path to Tier 0."
+- **What to do:** "Confirm the account owner, service dependencies and administrative need. If membership is unintended, remove only unnecessary memberships under change control and grant only the permissions the service needs. For primary-group membership, review the account's primary-group configuration rather than treating it as an ordinary group-member entry. Review shared-group effects and other routes, then test dependent services. Removing one link does not establish that all administrative access is gone."
+SEC-101's Captured password setting panel shows Password never expires: Enabled and says
+"The captured ordinary user has service principal names and Password never expires set."
+Keep managed accounts and computers excluded, with no membership reads for this rule.
+Share this exact SEC-101 guidance between Findings and Rules:
+- **Why it matters:** "Without an appropriate password-management arrangement, a service account may retain a credential longer than intended. This setting does not prove that the password has never changed, is old or weak, or lacks external rotation. It is not proof of successful authentication, account takeover or a completed path to Tier 0."
+- **What to do:** "Confirm the account owner, actual service use and password-rotation arrangements, including any external vault or automation. For a required service, consider a supported managed service account or a coordinated credential-management plan. Check dependencies before changing the setting or credentials, then test dependent services. Do not simply enable expiry, reset credentials blindly or remove service principal names merely to suppress this finding."
+Use selected streaming reads of the existing record, not the full proof decoder, membership
+closure, permission/requester replay or a new format; replace these two rules' eager long-prose
+display path without changing the original saved findings.
+A requested page may scan that selected record; bounded retained rows are not measured speed.
+Preserve exact finding/account/destination/generation binding, actual saved completeness and
+explicit refusals; unopened pages are not incomplete captured evidence.
+Unavailable details say "The selected finding's saved service-account details are missing, invalid or inconsistent."
+Microsoft anchors are [gMSA security](https://learn.microsoft.com/entra/architecture/service-accounts-group-managed#assess-gmsa-security-posture),
+[on-premises user-based service accounts](https://learn.microsoft.com/entra/architecture/service-accounts-user-on-premises),
+[UserAccountControl flags](https://learn.microsoft.com/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties),
+[SPN registration](https://learn.microsoft.com/windows/win32/ad/service-principal-names),
+[primary-group UI mapping](https://learn.microsoft.com/windows/win32/ad/user-object-user-interface-mapping#member-of-property-page)
+and [AD security groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups);
+the selected scope and severities remain SecureAD policy, not Microsoft compliance requirements.
+Long verification still requires its own scope/duration warning and explicit approval.
+After the 259-pass focused checkpoint, including all 58 new cases, the owner explicitly approved
+the warned 60-90-minute remaining offline verification with a maximum of 90 minutes including
+cleanup: isolated rebuilt faults and restored controls for new/changed behaviour checks, a final
+correct-source Release rebuild and directly affected checks, and preservation records.
+Use an interrupting deadline and stop/report unfinished work rather than silently extending it;
+this is not approval to repeat historical campaigns, run the full suite or change the boundaries below.
+No new analysis/formats, live work, re-judgement, measurements, CI, packaging, merge, commit or
+push is authorized, full LAPS analysis stays deferred, SEC-052's screen remains verified OK,
+and SEC-061's positive feedback does not become SEC-062 lab acceptance.
+The owner then reported that he has no SEC-100/101 findings in his lab yet and requested a local
+commit followed by the next batch proposal; neither rule has positive lab verification.
+Do not require lab setup, recapture or re-judgement before proposing that next batch, and do not
+treat this commit request as permission to push or implement the next presentation.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.

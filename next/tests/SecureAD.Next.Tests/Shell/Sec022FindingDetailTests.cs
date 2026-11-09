@@ -182,7 +182,7 @@ public sealed class Sec022FindingDetailTests
             disabled ? "Misleading original prose says enabled." : "Misleading original prose says disabled.",
             EvidenceCompleteness.MayBeMissingConfidentialValues, new UserAccountControlEvidence(control)) { PrincipalName = "same-friendly-name" };
         var otherGuid = Guid.NewGuid();
-        var other = FindingsViewTests.GenericServiceFinding(finding with
+        var other = FindingsViewTests.GenericFinding(finding with
         {
             ObjectGuid = otherGuid, DomainFqdn = "two.example",
             DistinguishedName = "CN=Same name,OU=Accounts,DC=two,DC=example",

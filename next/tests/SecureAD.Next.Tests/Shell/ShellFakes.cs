@@ -635,6 +635,28 @@ internal sealed class FakeAssetSource : IAssetSource
         Result<SavedBroadMembershipPage<T>>.Failure(AuditError.Create(ErrorCategory.Shell, "TestBroadMembershipUnavailable",
             ErrorSeverity.Failed, SavedBroadMembershipContext.InvalidDetails, directory));
 
+    public Func<FindingReference, Result<SavedServiceAccountDetails>>? ServiceAccountRead { get; set; }
+    public Func<FindingReference, ServiceAccountMark?, Result<SavedServiceAccountPage<SavedServiceAccountName>>>? ServiceAccountNamesRead { get; set; }
+    public Func<FindingReference, ServiceAccountMark?, Result<SavedServiceAccountPage<SavedServiceAccountLink>>>? ServiceAccountEntriesRead { get; set; }
+    public Func<FindingReference, ServiceAccountMark?, Result<SavedServiceAccountPage<SavedServiceAccountLink>>>? ServiceAccountLinksRead { get; set; }
+    public Func<FindingReference, long, ServiceAccountMark?, Result<SavedServiceAccountPage<SavedServiceAccountWitness>>>? ServiceAccountValuesRead { get; set; }
+    public Func<FindingReference, ServiceAccountMark?, Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>>>? ServiceAccountLimitationsRead { get; set; }
+    public List<string> ServiceAccountReads { get; } = [];
+    public Result<SavedServiceAccountDetails> ReadServiceAccount(string bundleDirectory, FindingReference reference)
+    { ServiceAccountReads.Add("header"); return ServiceAccountRead?.Invoke(reference) ?? Result<SavedServiceAccountDetails>.Failure(MissingServiceAccount(bundleDirectory)); }
+    public Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(string bundleDirectory, FindingReference reference, ServiceAccountMark? after)
+    { ServiceAccountReads.Add("names"); return ServiceAccountNamesRead?.Invoke(reference, after) ?? Result<SavedServiceAccountPage<SavedServiceAccountName>>.Failure(MissingServiceAccount(bundleDirectory)); }
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(string bundleDirectory, FindingReference reference, ServiceAccountMark? after)
+    { ServiceAccountReads.Add("entries"); return ServiceAccountEntriesRead?.Invoke(reference, after) ?? Result<SavedServiceAccountPage<SavedServiceAccountLink>>.Failure(MissingServiceAccount(bundleDirectory)); }
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(string bundleDirectory, FindingReference reference, ServiceAccountMark? after)
+    { ServiceAccountReads.Add("links"); return ServiceAccountLinksRead?.Invoke(reference, after) ?? Result<SavedServiceAccountPage<SavedServiceAccountLink>>.Failure(MissingServiceAccount(bundleDirectory)); }
+    public Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(string bundleDirectory, FindingReference reference, long linkPosition, ServiceAccountMark? after)
+    { ServiceAccountReads.Add("values"); return ServiceAccountValuesRead?.Invoke(reference, linkPosition, after) ?? Result<SavedServiceAccountPage<SavedServiceAccountWitness>>.Failure(MissingServiceAccount(bundleDirectory)); }
+    public Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(string bundleDirectory, FindingReference reference, ServiceAccountMark? after)
+    { ServiceAccountReads.Add("limitations"); return ServiceAccountLimitationsRead?.Invoke(reference, after) ?? Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>>.Failure(MissingServiceAccount(bundleDirectory)); }
+    private static AuditError MissingServiceAccount(string directory) => AuditError.Create(ErrorCategory.Shell,
+        "TestServiceAccountUnavailable", ErrorSeverity.Failed, SavedServiceAccountContext.InvalidDetails, directory);
+
     public Func<FindingReference, CircularMembershipGroupMark?, Result<SavedCircularMembershipGroups>>? CircularGroupsRead { get; set; }
     public Func<FindingReference, CircularMembershipLoopMark?, Result<SavedCircularMembershipLoop>>? CircularLoopRead { get; set; }
     public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after)

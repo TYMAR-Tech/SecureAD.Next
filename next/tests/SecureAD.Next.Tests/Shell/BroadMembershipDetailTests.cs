@@ -189,7 +189,7 @@ public sealed class BroadMembershipDetailTests
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Broad identities");
             Assert.Equal(partial, Descendants<TextBlock>(view).Any(value => value.IsVisible && value.Text == "Incomplete membership evidence"));
             Assert.DoesNotContain(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Recorded membership links");
-            var action = Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "View recorded membership links"));
+            var action = Assert.Single(Descendants<Button>(view), value => value.IsVisible && Equals(value.Content, "View recorded membership links"));
             var viewport = Assert.Single(Descendants<ScrollViewer>(view), value => value.Name == "FindingDetailsScroll");
             var visible = viewport.TransformToAncestor(view).TransformBounds(new Rect(viewport.RenderSize));
             var bounds = action.TransformToAncestor(view).TransformBounds(new Rect(action.RenderSize));
@@ -199,7 +199,7 @@ public sealed class BroadMembershipDetailTests
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Recorded through");
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Domain: child.contoso.com");
             Assert.DoesNotContain(Descendants<TextBlock>(view), value => value.IsVisible && value.Text.Contains("Raw broad proof", StringComparison.Ordinal));
-            Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "View saved supporting values")).Command.Execute(null);
+            Assert.Single(Descendants<Button>(view), value => value.IsVisible && Equals(value.Content, "View saved supporting values")).Command.Execute(null);
             Layout(view, width, 700);
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Saved supporting values");
             Assert.Contains(Descendants<TextBlock>(view), value => value.IsVisible && value.Text == "Recorded attribute: member");

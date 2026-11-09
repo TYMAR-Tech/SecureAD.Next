@@ -237,6 +237,19 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadBroadMembershipLimitations(bundleDirectory, reference, after));
 
+    public Result<SavedServiceAccountDetails> ReadServiceAccount(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccount(bundleDirectory, reference));
+    public Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountNames(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountEntryMemberships(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountLinks(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(string bundleDirectory, FindingReference reference, long linkPosition, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountValues(bundleDirectory, reference, linkPosition, after));
+    public Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountLimitations(bundleDirectory, reference, after));
+
     public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadCircularMembershipGroups(bundleDirectory, reference, after));
     public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>

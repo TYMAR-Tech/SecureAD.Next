@@ -247,6 +247,14 @@ internal interface IAssetReader
     /// <summary>Reads a bounded page of the saved input gaps and unsupported-analysis reasons.</summary>
     Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
 
+    /// <summary>Reads selected service-account facts and SEC-100's first entry-membership page.</summary>
+    Result<SavedServiceAccountDetails> ReadServiceAccount(string bundleDirectory, FindingReference reference);
+    Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(string bundleDirectory, FindingReference reference, long linkPosition, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+
     /// <summary>Reads one circular finding's saved inventory flag and a bounded group page.</summary>
     Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after);
     /// <summary>Reads one ordered representative loop page from the selected saved group set.</summary>

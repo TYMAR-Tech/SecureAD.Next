@@ -124,17 +124,16 @@ public static class RuleGuidanceCatalogue
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c"),
         new RuleGuidance("SEC-100", "Service accounts", MitreTechnique: null,
-            WhyItMatters: "A service-associated account has an established security-membership route to a verified administrative group. "
-                + ServiceAccountWithAdministrativeMembership.ScopeNote,
-            WhatToDo: ServiceAccountWithAdministrativeMembership.Guidance,
+            WhyItMatters: SavedServiceAccountContext.AdministrativeWhy,
+            WhatToDo: SavedServiceAccountContext.AdministrativeAction,
             About: "Reports sMSA/gMSA accounts and ordinary SPN-bearing users with captured security membership in Domain Admins, "
                 + "forest-root Enterprise Admins or Schema Admins, or resource-domain BUILTIN Administrators.\n\n"
                 + "Disabled accounts remain visible as dormant exposure. Established membership remains a finding when other routes could not be assessed. "
                 + ServiceAccountWithAdministrativeMembership.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-101", "Service accounts", MitreTechnique: null,
-            WhyItMatters: "An ordinary SPN-bearing user has Password never expires set. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
-            WhatToDo: ServiceAccountWithNonExpiringPassword.Guidance,
+            WhyItMatters: SavedServiceAccountContext.PasswordWhy,
+            WhatToDo: SavedServiceAccountContext.PasswordAction,
             About: "Reports ordinary SPN-bearing users with the captured Password never expires setting; managed service accounts and computers are excluded.\n\n"
                 + "Disabled accounts remain visible as dormant exposure. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties"),

@@ -1,6 +1,46 @@
 <UserControl x:Class="SecureAD.Shell.Views.FindingDetailView" x:ClassModifier="internal"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <DataTemplate x:Key="ServiceAccountPageControls">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="Previous" Command="{Binding PreviousPageCommand}" />
+                    <TextBlock Text="{Binding PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                    <Button Content="Next" Command="{Binding NextPageCommand}" />
+                </StackPanel>
+                <TextBlock Text="{Binding LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                           Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+                <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                         Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                         Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="ServiceAccountLink">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Direction}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                <TextBlock Text="Primary-group membership" TextWrapping="Wrap"
+                           Visibility="{Binding IsPrimaryGroup,Converter={StaticResource Shown}}" />
+                <TextBox Text="{Binding ContainingGroup.DistinguishedName,Mode=OneWay,StringFormat=Containing group: {0}}"
+                         Style="{StaticResource SelectableMessage}" />
+                <TextBlock Text="{Binding ContainingGroup.DomainFqdn,StringFormat=Group domain: {0}}" TextWrapping="Wrap" />
+                <StackPanel Visibility="{Binding ShowsMember,Converter={StaticResource Shown}}">
+                    <TextBox Text="{Binding Member.DistinguishedName,Mode=OneWay,StringFormat=Member: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBlock Text="{Binding Member.DomainFqdn,StringFormat=Member domain: {0}}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Visibility="{Binding HasForeignReference,Converter={StaticResource Shown}}">
+                    <TextBox Text="{Binding RecordedThrough.DistinguishedName,Mode=OneWay,StringFormat=Recorded through: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBox Text="{Binding RecordedThrough.Sid,Mode=OneWay,StringFormat=Recorded reference SID: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBlock Text="{Binding RecordedThrough.DomainFqdn,StringFormat=Reference domain: {0}}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Content="View saved supporting values" Command="{Binding ViewCommand}"
+                        HorizontalAlignment="Left" Margin="0,6,0,0" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="View saved routes" Command="{Binding OpenSavedRoutesCommand}"
@@ -30,6 +70,120 @@
                     <TextBlock Text="{Binding FindingDetails.Finding.DistinguishedName,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding FindingDetails.Finding.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" Margin="0,0,0,16" />
                 </StackPanel>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasServiceAccount,Converter={StaticResource Shown}}">
+                    <StackPanel DataContext="{Binding FindingDetails.ServiceAccount}">
+                        <TextBlock Text="{Binding Heading}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding Account.Name,StringFormat=Account: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Account.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Account.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding Account.DistinguishedName,Mode=OneWay,StringFormat=Location: {0}}"
+                                 Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding CapturedAt,StringFormat=Captured at: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Association,StringFormat=Service association: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding AssociationNote}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="Password never expires: Enabled" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                                   Visibility="{Binding IsPasswordSetting,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding IsAdministrative,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding TargetName,StringFormat=Administrative group: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding Target.Sid,Mode=OneWay,StringFormat=Group SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                            <TextBlock Text="{Binding Target.DomainFqdn,StringFormat=Group domain: {0}}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding Target.DistinguishedName,Mode=OneWay,StringFormat=Group location: {0}}"
+                                     Style="{StaticResource SelectableMessage}" />
+                            <TextBlock Text="Entry memberships" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding Entries.Rows}" ItemTemplate="{StaticResource ServiceAccountLink}" />
+                            <ContentControl Content="{Binding Entries}" ContentTemplate="{StaticResource ServiceAccountPageControls}" />
+                        </StackPanel>
+                        <Button Content="View captured service names" Command="{Binding ViewNamesCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding HasNames,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Captured service principal names (SPNs)" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="No service principal name values are recorded in this saved finding." TextWrapping="Wrap"
+                                       Visibility="{Binding HasNoNames,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding Names.Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,6">
+                                            <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="Unreadable captured value." TextWrapping="Wrap"
+                                                       Visibility="{Binding IsUnreadable,Converter={StaticResource Shown}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ContentControl Content="{Binding Names}" ContentTemplate="{StaticResource ServiceAccountPageControls}" />
+                        </StackPanel>
+                        <Button Content="View recorded membership links" Command="{Binding ViewLinksCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Visibility="{Binding IsAdministrative,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding HasLinks,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Recorded membership links" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding Links.Rows}" ItemTemplate="{StaticResource ServiceAccountLink}" />
+                            <ContentControl Content="{Binding Links}" ContentTemplate="{StaticResource ServiceAccountPageControls}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasValues,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved supporting values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="{Binding SelectedRelationship}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding Values.Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBox Text="{Binding Source,Mode=OneWay,StringFormat=Recorded on: {0}}"
+                                                     Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding Attribute,StringFormat=Recorded attribute: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="Saved value" Style="{StaticResource Caption}" />
+                                            <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ContentControl Content="{Binding Values}" ContentTemplate="{StaticResource ServiceAccountPageControls}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasLimitations,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="The captured evidence for this account may be incomplete." TextWrapping="Wrap"
+                                       Visibility="{Binding HasCaptureWarning,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding Account.MissingInputs,StringFormat=Missing captured account facts: {0}}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasMissingInputs,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding LimitationsNote}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasMembershipLimitations,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding RouteLimitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,6,0,0">
+                                            <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" />
+                                            <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="View saved evidence limitations" Command="{Binding ViewLimitationsCommand}"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Visibility="{Binding HasRecordedLimitations,Converter={StaticResource Shown}}" />
+                            <StackPanel Visibility="{Binding HasSavedLimitations,Converter={StaticResource Shown}}">
+                                <ItemsControl ItemsSource="{Binding Limitations.Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,6,0,6">
+                                                <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" />
+                                                <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding Location,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ContentControl Content="{Binding Limitations}" ContentTemplate="{StaticResource ServiceAccountPageControls}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
                 <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.HasCapturedSetting,Converter={StaticResource Shown}}">
                     <StackPanel>

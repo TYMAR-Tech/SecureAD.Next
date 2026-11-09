@@ -109,6 +109,12 @@ internal sealed partial class AssetsViewModel
                         content = content with { BroadMembershipLimitations = limitations.Value };
                     }
                 }
+                if (answer.Value.RuleId is "SEC-100" or "SEC-101")
+                {
+                    var serviceAccount = reader.ReadServiceAccount(bundle, reference);
+                    if (!serviceAccount.IsSuccess) return Result<FindingDetailContent>.Failure(serviceAccount.Error);
+                    content = content with { ServiceAccount = serviceAccount.Value };
+                }
                 return Result<FindingDetailContent>.Success(content);
             }, token, "read selected finding"),
             finding.IsCurrent,
@@ -174,7 +180,18 @@ internal sealed partial class AssetsViewModel
                 (link, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
                     reader => reader.ReadBroadMembershipValues(bundle, finding.Saved.Reference!.Value, link, after), token, "read saved broad membership values"),
                 (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
-                    reader => reader.ReadBroadMembershipLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved broad membership limitations")));
+                    reader => reader.ReadBroadMembershipLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved broad membership limitations")),
+            new ServiceAccountReads(
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceAccountNames(bundle, finding.Saved.Reference!.Value, after), token, "read captured service-account names"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceAccountEntryMemberships(bundle, finding.Saved.Reference!.Value, after), token, "read service-account entry memberships"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceAccountLinks(bundle, finding.Saved.Reference!.Value, after), token, "read saved service-account links"),
+                (link, after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceAccountValues(bundle, finding.Saved.Reference!.Value, link, after), token, "read saved service-account values"),
+                (after, token) => ReadBoundAsync(bundle, finding.IsCurrent,
+                    reader => reader.ReadServiceAccountLimitations(bundle, finding.Saved.Reference!.Value, after), token, "read saved service-account limitations")));
     }
 
     [RelayCommand]
