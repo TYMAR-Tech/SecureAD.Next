@@ -1058,6 +1058,21 @@ of all 60 new cases against three rebuilt isolated faults, estimated at 10-15 mi
 maximum of 20 minutes including final correct-source rebuild, affected checks and cleanup.
 Stop starting faults with eight minutes reserved and retain partial qualification rather than
 extending that window.
+SCOUT-03 was freshly re-verified at `cb8be2d`, and the owner approved the bounded correction:
+validate the whole domain-principal SID before interpreting its RID, retain exact built-in SID
+matching and the existing sensitivity selection/severity, and correct only the remaining generated
+detail by reusing the already-approved conditional, class-appropriate guidance.
+Version the corrected SEC-027 assessment so earlier completed results are not silently reclassified;
+corrected answers require a new judgement of existing captured evidence, not recapture or automatic
+owner-data re-judging.
+Retain every original/unranked/unreadable value and migration dependency caution, keep the completed
+pop-out design intact, and use short focused checks before seeking approval for long qualification.
+This does not approve other Scout/LAPS work, live access, measurements, commit or push.
+After the 196-pass focused SCOUT-03 checkpoint, the owner separately approved six rebuilt isolated
+faults and restored checks for all 35 new cases, estimated at 15-20 minutes with a hard maximum
+of 25 minutes including final correct-source rebuild, affected checks and cleanup.
+Stop starting faults with eight minutes reserved and retain partial qualification rather than
+extending that window; earlier campaigns are not repeated.
 
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation

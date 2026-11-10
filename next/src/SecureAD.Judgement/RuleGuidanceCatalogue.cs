@@ -254,17 +254,8 @@ public static class RuleGuidanceCatalogue
             "SEC-027",
             "Privileged access",
             "T1134.005",
-            WhyItMatters:
-                "SID history can retain access through earlier identifiers without adding the object to the corresponding group. "
-                + "A privileged historical identifier can therefore preserve access that a group-membership review would miss. "
-                + "Actual access depends on resource permissions and, where applicable, trust and SID-filtering rules. "
-                + "This finding does not prove a specific current group membership, effective access, successful use, compromise or a completed Tier 0 path.",
-            WhatToDo:
-                "Verify why each flagged value is present, the migration history and current resource dependencies. "
-                + "When authorised, check relevant trust and SID-filtering behaviour. If a value is no longer needed, remove only that specific sIDHistory value "
-                + "using administration appropriate to the user, computer or group shown, under change control, then test dependent access. "
-                + "Do not clear the entire attribute or assume that unranked or unreadable values are harmless. "
-                + "Removing a historical identifier may break access still granted only to that identifier.",
+            WhyItMatters: PrivilegedSidHistory.Explanation,
+            WhatToDo: PrivilegedSidHistory.Guidance,
             About:
                 "Reports a captured user, computer or group carrying a SID-history value recognised by SecureAD's existing privileged-identifier catalogue. "
                 + "Recognition uses well-known SID patterns, not a live lookup of the issuing domain or group. "

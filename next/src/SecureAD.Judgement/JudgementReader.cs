@@ -1134,6 +1134,8 @@ public sealed partial class JudgementReader : IDisposable
     private Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
     {
         var ruleId = reader.GetString(reader.GetOrdinal("rule_id"));
+        if (ruleId == "SEC-027" && versions[ruleId] != PrivilegedSidHistory.RuleVersion)
+            throw new InvalidDataException(SavedSidHistory.UnsupportedVersion);
 
         // Which table answered decides the kind. Checked before anything is read out of any of
         // them, because a finding whose evidence row is missing everywhere has lost what it rests
@@ -1613,11 +1615,9 @@ public sealed partial class JudgementReader : IDisposable
     /// Which of a finding's stored SID history values name a privileged principal.
     /// </summary>
     /// <remarks>
-    /// <b>Recomputed rather than stored, like the delegation table's two answers.</b> Whether a
-    /// value is privileged, and what Microsoft calls it, are both asked of
-    /// <see cref="PrivilegedSidHistory.PrivilegedName"/> - the same decision the rule made when it
-    /// wrote the row. Storing either would create a copy that can disagree with the value it came
-    /// from, and a second copy of the decision could disagree with the rule itself.
+    /// Only the current rule version reaches this interpretation; older results are explicitly
+    /// refused rather than silently reclassified. Both this reader and the rule use
+    /// <see cref="PrivilegedSidCatalogue.PrivilegedName"/> while retaining every original value.
     /// </remarks>
     private static IReadOnlyList<PrivilegedSidHistoryMatch> PrivilegedSidHistoryMatches(
         IReadOnlyList<string> values) =>

@@ -12,6 +12,9 @@ public sealed partial class JudgementReader
         _readCancellation.ThrowIfCancellationRequested();
         var selected = ReadSelectedFinding(reference);
         if (!selected.IsSuccess) return Result<SavedSidHistory>.Failure(selected.Error);
+        if (selected.Value.RuleId == "SEC-027" && selected.Value.RuleVersion != PrivilegedSidHistory.RuleVersion)
+            return Result<SavedSidHistory>.Failure(AuditError.Create(ErrorCategory.Evidence, "UnsupportedFindingVersion",
+                ErrorSeverity.Failed, SavedSidHistory.UnsupportedVersion, BundleDirectory));
         if (selected.Value.RuleId != "SEC-027" || after is { } mark
             && (mark.GenerationId != reference.GenerationId || mark.FindingId != reference.FindingId
                 || mark.ObjectGuid != selected.Value.ObjectGuid || mark.Ordinal < -1 || !Enum.IsDefined(mark.Kind)))

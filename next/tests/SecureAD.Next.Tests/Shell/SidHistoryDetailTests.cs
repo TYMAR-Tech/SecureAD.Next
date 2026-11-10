@@ -278,7 +278,7 @@ public sealed class SidHistoryDetailTests
         var evidence = new PrivilegedSidHistoryEvidence(ownSid ? "S-1-5-21-1-2-3-1100" : null,
             values.Select(value => value.Sid).ToArray(), values.Where(value => value.RecognisedType is not null)
                 .Select(value => new PrivilegedSidHistoryMatch(value.Sid, 512, value.RecognisedType!)).ToArray(), unreadable);
-        var finding = new Finding("SEC-027", 1, Severity.High, new(FindingSubjectKind.Account, "Captured principal"),
+        var finding = new Finding("SEC-027", PrivilegedSidHistory.RuleVersion, Severity.High, new(FindingSubjectKind.Account, "Captured principal"),
             Guid.NewGuid(), "CN=Captured principal,DC=contoso,DC=com", "contoso.com", kind, "Old unbounded raw history prose.",
             limited ? EvidenceCompleteness.MayBeMissingConfidentialValues : EvidenceCompleteness.Complete, evidence) { PrincipalName = "Captured principal" };
         var source = new FakeAssetSource { FindingsPage = new([finding], null, 1), FilterValues = new([Severity.High], ["SEC-027"], 1) };

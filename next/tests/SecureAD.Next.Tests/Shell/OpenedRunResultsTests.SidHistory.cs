@@ -122,7 +122,28 @@ public sealed partial class OpenedRunResultsTests
         Assert.Null(other.Value.Next);
     }
 
-    private static string SidHistoryRun(int flagged, int other, out Finding finding, bool ownSid = true)
+    [Theory]
+    [InlineData(1)]
+    [InlineData(99)]
+    public void SidHistoryRefusesUnsupportedCalculationVersionsWithoutReclassifyingSavedValues(int version)
+    {
+        var directory = SidHistoryRun(1, 1, out _, version: version);
+        var before = CoverageFiles(directory);
+        using var source = new BundleAssetSource();
+        var row = Assert.Single(source.ReadFindingsList(directory, FindingsQuery.Everything()).Value.Findings);
+        Assert.Equal(version, row.RuleVersion);
+        var read = source.ReadSidHistory(directory, row.Reference!.Value, null);
+        Assert.False(read.IsSuccess);
+        Assert.Equal("Evidence.UnsupportedFindingVersion", read.Error.Code);
+        Assert.Contains(SavedSidHistory.UnsupportedVersion, read.Error.Description, StringComparison.Ordinal);
+        using var reader = JudgementReader.Open(directory).Value;
+        var failure = Assert.Throws<InvalidDataException>(() => reader.Read());
+        Assert.Equal(SavedSidHistory.UnsupportedVersion, failure.Message);
+        Assert.Equal(before, CoverageFiles(directory));
+    }
+
+    private static string SidHistoryRun(int flagged, int other, out Finding finding, bool ownSid = true,
+        int version = PrivilegedSidHistory.RuleVersion)
     {
         var directory = LapsBundle.BuildMany([(FirstDn, null, null, null, null, 512)], DateTimeOffset.UnixEpoch);
         var values = Enumerable.Range(0, flagged).Select(index => (Ordinal: index * 2, Sid: "S-1-5-21-1-2-3-512", Flagged: true))
@@ -132,7 +153,7 @@ public sealed partial class OpenedRunResultsTests
             values.Select(value => value.Sid).ToArray(), values.Where(value => value.Flagged)
                 .Select(value => new PrivilegedSidHistoryMatch(value.Sid, 512, "Domain Admins")).ToArray(), 2);
         using (var captured = BundleReader.Open(directory).Value)
-            finding = new("SEC-027", 1, Severity.High, new(FindingSubjectKind.Account, "Recorded principal"),
+            finding = new("SEC-027", version, Severity.High, new(FindingSubjectKind.Account, "Recorded principal"),
                 Assert.IsType<Guid>(captured.ReadObjectAttributes(FirstDn)!.ObjectGuid), FirstDn, "ad.lab", "computer",
                 "Original full SID-history prose must not be loaded.", EvidenceCompleteness.Complete, evidence) { PrincipalName = "Recorded principal" };
         WriteFindingsFixture(directory, [finding]);
