@@ -13,17 +13,20 @@ public sealed partial class JudgementReader
         if (selected.Value.RuleId != "SEC-060")
             return Result<SavedPermissionControl>.Failure(AuditError.Create(ErrorCategory.Evidence, "FindingSelectionChanged",
                 ErrorSeverity.Failed, SavedPermissionControl.InvalidDetails, BundleDirectory));
-        if (selected.Value.RuleVersion != 2)
+        var current = selected.Value.RuleVersion == BroadPrincipalCanTakeOverObject.RuleVersion;
+        if (selected.Value.RuleVersion != 2 && !current)
             return Result<SavedPermissionControl>.Failure(AuditError.Create(ErrorCategory.Evidence, "UnsupportedFindingVersion",
                 ErrorSeverity.Failed, "This calculation version has no approved finding-detail presentation.", BundleDirectory));
         OpenPart(StoreSegmentRole.PermissionProof);
         using var command = _connection.CreateCommand();
-        command.CommandText = """
-            SELECT trustee_sid,trustee_name,broad_principal_sid,broad_principal_name,takeover_right,
-                inherited_from,expansion_was_complete,
+        var chainColumns = current ? "NULL,NULL,NULL" : """
                 (SELECT COUNT(*) FROM finding_object_takeover_path p WHERE p.finding_id=t.finding_id),
                 (SELECT sid FROM finding_object_takeover_path p WHERE p.finding_id=t.finding_id ORDER BY ordinal LIMIT 1),
                 (SELECT sid FROM finding_object_takeover_path p WHERE p.finding_id=t.finding_id ORDER BY ordinal DESC LIMIT 1)
+            """;
+        command.CommandText = $"""
+            SELECT trustee_sid,trustee_name,broad_principal_sid,broad_principal_name,takeover_right,
+                inherited_from,expansion_was_complete,{chainColumns}
             FROM finding_object_takeover t WHERE finding_id=$id
             """;
         command.Parameters.AddWithValue("$id", reference.FindingId);
@@ -31,14 +34,34 @@ public sealed partial class JudgementReader
         if (!row.Read() || row.GetValue(0) is not string holder || row.GetValue(2) is not string broad
             || row.GetValue(4) is not string rightText || !Enum.TryParse<ObjectTakeoverRight>(rightText, out var right)
             || !Enum.IsDefined(right) || row.GetValue(6) is not long complete || complete is not (0 or 1)
-            || row.GetValue(7) is not long count || count < 1
-            || row.GetValue(8) is not string first || first != holder || row.GetValue(9) is not string last || last != broad
             || !row.IsDBNull(5) && (row.GetValue(5) is not string marker || string.IsNullOrWhiteSpace(marker))) throw PermissionControlInvalid();
         var finding = selected.Value;
+        SavedPermissionControlAssessment? display = null;
+        long count;
+        if (current)
+        {
+            display = PermissionControlCalculationStorage.ReadDisplay(_connection, reference.FindingId);
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            if (display.EvidenceSeal != Description.EvidenceSeal
+                || display.DerivationGenerationId != Description.DerivationGenerationId
+                || display.DerivationSeal != _findingDerivationSeal || !row.IsDBNull(5)) throw PermissionControlInvalid();
+            count = display.ChainCount;
+        }
+        else
+        {
+            if (row.GetValue(7) is not long savedCount || savedCount < 1 || row.GetValue(8) is not string first || first != holder
+                || row.GetValue(9) is not string last || last != broad) throw PermissionControlInvalid();
+            count = savedCount;
+        }
         var assessment = new SavedPermissionControl(reference, finding.Subject,
             new(finding.ObjectGuid, finding.DistinguishedName, finding.DomainFqdn, finding.ObjectClass),
             finding.PrincipalName, holder, row.IsDBNull(1) ? null : row.GetString(1),
-            broad, row.IsDBNull(3) ? null : row.GetString(3), right, !row.IsDBNull(5), complete == 1, finding.Coverage, count);
+            broad, row.IsDBNull(3) ? null : row.GetString(3), right, display?.SupportingEntryIsInherited ?? !row.IsDBNull(5),
+            complete == 1, finding.Coverage, count)
+        {
+            RuleVersion = finding.RuleVersion,
+            Assessment = display,
+        };
         if (!assessment.Matches(finding)) throw PermissionControlInvalid();
         _readCancellation.ThrowIfCancellationRequested();
         return Result<SavedPermissionControl>.Success(assessment);

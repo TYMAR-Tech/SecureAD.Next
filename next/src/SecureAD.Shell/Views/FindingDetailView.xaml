@@ -2,6 +2,61 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
+        <Style x:Key="PermissionControlCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20,16" />
+        </Style>
+        <Style x:Key="PermissionControlLabel" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <Style x:Key="PermissionControlStatusCard" TargetType="Border" BasedOn="{StaticResource PermissionControlCard}">
+            <Setter Property="BorderThickness" Value="1,3,1,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Padding" Value="16,14" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="Not established">
+                    <Setter Property="BorderBrush" Value="{DynamicResource NotEstablishedBrush}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="Unresolved">
+                    <Setter Property="BorderBrush" Value="{DynamicResource EstablishedBadBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlStatus" TargetType="TextBlock" BasedOn="{StaticResource RowTitle}">
+            <Setter Property="FontSize" Value="{StaticResource ScreenTitleFontSize}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,8" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="Not established">
+                    <Setter Property="Foreground" Value="{DynamicResource NotEstablishedBrush}" />
+                    <Setter Property="FontWeight" Value="Normal" />
+                </Trigger>
+                <Trigger Property="Text" Value="Unresolved">
+                    <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlStatusNote" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="Text" Value="Supported by this saved assessment." />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="Not established">
+                    <Setter Property="Text" Value="Other access is not ruled out." />
+                </Trigger>
+                <Trigger Property="Tag" Value="Unresolved">
+                    <Setter Property="Text" Value="This assessment could not settle that right." />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlCaution" TargetType="Border" BasedOn="{StaticResource PermissionControlCard}">
+            <Setter Property="Background" Value="{DynamicResource EstablishedBadSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource EstablishedBadBrush}" />
+            <Setter Property="BorderThickness" Value="3,1,1,1" />
+            <Setter Property="Margin" Value="0,16,0,0" />
+        </Style>
         <DataTemplate x:Key="SavedFindingPageControls">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
@@ -60,8 +115,10 @@
         <ScrollViewer x:Name="FindingDetailsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Visibility="{Binding FindingDetails.HasFinding,Converter={StaticResource Shown}}">
             <StackPanel>
-                <TextBlock Text="{Binding FindingDetails.Finding.FindingLabel}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
-                <WrapPanel Margin="0,8,0,12">
+                <TextBlock Text="{Binding FindingDetails.Finding.FindingLabel}" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                           Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}" />
+                <WrapPanel Margin="0,8,0,12"
+                           Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
                     <TextBlock Text="{Binding FindingDetails.Finding.Severity}" Margin="0,0,16,0" />
                     <TextBlock Text="{Binding FindingDetails.Finding.Coverage}" Foreground="{DynamicResource SecondaryTextBrush}" />
                 </WrapPanel>
@@ -70,33 +127,179 @@
                     <TextBlock Text="{Binding FindingDetails.Finding.DistinguishedName,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding FindingDetails.Finding.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" Margin="0,0,0,16" />
                 </StackPanel>
-                <Border Style="{StaticResource Card}"
-                        Visibility="{Binding FindingDetails.HasPermissionControl,Converter={StaticResource Shown}}">
-                    <StackPanel DataContext="{Binding FindingDetails.PermissionControl}">
-                        <TextBlock Text="Saved permission-control assessment" Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="{Binding Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
-                        <TextBlock Text="{Binding AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding Object.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding Object.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
-                        <TextBox Text="{Binding Object.DistinguishedName,Mode=OneWay,StringFormat=Location: {0}}"
-                                 Style="{StaticResource SelectableMessage}" />
-                        <TextBlock Text="{Binding Holder,StringFormat=Permission holder: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                        <TextBox Text="{Binding HolderSid,Mode=OneWay,StringFormat=Holder SID: {0}}" Style="{StaticResource SelectableMessage}" />
-                        <TextBlock Text="{Binding BroadIdentity,StringFormat=Broad identity: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                        <TextBox Text="{Binding BroadSid,Mode=OneWay,StringFormat=Broad identity SID: {0}}" Style="{StaticResource SelectableMessage}" />
-                        <TextBlock Text="{Binding ReportedRight,StringFormat=Reported right: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
-                        <TextBlock Text="{Binding FullControlNote}" TextWrapping="Wrap" Margin="0,6,0,0"
-                                   Visibility="{Binding IsFullControlCategory,Converter={StaticResource Shown}}" />
-                        <TextBlock Text="{Binding OwnerNote}" TextWrapping="Wrap" Margin="0,6,0,0"
-                                   Visibility="{Binding IsOwnership,Converter={StaticResource Shown}}" />
-                        <TextBlock Text="Known calculation limits" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
-                        <TextBlock Text="{Binding CalculationLimits}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding EntryContext,StringFormat=Recorded entry context: {0}}" TextWrapping="Wrap" Margin="0,12,0,6" />
+                <StackPanel x:Name="PermissionControlPresentation" DataContext="{Binding FindingDetails.PermissionControl}"
+                            Visibility="{Binding DataContext.FindingDetails.HasPermissionControl,RelativeSource={RelativeSource AncestorType=UserControl},Converter={StaticResource Shown}}"
+                            Background="{DynamicResource WindowBackground}">
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="SEC-060 / PERMISSION CONTROL" Style="{StaticResource Caption}"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <Border Background="{DynamicResource EstablishedBadSubtleBrush}" BorderBrush="{DynamicResource EstablishedBadBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,3">
+                            <TextBlock Text="{Binding DataContext.FindingDetails.Finding.Severity,RelativeSource={RelativeSource AncestorType=UserControl},StringFormat={}{0} severity}"
+                                       Foreground="{DynamicResource EstablishedBadBrush}" FontWeight="SemiBold" />
+                        </Border>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Heading}" FontSize="{StaticResource DashboardMetricFontSize}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="Review a broad identity's connection to this object's saved permissions."
+                               Style="{StaticResource Caption}" Margin="0,6,0,20" TextWrapping="Wrap" />
+                    <Border Style="{StaticResource PermissionControlCard}" x:Name="PermissionControlConnection">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,16" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="View saved supporting chain" Command="{Binding ViewChainCommand}"
+                                        Style="{StaticResource PrimaryButton}" Margin="16,0,0,0" />
+                                <TextBlock Text="Who is connected to what?" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.1*" /><ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.1*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Broad identity" Style="{StaticResource PermissionControlLabel}" />
+                                    <TextBlock Text="{Binding BroadIdentity}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="Linked by saved membership" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="&#x00B7;&#x00B7;&#x00B7;" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="{StaticResource SectionTitleFontSize}" />
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Permission holder" Style="{StaticResource PermissionControlLabel}" />
+                                    <WrapPanel>
+                                        <TextBlock Text="{Binding Holder}" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center" Margin="0,0,8,4" />
+                                        <Border Background="{DynamicResource NotEstablishedSubtleBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1" CornerRadius="6" Padding="8,2" Margin="0,0,0,4">
+                                            <TextBlock x:Name="PermissionControlHolderType" Text="{Binding HolderType}" Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Text="Rights assessed for this holder" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="3" Text="&#x2192;" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="{StaticResource SectionTitleFontSize}" />
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Affected object" Style="{StaticResource PermissionControlLabel}" />
+                                    <TextBlock Text="{Binding AffectedObject}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.ObjectClass}" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.DomainFqdn}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}">
+                        <TextBlock Text="Saved permission conclusions" Style="{StaticResource SectionTitle}" Margin="0,20,0,10" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="PermissionControlModifyCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding ModifyPermissions}">
+                                <StackPanel>
+                                    <TextBlock Text="Modify permissions" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlModifyState" Text="{Binding ModifyPermissions}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlModifyNote" Tag="{Binding ModifyPermissions}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" x:Name="PermissionControlOwnerCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding ChangeOwner}">
+                                <StackPanel>
+                                    <TextBlock Text="Change owner" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlOwnerState" Text="{Binding ChangeOwner}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlOwnerNote" Tag="{Binding ChangeOwner}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="4" x:Name="PermissionControlFullCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding FullControl}">
+                                <StackPanel>
+                                    <TextBlock Text="Full control" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlFullState" Text="{Binding FullControl}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlFullNote" Tag="{Binding FullControl}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="{Binding ScopeNote}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding ReportedRight,StringFormat=Reported right: {0}}" Style="{StaticResource RowTitle}"
+                               TextWrapping="Wrap" Margin="0,16,0,0" Visibility="{Binding HasLegacyAssessment,Converter={StaticResource Shown}}" />
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding IsOwnership,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding OwnerRoute}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource EstablishedBadBrush}" Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding OwnerSummary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasNullDacl,Converter={StaticResource Shown}}">
                         <TextBlock Text="{Binding EntryNote}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding Expansion,StringFormat=Saved membership expansion: {0}}" TextWrapping="Wrap" Margin="0,12,0,6" />
-                        <TextBlock Text="{Binding ExpansionNote}" TextWrapping="Wrap" />
-                        <Button Content="View saved supporting chain" Command="{Binding ViewChainCommand}"
-                                HorizontalAlignment="Left" Margin="0,12,0,0" />
+                    </Border>
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasCalculationLimits,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding CalculationLimitsHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding CalculationLimits}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="PermissionControlCaptureLimit" Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasCaptureLimits,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding CapturedPermissions,StringFormat=Captured permission list: {0}}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border x:Name="PermissionControlMembershipLimit" Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasMembershipLimits,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Expansion,StringFormat=Saved membership expansion: {0}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ExpansionNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding FullControlNote}" TextWrapping="Wrap" Margin="0,16,0,0"
+                               Visibility="{Binding IsFullControlCategory,Converter={StaticResource Shown}}" />
+                    <Border Style="{StaticResource PermissionControlCard}" Margin="0,16,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="1.15*" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Why this needs review" FontWeight="SemiBold" />
+                                <TextBlock Text="If an applicable permission can be exercised, it may allow the object's permission list to be changed. A broad identity's involvement warrants review."
+                                           TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Recommended review" FontWeight="SemiBold" />
+                                <TextBlock Text="1. Confirm the delegation is intended." FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="2. Verify the actual entries, their scope and conditions." TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock Text="3. Narrow only confirmed unnecessary access; check shared-group and service impact." TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <WrapPanel Margin="0,16,0,10">
+                        <TextBlock Text="{Binding CapturedPermissions,StringFormat=Captured permission list: {0}}" Style="{StaticResource Caption}" Margin="0,0,20,0"
+                                   Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding Expansion,StringFormat=Saved membership expansion: {0}}" Style="{StaticResource Caption}" />
+                    </WrapPanel>
+                    <Border Style="{StaticResource PermissionControlCard}" Padding="4">
+                        <StackPanel>
+                            <Expander x:Name="PermissionControlIdentifiers" Header="Identifiers and object location">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding Object.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                    <TextBox Text="{Binding Object.DistinguishedName,Mode=OneWay,StringFormat=Location: {0}}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                                    <TextBox Text="{Binding HolderSid,Mode=OneWay,StringFormat=Holder SID: {0}}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                                    <TextBox Text="{Binding BroadSid,Mode=OneWay,StringFormat=Broad identity SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    <TextBlock Text="{Binding ReportedRight,StringFormat=Reported right: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Expander>
+                            <Expander x:Name="PermissionControlAssessmentContext" Header="Assessment context and what the statuses mean" Margin="0,6,0,0">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding Statement}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding StateNote}" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                                    <TextBlock Text="{Binding EntryContext,StringFormat=Recorded entry context: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    <TextBlock Text="{Binding EntryNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{Binding ExpansionNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    <TextBlock Text="{Binding OwnerNote}" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding IsOwnership,Converter={StaticResource Shown}}" />
+                                </StackPanel>
+                            </Expander>
+                            <Expander x:Name="PermissionControlGuidance" Header="Full verification and remediation guidance" Margin="0,6,0,0">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding DataContext.FindingDetails.Finding.WhyItMatters,RelativeSource={RelativeSource AncestorType=UserControl}}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding DataContext.FindingDetails.Finding.WhatToDo,RelativeSource={RelativeSource AncestorType=UserControl}}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Border>
                         <StackPanel Visibility="{Binding HasChain,Converter={StaticResource Shown}}">
                             <TextBlock Text="Saved supporting chain" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
                             <TextBlock Text="{Binding ChainNote}" TextWrapping="Wrap" Margin="0,0,0,6" />
@@ -117,8 +320,7 @@
                         <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
                                  Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
                                  Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
-                    </StackPanel>
-                </Border>
+                </StackPanel>
                 <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.HasServiceAccount,Converter={StaticResource Shown}}">
                     <StackPanel DataContext="{Binding FindingDetails.ServiceAccount}">
@@ -947,13 +1149,15 @@
                         <TextBox Text="{Binding FindingDetails.Finding.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="Why it matters" Style="{StaticResource SectionTitle}" />
                         <TextBlock Text="{Binding FindingDetails.Finding.WhyItMatters}" TextWrapping="Wrap" Margin="0,6,0,0" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="What to do" Style="{StaticResource SectionTitle}" />
                         <TextBlock Text="{Binding FindingDetails.Finding.WhatToDo}" TextWrapping="Wrap" Margin="0,6,0,0" />

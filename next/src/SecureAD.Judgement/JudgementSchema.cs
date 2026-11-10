@@ -140,7 +140,7 @@ public static class JudgementSchema
     // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
     // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
     // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
-    public const int Version = 78;
+    public const int Version = 79;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -570,6 +570,7 @@ public static class JudgementSchema
         CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_object_takeover_calculation (
             finding_id                          INTEGER NOT NULL PRIMARY KEY,
             calculation_complete                INTEGER NOT NULL,
+            display_header                      TEXT NOT NULL,
             payload                             TEXT NOT NULL
         )
         """,

@@ -958,6 +958,86 @@ qualification rather than extending the window, and keep source-tree/collector n
 The completed presentation campaign is not repeated, LAPS remains deferred, and no live work,
 owner-data re-judging, measurements, CI, packaging, commit or push is authorized by this approval.
 
+**SEC-060 version-3 display adoption - wording and implementation owner-approved 2026-11-09.**
+After local calculation checkpoint `f1b3a0b`, the owner requested implementing the UI and approved
+the following exact wording and bounded scope.
+Keep the current title, identity fields, buttons, charcoal styling and requested 50-step chain pages
+from both Findings grids, without another mockup or redesign.
+Below Reported right add Modify permissions, Change owner and Full control rows, each using
+Established, Not established or Unresolved; Full control replaces the legacy-category wording
+only when the saved stronger assessment established it.
+Say "Established means supported by this saved assessment. Not established does not rule out
+other access. Unresolved means this assessment could not settle that right."
+Say "These are saved permission conclusions for the named holder, not an individual account's
+effective access, a successful directory change or a completed path to Tier 0."
+Where Change owner is established or unresolved, show "Control through changing the owner:
+Not verified." and "Change owner permission alone does not prove that an account can become the
+owner and then change the permission list. OWNER RIGHTS entries - permissions specifically for
+the object's owner - and directory-server restrictions may matter. Independently established
+Modify permissions remains separate."
+For version 3 replace Known calculation limits with Saved assessment limits and, where unresolved
+items are saved, say "Some relevant permissions or identities remain unresolved. Established
+rights shown above are retained."
+Keep captured permission-list completeness separate from saved membership expansion, saying
+"Complete describes saved membership expansion only. It does not mean every permission or an
+individual account's access was established."
+For entry context say "This describes a saved supporting entry. It does not establish the
+inherited source container."
+For a NULL DACL do not invent an Explicit entry; say "The saved descriptor contains no
+discretionary permission list (NULL DACL). This grants broad access; it is not an explicit
+permission entry."
+Retain the existing risk, verification/remediation advice and chain warning; historical version-2
+results are not relabelled as corrected.
+Prepare a small display header during judging rather than read complete permission-reference
+arrays on a click, with a narrow Judgement-format revision and unchanged Capture/Derivation formats
+and calculations; header storage/preparation cost remains unmeasured and historical results are
+not migrated or rewritten.
+This approves short synthetic checks initially, not a long qualification campaign, live work,
+owner-data re-judging, measurements, CI, packaging, commit or push; LAPS remains deferred.
+After the 55-pass focused checkpoint, the owner separately approved the warned 45-65-minute
+isolated rebuilt-fault/restored-control qualification for all 48 new plus one adapted case,
+with a hard maximum of 65 minutes including final correct-source rebuild, affected checks,
+fingerprints and cleanup.
+Stop starting new variants early enough to leave the correct sources rebuilt, retain unfinished
+qualification rather than extending the window, and preserve both completed historical campaigns.
+
+**Presentation quality and SEC-060 readability - owner direction, 2026-11-09.**
+The owner finds the SEC-060 screen difficult to read and understand quickly, explicitly identifying
+this as a UI issue rather than a findings-engine issue.
+Correct information and equal-weight text on a white screen are not enough: place more emphasis
+on pure presentation, with a cleaner, more modern visual design as well as a clear reading order.
+Keep this correction in presentation rather than reopening calculations or changing saved findings;
+prepare a visual proposal before obtaining approval for application wording and layout changes.
+The owner approved the charcoal visual proposal's direction, saying it would be easier to judge
+in the lab; this is direction approval rather than lab acceptance or application-implementation
+approval.
+The owner then separately approved UI-only implementation of that SEC-060 presentation in both
+Findings entry points: connection card, permission-status tiles, visible cautions and expandable
+technical detail, without changing findings calculations, saved results or chain paging.
+This approves focused short checks, not packaging, long test runs, live work, commit or push;
+lab feedback is still needed before accepting usability.
+After the 94-pass focused checkpoint, the owner separately approved the warned 15-25-minute
+isolated-fault qualification for eight new plus eight adapted presentation cases, with a hard
+maximum of 30 minutes including final correct-source rebuild, affected checks and cleanup.
+Use six rebuilt isolated faults and restored checks, stop starting faults with ten minutes
+reserved, and preserve partial qualification rather than extending the window.
+The owner subsequently said the revised SEC-060 screen "looks better" and requested a further
+presentation pass across the other findings so that screens do not look entirely different.
+Use a consistent visual family across finding details while retaining each rule's own meaning,
+evidence and important cautions; this is presentation direction, not blanket implementation
+approval or a request to reopen findings calculations.
+The owner then approved adding a small identity-type badge beside SEC-060's permission-holder
+name, using captured type information rather than guessing from the name or SID and showing
+"Type unavailable" where it cannot be established.
+Use the existing indexed browsing metadata so current saved results can supply the label without
+re-judging, changing saved formats or changing permission conclusions; preserve resource-domain
+scope and explicit read failures.
+After the 94-pass focused badge checkpoint, the owner separately approved four rebuilt isolated
+faults and restored checks for its 12 new cases, estimated at 10-15 minutes with a hard maximum
+of 20 minutes including final correct-source rebuild, affected checks and cleanup.
+Stop starting faults with eight minutes reserved and retain partial qualification rather than
+extending the window; no earlier verification campaign is repeated.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.

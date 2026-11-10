@@ -5,6 +5,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Naming;
+using SecureAD.Kernel.Security;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -31,24 +32,72 @@ internal sealed partial class PermissionControlViewModel(SavedPermissionControl 
     public SavedDelegationIdentity Object => saved.Object;
     public string Holder => saved.HolderName ?? "Name not resolved from saved evidence.";
     public string HolderSid => saved.HolderSid;
+    public string HolderType
+    {
+        get
+        {
+            var kind = saved.HolderObjectClass;
+            if (string.IsNullOrWhiteSpace(kind))
+                return saved.HolderIsWellKnownIdentity ? "Well-known identity" : "Type unavailable";
+            return kind.ToLowerInvariant() switch
+            {
+                "group" => "Group",
+                "user" => "User",
+                "computer" => "Computer",
+                "msds-managedserviceaccount" => "Managed service account",
+                "msds-groupmanagedserviceaccount" => "Group managed service account",
+                "foreignsecurityprincipal" => "Foreign principal reference",
+                _ => kind,
+            };
+        }
+    }
     public string BroadIdentity => saved.BroadName ?? "Name not resolved from saved evidence.";
     public string BroadSid => saved.BroadSid;
     public string Statement => SavedPermissionControl.Statement;
-    public string CalculationLimits => SavedPermissionControl.CalculationLimits;
-    public string EntryContext => saved.InheritedContext ? "Inherited" : "Explicit";
-    public string EntryNote => SavedPermissionControl.EntryNote;
+    public bool HasCurrentAssessment => saved.Assessment is not null;
+    public bool HasLegacyAssessment => !HasCurrentAssessment;
+    public string Heading => HasCurrentAssessment ? "Permission-changing rights" : "Saved permission-control assessment";
+    public string ModifyPermissions => State(saved.Assessment?.ModifyPermissions);
+    public string ChangeOwner => State(saved.Assessment?.ChangeOwner);
+    public string FullControl => State(saved.Assessment?.FullControl);
+    public string StateNote => SavedPermissionControl.CurrentStateNote;
+    public string ScopeNote => SavedPermissionControl.CurrentScopeNote;
+    public bool HasCalculationLimits => saved.Assessment?.IsComplete != true;
+    public bool HasCaptureLimits => saved.Assessment is { DescriptorCompleteness: not DaclCompleteness.Complete };
+    public bool HasMembershipLimits => !saved.ExpansionWasComplete;
+    public string CalculationLimitsHeading => HasCurrentAssessment ? "Saved assessment limits" : "Known calculation limits";
+    public string CalculationLimits => HasCurrentAssessment ? SavedPermissionControl.CurrentCalculationLimits : SavedPermissionControl.CalculationLimits;
+    public bool HasNullDacl => saved.Assessment?.DescriptorState == DaclState.Null;
+    public string CapturedPermissions => HasNullDacl ? "No permission list (NULL DACL)"
+        : saved.Assessment?.DescriptorCompleteness == DaclCompleteness.Complete ? "Complete" : "May be incomplete";
+    public string EntryContext => HasNullDacl ? "No entry (NULL DACL)" : saved.InheritedContext ? "Inherited" : "Explicit";
+    public string EntryNote => HasNullDacl ? SavedPermissionControl.NullDaclNote
+        : HasCurrentAssessment ? SavedPermissionControl.CurrentEntryNote : SavedPermissionControl.EntryNote;
     public string Expansion => saved.ExpansionWasComplete ? "Complete" : "May be incomplete";
-    public string ExpansionNote => SavedPermissionControl.ExpansionNote;
+    public string ExpansionNote => HasCurrentAssessment ? SavedPermissionControl.CurrentExpansionNote : SavedPermissionControl.ExpansionNote;
     public string ChainNote => SavedPermissionControl.ChainNote;
-    public bool IsOwnership => saved.ReportedRight == ObjectTakeoverRight.WriteOwner;
-    public bool IsFullControlCategory => saved.ReportedRight == ObjectTakeoverRight.GenericAll;
-    public string OwnerNote => SavedPermissionControl.OwnerNote;
+    public bool IsOwnership => saved.Assessment is { } current
+        ? current.ChangeOwner != PermissionControlState.NotEstablished : saved.ReportedRight == ObjectTakeoverRight.WriteOwner;
+    public bool IsFullControlCategory => !HasCurrentAssessment && saved.ReportedRight == ObjectTakeoverRight.GenericAll;
+    public string OwnerRoute => SavedPermissionControl.CurrentOwnerRoute;
+    public string OwnerSummary => HasCurrentAssessment
+        ? "Change owner permission does not prove that becoming the owner will allow permission changes. Independently established Modify permissions remains separate."
+        : SavedPermissionControl.OwnerNote;
+    public string OwnerNote => HasCurrentAssessment ? SavedPermissionControl.CurrentOwnerNote : SavedPermissionControl.OwnerNote;
     public string FullControlNote => SavedPermissionControl.FullControlNote;
     public string ReportedRight => saved.ReportedRight switch
     {
         ObjectTakeoverRight.WriteDacl => "Modify permissions (WRITE_DAC)",
         ObjectTakeoverRight.WriteOwner => "Change owner (WRITE_OWNER)",
-        ObjectTakeoverRight.GenericAll => "Full-control category reported by the legacy assessment",
+        ObjectTakeoverRight.GenericAll => HasCurrentAssessment ? "Full control" : "Full-control category reported by the legacy assessment",
+        _ => throw new InvalidDataException(SavedPermissionControl.InvalidDetails),
+    };
+    private static string State(PermissionControlState? state) => state switch
+    {
+        PermissionControlState.Established => "Established",
+        PermissionControlState.NotEstablished => "Not established",
+        PermissionControlState.Unknown => "Unresolved",
+        null => "",
         _ => throw new InvalidDataException(SavedPermissionControl.InvalidDetails),
     };
     public PermissionControlChainViewModel? Chain { get; private set; }

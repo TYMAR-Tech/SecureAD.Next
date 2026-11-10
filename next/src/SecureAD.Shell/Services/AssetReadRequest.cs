@@ -4,6 +4,7 @@ using SecureAD.Evidence.Inventory;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
+using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
 
 namespace SecureAD.Shell.Services;
@@ -224,9 +225,30 @@ internal sealed partial class AssetReadRequest(
     public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadOwnershipAssessment(reference), _readCancellation)));
     public Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference) =>
-        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadPermissionControl(reference), _readCancellation)));
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => WithPermissionHolderType(run, reader.ReadPermissionControl(reference)), _readCancellation)));
     public Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after) =>
-        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadPermissionControlChain(reference, after), _readCancellation)));
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader =>
+        {
+            var read = reader.ReadPermissionControlChain(reference, after);
+            if (!read.IsSuccess) return read;
+            var context = WithPermissionHolderType(run, Result<SavedPermissionControl>.Success(read.Value.Context));
+            return context.IsSuccess
+                ? Result<SavedPermissionControlChain>.Success(read.Value with { Context = context.Value })
+                : Result<SavedPermissionControlChain>.Failure(context.Error);
+        }, _readCancellation)));
+
+    private Result<SavedPermissionControl> WithPermissionHolderType(OpenedRunResults run, Result<SavedPermissionControl> saved)
+    {
+        if (!saved.IsSuccess || saved.Value.HolderIsWellKnownIdentity && !Sid.IsBuiltinDomain(saved.Value.HolderSid))
+            return saved;
+        var holder = saved.Value;
+        var type = run.ReadNavigation(reader => reader.ReadPrincipalObjectClass(holder.HolderSid, holder.Object.DomainFqdn),
+            _readCancellation);
+        return type.IsSuccess
+            ? Result<SavedPermissionControl>.Success(holder with { HolderObjectClass = type.Value })
+            : Result<SavedPermissionControl>.Failure(type.Error);
+    }
 
     public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadGroupReview(reference), _readCancellation)));

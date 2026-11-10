@@ -250,7 +250,7 @@ public sealed class PermissionControlCalculationTests
     }
 
     [Fact]
-    public void SavedCalculationRetainsExactBindingsAndRefusesTheLegacyDisplay()
+    public void SavedCalculationRetainsExactBindingsAndUsesTheVersionThreeDisplay()
     {
         var directory = Saved("(A;;WD;;;WD)");
         using var reader = Open(directory);
@@ -263,7 +263,10 @@ public sealed class PermissionControlCalculationTests
         Assert.Equal(reader.Description.EvidenceSeal, read.Value.Calculation.EvidenceSeal);
         Assert.Equal(reader.Description.DerivationGenerationId, read.Value.Calculation.DerivationGenerationId);
         Assert.Equal(FindingInputBinding.DerivationSeal(directory, reader.Description.DerivationGenerationId), read.Value.Calculation.DerivationSeal);
-        Assert.Equal("Evidence.UnsupportedFindingVersion", reader.ReadPermissionControl(row.Reference.Value).Error.Code);
+        var display = reader.ReadPermissionControl(row.Reference.Value);
+        Assert.True(display.IsSuccess, display.Error?.Description);
+        Assert.True(display.Value.Matches(row));
+        Assert.Equal(PermissionControlState.Established, display.Value.Assessment!.ModifyPermissions);
         Assert.False(reader.ReadPermissionControlCalculation(row.Reference.Value with { GenerationId = Guid.NewGuid() }).IsSuccess);
         Assert.False(reader.ReadPermissionControlCalculation(row.Reference.Value with { FindingId = long.MaxValue }).IsSuccess);
     }
@@ -357,9 +360,10 @@ public sealed class PermissionControlCalculationTests
     private static PermissionControlCalculation Calculation(RuleVerdict verdict) =>
         Assert.IsType<PermissionControlCalculation>(Assert.IsType<ObjectTakeoverEvidence>(Assert.Single(verdict.Findings).Evidence).Calculation);
 
-    private static string Saved(string entries)
+    internal static string Saved(string? entries)
     {
-        var directory = SelfMembershipDiscoveryTests.Bundle("O:SYG:SYD:" + entries, membership: false, users: 0);
+        var directory = SelfMembershipDiscoveryTests.Bundle(entries is null ? "O:SYG:SY" : "O:SYG:SYD:" + entries,
+            membership: false, users: 0);
         SelfMembershipDiscoveryTests.Derive(directory);
         var evidence = SelfMembershipDiscoveryTests.Hash(directory);
         var result = JudgingRun.JudgeWithTier0Discovery(directory, [new BroadPrincipalCanTakeOverObject()],

@@ -763,6 +763,28 @@ public sealed class BundleReader : IDisposable
         return principal;
     }
 
+    /// <summary>Reads one captured identity's type from the indexed navigation product, without attributes or permissions.</summary>
+    public string? ReadPrincipalObjectClass(string sid, string? resourceDomain)
+    {
+        if (!_navigation) throw new InvalidOperationException("Principal type lookup requires the captured navigation product.");
+        var bytes = Sid.ToBytes(sid) ?? throw new ArgumentException("Invalid SID.", nameof(sid));
+        var scope = Sid.IsBuiltinDomain(sid) ? resourceDomain : null;
+        if (Sid.IsBuiltinDomain(sid) && string.IsNullOrWhiteSpace(scope)) return null;
+        using var command = Connection.CreateCommand();
+        command.CommandText = """
+            SELECT most_specific_class FROM captured_object
+            WHERE objectsid=$sid AND ($scope IS NULL OR domain_fqdn=$scope COLLATE NOCASE)
+            ORDER BY object_id LIMIT 2
+            """;
+        command.Parameters.Add("$sid", SqliteType.Blob).Value = bytes;
+        command.Parameters.AddWithValue("$scope", (object?)scope ?? DBNull.Value);
+        using var read = command.ExecuteReader();
+        if (!read.Read()) return null;
+        var objectClass = read.IsDBNull(0) ? null : read.GetString(0);
+        if (read.Read()) throw new InvalidDataException("The selected principal type matches more than one captured object.");
+        return objectClass;
+    }
+
     private string ProtectedQueryFingerprint() => _verifiedFingerprint
         ?? throw new InvalidOperationException("Captured-data searches require an open protected evidence lifetime.");
 

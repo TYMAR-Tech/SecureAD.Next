@@ -118,6 +118,7 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasServiceAccount => ServiceAccount is not null;
     public PermissionControlViewModel? PermissionControl { get; private set; }
     public bool HasPermissionControl => PermissionControl is not null;
+    public bool ShowsStandardPresentation => !HasPermissionControl;
     public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
     public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
     public bool IsLoading { get; private set; }
@@ -412,5 +413,6 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(BroadMembership)); OnPropertyChanged(nameof(HasBroadMembership));
         OnPropertyChanged(nameof(ServiceAccount)); OnPropertyChanged(nameof(HasServiceAccount));
         OnPropertyChanged(nameof(PermissionControl)); OnPropertyChanged(nameof(HasPermissionControl));
+        OnPropertyChanged(nameof(ShowsStandardPresentation));
     }
 }

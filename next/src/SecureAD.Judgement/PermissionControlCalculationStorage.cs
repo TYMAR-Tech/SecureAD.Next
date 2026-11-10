@@ -9,6 +9,26 @@ namespace SecureAD.Judgement;
 
 internal static class PermissionControlCalculationStorage
 {
+    internal static readonly JsonSerializerOptions DisplayOptions = new(ProofSerialization.Options)
+    {
+        RespectRequiredConstructorParameters = true,
+    };
+
+    internal static SavedPermissionControlAssessment ReadDisplay(SqliteConnection connection, long findingId)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT display_header,calculation_complete FROM finding_object_takeover_calculation WHERE finding_id=$id";
+        command.Parameters.AddWithValue("$id", findingId);
+        using var row = command.ExecuteReader();
+        if (!row.Read() || row.GetValue(0) is not string payload || row.GetValue(1) is not long complete
+            || complete is not (0 or 1)) throw Invalid();
+        SavedPermissionControlAssessment? value;
+        try { value = JsonSerializer.Deserialize<SavedPermissionControlAssessment>(payload, DisplayOptions); }
+        catch (JsonException error) { throw new InvalidDataException(Invalid().Message, error); }
+        if (value is null || !value.HasExpectedShape || value.IsComplete != (complete == 1)) throw Invalid();
+        return value;
+    }
+
     internal static void Validate(Finding finding, Guid generation, string evidenceSeal, Guid? derivation)
     {
         if (finding.Evidence is not ObjectTakeoverEvidence evidence || evidence.Calculation is not { } value)

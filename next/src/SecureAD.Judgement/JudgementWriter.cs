@@ -1088,11 +1088,14 @@ public sealed class JudgementWriter : IDisposable
             case ObjectTakeoverEvidence takeover:
                 if (takeover.Calculation is { } calculation)
                     Execute(transaction,
-                        "INSERT INTO finding_object_takeover_calculation (finding_id,calculation_complete,payload) VALUES ($id,$complete,$payload)",
+                        "INSERT INTO finding_object_takeover_calculation (finding_id,calculation_complete,display_header,payload) VALUES ($id,$complete,$header,$payload)",
                         command =>
                         {
                             command.Parameters.AddWithValue("$id", findingId);
                             command.Parameters.AddWithValue("$complete", calculation.IsComplete ? 1 : 0);
+                            command.Parameters.AddWithValue("$header", System.Text.Json.JsonSerializer.Serialize(
+                                SavedPermissionControlAssessment.From(calculation, takeover.MembershipPath.Count),
+                                PermissionControlCalculationStorage.DisplayOptions));
                             command.Parameters.AddWithValue("$payload", System.Text.Json.JsonSerializer.Serialize(calculation, ProofSerialization.Options));
                         });
                 Execute(
