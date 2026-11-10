@@ -344,7 +344,7 @@ public sealed class JudgingEndToEndTests
             Account(
                 "DC01$",
                 "CN=DC01,OU=Domain Controllers,DC=contoso,DC=com",
-                TrustedForDelegation,
+                TrustedForDelegation | 0x00002000,
                 516,
                 "computer"));
 

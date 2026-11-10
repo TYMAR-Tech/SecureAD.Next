@@ -34,8 +34,9 @@ internal sealed class CapturedAccountSettingViewModel(SavedAccountSetting settin
     public string AccountState => setting.AccountControl.IsDisabled ? "Disabled" : "Enabled";
     public bool HasControllerRoleNote => setting.Delegation?.IsComputer == true;
     public string ControllerRoleNote => "Domain-controller role is not independently verified by this saved finding.";
-    public bool HasControllerDisagreement => setting.Delegation is
-        { IsComputer: true, ControllerSignals: { SignalsDisagree: true } };
+    public bool HasControllerDisagreement => setting.Delegation is { } context
+        && (context.ControllerSignals.SignalsDisagree
+            || (!context.IsComputer && setting.AccountControl.HasDomainControllerFlag));
     public string ControllerDisagreement => "Captured controller indicators disagree. Verify the actual role before changing delegation.";
 }
 

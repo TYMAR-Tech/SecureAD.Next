@@ -39,4 +39,11 @@ public sealed record UserAccountControlEvidence(uint UserAccountControl) : Findi
     /// Whether the account is disabled, read from <c>ADS_UF_ACCOUNTDISABLE</c> of the value above.
     /// </summary>
     public bool IsDisabled => (UserAccountControl & 0x00000002) != 0;
+
+    /// <summary>Whether the captured flags identify a writable or read-only controller account.</summary>
+    /// <remarks>
+    /// KB 305144 defines SERVER_TRUST_ACCOUNT and PARTIAL_SECRETS_ACCOUNT separately.
+    /// An exclusion must also require captured computer class; these flags do not establish it.
+    /// </remarks>
+    public bool HasDomainControllerFlag => (UserAccountControl & (0x00002000 | 0x04000000)) != 0;
 }

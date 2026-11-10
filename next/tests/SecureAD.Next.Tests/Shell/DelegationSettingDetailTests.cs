@@ -92,6 +92,26 @@ public sealed class DelegationSettingDetailTests
     }
 
     [Theory]
+    [InlineData(0x00082000u, 1)]
+    [InlineData(0x00080200u, 2)]
+    [InlineData(0x00080200u, 4)]
+    [InlineData(0x00082000u, 7)]
+    [InlineData(0x04080200u, 0)]
+    public void ConflictingUserControllerFactsUseTheExistingWarning(uint control, int mask)
+    {
+        var saved = new SavedAccountSetting(new(Guid.NewGuid(), 1), "SEC-010", Guid.NewGuid(),
+            new(FindingSubjectKind.Account, "captured account"), "CN=Captured,DC=contoso,DC=com", new(control))
+        {
+            Delegation = new(false, new((mask & 1) != 0, (mask & 2) != 0, (mask & 4) != 0)),
+        };
+        var setting = new CapturedAccountSettingViewModel(saved);
+        Assert.True(setting.HasControllerDisagreement);
+        Assert.False(setting.HasControllerRoleNote);
+        Assert.Equal("Captured controller indicators disagree. Verify the actual role before changing delegation.",
+            setting.ControllerDisagreement);
+    }
+
+    [Theory]
     [InlineData("SEC-010", "user", false, false)]
     [InlineData("SEC-010", "user", false, true)]
     [InlineData("SEC-011", "computer", true, false)]
@@ -137,11 +157,12 @@ public sealed class DelegationSettingDetailTests
     [InlineData("SEC-011", "computer", true)]
     public async Task BothFindingEntryPointsUseTheSameSavedDelegationAnswer(string ruleId, string objectClass, bool computerClass)
     {
-        var (model, source) = Model(ruleId, objectClass, computerClass, false);
+        var (model, source) = Model(ruleId, objectClass, computerClass, false, new(false, true, false));
         var row = Assert.Single(model.Findings);
         source.Attributes = FakeAssetSource.CapturedObject(row.DistinguishedName, objectClass) with { ObjectGuid = row.Saved.ObjectGuid };
         source.Permissions = Judgement.ControlEdgeDeriverTests.Permissions(row.DistinguishedName);
         model.OpenFinding(row);
+        Assert.True(model.FindingDetails!.CapturedSetting!.HasControllerDisagreement);
         model.OpenAffectedObjectCommand.Execute(null);
         await model.ObjectReadCompletion;
         var opened = Assert.IsType<ObjectViewModel>(model.Opened);
@@ -153,6 +174,7 @@ public sealed class DelegationSettingDetailTests
         model.OpenFinding(fromObject);
         Assert.Equal(row.Saved.Reference, model.FindingDetails!.Finding!.Saved.Reference);
         Assert.Equal(computerClass, model.FindingDetails.CapturedSetting!.HasControllerRoleNote);
+        Assert.True(model.FindingDetails.CapturedSetting.HasControllerDisagreement);
         Assert.Equal(new[] { row.Saved.Reference!.Value, row.Saved.Reference.Value }, source.AccountSettingReads);
         Assert.Same(opened, model.Opened);
         Assert.Same(section, opened.Content);

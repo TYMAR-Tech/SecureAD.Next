@@ -1074,6 +1074,21 @@ of 25 minutes including final correct-source rebuild, affected checks and cleanu
 Stop starting faults with eight minutes reserved and retain partial qualification rather than
 extending that window; earlier campaigns are not repeated.
 
+**SCOUT-05 bounded correction - owner-approved 2026-11-10.**
+Exclude an unconstrained-delegation subject only when captured computer class and Microsoft's
+writable-controller or RODC account flag support that exclusion; a primary group or OU name alone
+must not hide the setting, and unreadable required role inputs must remain explicitly unassessed.
+Preserve genuine controllers outside the default OU and existing managed-service-account rule
+placement, leave LAPS and historical saved results untouched, and do not re-judge owner data.
+For either account category, reuse the existing warning: "Captured controller indicators disagree.
+Verify the actual role before changing delegation."; no redesign or other wording changes are
+approved by this correction.
+The owner approved focused offline checks and rebuilt deliberate-fault qualification after
+implementation, estimated at 15-20 minutes with a hard maximum of 25 minutes and eight minutes
+reserved for restoration, rebuilding and final checks.
+Earlier campaigns are not repeated; commit, push, live work, measurement, CI and packaging require
+separate authorization.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.
