@@ -107,7 +107,7 @@ public sealed record BundleDescription(
 /// would await nothing and mislead every caller about what it costs.
 /// </para>
 /// </remarks>
-public sealed class BundleReader : IDisposable
+public sealed partial class BundleReader : IDisposable
 {
     private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
     private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");

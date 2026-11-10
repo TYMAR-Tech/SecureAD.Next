@@ -1098,6 +1098,23 @@ produce structured uncertainty.
 
 GPO security filtering reuses the effective authorization engine from `2b`.
 
+**Captured-filter parsing foundation - owner-approved 2026-11-10.**
+Resolve a selected captured GPO's `gPCWQLFilter` to the exact filter object in its referenced
+domain, keeping the capture generation, both object identities and the original selected
+attribute values; a similarly identified filter in another domain must not substitute for it.
+Follow [MS-GPOL section 2.2.4](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/b0e5c9e8-e858-4a7a-a94a-4a3d0a9d87a2)
+for the reference, including its requirement to ignore the flags field.
+Use Microsoft's local `IWbemQuery` parser for a qualified static-query subset, preserving literal
+types, comparison operators and logical grouping without connecting to a WMI provider.
+Retain absent references, missing definitions, unsupported wrappers/languages/query shapes, native
+rejection and native unavailability explicitly rather than treating any as an unfiltered GPO or
+an empty successful predicate.
+Only the independently recorded single-query wrapper is qualified in this batch; other wrappers
+remain intact and unsupported until separately anchored, not silently partially decoded.
+Parsed conditions establish neither namespace/class existence nor filter truth or GPO applicability.
+This foundation changes no findings, presentation or stored format and does not implement the
+shared security-filter, inheritance, precedence or computer-matching work above.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

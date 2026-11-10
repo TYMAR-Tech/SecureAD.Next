@@ -1284,6 +1284,43 @@ the verified SCOUT-04/09 work remain preserved.
 Implementation and short focused checks are approved; long verification needs its own warning,
 estimate and approval, with no live access, password collection, commit or push.
 
+**Configured per-computer GPO/LAPS result - owner-clarified 2026-11-10.**
+SecureAD checks what is configured, not whether a client actually processed the configuration.
+For LAPS decryptor analysis to answer the computer-level question, it must determine which
+configured decryptor group wins for each computer when multiple GPOs reach it, following
+Microsoft's applicability and precedence implementation rather than listing each GPO independently.
+The owner explicitly extended this configured-result and conditional-filtering requirement to
+every finding that uses GPOs, not LAPS alone; implement one shared set of applicability and
+setting-precedence rules rather than competing rule-specific interpretations.
+Useful per-GPO observations remain distinct from claims about affected computers or winning
+configured values.
+Resolve precedence at the setting level, including the other LAPS settings that govern whether
+the decryptor setting is used; do not assume one winning GPO supplies every setting.
+Use captured configuration for hierarchy/link ordering, enabled status, enforced/block inheritance
+and filtering as required, retain the source of the winning setting, and make any necessary
+uncaptured input or condition explicitly unresolved rather than guessing a group.
+This is the existing configured-applicability requirement's LAPS use case, not a demand to prove
+client execution, collect endpoints or obtain password material.
+The earlier SCOUT-15 "do not add a resultant-policy engine" boundary must not be used to omit the
+offline configured-result calculation or reduce the correction to softer wording.
+Current versus historical encrypted material and directory-read versus decryption permission remain
+separate claims; this clarification requires a concrete bounded implementation scope before code
+and authorizes no live work, owner-data re-judging, UI change, commit or push.
+The request to explain WMI parsing cost does not change decision 0094's capture-and-name policy;
+any automatic WQL evaluation needs its own bounded proposal and approval, with unsupported
+semantics or unavailable required facts kept explicitly conditional rather than guessed.
+The owner separately approved an isolated, invented-input feasibility check of Microsoft's native
+WQL parser from .NET; that approval does not authorize application adoption, automatic filter
+evaluation, new captures, live forest/endpoint access, commit or push.
+After that check, the owner approved the first bounded application batch: one shared offline reader
+must bind a captured GPO to its WMI filter, retain original queries and source identities, and use
+Microsoft's parser to extract conditions with explicit understood/unsupported/rejected/unavailable
+outcomes rather than guessing at the observed boundary cases.
+This is parsing groundwork for every GPO-backed finding, not computer matching or a winning
+decryptor calculation; findings, UI and saved formats remain unchanged, and SCOUT-15 stays open.
+Implementation and short offline checks are approved, with a separate warning/estimate/approval
+before long verification and no live access, owner-data re-judging, commit or push.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility
