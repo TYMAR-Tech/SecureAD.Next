@@ -45,7 +45,7 @@ public sealed class ProductionViewThemeTests
         var view = View("LapsInventoryView.xaml", new ThemeViewModel());
         Layout(view, 1000, 700);
 
-        var heading = Assert.Single(Descendants<TextBlock>(view), item => item.Text == "LAPS coverage");
+        var heading = Assert.Single(Descendants<TextBlock>(view), item => item.Text == "LAPS expiry evidence");
         var search = Assert.Single(Descendants<TextBox>(view), item =>
             Equals(item.ToolTip, "Filter computers in the selected scope by computer or domain."));
         var grid = Assert.Single(Descendants<DataGrid>(view));
@@ -187,14 +187,16 @@ public sealed class ProductionViewThemeTests
 
     public sealed class ThemeViewModel
     {
+        public string LapsTitle => "LAPS expiry evidence";
+        public string LapsCaption => "Captured expiry values do not prove active LAPS management or completed migration.";
         public string ScopeTreeAction => "Hide scope tree";
         public string LapsLocation => "contoso.com";
-        public IReadOnlyList<CountRow> LapsCounts { get; } = [new("Managed by Windows LAPS", 42)];
+        public IReadOnlyList<CountRow> LapsCounts { get; } = [new("Windows value only", 42)];
         public IReadOnlyList<string> LapsStateChoices { get; } = ["Any state"];
         public string LapsStateFilter { get; set; } = "Any state";
         public string LapsSearchText { get; set; } = string.Empty;
         public IReadOnlyList<LapsRow> VisibleLapsComputers { get; } =
-            [new("FS01", "contoso.com", "Windows LAPS", "Supported", "2026-10-11", "Not set")];
+            [new("FS01", "contoso.com", "Windows value only", "Supported", "2026-10-11", "No value captured")];
         public LapsRow SelectedLapsComputer { get; set; }
         public bool HasSelectedLapsComputer => true;
         public int LapsTotal => 1;
@@ -227,10 +229,15 @@ public sealed class ProductionViewThemeTests
     public sealed record LapsRow(
         string Name,
         string Domain,
-        string Management,
+        string ValuePresence,
         string Capability,
         string WindowsLapsExpiry,
-        string LegacyLapsExpiry);
+        string LegacyLapsExpiry)
+    {
+        public string ScopeNotes => string.Empty;
+        public bool HasUnusableWindowsExpiry => false;
+        public bool HasUnusableLegacyExpiry => false;
+    }
 
     public sealed record Tier0Row(string Name, string Domain, string Distance);
 }

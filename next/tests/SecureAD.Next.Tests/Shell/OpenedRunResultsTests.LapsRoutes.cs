@@ -5,6 +5,8 @@ using SecureAD.Kernel;
 using SecureAD.Shell.Services;
 using Xunit;
 
+using SecureAD.Next.Tests.Judgement;
+
 namespace SecureAD.Next.Tests.Shell;
 
 public sealed partial class OpenedRunResultsTests
@@ -17,7 +19,9 @@ public sealed partial class OpenedRunResultsTests
         var directory = CreateLapsRouteRun(rule);
         using var source = new BundleAssetSource();
 
-        var evidence = Assert.Single(source.ReadFindings(directory, FindingsQuery.About(LapsDn)).Value.Findings).Evidence;
+        var saved = source.ReadFindings(directory, FindingsQuery.About(LapsDn));
+        Assert.True(saved.IsSuccess);
+        var evidence = Assert.Single(saved.Value.Findings).Evidence;
         var route = LapsRoute(evidence);
 
         Assert.Equal((2, "S-1-5-21-1-2-3-1100", "S-1-1-0", (string?)null, false),
@@ -66,7 +70,9 @@ public sealed partial class OpenedRunResultsTests
         MutateControlRun(directory, $"UPDATE {table} SET sid='' WHERE finding_id=2");
         using var source = new BundleAssetSource();
 
-        var evidence = Assert.Single(source.ReadFindings(directory, FindingsQuery.About(LapsDn)).Value.Findings).Evidence;
+        var saved = source.ReadFindings(directory, FindingsQuery.About(LapsDn));
+        Assert.True(saved.IsSuccess);
+        var evidence = Assert.Single(saved.Value.Findings).Evidence;
 
         Assert.Equal("S-1-1-0", LapsRoute(evidence)[1].Sid);
     }
@@ -130,20 +136,22 @@ public sealed partial class OpenedRunResultsTests
         IReadOnlyList<PathStep> path = [new("S-1-5-21-1-2-3-1100", "Delegated group"), new("S-1-1-0", null)];
         FindingEvidence support = rule switch
         {
-            "SEC-090" => new LapsPasswordReaderEvidence(path[0].Sid, path[0].Name, path[1].Sid, null, path,
-                "msLAPS-EncryptedPassword", LapsReadRights.Both, LapsGrantReach.ThisAttributeOnly, LapsRoot, false),
+            "SEC-090" => RecordedLapsReadFinding.Evidence(path[0].Sid, path[0].Name, path[1].Sid, null, path,
+                "msLAPS-EncryptedPassword", LapsReadRights.Both, LapsGrantReach.ThisAttributeOnly,
+                "bf967a86-0de6-11d0-a285-00aa003049e2", false),
             "SEC-093" => new LapsDecryptorEvidence("Recorded policy", path[0].Sid, LapsDecryptorForm.SecurityIdentifier,
                 path[0].Sid, path[0].Name,
                 [new LapsDecryptorRouteEvidence(path[1].Sid, null, path)], false),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
-        var definition = new RuleDefinition(rule, "Recorded LAPS finding", Severity.High, 1, ["computer"], [], []);
+        var version = rule == "SEC-090" ? 2 : 1;
+        var definition = new RuleDefinition(rule, "Recorded LAPS finding", Severity.High, version, ["computer"], [], []);
         using var writer = JudgementWriter.Create(directory, BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!.Hash,
             null, LapsStarted, LapsStarted);
         writer.Write(RuleExecution.Judged(definition, 2, 0,
-            new[] { LapsDn, "CN=Other," + LapsRoot }.Select(dn => new Finding(rule, 1, Severity.High,
+            new[] { LapsDn, "CN=Other," + LapsRoot }.Select(dn => RecordedLapsReadFinding.Bind(new Finding(rule, version, Severity.High,
                 new(FindingSubjectKind.Account, dn), Guid.NewGuid(), dn, "ad.lab", "computer",
-                "Recorded explanation; attribute reading is not decryption or takeover.", EvidenceCompleteness.Complete, support)).ToArray()));
+                "Recorded explanation; attribute reading is not decryption or takeover.", EvidenceCompleteness.Complete, support))).ToArray()));
         writer.Complete(LapsStarted);
         return directory;
     }

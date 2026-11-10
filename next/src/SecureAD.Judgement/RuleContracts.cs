@@ -3,6 +3,21 @@ using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
 
+/// <summary>Why a captured input cannot support the requested assessment.</summary>
+public enum CapturedInputIssueKind
+{
+    ZeroValue,
+    UnusableValue,
+    UnsupportedRepresentation,
+}
+
+/// <summary>A captured-value limitation, distinct from an absent attribute or missing derivation.</summary>
+public sealed record CapturedInputIssue(string Attribute, CapturedInputIssueKind Kind)
+{
+    public const string TokenPrefix = "CapturedInput.";
+    public string Token => $"{TokenPrefix}{Attribute}.{Kind}";
+}
+
 /// <summary>
 /// What one rule made of one object: what it found, and what it could not read.
 /// </summary>
@@ -34,6 +49,8 @@ public sealed record RuleVerdict(
     IReadOnlyList<string> InputsNotCaptured,
     IReadOnlyList<UnresolvedInput> Unresolved)
 {
+    public IReadOnlyList<CapturedInputIssue> InputIssues { get; init; } = [];
+
     /// <summary>A verdict reached with everything the rule asked for.</summary>
     /// <param name="findings">What was found, if anything.</param>
     public static RuleVerdict Judged(IReadOnlyList<Finding> findings) => new(findings, [], []);
@@ -41,6 +58,15 @@ public sealed record RuleVerdict(
     /// <summary>No verdict, because the object did not carry what the rule declared it reads.</summary>
     /// <param name="missing">The declared attributes that were absent.</param>
     public static RuleVerdict CouldNotJudge(IReadOnlyList<string> missing) => new([], missing, []);
+
+    public static RuleVerdict CouldNotInterpret(IReadOnlyList<CapturedInputIssue> issues)
+    {
+        ArgumentNullException.ThrowIfNull(issues);
+        if (issues.Count == 0 || issues.Any(issue => string.IsNullOrWhiteSpace(issue.Attribute)
+            || issue.Attribute.Contains('.') || !Enum.IsDefined(issue.Kind)))
+            throw new ArgumentException("An unusable captured input requires a valid attribute and quality reason.", nameof(issues));
+        return new([], [], []) { InputIssues = issues.ToArray() };
+    }
 
     /// <summary>
     /// No verdict, because a derived fact did not settle the question - it was never derived, or
@@ -60,7 +86,7 @@ public sealed record RuleVerdict(
     /// Whether the rule had everything it declared it needed. False means silence here is not a
     /// statement that the object is clean.
     /// </summary>
-    public bool IsComplete => InputsNotCaptured.Count == 0 && Unresolved.Count == 0;
+    public bool IsComplete => InputsNotCaptured.Count == 0 && Unresolved.Count == 0 && InputIssues.Count == 0;
 }
 
 /// <summary>

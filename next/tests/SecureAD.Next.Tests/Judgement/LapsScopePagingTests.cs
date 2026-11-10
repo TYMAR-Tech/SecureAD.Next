@@ -23,12 +23,12 @@ public sealed class LapsScopePagingTests
     }
 
     [Theory]
-    [InlineData(LapsManagement.NotManaged)]
-    [InlineData(LapsManagement.WindowsLaps)]
-    [InlineData(LapsManagement.LegacyLaps)]
-    [InlineData(LapsManagement.Migrated)]
-    [InlineData(LapsManagement.Unexpected)]
-    public void Arch04SearchAndStateApplyToTheWholeScopeBeforePaging(LapsManagement state)
+    [InlineData(LapsValuePresence.None)]
+    [InlineData(LapsValuePresence.WindowsOnly)]
+    [InlineData(LapsValuePresence.LegacyOnly)]
+    [InlineData(LapsValuePresence.Both)]
+    [InlineData(LapsValuePresence.WindowsOnLegacyOnly)]
+    public void Arch04SearchAndStateApplyToTheWholeScopeBeforePaging(LapsValuePresence state)
     {
         var directory = FilterRun();
         using var evidence = BundleReader.Open(directory).Value;
@@ -39,12 +39,12 @@ public sealed class LapsScopePagingTests
         Assert.DoesNotContain(first.Computers, row => row.Name.Contains("Needle", StringComparison.Ordinal));
         var result = reader.ListLapsComputers(new(Root, ListingScope.Subtree, "nEeDlE", state), null, coverage);
         var found = Assert.Single(result.Computers);
-        Assert.Equal(state, found.Management);
+        Assert.Equal(state, found.ValuePresence);
         Assert.Equal("ZZ-Needle-" + state, found.Name);
         Assert.Null(result.Next);
         Assert.Equal(205, result.Total);
-        Assert.Equal(201, result.CountOf(LapsManagement.WindowsLaps));
-        Assert.Equal(first.CountsByState.OrderBy(pair => pair.Key), result.CountsByState.OrderBy(pair => pair.Key));
+        Assert.Equal(201, result.CountOf(LapsValuePresence.WindowsOnly));
+        Assert.Equal(first.CountsByValuePresence.OrderBy(pair => pair.Key), result.CountsByValuePresence.OrderBy(pair => pair.Key));
     }
 
     [Theory]
@@ -109,7 +109,7 @@ public sealed class LapsScopePagingTests
         else query = changed switch
         {
             "search" => query with { Search = "Needle" },
-            "state" => query with { State = LapsManagement.WindowsLaps },
+            "state" => query with { State = LapsValuePresence.WindowsOnly },
             "container" => query with { Container = "OU=Other," + Root },
             "scope" => query with { Scope = ListingScope.OneLevel },
             _ => throw new ArgumentOutOfRangeException(nameof(changed)),
@@ -128,7 +128,7 @@ public sealed class LapsScopePagingTests
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE laps_inventory SET result='broken' WHERE name='ZZ-Needle-Unexpected'";
+            command.CommandText = "UPDATE laps_inventory SET result='broken' WHERE name='ZZ-Needle-WindowsOnLegacyOnly'";
             Assert.Equal(1, command.ExecuteNonQuery());
         }
         TestSealing.ResealAnalysis(directory, new(AnalysisStoreKind.Judgement, root.GenerationId));
@@ -138,18 +138,18 @@ public sealed class LapsScopePagingTests
         var page = reader.ListLapsComputers(new(Root, ListingScope.Subtree, "", null), null, coverage);
         Assert.Equal(100, page.Computers.Count);
         Assert.Throws<System.Text.Json.JsonException>(() =>
-            reader.ListLapsComputers(new(Root, ListingScope.Subtree, "ZZ-Needle-Unexpected", null), null, coverage));
+            reader.ListLapsComputers(new(Root, ListingScope.Subtree, "ZZ-Needle-WindowsOnLegacyOnly", null), null, coverage));
     }
 
     internal static string FilterRun()
     {
         var ordinary = Enumerable.Range(0, 200).Select(index =>
             ($"CN=PC{index:D3},{Root}", (string?)"Windows Server 2022", (string?)"10.0 (20348)", (string?)Expiry, (string?)null, 4096u));
-        var special = Enum.GetValues<LapsManagement>().Select(state =>
-            ($"CN=ZZ-Needle-{state},{Root}", (string?)(state == LapsManagement.Unexpected ? "Windows Server 2016" : "Windows Server 2022"),
-                (string?)(state == LapsManagement.Unexpected ? "10.0 (14393)" : "10.0 (20348)"),
-                (string?)(state is LapsManagement.WindowsLaps or LapsManagement.Migrated or LapsManagement.Unexpected ? Expiry : null),
-                (string?)(state is LapsManagement.LegacyLaps or LapsManagement.Migrated ? Expiry : null), 4096u));
+        var special = Enum.GetValues<LapsValuePresence>().Select(state =>
+            ($"CN=ZZ-Needle-{state},{Root}", (string?)(state == LapsValuePresence.WindowsOnLegacyOnly ? "Windows Server 2016" : "Windows Server 2022"),
+                (string?)(state == LapsValuePresence.WindowsOnLegacyOnly ? "10.0 (14393)" : "10.0 (20348)"),
+                (string?)(state is LapsValuePresence.WindowsOnly or LapsValuePresence.Both or LapsValuePresence.WindowsOnLegacyOnly ? Expiry : null),
+                (string?)(state is LapsValuePresence.LegacyOnly or LapsValuePresence.Both ? Expiry : null), 4096u));
         return Captured(ordinary.Concat(special).ToArray());
     }
 

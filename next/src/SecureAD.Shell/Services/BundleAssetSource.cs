@@ -217,6 +217,9 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadSidHistory(bundleDirectory, reference, after));
 
+    public Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadLapsReadSupports(bundleDirectory, reference, after));
+
     public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
         WithRun(bundleDirectory, reader => reader.ReadProtectionMarker(bundleDirectory, reference));
 

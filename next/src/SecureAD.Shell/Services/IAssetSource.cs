@@ -227,6 +227,9 @@ internal interface IAssetReader
     /// <summary>Reads selected saved SID-history values using the existing catalogue interpretation.</summary>
     Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after);
 
+    /// <summary>Reads one requested page of saved SEC-090 supporting exposures without analysis replay.</summary>
+    Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after);
+
     /// <summary>Reads the exact saved SEC-030 assessment identity without protection re-derivation.</summary>
     Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference);
 

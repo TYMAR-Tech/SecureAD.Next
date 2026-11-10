@@ -4,18 +4,13 @@ namespace SecureAD.Evidence.Findings;
 /// What a LAPS expiration timestamp on a computer object amounted to.
 /// </summary>
 /// <remarks>
-/// <b>Three states, because absent and unreadable are different and both differ from present.</b>
-/// For an attribute most computers in an unmanaged forest do not carry, absence is the ordinary
-/// case and must not be reported as an unread input, or the rule names a missing attribute against
-/// nearly every object in the forest and reads as a broken capture. A value that was present and
-/// could not be decoded is the opposite: it must never be silently skipped, because the machine may
-/// well be managed. <c>SEC-027</c> section 9 is the worked example of getting this wrong.
+/// Captured absence, an unusable value, a zero and a usable date are distinct observations;
+/// none alone establishes whether a device is actively managed.
 /// </remarks>
 public enum LapsTimestampReading
 {
     /// <summary>
-    /// No value. Given a readable attribute, this is a fact about the machine: nothing has written
-    /// an expiration time to it.
+    /// No value was captured; this does not establish why the directory returned none.
     /// </summary>
     Absent,
 
@@ -25,8 +20,11 @@ public enum LapsTimestampReading
     /// </summary>
     Unreadable,
 
-    /// <summary>A value was there and decoded. Something is rotating this password.</summary>
+    /// <summary>A value was there and decoded to a date, without establishing active management.</summary>
     Present,
+
+    /// <summary>A zero was captured; it is not a usable date or proof of a reset request.</summary>
+    Zero,
 }
 
 /// <summary>

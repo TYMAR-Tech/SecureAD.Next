@@ -54,7 +54,7 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IObjectRule
         "SEC-094",
         "Windows LAPS expected, but only a legacy timestamp present",
         Severity.Low,
-        Version: 1,
+        Version: 3,
         SubjectClasses: ["computer"],
         RequiredAttributes:
         [
@@ -123,20 +123,12 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IObjectRule
                 : RuleVerdict.CouldNotJudge([LapsAttributes.LegacyLapsExpiration]);
         }
 
-        var modernValue = AttributeReading.Text(subject, LapsAttributes.WindowsLapsExpiration);
-        var legacyValue = AttributeReading.Text(subject, LapsAttributes.LegacyLapsExpiration);
-
-        // The confirmation Microsoft names is present. Whether it is stale is SEC-092's question.
-        //
-        // DECIDED ON THE RAW VALUE BEING THERE, NOT ON IT DECODING. A machine whose modern
-        // timestamp is present but unreadable is still a machine Windows LAPS has written to, and
-        // reporting it because this build could not parse a FILETIME would be a false finding
-        // produced by our own decoder.
-        if (!string.IsNullOrWhiteSpace(modernValue))
+        var modernTimestamp = LapsTimestamp.FromAttribute(subject.Find(LapsAttributes.WindowsLapsExpiration));
+        var legacyTimestamp = LapsTimestamp.FromAttribute(subject.Find(LapsAttributes.LegacyLapsExpiration));
+        if (modernTimestamp.Reading == LapsTimestampReading.Present)
             return RuleVerdict.Judged([]);
 
-        // Neither timestamp. That is SEC-091, and it is the more serious finding.
-        if (string.IsNullOrWhiteSpace(legacyValue))
+        if (legacyTimestamp.Reading == LapsTimestampReading.Absent)
             return RuleVerdict.Judged([]);
 
         // The capability test is the whole exclusion, and it is why operatingSystemVersion is
@@ -148,11 +140,14 @@ public sealed class WindowsLapsNotAppliedOnCapableComputer : IObjectRule
         if (capability.Kind is not LapsCapabilityKind.WindowsLapsCapable)
             return RuleVerdict.Judged([]);
 
+        var issues = LapsAttributes.UnusableInputs(modernTimestamp, legacyTimestamp);
+        if (issues.Count > 0) return RuleVerdict.CouldNotInterpret(issues);
+
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
-        var evidence = new LapsDeploymentEvidence(modernValue, legacyValue, capability);
+        var evidence = new LapsDeploymentEvidence(modernTimestamp.Raw, legacyTimestamp.Raw, capability);
 
         return RuleVerdict.Judged(
         [

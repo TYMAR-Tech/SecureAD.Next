@@ -156,7 +156,7 @@ public sealed partial class JudgementReader
                 SELECT expansion_was_complete FROM finding_object_takeover WHERE finding_id=$id
                 """,
             "SEC-090" => """
-                SELECT expansion_was_complete FROM finding_laps_password_reader WHERE finding_id=$id
+                SELECT assessment_complete FROM finding_laps_password_reader WHERE finding_id=$id
                 """,
             "SEC-093" => """
                 SELECT CASE WHEN typeof(expansion_was_complete)='integer' AND expansion_was_complete IN (0,1)

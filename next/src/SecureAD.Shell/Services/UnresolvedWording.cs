@@ -30,6 +30,7 @@ namespace SecureAD.Shell.Services;
 internal static class UnresolvedWording
 {
     private static readonly ResourceManager Ownership = new("SecureAD.Shell.Resources.ControlEdgePresentation", typeof(UnresolvedWording).Assembly);
+    private static readonly ResourceManager Laps = new("SecureAD.Shell.Resources.LapsInventoryPresentation", typeof(UnresolvedWording).Assembly);
     private const string AdministrativeEvidenceUnavailable =
         "The membership or identity evidence needed to complete this administrative-group assessment is unavailable or could not be verified. "
         + "Recorded positive links do not establish that all other membership has been assessed.";
@@ -45,6 +46,24 @@ internal static class UnresolvedWording
     public static string For(string token)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
+
+        if (token.StartsWith(CapturedInputIssue.TokenPrefix, StringComparison.Ordinal))
+        {
+            var input = token.Split('.');
+            if (input.Length != 3 || string.IsNullOrWhiteSpace(input[1])
+                || !Enum.TryParse<CapturedInputIssueKind>(input[2], out var issue)
+                || !Enum.IsDefined(issue) || input[2] != issue.ToString())
+                return $"{token} was undecided, and this version has no plainer way to say why.";
+            var attribute = input[1] switch
+            {
+                "msLAPS-PasswordExpirationTime" => "Windows expiry",
+                "ms-Mcs-AdmPwdExpirationTime" => "Legacy expiry",
+                _ => input[1],
+            };
+            var key = issue == CapturedInputIssueKind.ZeroValue ? "ExpiryZero" : "ExpiryUnusable";
+            return $"{attribute}: {Laps.GetString(key, CultureInfo.CurrentUICulture)
+                ?? throw new MissingManifestResourceException(key)}";
+        }
 
         // An attribute name has no dot and names something the capture did not bring back, which is
         // a different instruction from everything below it.

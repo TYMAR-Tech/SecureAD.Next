@@ -173,6 +173,9 @@ public sealed class ControlEdgeLayoutTests
         // persisted definitions, including part headers. Observed from this build's writer,
         // not an independent forest anchor; every earlier logical-layout hash stays frozen.
         [77] = "C46A94CDC352A0812808C3083A9A05254A658AB2217CD703CFBD504922F01F4C",
+        // Observed format-81 published layout, including captured-value presence and SEC-090 support;
+        // this is a new-build checkpoint, not a replacement for any historical forest anchor.
+        [81] = "374FC340557F1508DA416E035F421AFA596FB5167559470FE276B4D69C6D88BC",
     };
 
     [Fact]

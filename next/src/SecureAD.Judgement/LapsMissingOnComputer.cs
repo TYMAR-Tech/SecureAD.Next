@@ -56,7 +56,7 @@ public sealed class LapsMissingOnComputer : IObjectRule
         "SEC-091",
         "LAPS missing on a computer",
         Severity.Medium,
-        Version: 1,
+        Version: 2,
         SubjectClasses: ["computer"],
         RequiredAttributes:
         [
@@ -129,19 +129,15 @@ public sealed class LapsMissingOnComputer : IObjectRule
             return RuleVerdict.Judged([]);
         }
 
-        var modernValue = AttributeReading.Text(subject, LapsAttributes.WindowsLapsExpiration);
-        var legacyValue = AttributeReading.Text(subject, LapsAttributes.LegacyLapsExpiration);
-
-        // Either timestamp means something is rotating the password. Which product is doing it is a
-        // migration question rather than a security one, and it is SEC-094's.
-        //
-        // ABSENCE IS THE ORDINARY CASE HERE AND IS NOT REPORTED AS AN UNREAD INPUT. Most computers
-        // in a forest without LAPS carry neither attribute, and naming a missing attribute against
-        // nearly every object would read as a broken capture. The distinction that matters was
-        // settled above, from the schema: absent and readable is a finding, absent because withheld
-        // is CouldNotJudge.
-        if (!string.IsNullOrWhiteSpace(modernValue) || !string.IsNullOrWhiteSpace(legacyValue))
+        var modernTimestamp = LapsTimestamp.FromAttribute(modern == LapsAttributes.Readability.Reportable
+            ? subject.Find(LapsAttributes.WindowsLapsExpiration) : null);
+        var legacyTimestamp = LapsTimestamp.FromAttribute(legacy == LapsAttributes.Readability.Reportable
+            ? subject.Find(LapsAttributes.LegacyLapsExpiration) : null);
+        if (modernTimestamp.Reading == LapsTimestampReading.Present || legacyTimestamp.Reading == LapsTimestampReading.Present)
             return RuleVerdict.Judged([]);
+
+        var issues = LapsAttributes.UnusableInputs(modernTimestamp, legacyTimestamp);
+        if (issues.Count > 0) return RuleVerdict.CouldNotInterpret(issues);
 
         if (subject.ObjectGuid is not { } objectGuid)
             return RuleVerdict.CouldNotJudge(["objectGUID"]);
@@ -152,7 +148,7 @@ public sealed class LapsMissingOnComputer : IObjectRule
         // carried into the evidence and shown to the operator, and the rule never branches on it.
         var capability = LapsCapability.Of(subject);
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
-        var evidence = new LapsDeploymentEvidence(modernValue, legacyValue, capability);
+        var evidence = new LapsDeploymentEvidence(modernTimestamp.Raw, legacyTimestamp.Raw, capability);
 
         return RuleVerdict.Judged(
         [

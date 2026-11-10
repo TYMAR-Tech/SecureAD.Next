@@ -123,13 +123,18 @@ public sealed record StoredAttributeVisibility(IReadOnlyList<AttributeVisibility
         if (!SchemaAttributesWereAsked)
             return AttributeVisibilityAnswer.SchemaNotRead;
 
-        _byName ??= Attributes
-            .GroupBy(a => a.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-        return _byName.TryGetValue(ldapDisplayName, out var fact)
+        return Find(ldapDisplayName) is { } fact
             ? fact.Answer
             : AttributeVisibilityAnswer.NotInSchema;
+    }
+
+    /// <summary>The original captured flags, without substituting defaults for unreturned values.</summary>
+    public AttributeVisibilityFact? Find(string ldapDisplayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ldapDisplayName);
+        _byName ??= Attributes.GroupBy(attribute => attribute.LdapDisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        return _byName.GetValueOrDefault(ldapDisplayName);
     }
 }
 

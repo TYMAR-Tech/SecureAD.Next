@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Resources;
+using SecureAD.Judgement;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -9,4 +10,14 @@ internal static class LapsInventoryText
 
     internal static string Get(string key) => Resources.GetString(key, CultureInfo.CurrentUICulture)
         ?? throw new MissingManifestResourceException(key);
+
+    internal static string Label(LapsValuePresence values) => Get(values switch
+    {
+        LapsValuePresence.None => "ValuesNone",
+        LapsValuePresence.WindowsOnly => "ValuesWindows",
+        LapsValuePresence.LegacyOnly => "ValuesLegacy",
+        LapsValuePresence.Both => "ValuesBoth",
+        LapsValuePresence.WindowsOnLegacyOnly => "ValuesPlatform",
+        _ => throw new ArgumentOutOfRangeException(nameof(values)),
+    });
 }

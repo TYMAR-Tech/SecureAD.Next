@@ -152,7 +152,7 @@ public sealed class MockupParityTests
         Assert.Contains(groups.Descendants().Attributes(), attribute => attribute.Value.Contains("SelectedGroup.MembershipDetail", StringComparison.Ordinal));
 
         var laps = View("LapsInventoryView.xaml");
-        Assert.Contains(laps.Descendants(), element => (string?)element.Attribute("Text") == "LAPS coverage");
+        Assert.Contains(laps.Descendants(), element => (string?)element.Attribute("Text") == "{Binding LapsTitle}");
         Assert.Contains(laps.Descendants().Attributes(), attribute => attribute.Value == "{Binding SelectedLapsComputer,Mode=TwoWay}");
         Assert.Contains(laps.Descendants().Attributes(), attribute => attribute.Value.Contains("LapsSearchText", StringComparison.Ordinal));
         Assert.Contains(laps.Descendants().Attributes(), attribute => attribute.Value.Contains("LapsStateChoices", StringComparison.Ordinal));

@@ -3,15 +3,15 @@ using SecureAD.Evidence.Findings;
 namespace SecureAD.Judgement;
 
 /// <summary>
-/// One attribute a rule declared it reads that was not captured, and how many objects it cost.
+/// One recorded input limitation and how many objects it left unassessed.
 /// </summary>
 /// <remarks>
 /// The count is objects the rule could not reach a verdict on <i>because of this attribute</i>. An
 /// object missing two declared attributes is counted against both, so these do not sum to
 /// <see cref="RuleExecution.ObjectsNotJudged"/> and are not meant to.
 /// </remarks>
-/// <param name="Attribute">The LDAP display name the rule declared.</param>
-/// <param name="ObjectsAffected">How many objects lacked it.</param>
+/// <param name="Attribute">An LDAP display name or stable captured/derived-input limitation token.</param>
+/// <param name="ObjectsAffected">How many objects were affected by this limitation.</param>
 public sealed record MissingInput(string Attribute, int ObjectsAffected);
 
 /// <summary>
@@ -43,7 +43,7 @@ public sealed record MissingInput(string Attribute, int ObjectsAffected);
 /// Objects it was about and could not reach a verdict on. This is the real gap, and it degrades the
 /// run.
 /// </param>
-/// <param name="MissingInputs">The declared attributes that were absent, and on how many objects.</param>
+/// <param name="MissingInputs">Uncaptured, unusable or unresolved input reasons and affected-object counts.</param>
 /// <param name="Findings">What it found. Empty is meaningful only beside <paramref name="Outcome"/>.</param>
 /// <param name="Error">Why it threw, when it did. Null otherwise.</param>
 public sealed record RuleExecution(

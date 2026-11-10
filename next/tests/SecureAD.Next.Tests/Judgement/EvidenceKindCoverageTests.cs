@@ -271,14 +271,14 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         // to at least one of these. The path is the part most worth pinning - it is the whole of
         // what makes the finding actionable, and it is stored in a separate table.
         new Sample(
-            Definition("SEC-090", "A broad principal can read LAPS passwords"),
+            Definition("SEC-090", "Broad permissions on LAPS password attributes"),
             "CN=WS01,OU=Workstations,DC=contoso,DC=com",
-            new LapsPasswordReaderEvidence(
-                TrusteeSid: "S-1-5-21-1004336348-1177238915-682003330-1123",
-                TrusteeName: "LAPS-Readers",
-                BroadPrincipalSid: "S-1-5-11",
-                BroadPrincipalName: "Authenticated Users",
-                MembershipPath:
+            RecordedLapsReadFinding.Evidence(
+                trustee: "S-1-5-21-1004336348-1177238915-682003330-1123",
+                trusteeName: "LAPS-Readers",
+                broad: "S-1-5-11",
+                broadName: "Authenticated Users",
+                path:
                 [
                     new PathStep(
                         "S-1-5-21-1004336348-1177238915-682003330-1123", "LAPS-Readers"),
@@ -289,11 +289,11 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                     // bundle, and a reader that dropped the null would show the wrong thing.
                     new PathStep("S-1-5-11", null),
                 ],
-                Attribute: "msLAPS-Password",
-                Rights: LapsReadRights.Both,
-                Reach: LapsGrantReach.EveryAttribute,
-                InheritedFrom: "DC=contoso,DC=com",
-                ExpansionWasComplete: false),
+                attribute: "msLAPS-Password",
+                rights: LapsReadRights.Both,
+                reach: LapsGrantReach.EveryAttribute,
+                inheritedClassGuid: "bf967a86-0de6-11d0-a285-00aa003049e2",
+                complete: false),
             read =>
             {
                 var e = Assert.IsType<LapsPasswordReaderEvidence>(read);
@@ -309,9 +309,12 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                 Assert.Equal(2, e.NestingDepth);
                 Assert.Equal("msLAPS-Password", e.Attribute);
                 Assert.Equal(LapsReadRights.Both, e.Rights);
-                Assert.True(e.CanReadThePassword);
+                Assert.True(e.HasEstablishedReadPermission);
                 Assert.Equal(LapsGrantReach.EveryAttribute, e.Reach);
-                Assert.Equal("DC=contoso,DC=com", e.InheritedFrom);
+                Assert.Equal("bf967a86-0de6-11d0-a285-00aa003049e2", e.InheritedClassGuid);
+                Assert.True(e.IsInherited);
+                Assert.False(e.SupportsWereLoaded);
+                Assert.Equal(1, e.Assessment.ExposureCount);
                 Assert.False(e.IsComplete);
             }),
 
@@ -578,7 +581,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     ];
 
     private static RuleDefinition Definition(string id, string title) =>
-        new(id, title, Severity.High, 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
+        new(id, title, Severity.High, id is "SEC-027" or "SEC-090" ? 2 : 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
 
     private static CircularMembershipEvidence CycleSample()
     {
@@ -605,7 +608,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         FindingEvidence Evidence,
         Action<FindingEvidence> AssertRead)
     {
-        public Finding Finding => new(
+        public Finding Finding => RecordedLapsReadFinding.Bind(new(
             Rule.Id,
             Rule.Version,
             Rule.Severity,
@@ -616,6 +619,6 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
             "user",
             $"Sample finding for {Evidence.GetType().Name}.",
             EvidenceCompleteness.Complete,
-            Evidence);
+            Evidence));
     }
 }

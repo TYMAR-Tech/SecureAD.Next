@@ -840,7 +840,7 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$protection", (object?)list.Membership?.DirectProtectionName ?? DBNull.Value);
             });
 
-        WriteFindingEvidence(transaction, findingId, finding.Evidence);
+        WriteFindingEvidence(transaction, findingId, finding);
     }
 
     /// <summary>
@@ -852,8 +852,9 @@ public sealed class JudgementWriter : IDisposable
     /// per kind means the gap shows up here, at the write, naming the type.
     /// </remarks>
     private void WriteFindingEvidence(
-        SqliteTransaction transaction, long findingId, FindingEvidence evidence)
+        SqliteTransaction transaction, long findingId, Finding finding)
     {
+        var evidence = finding.Evidence;
         switch (evidence)
         {
             case ReplicationPermissionEvidence replication:
@@ -1036,53 +1037,7 @@ public sealed class JudgementWriter : IDisposable
                 return;
 
             case LapsPasswordReaderEvidence readers:
-                Execute(
-                    transaction,
-                    "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
-                    + "trustee_name, broad_principal_sid, broad_principal_name, attribute, "
-                    + "rights, reach, inherited_from, expansion_was_complete, route_length) "
-                    + "VALUES ($id, $trustee, $name, $broad, $broadName, $attribute, $rights, "
-                    + "$reach, $inherited, $complete, $length)",
-                    command =>
-                    {
-                        command.Parameters.AddWithValue("$id", findingId);
-                        command.Parameters.AddWithValue("$trustee", readers.TrusteeSid);
-                        command.Parameters.AddWithValue(
-                            "$name", (object?)readers.TrusteeName ?? DBNull.Value);
-                        command.Parameters.AddWithValue("$broad", readers.BroadPrincipalSid);
-                        command.Parameters.AddWithValue(
-                            "$broadName", (object?)readers.BroadPrincipalName ?? DBNull.Value);
-                        command.Parameters.AddWithValue("$attribute", readers.Attribute);
-                        command.Parameters.AddWithValue("$rights", readers.Rights.ToString());
-                        command.Parameters.AddWithValue("$reach", readers.Reach.ToString());
-                        command.Parameters.AddWithValue(
-                            "$inherited", (object?)readers.InheritedFrom ?? DBNull.Value);
-                        command.Parameters.AddWithValue(
-                            "$complete", readers.ExpansionWasComplete ? 1L : 0L);
-                        command.Parameters.AddWithValue("$length", readers.MembershipPath.Count);
-                    });
-
-                // The path, in order. Without it the finding names a broad principal and cannot say
-                // which link an operator would cut, which is the whole of P-123's third condition.
-                for (var ordinal = 0; ordinal < readers.MembershipPath.Count; ordinal++)
-                {
-                    var step = readers.MembershipPath[ordinal];
-                    var position = ordinal;
-
-                    Execute(
-                        transaction,
-                        "INSERT INTO finding_laps_password_reader_path "
-                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
-                        command =>
-                        {
-                            command.Parameters.AddWithValue("$id", findingId);
-                            command.Parameters.AddWithValue("$ordinal", position);
-                            command.Parameters.AddWithValue("$sid", step.Sid);
-                            command.Parameters.AddWithValue(
-                                "$name", (object?)step.Name ?? DBNull.Value);
-                        });
-                }
-
+                LapsReadFindingStorage.Write(_connection, transaction, findingId, GenerationId, finding, readers);
                 return;
 
             case ObjectTakeoverEvidence takeover:

@@ -34,7 +34,7 @@ public sealed record JudgementDescription(
 /// <param name="Outcome">What became of it.</param>
 /// <param name="ObjectsJudged">Objects it reached a verdict on.</param>
 /// <param name="ObjectsNotJudged">Objects it could not.</param>
-/// <param name="MissingInputs">The declared attributes that were absent.</param>
+/// <param name="MissingInputs">Recorded uncaptured, unusable or unresolved input reasons.</param>
 /// <param name="FindingsProduced">
 /// How many findings this rule wrote.
 /// <para>
@@ -159,7 +159,7 @@ public sealed partial class JudgementReader : IDisposable
     {
         internal readonly Dictionary<ControlEdgeStorage.Question, ControlEdgeStorage.Counts> Controls = [];
         internal readonly Dictionary<GroupInventoryQuery, int> Groups = [];
-        internal readonly Dictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsManagement, int>> Laps = [];
+        internal readonly Dictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> Laps = [];
         internal FindingsFilterValues? Filters;
     }
     // A new connection must not repeat counts already answered under the same file protection.
@@ -1027,9 +1027,14 @@ public sealed partial class JudgementReader : IDisposable
         r.attribute                         AS r_attribute,
         r.rights                            AS r_rights,
         r.reach                             AS r_reach,
-        r.inherited_from                    AS r_inherited_from,
+        r.inherited_class_guid              AS r_inherited_class_guid,
+        r.is_inherited                      AS r_is_inherited,
         r.expansion_was_complete            AS r_expansion_was_complete,
         r.route_length                      AS r_route_length,
+        r.assessment_complete               AS r_assessment_complete,
+        r.exposure_count                    AS r_exposure_count,
+        r.established_count                 AS r_established_count,
+        r.assessment_json                   AS r_assessment_json,
         r.finding_id                        AS r_finding_id,
         e.policy_display_name               AS e_policy_display_name,
         e.configured_value                  AS e_configured_value,
@@ -1369,7 +1374,7 @@ public sealed partial class JudgementReader : IDisposable
         {
             var findingId = reader.GetInt64(reader.GetOrdinal("r_finding_id"));
             var trusteeName = reader.GetOrdinal("r_trustee_name");
-            var inheritedFrom = reader.GetOrdinal("r_inherited_from");
+            var inheritedClass = reader.GetOrdinal("r_inherited_class_guid");
 
             evidence = new LapsPasswordReaderEvidence(
                 reader.GetString(lapsReaderTrustee),
@@ -1382,8 +1387,16 @@ public sealed partial class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("r_attribute")),
                 Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
                 Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
-                reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
-                reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete")) != 0);
+                reader.IsDBNull(inheritedClass) ? null : reader.GetString(inheritedClass),
+                LapsReadFindingStorage.Bit(reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete"))))
+            {
+                IsInherited = LapsReadFindingStorage.Bit(reader.GetInt64(reader.GetOrdinal("r_is_inherited"))),
+                Assessment = LapsReadFindingStorage.ReadSummary(reader.GetString(reader.GetOrdinal("r_assessment_json")),
+                    reader.GetInt64(reader.GetOrdinal("r_exposure_count")),
+                    reader.GetInt64(reader.GetOrdinal("r_established_count")),
+                    reader.GetInt64(reader.GetOrdinal("r_assessment_complete"))),
+                SupportingExposures = null,
+            };
         }
         else if (!reader.IsDBNull(takeoverTrustee))
         {

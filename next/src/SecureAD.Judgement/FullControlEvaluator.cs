@@ -99,8 +99,14 @@ internal static class FullControlEvaluator
     internal static FullControlRight AssessStandardRight(FullControlSource source, int right,
         Func<PermissionEntry, bool?> matchDeny) => Check(source, right, null, true, matchDeny, includeScoped: true);
 
+    internal static FullControlRight AssessAttributeRight(FullControlSource source, int right,
+        Func<PermissionEntry, ControlEvaluationState> scope, Func<PermissionEntry, bool?> matchDeny,
+        bool holderIdentityEstablished) =>
+        Check(source, right, null, true, matchDeny, includeScoped: true, scope, holderIdentityEstablished);
+
     private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope,
-        Func<PermissionEntry, bool?>? matchDeny = null, bool includeScoped = false)
+        Func<PermissionEntry, bool?>? matchDeny = null, bool includeScoped = false,
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope = null, bool holderIdentityEstablished = false)
     {
         var unknown = source.Availability != DescriptorAvailability.Read || source.Dacl == DaclState.Unreadable
             ? ControlUncertainty.DescriptorUnreadable
@@ -108,7 +114,8 @@ internal static class FullControlEvaluator
         var definition = PrincipalClassificationRegistry.For(source.Holder.Sid);
         if (!source.Holder.HoldsThePermission || definition.IdentityIsValid && definition.MicrosoftName is not null
             && source.Holder.Sid is "S-1-3-0" or "S-1-3-4") unknown |= ControlUncertainty.HolderIsPlaceholder;
-        if (!definition.IdentityIsValid || source.Holder.DistinguishedName is null && definition.MicrosoftName is null)
+        if (!definition.IdentityIsValid || !holderIdentityEstablished
+            && source.Holder.DistinguishedName is null && definition.MicrosoftName is null)
             unknown |= ControlUncertainty.HolderUnresolved;
         if (!source.ResourceContextEstablished) unknown |= ControlUncertainty.ResourceContextUnverified;
         var grants = new List<int>();
@@ -127,6 +134,8 @@ internal static class FullControlEvaluator
             if (!sameHolder && !IsDeny(entry)) continue;
             var matches = sameHolder ? true : matchDeny?.Invoke(entry);
             if (IsDeny(entry) && matches == false) continue;
+            var qualifiedScope = attributeScope?.Invoke(entry);
+            if (qualifiedScope == ControlEvaluationState.NotEstablished) continue;
             if (scope is null && entry.HasObjectType && !includeScoped) continue;
             if (scope is not null && entry.HasObjectType && !Same(entry.ObjectTypeGuid ?? "", scope))
             {
@@ -136,7 +145,9 @@ internal static class FullControlEvaluator
             }
             var limit = !Supported(entry) ? ControlUncertainty.ConditionalOrUnsupportedAce
                 : !sameHolder && matches != true ? ControlUncertainty.CrossTrusteeDeny
-                : entry.HasObjectType && (includeScoped || !knownScope) ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
+                : qualifiedScope == ControlEvaluationState.Unknown
+                    || attributeScope is null && entry.HasObjectType && (includeScoped || !knownScope)
+                    ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
                 : ControlUncertainty.None;
             if (limit != ControlUncertainty.None)
             {

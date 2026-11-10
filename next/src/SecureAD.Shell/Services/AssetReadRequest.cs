@@ -219,6 +219,9 @@ internal sealed partial class AssetReadRequest(
     public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadSidHistory(reference, after), _readCancellation)));
 
+    public Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadLapsReadSupports(reference, after), _readCancellation)));
+
     public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(reader => reader.ReadProtectionMarker(reference), _readCancellation)));
 

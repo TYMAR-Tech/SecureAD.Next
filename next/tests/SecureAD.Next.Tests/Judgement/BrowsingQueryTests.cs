@@ -133,16 +133,16 @@ public sealed class BrowsingQueryTests
         var coverage = new ListingCoverage(false, "Recorded capture gap");
         var first = reader.ListLapsComputers(query, null, coverage);
         var second = nextReader.ListLapsComputers(query, first.Next, coverage);
-        var filtered = nextReader.ListLapsComputers(query with { Search = "Needle", State = LapsManagement.NotManaged }, null, coverage);
+        var filtered = nextReader.ListLapsComputers(query with { Search = "Needle", State = LapsValuePresence.None }, null, coverage);
         Assert.Equal((205, 205, 205), (first.Total, second.Total, filtered.Total));
-        Assert.Equal(LapsManagement.NotManaged, Assert.Single(filtered.Computers).Management);
+        Assert.Equal(LapsValuePresence.None, Assert.Single(filtered.Computers).ValuePresence);
         Assert.False(second.ComputersAreComplete);
         Assert.Equal(coverage.Shortfall, second.Shortfall);
-        Assert.Equal(first.CountsByState, second.CountsByState);
-        Assert.Equal(first.CountsByState, filtered.CountsByState);
+        Assert.Equal(first.CountsByValuePresence, second.CountsByValuePresence);
+        Assert.Equal(first.CountsByValuePresence, filtered.CountsByValuePresence);
         var statements = trace.Statements.Concat(nextTrace.Statements).ToArray();
-        Assert.Single(statements, sql => sql.Contains("GROUP BY management", StringComparison.Ordinal));
-        var pages = statements.Where(sql => sql.StartsWith("SELECT distinguished_name,management,result", StringComparison.Ordinal)).ToArray();
+        Assert.Single(statements, sql => sql.Contains("GROUP BY value_presence", StringComparison.Ordinal));
+        var pages = statements.Where(sql => sql.StartsWith("SELECT distinguished_name,value_presence,result", StringComparison.Ordinal)).ToArray();
         Assert.Equal(3, pages.Length);
         foreach (var sql in pages)
         {
@@ -155,7 +155,7 @@ public sealed class BrowsingQueryTests
             null, new(true, null));
         Assert.Equal(1, narrow.Total);
         Assert.True(narrow.ComputersAreComplete);
-        var narrowSql = nextTrace.Statements.Last(sql => sql.StartsWith("SELECT distinguished_name,management,result", StringComparison.Ordinal));
+        var narrowSql = nextTrace.Statements.Last(sql => sql.StartsWith("SELECT distinguished_name,value_presence,result", StringComparison.Ordinal));
         Assert.Contains(trace.Plan(narrowSql), line => line.Contains("ix_laps_inventory_subtree", StringComparison.Ordinal));
     }
 

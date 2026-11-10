@@ -47,7 +47,7 @@ public sealed class LapsRotationStale : IObjectRule
         "SEC-092",
         "LAPS password rotation has stopped",
         Severity.Medium,
-        Version: 1,
+        Version: 2,
         SubjectClasses: ["computer"],
         RequiredAttributes:
         [
@@ -135,13 +135,10 @@ public sealed class LapsRotationStale : IObjectRule
         if (modern is Reading.Absent && legacy is Reading.Absent)
             return RuleVerdict.Judged([]);
 
-        var modernValue = modern is Reading.Present
-            ? AttributeReading.Text(subject, LapsAttributes.WindowsLapsExpiration)
-            : null;
-
-        var legacyValue = legacy is Reading.Present
-            ? AttributeReading.Text(subject, LapsAttributes.LegacyLapsExpiration)
-            : null;
+        var modernTimestamp = LapsTimestamp.FromAttribute(modern is Reading.Present
+            ? subject.Find(LapsAttributes.WindowsLapsExpiration) : null);
+        var legacyTimestamp = LapsTimestamp.FromAttribute(legacy is Reading.Present
+            ? subject.Find(LapsAttributes.LegacyLapsExpiration) : null);
 
         // WHAT COUNTS AS STALE IS "NOTHING HERE HAS ROTATED", NOT "THIS ONE VALUE IS OLD". A
         // machine mid-migration carries both timestamps, and if either is fresh then something is
@@ -154,22 +151,20 @@ public sealed class LapsRotationStale : IObjectRule
         // only good timestamp is the one that stopped it being reported.
         var deadline = context.AsOf - Grace;
 
-        var dates = new[] { modernValue, legacyValue }
-            .Select(raw => LapsTimestamp.Of(raw).ExpiresUtc)
+        var dates = new[] { modernTimestamp, legacyTimestamp }
+            .Select(timestamp => timestamp.ExpiresUtc)
             .OfType<DateTimeOffset>()
             .ToList();
-
-        // Nothing decoded to a date at all. That is either a machine carrying no timestamp, which is
-        // SEC-091's, or one carrying a sentinel - a null, a zero or a negative FILETIME, all of
-        // which LapsTimestamp already refuses. A password that expired in 1601 is a value written
-        // empty, not a password four centuries overdue, and reporting it as stale would put an
-        // absurdity in front of an operator.
-        if (dates.Count == 0)
-            return RuleVerdict.Judged([]);
 
         // Strictly later, so a machine exactly at the grace is given the benefit of it.
         if (dates.Exists(d => d >= deadline))
             return RuleVerdict.Judged([]);
+
+        // A bad other value may have been fresh; an independently fresh usable value above
+        // already settles the existing combined-signal question without needing that input.
+        var issues = LapsAttributes.UnusableInputs(modernTimestamp, legacyTimestamp);
+        if (issues.Count > 0) return RuleVerdict.CouldNotInterpret(issues);
+        if (dates.Count == 0) return RuleVerdict.Judged([]);
 
         // THE NEWEST LAPSED EXPIRATION IS THE TRUE ONE, AND ad.lab PROVED IT ON 2026-09-03. PHWK1
         // carried a modern timestamp 234 days past and a legacy one 503 days past, and reporting
@@ -187,7 +182,7 @@ public sealed class LapsRotationStale : IObjectRule
 
         var capability = LapsCapability.Of(subject);
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
-        var evidence = new LapsDeploymentEvidence(modernValue, legacyValue, capability);
+        var evidence = new LapsDeploymentEvidence(modernTimestamp.Raw, legacyTimestamp.Raw, capability);
 
         return RuleVerdict.Judged(
         [

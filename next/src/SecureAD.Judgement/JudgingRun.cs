@@ -1968,6 +1968,9 @@ public static class JudgingRun
             foreach (var attribute in verdict.InputsNotCaptured)
                 _missing[attribute] = _missing.GetValueOrDefault(attribute) + 1;
 
+            foreach (var issue in verdict.InputIssues)
+                _missing[issue.Token] = _missing.GetValueOrDefault(issue.Token) + 1;
+
             // Counted in the same table as a missing attribute, under a token that names the kind
             // and the reason. The store already groups these by name, and a second table would let
             // one report a judging as complete while the other disagreed.

@@ -79,11 +79,11 @@ public sealed record LapsCapability(
     string? Version)
 {
     /// <summary>
-    /// Whether the machine is a Windows Server, by the only signal the directory offers.
+    /// Whether the reported operating system name carries the server marker.
     /// </summary>
     /// <remarks>
-    /// Null where there is no name to read. See <see cref="LapsPlatformCatalog.ServerNameMarker"/>
-    /// for why a name is the only available answer.
+    /// Null where there is no name to read. This name indicator alone does not establish Windows
+    /// eligibility; <see cref="Kind"/> carries that answer.
     /// </remarks>
     public bool? IsServer =>
         string.IsNullOrWhiteSpace(Name)
@@ -119,11 +119,13 @@ public sealed record LapsCapability(
         var isServer = string.IsNullOrWhiteSpace(name)
             ? (bool?) null
             : name.Contains(LapsPlatformCatalog.ServerNameMarker, StringComparison.OrdinalIgnoreCase);
+        var isWindows = name?.Contains("Windows", StringComparison.OrdinalIgnoreCase) == true;
 
         // The build number is the reliable answer, but it cannot tell a client from a server on its
         // own - Windows 10 1607 and Server 2016 are both 14393 - so it is only used where the name
         // has supplied the family.
-        if (isServer is { } server && TryReadVersion(version, out var major, out var build))
+        if (isWindows && isServer is { } server && TryReadVersion(version, out var major, out var build)
+            && (!server || build.HasValue))
         {
             var kind = server
                 ? build >= LapsPlatformCatalog.FirstWindowsLapsServerBuild
@@ -140,7 +142,8 @@ public sealed record LapsCapability(
         if (!string.IsNullOrWhiteSpace(name))
         {
             return new LapsCapability(
-                FromName(name), LapsCapabilityBasis.OperatingSystemName, name, version);
+                isWindows ? FromName(name) : LapsCapabilityKind.Unknown,
+                LapsCapabilityBasis.OperatingSystemName, name, version);
         }
 
         return new LapsCapability(
@@ -190,10 +193,10 @@ public sealed record LapsCapability(
     /// older one is not. A value carrying no build - some machines report only <c>10.0</c> - still
     /// yields a major version, so a client is classifiable from it and a server is not.
     /// </remarks>
-    private static bool TryReadVersion(string? value, out int major, out int build)
+    private static bool TryReadVersion(string? value, out int major, out int? build)
     {
         major = 0;
-        build = 0;
+        build = null;
 
         if (string.IsNullOrWhiteSpace(value)) return false;
 
@@ -202,11 +205,14 @@ public sealed record LapsCapability(
 
         if (open >= 0 && close > open)
         {
-            _ = int.TryParse(
+            if (int.TryParse(
                 value.AsSpan(open + 1, close - open - 1).Trim(),
                 NumberStyles.None,
                 CultureInfo.InvariantCulture,
-                out build);
+                out var parsedBuild) && parsedBuild > 0)
+            {
+                build = parsedBuild;
+            }
         }
 
         var head = open >= 0 ? value.AsSpan(0, open) : value.AsSpan();

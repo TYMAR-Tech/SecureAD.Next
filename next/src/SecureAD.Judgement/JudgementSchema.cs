@@ -140,7 +140,8 @@ public static class JudgementSchema
     // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
     // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
     // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
-    public const int Version = 79;
+    // Format 81 distinguishes unusable expiry inputs and captured value presence from management claims.
+    public const int Version = 81;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -510,9 +511,14 @@ public static class JudgementSchema
             attribute                           TEXT    NOT NULL,
             rights                              TEXT    NOT NULL,
             reach                               TEXT    NOT NULL,
-            inherited_from                      TEXT        NULL,
+            inherited_class_guid                TEXT        NULL,
+            is_inherited                        INTEGER NOT NULL CHECK (is_inherited IN (0,1)),
             expansion_was_complete              INTEGER NOT NULL,
             route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
+            assessment_complete                 INTEGER NOT NULL CHECK (assessment_complete IN (0,1)),
+            exposure_count                      INTEGER NOT NULL CHECK (exposure_count > 0),
+            established_count                   INTEGER NOT NULL CHECK (established_count >= 0),
+            assessment_json                     TEXT NOT NULL,
             PRIMARY KEY (finding_id)
         )
         """,
@@ -538,6 +544,27 @@ public static class JudgementSchema
             sid                                 TEXT    NOT NULL,
             name                                TEXT        NULL,
             PRIMARY KEY (finding_id, ordinal)
+        )
+        """,
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader_support (
+            finding_id INTEGER NOT NULL,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            generation_id TEXT NOT NULL,
+            trustee_sid TEXT NOT NULL,
+            attribute TEXT NOT NULL,
+            state TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            PRIMARY KEY (finding_id,ordinal)
+        )
+        """,
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader_entry (
+            finding_id INTEGER NOT NULL,
+            attribute TEXT NOT NULL,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            payload TEXT NOT NULL,
+            PRIMARY KEY (finding_id,attribute,ordinal)
         )
         """,
 

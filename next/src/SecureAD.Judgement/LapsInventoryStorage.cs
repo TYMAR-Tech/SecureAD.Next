@@ -27,7 +27,7 @@ internal static class LapsInventoryStorage
             name TEXT COLLATE NOCASE NOT NULL,
             parent_dn TEXT COLLATE NOCASE NULL,
             dn_reversed TEXT COLLATE NOCASE NOT NULL,
-            management TEXT NOT NULL,
+            value_presence TEXT NOT NULL,
             domain_fqdn TEXT NULL,
             result TEXT NOT NULL
         );
@@ -35,9 +35,9 @@ internal static class LapsInventoryStorage
 
     internal static void CreateIndexes(SqliteConnection connection) => Execute(connection, $"""
         CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_parent ON laps_inventory(parent_dn, name, distinguished_name);
-        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_subtree ON laps_inventory(dn_reversed, management);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_subtree ON laps_inventory(dn_reversed, value_presence);
         CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_name ON laps_inventory(name, distinguished_name);
-        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_domain ON laps_inventory(domain_fqdn COLLATE NOCASE, management, name, distinguished_name);
+        CREATE INDEX {JudgementStoreLayout.Schema(connection, StoreSegmentRole.Judgement)}.ix_laps_inventory_domain ON laps_inventory(domain_fqdn COLLATE NOCASE, value_presence, name, distinguished_name);
         """);
 
     internal static void Start(SqliteConnection connection, Guid generation)
@@ -50,24 +50,25 @@ internal static class LapsInventoryStorage
 
     internal static LapsComputer CreateComputerResult(ObjectAttributes subject)
     {
-        var modern = LapsTimestamp.Of(AttributeReading.Text(subject, LapsAttributes.WindowsLapsExpiration));
-        var legacy = LapsTimestamp.Of(AttributeReading.Text(subject, LapsAttributes.LegacyLapsExpiration));
+        var modern = LapsTimestamp.FromAttribute(subject.Find(LapsAttributes.WindowsLapsExpiration));
+        var legacy = LapsTimestamp.FromAttribute(subject.Find(LapsAttributes.LegacyLapsExpiration));
         var capability = LapsCapability.Of(subject);
-        var management = modern.IsPresent && capability.Kind is LapsCapabilityKind.LegacyLapsOnly
-            ? LapsManagement.Unexpected
-            : (modern.IsPresent, legacy.IsPresent) switch
+        var presence = modern.HasCapturedValue && capability.Kind is LapsCapabilityKind.LegacyLapsOnly
+            ? LapsValuePresence.WindowsOnLegacyOnly
+            : (modern.HasCapturedValue, legacy.HasCapturedValue) switch
             {
-                (true, true) => LapsManagement.Migrated,
-                (true, false) => LapsManagement.WindowsLaps,
-                (false, true) => LapsManagement.LegacyLaps,
-                _ => LapsManagement.NotManaged,
+                (true, true) => LapsValuePresence.Both,
+                (true, false) => LapsValuePresence.WindowsOnly,
+                (false, true) => LapsValuePresence.LegacyOnly,
+                _ => LapsValuePresence.None,
             };
         return new(subject.DistinguishedName, DnHelper.ExtractFirstRdn(subject.DistinguishedName),
             subject.ObjectGuid, subject.DomainFqdn,
-            new(modern.Raw, modern.Reading, modern.ExpiresUtc), new(legacy.Raw, legacy.Reading, legacy.ExpiresUtc),
+            new(modern.Raw, modern.Reading, modern.ExpiresUtc, modern.HasUnsupportedRepresentation),
+            new(legacy.Raw, legacy.Reading, legacy.ExpiresUtc, legacy.HasUnsupportedRepresentation),
             AttributeReading.Text(subject, "operatingSystem"), AttributeReading.Text(subject, "operatingSystemVersion"),
             AttributeReading.Text(subject, "userAccountControl"), AttributeReading.Text(subject, "primaryGroupID"),
-            capability, DomainControllerSignals.Of(subject), LapsAttributes.StateOf(subject), management);
+            capability, DomainControllerSignals.Of(subject), LapsAttributes.StateOf(subject), presence);
     }
 
     internal static void Write(SqliteConnection connection, SqliteTransaction transaction, LapsComputer computer)
@@ -76,13 +77,13 @@ internal static class LapsInventoryStorage
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO laps_inventory VALUES ($dn, $name, $parent, $reversed, $management, $domain, $result)
+            INSERT INTO laps_inventory VALUES ($dn, $name, $parent, $reversed, $presence, $domain, $result)
             """;
         command.Parameters.AddWithValue("$dn", computer.DistinguishedName);
         command.Parameters.AddWithValue("$name", computer.Name);
         command.Parameters.AddWithValue("$parent", (object?)DnHelper.GetParentDn(computer.DistinguishedName) ?? DBNull.Value);
         command.Parameters.AddWithValue("$reversed", DnHelper.ReverseDn(computer.DistinguishedName));
-        command.Parameters.AddWithValue("$management", computer.Management.ToString());
+        command.Parameters.AddWithValue("$presence", computer.ValuePresence.ToString());
         command.Parameters.AddWithValue("$domain", (object?)computer.DomainFqdn ?? DBNull.Value);
         command.Parameters.AddWithValue("$result", JsonSerializer.Serialize(computer, ProofSerialization.Options));
         command.ExecuteNonQuery();
@@ -113,7 +114,7 @@ internal static class LapsInventoryStorage
 
     internal static LapsPage Read(SqliteConnection connection, JudgementDescription description,
         LapsQuery query, LapsPageMark? after, ListingCoverage coverage, CancellationToken cancellationToken,
-        IDictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsManagement, int>> savedCounts)
+        IDictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> savedCounts)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Container);
@@ -145,30 +146,30 @@ internal static class LapsInventoryStorage
             ListingScope.Subtree => "(dn_reversed = $reversed OR dn_reversed LIKE $prefix ESCAPE '\\')",
             _ => throw new ArgumentOutOfRangeException(nameof(query)),
         };
-        IReadOnlyDictionary<LapsManagement, int> counts;
+        IReadOnlyDictionary<LapsValuePresence, int> counts;
         lock (savedCounts)
         {
             if (savedCounts.TryGetValue((query.Container, query.Scope), out var saved))
                 counts = saved;
             else
             {
-                var measured = new Dictionary<LapsManagement, int>();
+                var measured = new Dictionary<LapsValuePresence, int>();
                 var selected = query.Scope == ListingScope.OneLevel
                     ? """
-                      SELECT management FROM laps_inventory WHERE distinguished_name=$dn
-                      UNION ALL SELECT management FROM laps_inventory WHERE parent_dn=$dn AND distinguished_name<>$dn
+                      SELECT value_presence FROM laps_inventory WHERE distinguished_name=$dn
+                      UNION ALL SELECT value_presence FROM laps_inventory WHERE parent_dn=$dn AND distinguished_name<>$dn
                       """
-                    : $"SELECT management FROM laps_inventory WHERE {where}";
+                    : $"SELECT value_presence FROM laps_inventory WHERE {where}";
                 using var command = ScopedCommand(connection,
-                    $"SELECT management,COUNT(*) FROM ({selected}) GROUP BY management", query.Container);
+                    $"SELECT value_presence,COUNT(*) FROM ({selected}) GROUP BY value_presence", query.Container);
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!Enum.TryParse<LapsManagement>(reader.GetString(0), out var state) || !Enum.IsDefined(state)) throw Invalid();
+                    if (!Enum.TryParse<LapsValuePresence>(reader.GetString(0), out var state) || !Enum.IsDefined(state)) throw Invalid();
                     measured.Add(state, checked((int)reader.GetInt64(1)));
                 }
-                counts = new ReadOnlyDictionary<LapsManagement, int>(measured);
+                counts = new ReadOnlyDictionary<LapsValuePresence, int>(measured);
                 savedCounts.Add((query.Container, query.Scope), counts);
             }
         }
@@ -180,10 +181,10 @@ internal static class LapsInventoryStorage
         LapsPageMark? next = null;
         var filters = $"""
               AND ($search='' OR laps_contains(name,$search) OR laps_contains(domain_fqdn,$search))
-              AND ($state IS NULL OR management=$state)
+              AND ($state IS NULL OR value_presence=$state)
               {(after is null ? "" : "AND (name,distinguished_name)>($afterName,$afterDn)")}
             """;
-        const string select = "SELECT distinguished_name,management,result,name,domain_fqdn FROM laps_inventory";
+        const string select = "SELECT distinguished_name,value_presence,result,name,domain_fqdn FROM laps_inventory";
         var ordered = query.Scope == ListingScope.Subtree && total > 100
             && (long)total * total >= inventoryObjects * 100;
         var selection = query.Scope == ListingScope.OneLevel
@@ -213,7 +214,7 @@ internal static class LapsInventoryStorage
                 var computer = JsonSerializer.Deserialize<LapsComputer>(reader.GetString(2), ProofSerialization.Options) ?? throw Invalid();
                 Validate(computer);
                 if (!string.Equals(computer.DistinguishedName, reader.GetString(0), StringComparison.Ordinal)
-                    || computer.Management.ToString() != reader.GetString(1)
+                    || computer.ValuePresence.ToString() != reader.GetString(1)
                     || computer.Name != reader.GetString(3)
                     || computer.DomainFqdn != (reader.IsDBNull(4) ? null : reader.GetString(4))) throw Invalid();
                 computers.Add(computer);
@@ -237,7 +238,7 @@ internal static class LapsInventoryStorage
     {
         if (string.IsNullOrWhiteSpace(row.DistinguishedName) || string.IsNullOrWhiteSpace(row.Name)
             || row.Capability is null || row.DomainController is null || row.WindowsLaps is null || row.LegacyLaps is null
-            || !Enum.IsDefined(row.Management) || !Enum.IsDefined(row.AccountState)
+            || !Enum.IsDefined(row.ValuePresence) || !Enum.IsDefined(row.AccountState)
             || !Enum.IsDefined(row.Capability.Kind) || !Enum.IsDefined(row.Capability.Basis)) throw Invalid();
         ValidateTimestamp(row.WindowsLaps);
         ValidateTimestamp(row.LegacyLaps);
@@ -246,7 +247,12 @@ internal static class LapsInventoryStorage
     private static void ValidateTimestamp(StoredLapsTimestamp value)
     {
         if (!Enum.IsDefined(value.Reading) || (value.Reading is LapsTimestampReading.Present) != value.ExpiresUtc.HasValue
-            || value.ExpiresUtc is { Offset: var offset } && offset != TimeSpan.Zero) throw Invalid();
+            || value.ExpiresUtc is { Offset: var offset } && offset != TimeSpan.Zero
+            || value.HasUnsupportedRepresentation && value.Reading != LapsTimestampReading.Unreadable
+            || value.Reading == LapsTimestampReading.Absent && (value.Raw is not null || value.HasUnsupportedRepresentation)
+            || (value.Reading is LapsTimestampReading.Present or LapsTimestampReading.Zero) && value.Raw is null
+            || value.Reading == LapsTimestampReading.Unreadable && value.Raw is null && !value.HasUnsupportedRepresentation)
+            throw Invalid();
     }
 
     private static InvalidDataException Invalid() => new(Message("Invalid"));

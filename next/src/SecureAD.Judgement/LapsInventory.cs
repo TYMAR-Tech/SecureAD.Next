@@ -3,23 +3,19 @@ using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Judgement;
 
-/// <summary>The recorded inventory state, not a finding severity.</summary>
-public enum LapsManagement
+/// <summary>Which expiration values were captured, not deployment, migration or a security verdict.</summary>
+public enum LapsValuePresence
 {
-    /// <summary>Neither expiration timestamp was present.</summary>
-    NotManaged,
-    /// <summary>Only the Windows LAPS timestamp was present.</summary>
-    WindowsLaps,
-    /// <summary>Only the legacy LAPS timestamp was present.</summary>
-    LegacyLaps,
-    /// <summary>Both timestamps were present.</summary>
-    Migrated,
-    /// <summary>A Windows LAPS timestamp was present on a legacy-only platform.</summary>
-    Unexpected,
+    None,
+    WindowsOnly,
+    LegacyOnly,
+    Both,
+    WindowsOnLegacyOnly,
 }
 
 /// <summary>A timestamp's recorded interpretation, retaining the original value even when unreadable.</summary>
-public sealed record StoredLapsTimestamp(string? Raw, LapsTimestampReading Reading, DateTimeOffset? ExpiresUtc);
+public sealed record StoredLapsTimestamp(string? Raw, LapsTimestampReading Reading, DateTimeOffset? ExpiresUtc,
+    bool HasUnsupportedRepresentation = false);
 
 /// <summary>One computer's saved LAPS inventory answer and the captured values supporting it.</summary>
 /// <remarks>
@@ -40,20 +36,20 @@ public sealed record LapsComputer(
     LapsCapability Capability,
     DomainControllerSignals DomainController,
     LapsAttributes.AccountState AccountState,
-    LapsManagement Management)
+    LapsValuePresence ValuePresence)
 {
     /// <summary>Whether the saved account state established that the computer was disabled.</summary>
     public bool IsDisabled => AccountState is LapsAttributes.AccountState.Disabled;
 
     /// <summary>Whether the recorded account and controller states permit the computer rules to apply.</summary>
-    public bool IsJudged => AccountState is LapsAttributes.AccountState.Enabled && !DomainController.IsDomainController;
+    public bool IsInRuleScope => AccountState is LapsAttributes.AccountState.Enabled && !DomainController.IsDomainController;
 }
 
 /// <summary>A saved inventory page with whole-scope counts and explicit capture shortfalls.</summary>
 public sealed record LapsPage(
     IReadOnlyList<LapsComputer> Computers,
     int Total,
-    IReadOnlyDictionary<LapsManagement, int> CountsByState,
+    IReadOnlyDictionary<LapsValuePresence, int> CountsByValuePresence,
     bool ComputersAreComplete,
     string? Shortfall)
 {
@@ -61,11 +57,11 @@ public sealed record LapsPage(
     public LapsPageMark? Next { get; init; }
 
     /// <summary>Counts a state across the selected scope, including zero when it has no recorded computers.</summary>
-    public int CountOf(LapsManagement state) => CountsByState.GetValueOrDefault(state);
+    public int CountOf(LapsValuePresence state) => CountsByValuePresence.GetValueOrDefault(state);
 }
 
 /// <summary>Filters the complete selected saved scope before taking a bounded page.</summary>
-public sealed record LapsQuery(string Container, ListingScope Scope, string Search, LapsManagement? State);
+public sealed record LapsQuery(string Container, ListingScope Scope, string Search, LapsValuePresence? State);
 
 /// <summary>A stable sort position bound to the saved generation and complete submitted question.</summary>
 public sealed record LapsPageMark(Guid GenerationId, string Question, string Name, string DistinguishedName);

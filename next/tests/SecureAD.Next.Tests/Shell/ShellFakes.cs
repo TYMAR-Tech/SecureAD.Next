@@ -415,7 +415,7 @@ internal sealed class FakeAssetSource : IAssetSource
     }
 
     public LapsPage LapsPage { get; set; } =
-        new([], 0, new Dictionary<LapsManagement, int>(), true, null);
+        new([], 0, new Dictionary<LapsValuePresence, int>(), true, null);
 
     /// <summary>
     /// What the dashboard is told the forest holds. Null means the run's coverage could not be
@@ -480,7 +480,7 @@ internal sealed class FakeAssetSource : IAssetSource
                 Computers = LapsPage.Computers.Where(row =>
                     (query.Search.Length == 0 || row.Name.Contains(query.Search, StringComparison.OrdinalIgnoreCase)
                         || (row.DomainFqdn ?? "").Contains(query.Search, StringComparison.OrdinalIgnoreCase))
-                    && (query.State is null || row.Management == query.State)).ToArray(),
+                    && (query.State is null || row.ValuePresence == query.State)).ToArray(),
             });
     }
 
@@ -736,6 +736,9 @@ internal sealed class FakeAssetSource : IAssetSource
             ErrorCategory.Shell, "TestProtectionMarkerUnavailable", ErrorSeverity.Failed, SavedProtectionMarker.InvalidDetails, bundleDirectory));
     }
     public List<(FindingReference Reference, SidHistoryMark? After)> SidHistoryReads { get; } = [];
+    public Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after) =>
+        Result<SavedLapsReadSupports>.Failure(AuditError.Create(ErrorCategory.Shell,
+            "TestLapsReadSupportsUnavailable", ErrorSeverity.Failed, "No saved LAPS support-page fixture was supplied.", bundleDirectory));
     public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after)
     {
         SidHistoryReads.Add((reference, after));

@@ -110,11 +110,10 @@ public sealed class RuleGuidanceTests
         var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
 
         Assert.StartsWith(
-            "A broad principal has read access to a LAPS password attribute. A clear-text value "
-                + "can expose the local administrator password; an encrypted value requires "
-                + "separate decryption permission. Read access alone is not proof of password "
-                + "retrieval or control of the machine.",
+            "Captured permissions and membership connect a broad principal to LAPS password attributes.",
             guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("encrypted values need separate decryption permission", guidance.WhyItMatters, StringComparison.Ordinal);
+        Assert.Contains("not an individual user's authorization, password retrieval or machine takeover", guidance.WhyItMatters, StringComparison.Ordinal);
     }
 
     /// <summary>The rule's stated limits must not promise a decryption check it never performs.</summary>
@@ -124,19 +123,18 @@ public sealed class RuleGuidanceTests
         var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
 
         Assert.Contains(
-            "every one it names has permission to read the attribute. For encrypted values, "
-                + "decryption permission is separate and is not established by this rule.",
+            "establishes neither individual-user authorization, password presence, decryption nor a completed path to Tier 0",
             guidance.About, StringComparison.Ordinal);
     }
 
     /// <summary>The action addresses the permission's scope without asserting password retrieval.</summary>
     [Fact]
-    public void LapsReadAdviceNamesTheAttributeScope()
+    public void LapsReadAdviceRetainsIndependentGrantAndUncapturedOriginCautions()
     {
         var guidance = Assert.IsType<RuleGuidance>(RuleGuidanceCatalogue.For("SEC-090"));
 
-        Assert.Contains("every attribute on the object rather than only this LAPS attribute",
-            guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("Review all recorded grants and membership routes", guidance.WhatToDo, StringComparison.Ordinal);
+        Assert.Contains("The originating container was not captured", guidance.WhatToDo, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -28,7 +28,7 @@ namespace SecureAD.Next.Tests.Judgement;
 /// <c>EvidenceKindCoverageTests</c>, which writes and reads this evidence kind through the store.
 /// </para>
 /// </remarks>
-public sealed class LapsPasswordReadAccessTests
+public sealed partial class LapsPasswordReadAccessTests
 {
     private static readonly DateTimeOffset Started = new(2026, 9, 3, 9, 0, 0, TimeSpan.Zero);
 
@@ -52,7 +52,7 @@ public sealed class LapsPasswordReadAccessTests
     [Fact]
     public void TheRuleTitleNamesPasswordAttributesRatherThanRetrievedPasswords()
     {
-        Assert.Equal("A broad principal can read LAPS password attributes",
+        Assert.Equal("Broad permissions on LAPS password attributes",
             new LapsPasswordReadAccess().Definition.Name);
     }
 
@@ -122,7 +122,7 @@ public sealed class LapsPasswordReadAccessTests
         var evidence = Assert.IsType<LapsPasswordReaderEvidence>(finding.Evidence);
 
         Assert.Equal(
-            ("SEC-090", 1, Severity.High, "Authenticated Users (S-1-5-11)", subject.ObjectGuid,
+            ("SEC-090", 2, Severity.High, "Authenticated Users (S-1-5-11)", subject.ObjectGuid,
                 Machine, attributeName, LapsReadRights.Both),
             (finding.RuleId, finding.RuleVersion, finding.Severity, finding.Subject.Key,
                 (Guid?)finding.ObjectGuid, finding.DistinguishedName, evidence.Attribute, evidence.Rights));
@@ -136,7 +136,7 @@ public sealed class LapsPasswordReadAccessTests
             [Allow(Delegated, ReadProperty | ControlAccess, EncryptedGuid) with { IsInherited = true }],
             Nested(Delegated, AuthenticatedUsers)));
 
-        Assert.Contains("The entry is inherited rather than set on this object;", finding.Detail,
+        Assert.Contains("The originating container was not captured", finding.Detail,
             StringComparison.Ordinal);
     }
 
@@ -272,7 +272,8 @@ public sealed class LapsPasswordReadAccessTests
             [Delegated, Intermediate, AuthenticatedUsers],
             evidence.MembershipPath.Select(s => s.Sid));
         Assert.Equal(2, evidence.NestingDepth);
-        Assert.Contains(Intermediate, finding.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain(Intermediate, finding.Detail, StringComparison.Ordinal);
+        Assert.Contains("Example permission holder:", finding.Detail, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -666,18 +667,19 @@ public sealed class LapsPasswordReadAccessTests
                     DescriptorAvailability.Read,
                     [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)]),
                 Nested(Delegated, AuthenticatedUsers),
-                schema: new SchemaGuidCatalog([])));
+                schema: new SchemaGuidCatalog(
+                    [new(UnrelatedGuid, "description", SchemaGuidKind.Attribute, SchemaGuidSource.Captured)])));
 
         Assert.Empty(verdict.Findings);
         Assert.Empty(verdict.Unresolved);
     }
 
     /// <summary>
-    /// A disabled computer account is not reported.
+    /// AD account disablement does not erase the stored directory permission exposure.
     /// </summary>
     [Fact]
-    public void ADisabledComputerIsNotReported() =>
-        Assert.Empty(Judge(
+    public void ADisabledComputerRetainsThePermissionReview() =>
+        Assert.Single(Judge(
             [Allow(Delegated, ReadProperty | ControlAccess, PasswordGuid)],
             Nested(Delegated, AuthenticatedUsers),
             userAccountControl: 4098));
@@ -878,6 +880,9 @@ public sealed class LapsPasswordReadAccessTests
             Permissions = permissions,
             MembersOfPrincipal = (sid, scope) => expand(sid, scope),
             SchemaGuids = schema ?? Schema(),
+            AttributeVisibility = new((schema ?? Schema()).Entries
+                .Where(entry => entry.Kind == SchemaGuidKind.Attribute)
+                .Select(entry => new AttributeVisibilityFact(entry.LdapName, 128, 0)).ToArray()),
         };
 
     /// <summary>
@@ -894,6 +899,8 @@ public sealed class LapsPasswordReadAccessTests
             SchemaGuidSource.Captured),
         new SchemaGuidEntry(
             LegacyGuid, "ms-Mcs-AdmPwd", SchemaGuidKind.Attribute, SchemaGuidSource.Captured),
+        new SchemaGuidEntry(
+            UnrelatedGuid, "syntheticUnrelatedAttribute", SchemaGuidKind.Attribute, SchemaGuidSource.Captured),
     ]);
 
     private static ObjectPermissions Permissions(
@@ -913,7 +920,7 @@ public sealed class LapsPasswordReadAccessTests
             completeness,
             DaclWasCanonical: true,
             IsDaclProtected: false,
-            entries,
+            entries.Select((entry, ordinal) => entry with { Ordinal = ordinal }).ToArray(),
             Errors: []);
 
     /// <summary>A judging of a computer whose descriptor was read and came back short.</summary>

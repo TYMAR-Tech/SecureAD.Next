@@ -36,7 +36,20 @@ public sealed partial class OpenedRunResultsTests
                 Assert.Equal(original.Findings.Count(finding => finding.RuleId == "SEC-071"), summary.AccountsWithFindings);
             }
         }
-        var expected = original.Findings.Select(finding => FindingDisplaySnapshot(new(finding))).ToArray();
+        var expected = original.Findings.Select(finding =>
+        {
+            var item = FindingListItem.FromFinding(finding);
+            item = item with
+            {
+                Detail = finding.RuleId switch
+                {
+                    "SEC-061" => BroadPreWindows2000Membership.Explanation,
+                    "SEC-062" => BroadAdministrativeGroupMembership.Explanation,
+                    _ => item.Detail,
+                },
+            };
+            return FindingDisplaySnapshot(new(item));
+        }).ToArray();
         var permissionHeaders = original.Findings.Any(finding => finding.Evidence is PrivilegedSidHistoryEvidence
             or ObjectOwnershipEvidence or ObjectTakeoverEvidence or LapsPasswordReaderEvidence or LapsDecryptorEvidence);
         using var counts = new FindingsVerificationCounts(directory);
@@ -48,7 +61,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Null(screen.Refusal);
         Assert.Null(screen.ViewRefusal);
         Assert.False(screen.IsLoading);
-        Assert.Equal(expected, screen.Findings.Select(FindingDisplaySnapshot));
+        Assert.Equal(string.Join("\n", expected), string.Join("\n", screen.Findings.Select(FindingDisplaySnapshot)));
         Assert.Equal(SavedPathText.Summary(summary), screen.Tier0SummaryText);
         Assert.Equal(original.Findings.Count == 0, screen.NothingWasFound);
         for (var index = 0; index < original.Findings.Count; index++)
@@ -70,7 +83,10 @@ public sealed partial class OpenedRunResultsTests
                 LapsDecryptorEvidence value => value.IsComplete,
                 _ => true,
             });
-            Assert.Equal(complete ? "Complete" : "May be incomplete", screen.Findings[index].Coverage);
+            var coverage = proof is CircularMembershipEvidence
+                ? complete ? "Cycle inventory: open details" : "May be incomplete; cycle inventory: open details"
+                : complete ? "Complete" : "May be incomplete";
+            Assert.Equal(coverage, screen.Findings[index].Coverage);
         }
         Assert.True(source.ReadRuleExecutions(directory).IsSuccess);
         Assert.True(source.ReadFindingsFilterValues(directory).IsSuccess);
@@ -548,7 +564,7 @@ public sealed partial class OpenedRunResultsTests
     {
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!;
         using var writer = JudgementWriter.Create(directory, seal.Hash, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
-        foreach (var group in findings.GroupBy(finding => finding.RuleId, StringComparer.Ordinal))
+        foreach (var group in findings.Select(RecordedLapsReadFinding.Bind).GroupBy(finding => finding.RuleId, StringComparer.Ordinal))
             writer.Write(RuleExecution.Judged(new(group.Key, "Recorded display fixture", group.First().Severity, group.First().RuleVersion,
                 ["computer"], ["userAccountControl"], []), group.Count(), 0, group.ToArray()));
         writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));

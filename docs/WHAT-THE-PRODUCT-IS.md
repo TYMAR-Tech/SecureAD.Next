@@ -1206,6 +1206,84 @@ that full review rather than treating clearer pop-outs as corrected calculations
 This does not authorize code changes, new measurements, password collection, endpoint access,
 changed saved results or re-judging the existing production run.
 
+**LAPS work resumed - owner direction, 2026-11-10.**
+After the SCOUT-05 checkpoint was committed and pushed, the owner requested tackling LAPS now
+rather than leaving that work deferred.
+Use the existing LAPS Scout entries and accepted specifications, re-verify current behavior, and
+present bounded corrections for approval rather than treating historical allegations as current
+defects or silently settling the comparison-time and separate-signal choices above.
+The commit/push request applies to the completed SCOUT-05 checkpoint, not later LAPS changes;
+new UI wording/layout and long verification retain their explicit approval boundaries, with no
+live access, password collection, owner-data re-judging or measurements implied.
+
+The owner approved the first bounded platform-classification correction after fresh SCOUT-04
+re-verification: require a usable server build or the existing explicit name fallback/Unknown,
+keep non-Windows or unidentified platforms Unknown, and preserve valid Windows client/server
+behavior, severity and thresholds.
+Change the existing basis label only from "build number" to "operating system version", with no
+layout redesign, and verify SEC-094 together with newly saved inventory while retaining historical
+answers without read-time reclassification.
+Platform eligibility is not proof of installed updates or active LAPS; permission analysis,
+expiry-reference/separate-signal choices and broader inventory-label changes remain later batches.
+The separately approved offline verification after implementation is estimated at 15-20 minutes,
+with a hard maximum of 25 minutes and eight minutes reserved for restoration, final rebuilding
+and cleanup; this approval does not include live work, owner data, commit or push.
+
+**SCOUT-09 calculation and saved-evidence correction - owner-approved 2026-11-10.**
+After 24 fresh synthetic observations, the owner approved replacing SEC-090's legacy calculation
+with captured class/property-set/attribute scope, actual confidentiality flags and ordered
+permission proof, retaining conditional and unproven deny applicability as unresolved.
+Do not suppress permission review because an AD computer account is disabled or unreadable,
+and require a usable target identity without inventing one.
+Preserve the three current password attributes, High severity, all captured computer scope and
+one finding per computer/broad identity, while saving independent holder/attribute exposures and
+separate descriptor, schema and membership limitations.
+Keep named-holder evidence distinct from individual-user authorization, password presence or
+retrieval, decryption, takeover and completed Tier-0 paths; the already-correct encrypted-value
+caveat remains, and an inherited-class marker must not be presented as an originating container.
+Prepare small saved summaries and requested supporting-grant pages instead of replaying analysis
+or loading every support on a click, without a visual redesign in this batch.
+The approved title is "Broad permissions on LAPS password attributes", with "Read permission
+established" / "Read permission unresolved" states and explicit incomplete-evidence,
+uncaptured-origin and remaining-independent-route cautions.
+The owner accepted the new saved-judgment-format consequence: older completed judgments need
+separately authorized re-judging before this build can read them, while original captures/results
+and prior binaries remain unchanged and no owner-data re-judging is performed here.
+The separately approved offline verification after implementation is estimated at 35-50 minutes,
+with a hard maximum of 60 minutes and ten minutes reserved for restoration, final rebuilding and
+cleanup; preserve pending SCOUT-04 work/evidence, with no live work, credential collection,
+measurements, commit or push.
+
+**SCOUT-14 inventory wording preview - owner-approved 2026-11-10.**
+The owner approved the LAPS inventory preview's wording and visual direction, retaining the existing
+count/filter/grid/selected-computer structure rather than redesigning the screen.
+Use "LAPS expiry evidence", "Captured values" and "Scope notes", with the five value-group labels
+"No expiry values", "Windows value only", "Legacy value only", "Both expiry values" and
+"Platform review" consistently in counts, filters, rows and selected context.
+Show "No value captured", "Zero (no usable date)" and "Unusable value" distinctly, retaining usable
+UTC dates and the original values without asserting a reset request or an epoch-age outage.
+The approved caption is "Captured expiry values do not prove active LAPS management or completed
+migration. Scope notes describe exclusions or uncertainty, not completed assessment.", and value
+presence alone must not receive a healthy/unhealthy verdict.
+This approves the preview, not application implementation or the separate bounded timestamp-quality
+and saved-result-format correction; SCOUT-13's comparison-time/separate-signal decisions remain
+deferred, with no live work, owner-data re-judging, commit or push.
+
+After approving the preview, the owner separately approved the bounded SCOUT-14 application
+correction: distinguish no captured value, usable date, zero and unusable input while retaining
+originals, and keep an assessment explicitly incomplete where a bad value prevents its answer
+rather than publishing a complete empty result or an unsupported legacy-only finding.
+Preserve independently established answers, existing exclusions, severities, the 24-hour grace and
+SCOUT-13's current comparison-time/combined-signal behavior.
+Apply the approved value-group wording and neutral presence styling consistently across counts,
+filters, rows and selected details, retain the existing layout and bounded paging, and replace the
+scope-only code flag's misleading name without adding a displayed judged-status claim.
+The owner accepted a new saved-judgment format for this changed interpretation: older completed
+judgments require separately authorized re-judging, while captures, previous results/binaries and
+the verified SCOUT-04/09 work remain preserved.
+Implementation and short focused checks are approved; long verification needs its own warning,
+estimate and approval, with no live access, password collection, commit or push.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

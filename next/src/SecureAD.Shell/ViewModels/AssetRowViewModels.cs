@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
+using SecureAD.Shell.Services;
 using SecureAD.Kernel.Naming;
 
 namespace SecureAD.Shell.ViewModels;
@@ -440,31 +441,13 @@ internal sealed class LapsComputerViewModel
     /// <summary>The full name, for an operator who needs to find the object.</summary>
     public string DistinguishedName => _computer.DistinguishedName;
 
-    /// <summary>What the directory shows about its password management.</summary>
-    public string Management => _computer.Management switch
-    {
-        LapsManagement.WindowsLaps => "Windows LAPS",
-        LapsManagement.LegacyLaps => "Legacy LAPS",
-        LapsManagement.Migrated => "Migrated",
-        LapsManagement.Unexpected => "Unexpected",
-        _ => "Not managed",
-    };
+    /// <summary>Which expiration values were captured, not whether management is active.</summary>
+    public string ValuePresence => LapsInventoryText.Label(_computer.ValuePresence);
 
     /// <summary>
     /// How that reads as a state a view can colour.
     /// </summary>
-    /// <remarks>
-    /// <b>Unexpected is not established-bad.</b> The machine is managed and there is no exposure -
-    /// what is wrong is that Microsoft says the combination cannot occur, which is a fact about the
-    /// forest rather than a risk. <see cref="FactState.NotEstablished"/> is the honest mark: the
-    /// product cannot say what is going on.
-    /// </remarks>
-    public FactState State => _computer.Management switch
-    {
-        LapsManagement.WindowsLaps or LapsManagement.Migrated => FactState.EstablishedGood,
-        LapsManagement.NotManaged => FactState.EstablishedBad,
-        _ => FactState.NotEstablished,
-    };
+    public FactState State => FactState.NotEstablished;
 
     /// <summary>The operating system, or a statement that none was captured.</summary>
     public string OperatingSystem => _computer.OperatingSystem ?? "Not captured";
@@ -487,16 +470,18 @@ internal sealed class LapsComputerViewModel
     /// </remarks>
     public string CapabilityBasis => _computer.Capability.Basis switch
     {
-        LapsCapabilityBasis.OperatingSystemVersion => "build number",
+        LapsCapabilityBasis.OperatingSystemVersion => "operating system version",
         LapsCapabilityBasis.OperatingSystemName => "operating system name",
         _ => "nothing to read",
     };
 
     /// <summary>When Windows LAPS next expects to rotate, or why there is no date.</summary>
     public string WindowsLapsExpiry => Expiry(_computer.WindowsLaps);
+    public bool HasUnusableWindowsExpiry => _computer.WindowsLaps.Reading is LapsTimestampReading.Zero or LapsTimestampReading.Unreadable;
 
     /// <summary>When legacy LAPS next expected to rotate, or why there is no date.</summary>
     public string LegacyLapsExpiry => Expiry(_computer.LegacyLaps);
+    public bool HasUnusableLegacyExpiry => _computer.LegacyLaps.Reading is LapsTimestampReading.Zero or LapsTimestampReading.Unreadable;
 
     /// <summary>Whether this is a domain controller, which both LAPS rules leave alone.</summary>
     public bool IsDomainController => _computer.DomainController.IsDomainController;
@@ -513,30 +498,28 @@ internal sealed class LapsComputerViewModel
     /// never captured, and the first <c>ad.lab</c> run turned two excluded machines into findings
     /// precisely because there was nowhere else for them to appear.
     /// </remarks>
-    public string NotJudgedBecause =>
+    public string ScopeNotes =>
         _computer.AccountState is LapsAttributes.AccountState.Unknown
             ? LapsInventoryText.Get(IsDomainController ? "ControllerAccountUnknown" : "AccountUnknown")
         : IsDomainController && IsDisabled ? "Domain controller, disabled"
         : IsDomainController ? "Domain controller"
-        : IsDisabled ? "Disabled"
+        : IsDisabled ? LapsInventoryText.Get("ScopeDisabled")
         : string.Empty;
 
     /// <summary>Whether either rule is in scope for this machine.</summary>
-    public bool IsJudged => _computer.IsJudged;
+    public bool IsInRuleScope => _computer.IsInRuleScope;
 
     /// <summary>
     /// Reads one timestamp for showing, keeping absent and unreadable apart.
     /// </summary>
-    /// <remarks>
-    /// <b>An unreadable value is not shown as an absent one.</b> A machine whose timestamp is
-    /// present but undecodable is managed, and a blank cell would say the opposite.
-    /// </remarks>
     private static string Expiry(StoredLapsTimestamp timestamp) => timestamp.Reading switch
     {
         LapsTimestampReading.Present =>
             timestamp.ExpiresUtc!.Value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-        LapsTimestampReading.Unreadable => "Present, unreadable",
-        _ => string.Empty,
+        LapsTimestampReading.Zero => LapsInventoryText.Get("ExpiryZero"),
+        LapsTimestampReading.Unreadable => LapsInventoryText.Get("ExpiryUnusable"),
+        LapsTimestampReading.Absent => LapsInventoryText.Get("ExpiryNone"),
+        _ => throw new System.IO.InvalidDataException("The saved expiry reading is not recognized."),
     };
 }
 
@@ -553,27 +536,20 @@ internal sealed class LapsCountViewModel
     /// <summary>Creates one count.</summary>
     /// <param name="state">The state being counted.</param>
     /// <param name="count">How many computers are in it.</param>
-    public LapsCountViewModel(LapsManagement state, int count)
+    public LapsCountViewModel(LapsValuePresence state, int count)
     {
         State = state;
         Count = count;
     }
 
     /// <summary>The state being counted.</summary>
-    public LapsManagement State { get; }
+    public LapsValuePresence State { get; }
 
     /// <summary>How many computers are in it.</summary>
     public int Count { get; }
 
     /// <summary>The state in the words an operator reads.</summary>
-    public string Label => State switch
-    {
-        LapsManagement.WindowsLaps => "Windows LAPS",
-        LapsManagement.LegacyLaps => "Legacy LAPS",
-        LapsManagement.Migrated => "Migrated",
-        LapsManagement.Unexpected => "Unexpected",
-        _ => "Not managed",
-    };
+    public string Label => LapsInventoryText.Label(State);
 }
 
 /// <summary>
@@ -709,7 +685,7 @@ internal sealed class RuleRowViewModel
                 $"Judged {_execution.ObjectsJudged:N0} objects and reported nothing.",
             RuleExecutionOutcome.Indeterminate =>
                 $"Could not judge {_execution.ObjectsNotJudged:N0} of the objects it was offered, "
-                + $"because {MissingNamed} was not captured. What it reports is a floor, not a "
+                + $"because {UndecidedReason} What it reports is a floor, not a "
                 + "total.",
             RuleExecutionOutcome.Error =>
                 "This rule failed while running, so nothing has been established either way. "
@@ -738,6 +714,11 @@ internal sealed class RuleRowViewModel
     private string MissingNamed => _execution is { MissingInputs.Count: > 0 }
         ? string.Join(", ", _execution.MissingInputs.Select(m => m.Attribute).Distinct())
         : "an input it declared";
+
+    private string UndecidedReason => _execution is { MissingInputs.Count: > 0 }
+        && _execution.MissingInputs.Any(input => input.Attribute.StartsWith(CapturedInputIssue.TokenPrefix, StringComparison.Ordinal))
+            ? string.Join("; ", _execution.MissingInputs.Select(input => UnresolvedWording.For(input.Attribute).TrimEnd('.')).Distinct()) + "."
+            : MissingNamed + " was not captured.";
 }
 
 internal sealed record RuleInputViewModel(string Label, string Attribute);
