@@ -1038,6 +1038,27 @@ of 20 minutes including final correct-source rebuild, affected checks and cleanu
 Stop starting faults with eight minutes reserved and retain partial qualification rather than
 extending the window; no earlier verification campaign is repeated.
 
+**Re-verify Scout issues before correcting them - owner direction, 2026-11-09.**
+After the non-LAPS finding-wording pass and SEC-060 checkpoint, the owner requested working through
+the existing Scout list, checking whether each issue still exists and correcting only what remains
+a genuine issue.
+Use bounded corrections rather than treating historical allegations as current defects or reopening
+the completed presentation campaigns; LAPS remains deferred and new product/UI decisions retain
+their explicit approval boundary.
+SCOUT-02 was freshly reproduced in all seven named rules at `0b26259`, and the owner approved
+correcting that item alone: otherwise positive subjects with missing/all-zero object identifiers
+must use the existing incomplete-assessment outcome rather than a complete empty verdict or an
+invented identity, preserving genuine negatives, exclusions, valid findings and saved execution
+counts.
+No finding wording/layout, severity, saved-format, LAPS, other Scout, commit or push changes are
+approved by this bounded correction; short focused checks precede any separately approved long
+verification.
+After the 153-pass focused SCOUT-02 checkpoint, the owner separately approved final qualification
+of all 60 new cases against three rebuilt isolated faults, estimated at 10-15 minutes with a hard
+maximum of 20 minutes including final correct-source rebuild, affected checks and cleanup.
+Stop starting faults with eight minutes reserved and retain partial qualification rather than
+extending that window.
+
 **SEC-061/062 presentation direction only - owner-approved 2026-11-08.**
 While testing SEC-052, the owner explicitly approved the prepared SEC-061/062 presentation
 direction only, not application implementation or tests.

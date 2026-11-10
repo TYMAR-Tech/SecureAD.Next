@@ -97,8 +97,8 @@ public sealed class PrivilegedSidHistory : IObjectRule
                 : RuleVerdict.CouldNotJudge(["sIDHistory"]);
         }
 
-        if (subject.ObjectGuid is not { } objectGuid)
-            return RuleVerdict.Judged([]);
+        if (subject.ObjectGuid is not { } objectGuid || objectGuid == Guid.Empty)
+            return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         // A privileged identifier was found, so the finding is true whether or not every other value
         // was readable - and reporting it beside the count of what could not be read tells an

@@ -62,9 +62,6 @@ internal static class UnsecureAccountFlagRules
         if (missing.Length > 0)
             return RuleVerdict.CouldNotJudge(missing);
 
-        if (subject.ObjectGuid is not { } objectGuid)
-            return RuleVerdict.Judged([]);
-
         if (AttributeReading.UnsignedInteger(subject, "userAccountControl") is not { } control)
             return RuleVerdict.CouldNotJudge(["userAccountControl"]);
 
@@ -80,6 +77,9 @@ internal static class UnsecureAccountFlagRules
         // conventions and this is the directory's own statement about what the object is.
         if (excludeTrustAccounts && (control & InterdomainTrustAccount) != 0)
             return RuleVerdict.Judged([]);
+
+        if (subject.ObjectGuid is not { } objectGuid || objectGuid == Guid.Empty)
+            return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
         var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
