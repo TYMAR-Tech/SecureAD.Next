@@ -78,6 +78,9 @@ internal sealed record GpoComputerApplicability(Guid CaptureGenerationId, string
     GpoConditionalApplicability Conditional,
     GpoApplicabilityState PolicyState, GpoApplicabilityState State, ImmutableArray<AuditError> Limitations);
 
+internal sealed record GpoComputerInputs(GpoLinkHierarchy Hierarchy,
+    ImmutableArray<GpoComputerApplicability> Policies);
+
 internal sealed class GpoComputerApplicabilityReader : IDisposable
 {
     private readonly ProtectedRunFiles _files;
@@ -124,6 +127,31 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         token.ThrowIfCancellationRequested();
         var hierarchy = _hierarchy.Read(computer, token);
+        return Assess(hierarchy, policy, token);
+    }
+
+    internal Result<GpoComputerInputs> ReadComputer(CapturedObjectIdentity computer, CancellationToken token)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        token.ThrowIfCancellationRequested();
+        var hierarchy = _hierarchy.Read(computer, token);
+        var results = ImmutableArray.CreateBuilder<GpoComputerApplicability>();
+        foreach (var policy in hierarchy.Links.Where(link => link.State != GpoLinkHierarchyState.Excluded && link.Policy is not null)
+            .Select(link => link.Policy!).DistinctBy(policy => policy.ObjectId))
+        {
+            token.ThrowIfCancellationRequested();
+            var read = Assess(hierarchy, policy, token);
+            if (!read.IsSuccess) return Result<GpoComputerInputs>.Failure(read.Error);
+            results.Add(read.Value);
+        }
+        RequireCurrent();
+        return new GpoComputerInputs(hierarchy, results.ToImmutable());
+    }
+
+    private Result<GpoComputerApplicability> Assess(GpoLinkHierarchy hierarchy, CapturedObjectIdentity policy,
+        CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
         var security = _security.Assess(hierarchy.Computer, policy, token);
         var captured = Bundle.ReadGpoProtocolInputs(security.Policy, token);
         RequireCurrent();
@@ -196,7 +224,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         }
     }
 
-    private void RequireCurrent()
+    internal void RequireCurrent()
     {
         _hierarchy.RequireCurrent();
         _security.RequireCurrent();

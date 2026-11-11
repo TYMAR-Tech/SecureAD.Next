@@ -166,7 +166,7 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
         if (match.Ambiguous || match.ObjectId is null)
             return Missing("GpoHierarchyContainerUnavailable", "The ancestor container is absent or ambiguous in this capture.");
         var identity = Bundle.ReadObjectIdentity(dn)!;
-        var values = Bundle.ReadObjectAttributesAt(identity, ["objectClass", "gPLink", "gPOptions"]).Snapshot();
+        var values = Bundle.ReadObjectAttributesAt(identity, ["objectClass", "objectSid", "gPLink", "gPOptions"]).Snapshot();
         identity = GpoCapturedIdentity.Normalize(identity, values);
         var expected = kind == GpoLinkContainerKind.Domain ? "domainDNS" : "organizationalUnit";
         if (identity.ObjectGuid is null || identity.ObjectGuid == Guid.Empty || !Same(identity.ObjectClass, expected)

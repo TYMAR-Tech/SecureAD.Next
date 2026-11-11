@@ -6,6 +6,7 @@ using SecureAD.Evidence.Run;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Schema;
 using SecureAD.Kernel.Security;
+using SecureAD.Kernel.GroupPolicy;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Judgement;
@@ -63,6 +64,7 @@ internal static class GpoSecurityRun
         internal IReadOnlyList<EvidenceAttribute> PolicyAttributes { get; init; } = [];
         internal (string Path, GpoTemplateVersionObservation Observation)? TemplateVersion { get; init; }
         internal IReadOnlyList<OtherObject> OtherObjects { get; init; } = [];
+        internal IReadOnlyList<(Guid Guid, string Path, GpoRegistrySettings Settings)> RegistryPolicies { get; init; } = [];
     }
 
     internal static string Build(Options options)
@@ -120,12 +122,30 @@ internal static class GpoSecurityRun
                 var id = writer.WriteObject(new(InChild(row.Dn) ? child : parent, row.Dn, row.Guid, row.Attributes, Captured));
                 if (row.PolicyPermissions) WritePermissions(writer, id, row.Guid, options);
             }
+            var policyCoverage = new List<GpoCoverage>();
+            foreach (var (guid, path, registry) in options.RegistryPolicies)
+            {
+                for (var index = 0; index < registry.Settings.Count; index++)
+                {
+                    var setting = registry.Settings[index];
+                    writer.WriteGpoRegistrySetting(guid, index, GpoSettingScope.Machine,
+                        setting.KeyPath, setting.ValueName, setting.RegistryType, setting.Data);
+                }
+                for (var index = 0; index < registry.ParseErrors.Count; index++)
+                    writer.WriteGpoFileError(guid, index, @"Machine\Registry.pol", registry.ParseErrors[index]);
+                if (registry.Outcome == GpoSettingsOutcome.Read)
+                    policyCoverage.Add(GpoCoverage.Read(guid, "Synthetic policy", path));
+                else if (registry.Outcome == GpoSettingsOutcome.PartiallyRead)
+                    policyCoverage.Add(GpoCoverage.PartiallyRead(guid, "Synthetic policy", path, registry.Reason!));
+                else if (registry.Outcome == GpoSettingsOutcome.Unreadable)
+                    policyCoverage.Add(GpoCoverage.Unreadable(guid, "Synthetic policy", path, registry.Reason!));
+            }
             writer.Complete(RunCoverage.Of(CoverageId.ForDomains("example.test", ["example.test", "child.example.test"]),
                 [DomainCoverage.Read("example.test"), DomainCoverage.Read("child.example.test")],
                 [
                     ForestPartitionCoverage.Read("CN=Configuration," + Parent, NamingContextKind.Configuration),
                     ForestPartitionCoverage.Read("CN=Schema,CN=Configuration," + Parent, NamingContextKind.Schema),
-                ], SysvolCoverage.Of([])), Captured.AddMinutes(1));
+                ], SysvolCoverage.Of(policyCoverage)), Captured.AddMinutes(1));
         }
         if (options.Derive) Derive(directory);
         return directory;

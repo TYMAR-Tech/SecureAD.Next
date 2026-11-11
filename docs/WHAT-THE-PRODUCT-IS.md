@@ -1438,6 +1438,28 @@ After verification-tooling recovery consumed that window, the owner separately a
 additional minutes with the same twelve-minute reserve; the run stopped at the original reserve
 while awaiting that decision, and the inactive owner-decision pause was recorded separately.
 
+**Per-computer LAPS setting precedence - owner-approved 2026-11-11.**
+The owner approved a backend-only calculation resolving BackupDirectory, ADPasswordEncryptionEnabled,
+ADPasswordEncryptionPrincipal and ADBackupDSRMPassword separately across the captured ordered GPO
+instructions, including explicit deletions, with each source policy/instruction and condition retained.
+Reuse shared applicability, registry interpretation and computer/filter condition identities rather
+than competing per-rule calculations or an enumeration of every possible policy combination.
+Identify Microsoft's documented defaults as defaults, not policy-supplied values, and keep DSRM
+decryption separate: recovery passwords use Domain Admins in the DC's domain, ignoring the custom
+ADPasswordEncryptionPrincipal.
+Separate the result for known captured domain/OU policies from the whole-computer conclusion;
+unresolved site scope, unavailable policies or unsupported inputs must prevent unjustified definite
+answers without discarding useful known results.
+This result concerns the Group Policy root only, not a merge with CSP/local roots, proof of client
+processing, credential access, takeover or a completed Tier 0 path.
+Implementation and short synthetic/offline checks are approved; longer verification requires a
+separate warning, duration estimate and explicit approval.
+No automatic WMI matching, saved-result/format or finding adoption, UI changes, live access,
+recapture, owner-data re-judging, production budgets, commit or push is authorized.
+After 377 focused cases passed, the owner separately approved isolated rebuilt-fault verification:
+an estimated 35-50 minutes, with a hard maximum of 60 minutes including twelve reserved for
+restoration, final correct-source rebuilding and cleanup; no full suite is approved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

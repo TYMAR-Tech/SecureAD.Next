@@ -1274,6 +1274,27 @@ partial-settings caution, and retain separate saved capture/interpretation/membe
 Judgment format 82 and rule version 2 refuse older completed interpretations without migration or
 deleting original results; captures remain unchanged and owner-data re-judging needs separate approval.
 
+**Per-computer LAPS setting precedence - owner-approved 2026-11-11.**
+Resolve the four approved settings independently across the captured ordered domain/OU registry
+instructions, preserving each source policy, original link occurrence, original instruction and
+capture/resource/derivation binding; an explicit deletion differs from an untouched setting.
+Use one shared registry instruction decoder for single-policy interpretation and cross-policy replay,
+including conditional writes, subtree deletion and explicit unsupported-input limits.
+The registry extension must be established from a qualified captured machine-extension declaration,
+not inferred from a captured file or the deliberately permissive capture heuristic.
+Reuse one hypothetical condition per captured computer/filter and retain correlated conditional
+results without enumerating every cross-policy combination; unread or unsupported required inputs
+remain open influence rather than exclusions or invented successful processing.
+Keep the ordered captured-policy projection separate from a whole-computer answer: unresolved site,
+hierarchy or additional-policy scope prevents an unsupported definite result.
+Apply [Microsoft's documented LAPS defaults and governing settings](https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings)
+without mixing CSP/local/legacy roots or claiming that the Group Policy root is the device's active
+policy mechanism; defaults are defaults conditional on selection of that root, not policy-supplied values.
+DSRM's decryptor is always Domain Admins in the DC's domain rather than the custom decryptor setting,
+and requested backup/encryption/recovery configuration is not proof of client processing, domain
+functional-level prerequisites, stored-password access, takeover or completed Tier 0 reachability.
+This slice changes no saved result format, finding adoption, UI, production budget or live-access authorization.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

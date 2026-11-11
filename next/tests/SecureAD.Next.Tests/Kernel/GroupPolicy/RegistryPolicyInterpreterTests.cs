@@ -131,4 +131,37 @@ public sealed class RegistryPolicyInterpreterTests
 
     internal static RegistryPolicyEntry Entry(string key, string name, string text) =>
         new(key, name, (uint)RegistryValueType.String, Encoding.Unicode.GetBytes(text + "\0"));
+
+    [Fact]
+    public void RegistryInstructionDecoderExpandsListsWithoutChangingOriginalSourceOrEntryPositions()
+    {
+        var source = Entry(Key, "**DeleteValues", "First;Second");
+        var keyDelete = Entry("Software", "**DeleteKeys", "One;Two");
+        var instructions = RegistryPolicyInterpreter.ReadInstructions([source, keyDelete]);
+        Assert.Equal(4, instructions.Count);
+        Assert.Equal([0, 0, 1, 1], instructions.Select(instruction => instruction.EntryIndex));
+        Assert.Equal(["First", "Second"], instructions.Take(2).Select(instruction => instruction.ValueName));
+        Assert.Equal([@"Software\One", @"Software\Two"], instructions.Skip(2).Select(instruction => instruction.KeyPath));
+        Assert.All(instructions.Take(2), instruction => Assert.Same(source, instruction.Source));
+        Assert.All(instructions.Skip(2), instruction => Assert.Same(keyDelete, instruction.Source));
+        Assert.All(instructions.Take(2), instruction => Assert.Equal(RegistryPolicyInstructionKind.DeleteValue, instruction.Kind));
+        Assert.All(instructions.Skip(2), instruction => Assert.Equal(RegistryPolicyInstructionKind.DeleteKey, instruction.Kind));
+    }
+
+    [Fact]
+    public void RegistryInstructionScopeSeparatesValuesKeyClearsSubtreesAndSecurityOnlyOperations()
+    {
+        RegistryPolicyEntry[] entries =
+        [
+            Entry(Key, "Other", "value"), Entry(Key, "**DelVals.", " "),
+            Entry(@"Software\Microsoft\Windows\CurrentVersion\Policies", "**DeleteKeys", "LAPS"),
+            new(Key, "**SecureKey", (uint)RegistryValueType.Dword, [1, 0, 0, 0]),
+        ];
+        var instructions = RegistryPolicyInterpreter.ReadInstructions(entries);
+        Assert.False(instructions[0].Affects(Key, Name));
+        Assert.True(instructions[1].Affects(Key, Name));
+        Assert.True(instructions[2].Affects(Key, Name));
+        Assert.False(instructions[2].Affects(Key + "Other", Name));
+        Assert.False(instructions[3].Affects(Key, Name));
+    }
 }

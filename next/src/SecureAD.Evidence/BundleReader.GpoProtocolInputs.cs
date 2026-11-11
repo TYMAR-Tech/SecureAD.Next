@@ -10,7 +10,7 @@ public sealed partial class BundleReader
     {
         token.ThrowIfCancellationRequested();
         var values = ReadObjectAttributesAt(policy,
-            ["objectClass", "gPCFileSysPath", "gPCFunctionalityVersion", "versionNumber", "flags"]).Snapshot();
+            ["objectClass", "gPCFileSysPath", "gPCFunctionalityVersion", "versionNumber", "flags", "gPCMachineExtensionNames"]).Snapshot();
         policy = policy with
         {
             DistinguishedName = values.DistinguishedName, ObjectGuid = values.ObjectGuid,

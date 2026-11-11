@@ -6,6 +6,34 @@ namespace SecureAD.Kernel.GroupPolicy;
 public sealed record RegistryPolicyValue(int EntryIndex, string KeyPath, string ValueName, RegistryPolicyEntry Source);
 public sealed record RegistryPolicyIssue(int EntryIndex, string KeyPath, string ValueName, string Reason);
 
+public enum RegistryPolicyInstructionKind
+{
+    Unsupported,
+    SetValue,
+    SetIfAbsent,
+    DeleteValue,
+    ClearValues,
+    DeleteKey,
+    KeySecurity,
+}
+
+public sealed record RegistryPolicyInstruction(int EntryIndex, RegistryPolicyEntry Source,
+    RegistryPolicyInstructionKind Kind, string KeyPath, string? ValueName, string? Reason)
+{
+    public bool Affects(string key, string name) => Kind switch
+    {
+        RegistryPolicyInstructionKind.SetValue or RegistryPolicyInstructionKind.SetIfAbsent
+            or RegistryPolicyInstructionKind.DeleteValue =>
+            string.Equals(KeyPath, key, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(ValueName, name, StringComparison.OrdinalIgnoreCase),
+        RegistryPolicyInstructionKind.ClearValues => string.Equals(KeyPath, key, StringComparison.OrdinalIgnoreCase),
+        RegistryPolicyInstructionKind.DeleteKey or RegistryPolicyInstructionKind.Unsupported =>
+            RegistryPolicyInterpreter.Within(key, KeyPath),
+        RegistryPolicyInstructionKind.KeySecurity => false,
+        _ => throw new InvalidDataException("The registry instruction kind is invalid."),
+    };
+}
+
 public sealed record RegistryPolicyEvaluation(
     IReadOnlyList<RegistryPolicyValue> Values, IReadOnlyList<RegistryPolicyIssue> Issues)
 {
@@ -29,85 +57,101 @@ public static class RegistryPolicyInterpreter
         var cleared = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var deleted = new List<string>();
         var issues = new List<RegistryPolicyIssue>();
+        foreach (var instruction in ReadInstructions(entries))
+        {
+            var entry = instruction.Source;
+            if (!keys.TryGetValue(instruction.KeyPath, out var values))
+                keys.Add(instruction.KeyPath, values = new(StringComparer.OrdinalIgnoreCase));
+            if (instruction.Kind == RegistryPolicyInstructionKind.SetIfAbsent)
+            {
+                var target = instruction.ValueName!;
+                if (values.ContainsKey(target)) continue;
+                var knownAbsent = cleared.Contains(instruction.KeyPath)
+                    || deleted.Any(key => Within(instruction.KeyPath, key))
+                    || absent.TryGetValue(instruction.KeyPath, out var names) && names.Contains(target);
+                Set(target);
+                if (!knownAbsent) Limit("This conditional write depends on pre-existing client registry state.");
+            }
+            else if (instruction.Kind == RegistryPolicyInstructionKind.SetValue) Set(instruction.ValueName!);
+            else if (instruction.Kind == RegistryPolicyInstructionKind.DeleteValue)
+            {
+                values.Remove(instruction.ValueName!);
+                if (!absent.TryGetValue(instruction.KeyPath, out var names))
+                    absent.Add(instruction.KeyPath, names = new(StringComparer.OrdinalIgnoreCase));
+                names.Add(instruction.ValueName!);
+            }
+            else if (instruction.Kind == RegistryPolicyInstructionKind.ClearValues)
+            {
+                values.Clear();
+                cleared.Add(instruction.KeyPath);
+            }
+            else if (instruction.Kind == RegistryPolicyInstructionKind.DeleteKey)
+            {
+                foreach (var key in keys.Keys.Where(key => Within(key, instruction.KeyPath)).ToArray()) keys.Remove(key);
+                deleted.Add(instruction.KeyPath);
+            }
+            else if (instruction.Kind == RegistryPolicyInstructionKind.Unsupported) Limit(instruction.Reason!);
+            else if (instruction.Kind != RegistryPolicyInstructionKind.KeySecurity)
+                throw new InvalidDataException("The registry instruction kind is invalid.");
+
+            void Set(string target) => values[target] = new(instruction.EntryIndex, instruction.KeyPath, target, entry);
+            void Limit(string reason) => issues.Add(new(instruction.EntryIndex, entry.KeyPath, entry.ValueName, reason));
+        }
+        return new(keys.Values.SelectMany(values => values.Values).OrderBy(value => value.EntryIndex).ToArray(),
+            issues.ToArray());
+    }
+
+    public static IReadOnlyList<RegistryPolicyInstruction> ReadInstructions(IReadOnlyList<RegistryPolicyEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        var result = new List<RegistryPolicyInstruction>();
         for (var index = 0; index < entries.Count; index++)
         {
             var entry = entries[index];
             var name = entry.ValueName;
-            if (!keys.TryGetValue(entry.KeyPath, out var values))
-                keys.Add(entry.KeyPath, values = new(StringComparer.OrdinalIgnoreCase));
-            if (!name.StartsWith("**", StringComparison.Ordinal))
+            if (!name.StartsWith("**", StringComparison.Ordinal)) Add(RegistryPolicyInstructionKind.SetValue, name);
+            else if (name.StartsWith("**soft.", StringComparison.OrdinalIgnoreCase))
+                Add(RegistryPolicyInstructionKind.SetIfAbsent, name[7..]);
+            else if (Same(name, "**SecureKey"))
             {
-                Set(name);
-                continue;
+                if (entry.ValueType == RegistryValueType.Dword && entry.Data.Length == sizeof(uint))
+                    Add(RegistryPolicyInstructionKind.KeySecurity, null);
+                else Limit("The key-security operation does not contain one DWORD.");
             }
-            if (name.StartsWith("**soft.", StringComparison.OrdinalIgnoreCase))
-            {
-                var target = name[7..];
-                if (values.ContainsKey(target)) continue;
-                var knownAbsent = cleared.Contains(entry.KeyPath)
-                    || deleted.Any(key => Within(entry.KeyPath, key))
-                    || absent.TryGetValue(entry.KeyPath, out var names) && names.Contains(target);
-                Set(target);
-                if (!knownAbsent) Limit("This conditional write depends on pre-existing client registry state.");
-                continue;
-            }
-            if (Same(name, "**SecureKey"))
-            {
-                if (entry.ValueType != RegistryValueType.Dword || entry.Data.Length != sizeof(uint))
-                    Limit("The key-security operation does not contain one DWORD.");
-                continue;
-            }
-            if (!TryReadString(entry, out var text))
-            {
+            else if (!TryReadString(entry, out var text))
                 Limit("The special operation does not contain a qualified null-terminated REG_SZ value.");
-                continue;
-            }
-            if (name.StartsWith("**Del.", StringComparison.OrdinalIgnoreCase))
+            else if (name.StartsWith("**Del.", StringComparison.OrdinalIgnoreCase))
             {
-                if (text != " ") { Limit("A single-value deletion requires the documented single-space data."); continue; }
-                Remove(name[6..]);
+                if (text == " ") Add(RegistryPolicyInstructionKind.DeleteValue, name[6..]);
+                else Limit("A single-value deletion requires the documented single-space data.");
             }
             // MS-GPREG 3.2.5.1.2 requires the period; the older overview omits it.
             else if (Same(name, "**DelVals."))
             {
-                if (text != " ") { Limit("An all-values deletion requires the documented single-space data."); continue; }
-                values.Clear();
-                cleared.Add(entry.KeyPath);
+                if (text == " ") Add(RegistryPolicyInstructionKind.ClearValues, null);
+                else Limit("An all-values deletion requires the documented single-space data.");
             }
             else if (Same(name, "**DeleteValues") || Same(name, "**DeleteKeys"))
             {
                 var names = text.Split(';');
                 if (names.Any(string.IsNullOrEmpty)
                     || Same(name, "**DeleteKeys") && names.Any(part => part.Contains('\\')))
-                {
                     Limit("The deletion list does not contain qualified nonempty immediate names.");
-                    continue;
-                }
-                foreach (var target in names)
+                else foreach (var target in names)
                 {
-                    if (Same(name, "**DeleteValues")) Remove(target);
-                    else
-                    {
-                        var path = entry.KeyPath.Length == 0 ? target : entry.KeyPath + "\\" + target;
-                        foreach (var key in keys.Keys.Where(key => Within(key, path)).ToArray()) keys.Remove(key);
-                        deleted.Add(path);
-                    }
+                    if (Same(name, "**DeleteValues")) Add(RegistryPolicyInstructionKind.DeleteValue, target);
+                    else result.Add(new(index, entry, RegistryPolicyInstructionKind.DeleteKey,
+                        entry.KeyPath.Length == 0 ? target : entry.KeyPath + "\\" + target, null, null));
                 }
             }
             else Limit("This special registry-policy operation is not qualified.");
 
-            void Set(string target) => values[target] = new(index, entry.KeyPath, target, entry);
-            void Remove(string target)
-            {
-                values.Remove(target);
-                if (!absent.TryGetValue(entry.KeyPath, out var names))
-                    absent.Add(entry.KeyPath, names = new(StringComparer.OrdinalIgnoreCase));
-                names.Add(target);
-            }
-            void Limit(string reason) => issues.Add(new(index, entry.KeyPath, entry.ValueName, reason));
+            void Add(RegistryPolicyInstructionKind kind, string? value) =>
+                result.Add(new(index, entry, kind, entry.KeyPath, value, null));
+            void Limit(string reason) =>
+                result.Add(new(index, entry, RegistryPolicyInstructionKind.Unsupported, entry.KeyPath, null, reason));
         }
-        return new(keys.Values.SelectMany(values => values.Values).OrderBy(value => value.EntryIndex).ToArray(),
-            issues.ToArray());
+        return result;
     }
 
     public static bool TryReadString(RegistryPolicyEntry entry, [NotNullWhen(true)] out string? text)
