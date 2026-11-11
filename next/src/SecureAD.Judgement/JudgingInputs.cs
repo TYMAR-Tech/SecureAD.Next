@@ -73,11 +73,26 @@ internal sealed class JudgingInputs : IDisposable
             : Result<JudgingInputs>.Failure(opened.Error);
     }
 
-    internal Result<DerivationReader> OpenDerivation()
+    internal Result<DerivationReader> OpenDerivation() => OpenDerivationCore(true);
+
+    internal Result<DerivationReader> OpenMembershipDerivation() => OpenDerivationCore(false);
+
+    private Result<DerivationReader> OpenDerivationCore(bool readFacts)
     {
         CheckLifetime();
         if (_derivation is not null)
         {
+            RequireCurrent();
+            try
+            {
+                if (readFacts && _facts is null) _facts = Freeze(_derivation.Read());
+            }
+            catch (Exception error) when (error is SqliteException or FormatException or ArgumentException or InvalidOperationException)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                return Result<DerivationReader>.Failure(AuditError.Create(ErrorCategory.Evidence, "DerivationUnreadable",
+                    ErrorSeverity.Failed, $"The verified derivation could not be read: {error.Message}", Directory));
+            }
             RequireCurrent();
             return _derivation;
         }
@@ -92,13 +107,13 @@ internal sealed class JudgingInputs : IDisposable
             var opened = DerivationReader.Open(file.Value, _cancellationToken);
             if (!opened.IsSuccess) return opened;
             reader = opened.Value;
-            // The protected overload validates the header, not the stored products. Keep the
-            // full reading that the directory-based opener required, and consume it only once.
-            var facts = reader.Read();
+            // Full consumers must still validate stored products; selected membership questions
+            // do not depend on unrelated protected-principal facts.
+            var facts = readFacts ? reader.Read() : null;
             var current = AnalysisStoreLifecycle.Resolve(Directory, AnalysisStoreKind.Derivation);
-            if (!current.IsSuccess || current.Value != selected.Value || facts.Description.EvidenceSeal != EvidenceSeal)
+            if (!current.IsSuccess || current.Value != selected.Value || reader.Description.EvidenceSeal != EvidenceSeal)
                 throw OwnershipAuditStorage.InvalidProof();
-            _facts = Freeze(facts);
+            _facts = facts is null ? null : Freeze(facts);
             _derivedFile = file.Value;
             _derivation = reader;
             accepted = true;

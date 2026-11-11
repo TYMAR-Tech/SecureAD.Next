@@ -1321,6 +1321,27 @@ decryptor calculation; findings, UI and saved formats remain unchanged, and SCOU
 Implementation and short offline checks are approved, with a separate warning/estimate/approval
 before long verification and no live access, owner-data re-judging, commit or push.
 
+**Computer/GPO directory security-filter slice - owner-approved 2026-11-10.**
+After the shared parser checkpoint was committed locally, the owner approved a bounded shared
+backend calculation of directory-side Read and Apply Group Policy permissions for a captured
+computer/GPO question.
+Use direct identity, qualified security-group membership, supported primary-group membership,
+resource-domain scope and applicable allow/deny entries, returning Included, Excluded or Unresolved
+with separate Read/Apply answers and exact captured-source binding.
+Incomplete evidence or unsupported authorization must not become an invented exclusion or grant,
+and Included describes this directory security filter only, not overall applicability, policy
+delivery or client processing.
+Reuse and extend shared authorization machinery without changing existing user/named-holder
+results or adding an administrator-maintained selection list; keep WMI conditions separate.
+This approves implementation and short offline checks, not link inheritance, winning-setting
+precedence, finding/UI adoption, full policy-delivery checks, saved-format changes, automatic
+WMI evaluation, live access, recapture, new production limits, commit or push.
+Long verification still requires a separate warning, duration estimate and explicit approval.
+The owner separately approved that offline verification after the 359-pass focused checkpoint:
+an estimated 40-60 minutes, with a hard maximum of 75 minutes including 15 reserved for restoration,
+final correct-source rebuilding and cleanup; isolated rebuilt faults must stay outside the active
+working files, and the other boundaries above remain unchanged.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

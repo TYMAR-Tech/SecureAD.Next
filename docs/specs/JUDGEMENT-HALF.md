@@ -1115,6 +1115,45 @@ Parsed conditions establish neither namespace/class existence nor filter truth o
 This foundation changes no findings, presentation or stored format and does not implement the
 shared security-filter, inheritance, precedence or computer-matching work above.
 
+**Computer/GPO directory security-filter qualification - owner-approved 2026-11-10.**
+Keep directory permission filtering separate from the complete applicability result.
+For a captured computer/GPO question, retain separate whole-object Read Control, Read Properties
+and Apply Group Policy answers, their original ordered permission entries, membership witnesses
+and exact capture/derivation binding.
+In this qualification, directory Read requires both Read Control and whole-object Read Properties;
+an object-specific Read Properties entry must remain unresolved when its coverage is not qualified,
+not become either a whole-object grant or a definite absence of permission.
+This does not establish LDAP navigation visibility, SYSVOL access, policy delivery or client execution.
+Follow Microsoft's [security-filter requirements](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/policy/filtering-the-scope-of-a-gpo)
+and [MS-GPOL filter evaluation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5ead679e-5ec1-4f43-b927-1a339da316c7)
+for the distinct Read and Apply requirements.
+Apply must use the shared schema catalogue's Apply Group Policy right, accepting a qualifying
+unscoped Control Access grant or that exact right, never another extended-right GUID.
+Preserve stored allow/deny order and conditional-entry uncertainty; do not remap unsupported stored
+generic bits or replace ordered authorization with a blanket deny rule.
+
+Use the captured computer's validated current identity and qualified same-forest/resource-domain
+context, with Everyone and Authenticated Users interpreted as the configured authenticated-computer
+profile, not evidence that a disabled or live machine authenticated.
+Disabled account state must not erase configured directory permissions.
+Qualify security-group nesting and each original membership witness, preserving distribution-group,
+unknown-scope, cross-domain and partial-input limitations.
+Primary-group support in this slice requires the captured nonzero primary-group RID and an exact
+same-domain global-security group; do not infer Domain Computers from the computer's class.
+Historical SIDs are not established token membership in this slice, including when a historical SID
+also resolves to a current unrelated principal.
+Unsupported implicit-owner Read Control, NULL DACLs, missing/unreadable descriptors and incomplete
+authorization evidence must remain explicit rather than becoming a grant or an invented exclusion.
+An independent established grant may survive unrelated unavailable membership evidence.
+Selected membership preparation must not depend on unrelated protected-principal products or
+materialize whole group-member attributes, and every answer must reject changed source selections.
+
+Return Included only when both directory Read and Apply are established, Excluded when a required
+right is definitely not established, and Unresolved otherwise.
+Included means this directory permission filter only: hierarchy/link state, policy-half status,
+WMI conditions and setting-level precedence still have their own required answers.
+This slice changes no findings, UI, saved formats, production budgets or automatic WMI evaluation.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

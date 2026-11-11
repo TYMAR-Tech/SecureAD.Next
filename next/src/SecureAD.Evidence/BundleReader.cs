@@ -667,6 +667,53 @@ public sealed partial class BundleReader : IDisposable
         ObjectAttributesReader.ReadIdentity(Connection, distinguishedName, _navigation) is { } identity
             ? identity with { CaptureGenerationId = Description.CaptureGenerationId } : null;
 
+    /// <summary>Distinguishes a missing name from an ambiguous one without choosing the first row.</summary>
+    internal (long? ObjectId, bool Ambiguous) ReadObjectNameMatch(string distinguishedName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        using var command = Connection.CreateCommand();
+        command.CommandText = "SELECT object_id FROM captured_object WHERE distinguished_name=$dn COLLATE NOCASE LIMIT 2";
+        command.Parameters.AddWithValue("$dn", distinguishedName);
+        using var rows = command.ExecuteReader();
+        if (!rows.Read()) return (null, false);
+        var id = rows.GetInt64(0);
+        return rows.Read() ? (null, true) : (id, false);
+    }
+
+    /// <summary>Reads one original observed link, preferring the selected member's recorded backlink.</summary>
+    internal Result<(string Attribute, AttributeValue Value)> ReadMembershipWitness(CapturedObjectIdentity member,
+        CapturedObjectIdentity group, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        RequireIdentity(member);
+        RequireIdentity(group);
+        var memberName = ReadObjectNameMatch(member.DistinguishedName);
+        var groupName = ReadObjectNameMatch(group.DistinguishedName);
+        if (memberName.Ambiguous || groupName.Ambiguous || memberName.ObjectId != member.ObjectId || groupName.ObjectId != group.ObjectId)
+            return Failure("MembershipIdentityAmbiguous", "The captured membership names do not identify their exact source rows unambiguously.");
+        foreach (var question in new[]
+        {
+            (Id: member.ObjectId, Attribute: "memberOf", Value: group.DistinguishedName),
+            (Id: group.ObjectId, Attribute: "member", Value: member.DistinguishedName),
+        })
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var command = Connection.CreateCommand();
+            command.CommandText = $"SELECT ordinal,value FROM {BundleSchema.ValueTableNameFor(question.Attribute)} "
+                + "WHERE object_id=$id AND value=$value COLLATE NOCASE ORDER BY ordinal LIMIT 1";
+            command.Parameters.AddWithValue("$id", question.Id);
+            command.Parameters.AddWithValue("$value", question.Value);
+            using var read = command.ExecuteReader();
+            if (read.Read())
+                return Result<(string, AttributeValue)>.Success((question.Attribute, new(read.GetInt32(0), read.GetString(1), null)));
+        }
+        return Failure("MembershipWitnessNotReturned", "Neither direction of this membership link has an original captured value.");
+
+        Result<(string, AttributeValue)> Failure(string reason, string description) =>
+            Result<(string, AttributeValue)>.Failure(AuditError.Create(ErrorCategory.Evidence, reason,
+                ErrorSeverity.Degraded, description, member.DistinguishedName + " -> " + group.DistinguishedName));
+    }
+
     /// <summary>Reads original permissions at an identity resolved by this capture's navigation index.</summary>
     public ObjectPermissions ReadPermissionsAt(CapturedObjectIdentity identity)
     {

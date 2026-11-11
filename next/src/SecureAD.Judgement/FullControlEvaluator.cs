@@ -104,9 +104,19 @@ internal static class FullControlEvaluator
         bool holderIdentityEstablished) =>
         Check(source, right, null, true, matchDeny, includeScoped: true, scope, holderIdentityEstablished);
 
+    internal static FullControlRight AssessRequesterRight(FullControlSource source, int right,
+        Func<PermissionEntry, ControlEvaluationState> scope, Func<PermissionEntry, bool?> matchTrustee) =>
+        CheckCore(source, right, null, true, matchTrustee, true, scope, true, matchTrustee);
+
     private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope,
         Func<PermissionEntry, bool?>? matchDeny = null, bool includeScoped = false,
-        Func<PermissionEntry, ControlEvaluationState>? attributeScope = null, bool holderIdentityEstablished = false)
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope = null, bool holderIdentityEstablished = false) =>
+        CheckCore(source, right, scope, knownScope, matchDeny, includeScoped, attributeScope, holderIdentityEstablished, null);
+
+    private static FullControlRight CheckCore(FullControlSource source, int right, string? scope, bool knownScope,
+        Func<PermissionEntry, bool?>? matchDeny, bool includeScoped,
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope, bool holderIdentityEstablished,
+        Func<PermissionEntry, bool?>? matchAllow)
     {
         var unknown = source.Availability != DescriptorAvailability.Read || source.Dacl == DaclState.Unreadable
             ? ControlUncertainty.DescriptorUnreadable
@@ -129,11 +139,11 @@ internal static class FullControlEvaluator
         foreach (var entry in source.Entries)
         {
             if (denied || !Applies(entry) || (entry.AccessMask & right) == 0) continue;
-            var sameHolder = Same(entry.Trustee.Sid == "S-1-5-10" && source.TargetSid is not null
+            var sameHolder = matchAllow is null && Same(entry.Trustee.Sid == "S-1-5-10" && source.TargetSid is not null
                 ? source.TargetSid : entry.Trustee.Sid, source.Holder.Sid);
-            if (!sameHolder && !IsDeny(entry)) continue;
-            var matches = sameHolder ? true : matchDeny?.Invoke(entry);
-            if (IsDeny(entry) && matches == false) continue;
+            if (!sameHolder && !IsDeny(entry) && matchAllow is null) continue;
+            var matches = sameHolder ? true : (IsDeny(entry) ? matchDeny : matchAllow)?.Invoke(entry);
+            if (matches == false) continue;
             var qualifiedScope = attributeScope?.Invoke(entry);
             if (qualifiedScope == ControlEvaluationState.NotEstablished) continue;
             if (scope is null && entry.HasObjectType && !includeScoped) continue;
@@ -144,7 +154,8 @@ internal static class FullControlEvaluator
                 continue;
             }
             var limit = !Supported(entry) ? ControlUncertainty.ConditionalOrUnsupportedAce
-                : !sameHolder && matches != true ? ControlUncertainty.CrossTrusteeDeny
+                : !sameHolder && matches != true ? IsDeny(entry)
+                    ? ControlUncertainty.CrossTrusteeDeny : ControlUncertainty.HolderUnresolved
                 : qualifiedScope == ControlEvaluationState.Unknown
                     || attributeScope is null && entry.HasObjectType && (includeScoped || !knownScope)
                     ? ControlUncertainty.ObjectSpecificScopeNotEvaluated

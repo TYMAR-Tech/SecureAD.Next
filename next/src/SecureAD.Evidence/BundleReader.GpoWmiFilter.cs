@@ -44,16 +44,11 @@ public sealed partial class BundleReader
         if (roots.Length != 1)
             return Failure("GpoWmiDomainUnavailable", "The filter's exact domain naming context was not captured unambiguously.");
         var filterDn = $"CN={reference.FilterId:B},CN=SOM,CN=WMIPolicy,CN=System,{roots[0].Key}";
-        using (var lookup = Connection.CreateCommand())
-        {
-            lookup.CommandText = "SELECT object_id FROM captured_object WHERE distinguished_name=$dn COLLATE NOCASE LIMIT 2";
-            lookup.Parameters.AddWithValue("$dn", filterDn);
-            using var rows = lookup.ExecuteReader();
-            if (!rows.Read())
-                return Failure("GpoWmiFilterNotCaptured", "The referenced WMI filter object was not captured at its exact domain-scoped location.");
-            if (rows.Read())
-                return Failure("GpoWmiFilterAmbiguous", "More than one captured row represents the referenced WMI filter name; no definition was selected.");
-        }
+        var match = ReadObjectNameMatch(filterDn);
+        if (match.Ambiguous)
+            return Failure("GpoWmiFilterAmbiguous", "More than one captured row represents the referenced WMI filter name; no definition was selected.");
+        if (match.ObjectId is null)
+            return Failure("GpoWmiFilterNotCaptured", "The referenced WMI filter object was not captured at its exact domain-scoped location.");
         filter = ReadObjectIdentity(filterDn)
             ?? throw new InvalidDataException("The uniquely selected filter disappeared from its captured generation.");
         filterValues = ReadObjectAttributesAt(filter, ["objectClass", "msWMI-ID", "msWMI-Name", "msWMI-Parm2"]).Snapshot();
