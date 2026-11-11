@@ -62,6 +62,7 @@ public sealed class SysvolCapture
 
     /// <summary>The policy's own folder, which has no path beneath the policy root.</summary>
     private const string PolicyRoot = "";
+    private const string TemplateVersionFile = "GPT.ini";
 
     private readonly ISysvolFileReader _reader;
     private readonly BundleWriter _writer;
@@ -191,6 +192,7 @@ public sealed class SysvolCapture
 
         if (!root.IsSuccess)
         {
+            WriteUnavailableTemplateVersion(target, root.Error.Description);
             // The policy's own folder was refused. Nothing beneath it is worth attempting, and
             // reporting the whole policy as unread is the honest answer rather than a partial one.
             return WithUnavailableGppScan(GpoCoverage.Unreadable(
@@ -199,6 +201,7 @@ public sealed class SysvolCapture
 
         if (root.Value is null)
         {
+            WriteUnavailableTemplateVersion(target, "The policy's folder is not on the SYSVOL share.");
             // The directory says this policy exists and the share does not hold its folder. That is
             // a fact about the customer's forest - an orphaned policy object - and not a failure of
             // this run, but it is still a policy nothing was read from.
@@ -212,6 +215,7 @@ public sealed class SysvolCapture
 
         progress.WriteDescriptor(PolicyRoot, root.Value);
 
+        await ReadTemplateVersionAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadFolderPermissionsAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadRegistryPoliciesAsync(target, progress, cancellationToken).ConfigureAwait(false);
         await ReadSecurityTemplateAsync(target, progress, cancellationToken).ConfigureAwait(false);
@@ -229,6 +233,38 @@ public sealed class SysvolCapture
                 GppPasswordScanOutcome.Unreadable,
                 coverage.Reason ?? "The optional GPP password scan could not read this policy.")
             : coverage;
+
+    private void WriteUnavailableTemplateVersion(GpoTarget target, string reason) =>
+        _writer.WriteGpoTemplateVersion(target.GpoGuid, target.FileSysPath,
+            new(GpoTemplateVersionOutcome.Unavailable, null, null, null, reason));
+
+    private async Task ReadTemplateVersionAsync(
+        GpoTarget target, PolicyProgress progress, CancellationToken token)
+    {
+        var file = await AcquireFileAsync(target, progress, TemplateVersionFile, token).ConfigureAwait(false);
+        if (!file.IsSuccess)
+        {
+            _writer.WriteGpoTemplateVersion(target.GpoGuid, target.FileSysPath,
+                new(GpoTemplateVersionOutcome.Unreadable, null, null, null, file.Error.Description));
+            progress.RecordFailure(file.Error);
+            return;
+        }
+        if (file.Value is null)
+        {
+            var error = AuditError.Create(ErrorCategory.Capture, "GptIniMissing", ErrorSeverity.Degraded,
+                "The policy's required GPT.ini file was not returned; its file-side version is unknown.", target.FileSysPath);
+            _writer.WriteGpoTemplateVersion(target.GpoGuid, target.FileSysPath,
+                new(GpoTemplateVersionOutcome.Missing, null, null, null, error.Description));
+            progress.RecordFailure(error);
+            return;
+        }
+        var parsed = GptIniVersionParser.Parse(file.Value);
+        _writer.WriteGpoTemplateVersion(target.GpoGuid, target.FileSysPath,
+            parsed.Version is { } version && parsed.Errors.Count == 0
+                ? new(GpoTemplateVersionOutcome.Read, file.Value, parsed.OriginalValue, version, null)
+                : new(GpoTemplateVersionOutcome.Invalid, file.Value, null, null, string.Join("; ", parsed.Errors)));
+        progress.WriteFileErrors(TemplateVersionFile, parsed.Errors);
+    }
 
     /// <summary>
     /// Reads the permissions on every folder beneath the policy root, per
@@ -458,10 +494,7 @@ public sealed class SysvolCapture
         CancellationToken cancellationToken,
         Action<string>? recordContentFailure)
     {
-        progress.ThrowIfAbandoned();
-        var file = await _reader
-            .ReadFileAsync(target, relativePath, cancellationToken)
-            .ConfigureAwait(false);
+        var file = await AcquireFileAsync(target, progress, relativePath, cancellationToken).ConfigureAwait(false);
 
         if (!file.IsSuccess)
         {
@@ -489,17 +522,24 @@ public sealed class SysvolCapture
             return null;
         }
 
-        try
-        {
-            await ReadPermissionsAsync(target, progress, relativePath, cancellationToken).ConfigureAwait(false);
-        }
-        catch (PolicyAbandonedException)
-        {
-            // The content acquisition completed before the ACL timed out. Let its caller persist
-            // the parsed content; the recorded gap remains and every subsequent acquisition stops.
-        }
-
         return file.Value;
+    }
+
+    private async Task<Result<byte[]?>> AcquireFileAsync(
+        GpoTarget target, PolicyProgress progress, string relativePath, CancellationToken token)
+    {
+        progress.ThrowIfAbandoned();
+        var file = await _reader.ReadFileAsync(target, relativePath, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        if (file.IsSuccess && file.Value is not null)
+        {
+            try { await ReadPermissionsAsync(target, progress, relativePath, token).ConfigureAwait(false); }
+            catch (PolicyAbandonedException)
+            {
+                // Content arrived before the ACL timed out; persist it, then stop further acquisition.
+            }
+        }
+        return file;
     }
 
     private sealed record GppScanCoverage(GppPasswordScanOutcome Outcome, string? Reason)

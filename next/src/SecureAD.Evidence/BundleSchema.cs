@@ -93,7 +93,8 @@ public static class BundleSchema
     // 15 records the corrected Enatel storage-class scope; old V3-name scopes are not relabelled.
     // 16 adds the owner-approved account-class exclusion without relabelling storage-only captures.
     // 17 binds the first-class captured navigation product to its atomic capture root.
-    public const int Version = 17;
+    // 18 captures the GPO functionality attribute and original GPT.ini version observations.
+    public const int Version = 18;
 
     /// <summary>
     /// The catalogue attributes that are already columns on <c>captured_object</c> by another
@@ -145,6 +146,7 @@ public static class BundleSchema
         "access_entry",
         "descriptor_entry",
         "sysvol_gpo_coverage",
+        "gpo_template_version",
         "gpo_registry_setting",
         "gpo_security_setting",
         "gpo_restricted_group",
@@ -842,6 +844,23 @@ public static class BundleSchema
             gpp_password_scan_reason TEXT    NULL
                                      CHECK ((gpp_password_scan_outcome IN ('NotRequested', 'Read'))
                                             = (gpp_password_scan_reason IS NULL))
+        )
+        """,
+
+        """
+        CREATE TABLE gpo_template_version (
+            gpo_guid                 TEXT    NOT NULL PRIMARY KEY,
+            file_sys_path            TEXT    NOT NULL,
+            outcome                  TEXT    NOT NULL
+                                     CHECK (outcome IN ('Unavailable', 'Missing', 'Unreadable', 'Invalid', 'Read')),
+            original_bytes           BLOB    NULL,
+            original_version         TEXT    NULL,
+            version                  INTEGER NULL CHECK (version BETWEEN 0 AND 4294967295),
+            reason                   TEXT    NULL,
+            CHECK ((outcome IN ('Read', 'Invalid')) = (original_bytes IS NOT NULL)),
+            CHECK ((outcome = 'Read') = (original_version IS NOT NULL)),
+            CHECK ((outcome = 'Read') = (version IS NOT NULL)),
+            CHECK ((outcome = 'Read') = (reason IS NULL))
         )
         """,
 

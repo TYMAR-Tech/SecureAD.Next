@@ -38,9 +38,16 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
 
     internal BundleReader Bundle => _sources.Bundle;
 
-    internal static Result<GpoLinkHierarchyReader> Open(string directory, CancellationToken token)
+    internal void RequireCurrent() => _sources.RequireCurrent();
+
+    internal static Result<GpoLinkHierarchyReader> Open(string directory, CancellationToken token) =>
+        Open(JudgingInputs.Open(directory, token));
+
+    internal static Result<GpoLinkHierarchyReader> Open(ProtectedRunFiles files, CancellationToken token) =>
+        Open(JudgingInputs.Open(files, token));
+
+    private static Result<GpoLinkHierarchyReader> Open(Result<JudgingInputs> opened)
     {
-        var opened = JudgingInputs.Open(directory, token);
         if (!opened.IsSuccess) return Result<GpoLinkHierarchyReader>.Failure(opened.Error);
         var accepted = false;
         try

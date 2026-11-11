@@ -56,6 +56,9 @@ internal static class GpoSecurityRun
         internal bool ShortDacl { get; init; }
         internal IReadOnlyList<string> Backlinks { get; init; } = [];
         internal IReadOnlyList<string> OtherUsers { get; init; } = [];
+        internal string? DomainLinks { get; init; }
+        internal IReadOnlyList<EvidenceAttribute> PolicyAttributes { get; init; } = [];
+        internal (string Path, GpoTemplateVersionObservation Observation)? TemplateVersion { get; init; }
     }
 
     internal static string Build(Options options)
@@ -72,7 +75,9 @@ internal static class GpoSecurityRun
         {
             writer.WriteCoverage(parent);
             writer.WriteCoverage(child);
-            writer.WriteObject(new(parent, Parent, Guid.NewGuid(), [Text("objectClass", "domainDNS"), Sid("objectSid", ParentSid)], Captured));
+            writer.WriteObject(new(parent, Parent, Guid.NewGuid(),
+                [Text("objectClass", "domainDNS"), Sid("objectSid", ParentSid),
+                    .. options.DomainLinks is { } links ? new[] { Text("gPLink", links) } : []], Captured));
             writer.WriteObject(new(child, Child, Guid.NewGuid(), [Text("objectClass", "domainDNS"), Sid("objectSid", ChildSid)], Captured));
             var computer = new List<EvidenceAttribute>
             {
@@ -99,7 +104,10 @@ internal static class GpoSecurityRun
                 if (group.History.Count > 0) attributes.Add(Sids("sIDHistory", group.History));
                 writer.WriteObject(new(group.ChildDomain ? child : parent, group.Dn, Guid.NewGuid(), attributes, Captured));
             }
-            var policyId = writer.WriteObject(new(parent, Policy, PolicyGuid, [Text("objectClass", "top", "container", options.PolicyClass)], Captured));
+            var policyId = writer.WriteObject(new(parent, Policy, PolicyGuid,
+                [Text("objectClass", "top", "container", options.PolicyClass), .. options.PolicyAttributes], Captured));
+            if (options.TemplateVersion is { } template)
+                writer.WriteGpoTemplateVersion(PolicyGuid, template.Path, template.Observation);
             if (!options.NoDescriptor)
             {
                 var acl = options.NullDacl ? null : new RawAcl(GenericAcl.AclRevisionDS, options.Entries.Count);

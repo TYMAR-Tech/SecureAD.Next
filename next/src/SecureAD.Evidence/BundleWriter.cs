@@ -1071,17 +1071,34 @@ public sealed class BundleWriter : IDisposable
     }
 
     /// <summary>
-    /// Records one registry-backed setting a policy applies.
+    /// Records the original GPT.ini acquisition and version result for one policy resource.
     /// </summary>
-    /// <param name="gpoGuid">The policy the setting came from.</param>
-    /// <param name="ordinal">Which of this policy's registry settings this is.</param>
-    /// <param name="scope">Whether the setting applies to the machine or to the user.</param>
-    /// <param name="keyPath">The registry key the policy writes to.</param>
-    /// <param name="valueName">The value it writes.</param>
-    /// <param name="registryType">
-    /// The raw registry type, kept as the file stated it rather than as an interpretation of it.
-    /// </param>
-    /// <param name="valueData">The value's bytes, undecoded.</param>
+    public void WriteGpoTemplateVersion(Guid gpoGuid, string fileSysPath, GpoTemplateVersionObservation observation)
+    {
+        if (gpoGuid == Guid.Empty) throw new ArgumentException("A template version requires its directory policy identity.", nameof(gpoGuid));
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileSysPath);
+        ArgumentNullException.ThrowIfNull(observation);
+        if (!observation.IsConsistent) throw new ArgumentException("The template-version observation is inconsistent.", nameof(observation));
+        ThrowIfFinished();
+        Execute(
+            """
+            INSERT INTO gpo_template_version (
+                gpo_guid, file_sys_path, outcome, original_bytes, original_version, version, reason)
+            VALUES ($gpo, $path, $outcome, $bytes, $original, $version, $reason)
+            """,
+            command =>
+            {
+                command.Parameters.AddWithValue("$gpo", Text(gpoGuid));
+                command.Parameters.AddWithValue("$path", fileSysPath);
+                command.Parameters.AddWithValue("$outcome", observation.Outcome.ToString());
+                command.Parameters.AddWithValue("$bytes", observation.OriginalBytes is { } bytes ? bytes : DBNull.Value);
+                command.Parameters.AddWithValue("$original", observation.OriginalVersion is { } original ? original : DBNull.Value);
+                command.Parameters.AddWithValue("$version", observation.Version is { } version ? version : DBNull.Value);
+                command.Parameters.AddWithValue("$reason", observation.Reason is { } reason ? reason : DBNull.Value);
+            });
+    }
+
+    /// <summary>Records one registry-backed setting a policy applies, retaining its raw type/data.</summary>
     public void WriteGpoRegistrySetting(
         Guid gpoGuid,
         int ordinal,

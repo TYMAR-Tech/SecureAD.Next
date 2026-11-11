@@ -66,6 +66,8 @@ public sealed class SchemaVersionFingerprintTests
         [16] = "e28bca65d6c77353",
         // 17 - capture generation binds Evidence to its independently sealed navigation.
         [17] = "a9759094142ec4de",
+        // 18 - original functionality attribute and GPT.ini acquisition/version observations.
+        [18] = "497d34dd708b4ab4",
     };
 
     [Fact]

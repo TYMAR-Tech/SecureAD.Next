@@ -1359,6 +1359,42 @@ an estimated 30-45 minutes, with a hard maximum of 60 minutes including 12 reser
 final correct-source rebuilding and cleanup; deliberately broken variants remain isolated from the
 active working files and all other boundaries above remain unchanged.
 
+**Required GPO protocol-input capture - owner-approved 2026-11-10.**
+Before joining the shared applicability components, the owner approved capturing the missing GPO
+functionality version and the file-side version in GPT.ini, with explicit missing, unreadable and
+unusable-input states rather than guessing that a policy is supported or empty.
+Preserve original directory values and file bytes, exact policy/resource/capture binding and the
+existing SYSVOL permission/coverage boundaries.
+The owner accepted a new capture format for these inputs: older-format captures remain untouched
+and are refused rather than migrated or read through a legacy path; fresh captures require their
+own separate authorization and are not part of this batch.
+Implementation and short synthetic/offline checks are approved, with a separate warning, estimate
+and approval before longer verification; no live forest access, recapture, UI/finding adoption,
+new commit or push is authorized.
+After the 236-pass focused checkpoint, the owner separately approved final offline verification:
+an estimated 45-60 minutes, with a hard maximum of 75 minutes including 15 reserved for restoration,
+final correct-source rebuilding and cleanup; isolated rebuilt faults must stay outside the active
+working files and all other boundaries above remain unchanged.
+
+**Combined computer/GPO applicability assessment - owner-approved 2026-11-11.**
+The owner approved one shared backend assessment joining the qualified domain/OU hierarchy,
+directory Read/Apply and captured protocol inputs, retaining each original link occurrence,
+relative processing order and exact capture/resource/derivation binding.
+Apply Microsoft's computer-half enabled, supported-functionality and empty-policy checks without
+replacing unavailable inputs with defaults; keep established exclusions, missing evidence and
+unsupported analysis distinct.
+Carry WMI and site uncertainty without evaluating filters or inventing site membership, preserving
+known domain/OU scope without claiming a complete policy set or a winning configured setting.
+Implementation and short synthetic/offline checks, including isolated rebuilt faults, are approved;
+longer verification needs a separate warning, duration estimate and explicit approval.
+Winning LAPS settings, conditional-filter evaluation, SCOUT-16's registry correction, finding
+adoption, saved-format/UI changes, live access, recapture, production budgets, commit and push
+remain outside this batch.
+After the 58-pass new-case checkpoint and 114 passing existing component cases, the owner separately
+approved isolated rebuilt-fault verification: an estimated 15-25 minutes, with a hard maximum of
+35 minutes including eight reserved for restoration, final correct-source rebuilding and cleanup.
+The full suite and the other excluded activities above remain unapproved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

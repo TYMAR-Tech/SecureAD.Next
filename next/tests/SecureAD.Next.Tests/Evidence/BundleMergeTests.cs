@@ -148,6 +148,29 @@ public sealed class BundleMergeTests : IDisposable
     }
 
     [Fact]
+    public void GpoProtocolVersionObservationsSurviveShardMergeWithTheirOriginalResourceAndBytes()
+    {
+        var bytes = System.Text.Encoding.ASCII.GetBytes("[General]\r\nVersion=42\r\n");
+        const string path = @"\\contoso.com\SYSVOL\contoso.com\Policies\{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee}";
+        WriteShard(1, writer =>
+        {
+            writer.WriteCoverage(SomeCoverage("DC=contoso,DC=com"));
+            writer.WriteGpoTemplateVersion(AliceGuid, path, new(GpoTemplateVersionOutcome.Read, bytes, "42", 42, null));
+        });
+        using var bundle = OpenBundle();
+        Absorb(bundle, 1);
+        Assert.Equal(1, ScalarLong(bundle, "SELECT COUNT(*) FROM gpo_template_version"));
+        Assert.Equal(42, ScalarLong(bundle, "SELECT version FROM gpo_template_version"));
+        using var command = bundle.CreateCommand();
+        command.CommandText = "SELECT original_bytes FROM gpo_template_version";
+        Assert.Equal(bytes, (byte[])command.ExecuteScalar()!);
+        command.CommandText = "SELECT file_sys_path FROM gpo_template_version";
+        Assert.Equal(path, command.ExecuteScalar());
+        command.CommandText = "SELECT gpo_guid FROM gpo_template_version";
+        Assert.Equal(AliceGuid.ToString("D"), command.ExecuteScalar());
+    }
+
+    [Fact]
     public void TwoShardsObjectsBothArrive()
     {
         WriteShard(1, w =>

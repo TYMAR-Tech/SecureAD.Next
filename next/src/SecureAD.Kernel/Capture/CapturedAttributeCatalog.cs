@@ -115,7 +115,8 @@ public static class CapturedAttributeCatalog
     /// </para>
     /// </para>
     /// </remarks>
-    public const int Version = 8;
+    // 9 adds the original functionality version required by MS-GPOL filtering.
+    public const int Version = 9;
 
     /// <summary>
     /// Requested for every object, of every class, in every naming context capture reads.
@@ -252,6 +253,7 @@ public static class CapturedAttributeCatalog
     [
         new("displayName", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("gPCFileSysPath", AttributeCardinality.SingleValued, AttributeStorage.Text),
+        new("gPCFunctionalityVersion", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("flags", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("versionNumber", AttributeCardinality.SingleValued, AttributeStorage.Text),
         new("gPCMachineExtensionNames", AttributeCardinality.MultiValued, AttributeStorage.Text),

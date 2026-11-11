@@ -1189,6 +1189,55 @@ The approved correction changes existing linked-policy figures/row ordering thro
 reader, not screen wording/layout or new finding presentation.
 This slice changes no saved format, live capture, production budget, automatic WMI evaluation or finding adoption.
 
+**Required GPO protocol-input capture - owner-approved 2026-11-10.**
+Capture the original `gPCFunctionalityVersion` alongside the existing directory flags and version,
+because [MS-GPOL filter evaluation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5ead679e-5ec1-4f43-b927-1a339da316c7)
+requires the supported functionality version and distinguishes empty policies using both versions.
+An unreturned directory value must not be replaced by version two, and a missing file-side version
+must not be replaced by zero.
+Read GPT.ini below the captured `gPCFileSysPath`, binding it to the policy's directory object GUID,
+not the different GUID that names its SYSVOL folder.
+Preserve original bytes and the original General/Version value, including a usable zero and the
+entire unsigned 32-bit range; user/machine halves remain parts of that original version.
+Follow [MS-GPOL 2.2.4](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/b0e5c9e8-e858-4a7a-a94a-4a3d0a9d87a2):
+the file is ANSI, General/Version is required, and section/key uniqueness is case-insensitive.
+Unsupported encodings, malformed syntax, duplicate identifiers and unusable integers remain explicit
+invalid inputs with their acquired bytes, not a partial successful version.
+
+Distinguish unavailable policy roots, missing GPT.ini, unreadable content, invalid acquired content
+and a parsed version, retaining original errors rather than inferring an empty policy.
+Missing or unusable required version content makes SYSVOL coverage incomplete.
+Capture the acquired file's own permissions under the existing SYSVOL rules; independently acquired
+content survives a later permission failure, while policy abandonment stops further acquisition.
+Cancellation is not an acquisition failure and must not publish a completed version observation.
+Offline readback must retain the saved answer without replaying capture or guessing from another
+policy/path, and reject ambiguous object identity, foreign capture identity or mismatched resource binding.
+Shard merge must carry the complete original observation.
+
+Capture catalogue nine and capture format eighteen are intentional new contracts: refuse older formats
+without migration or legacy readers, preserve historical fingerprints/captures, and append only the
+newly observed format-eighteen fingerprint.
+This input correction changes no UI/finding behavior, automatic WMI evaluation or live capture authorization.
+
+**Combined computer/GPO applicability - owner-approved 2026-11-11.**
+Compose the qualified hierarchy, directory Read/Apply and protocol inputs under one protected
+saved-run lifetime, refusing foreign or changed capture/derivation selections and mismatched
+policy-resource observations rather than joining similar names.
+Retain every original occurrence of the selected policy and its relative processing position;
+an independently included domain/OU occurrence survives unrelated missing hierarchy evidence.
+An excluded domain/OU occurrence does not establish that a site cannot link the same policy.
+Keep structural domain/OU scope, directory/protocol eligibility and overall applicability separate.
+Apply MS-GPOL 2.2.4's computer-disable bit, including both disabled halves and the instruction to
+ignore other flag bits, and 3.2.5.1.6's functionality-version-two and full-container/full-template
+zero-version checks; a known nonzero version independently establishes that the policy is not empty.
+Unavailable or unsupported required inputs must retain their original evidence and explicit reasons,
+not become supported functionality, enabled status or zero versions.
+An established policy-wide exclusion survives unrelated unavailable inputs, but WMI parsing or an
+unreturned filter reference never establishes an unfiltered or matching policy.
+Carry site and WMI uncertainty without evaluating conditions or claiming a complete policy set,
+winning settings, client processing or control/path proof.
+This batch changes no findings, UI, saved formats, production budgets or live-access authorization.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

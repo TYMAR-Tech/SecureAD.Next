@@ -52,9 +52,16 @@ internal sealed class GpoSecurityFilterReader : IDisposable
 
     internal BundleReader Bundle => _sources.Bundle;
 
-    internal static Result<GpoSecurityFilterReader> Open(string directory, CancellationToken cancellationToken)
+    internal void RequireCurrent() => _sources.RequireCurrent();
+
+    internal static Result<GpoSecurityFilterReader> Open(string directory, CancellationToken cancellationToken) =>
+        Open(JudgingInputs.Open(directory, cancellationToken));
+
+    internal static Result<GpoSecurityFilterReader> Open(ProtectedRunFiles files, CancellationToken cancellationToken) =>
+        Open(JudgingInputs.Open(files, cancellationToken));
+
+    private static Result<GpoSecurityFilterReader> Open(Result<JudgingInputs> opened)
     {
-        var opened = JudgingInputs.Open(directory, cancellationToken);
         if (!opened.IsSuccess) return Result<GpoSecurityFilterReader>.Failure(opened.Error);
         var accepted = false;
         try
