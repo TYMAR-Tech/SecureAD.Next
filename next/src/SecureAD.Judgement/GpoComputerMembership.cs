@@ -190,7 +190,7 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
         var identity = bundle.ReadObjectIdentity(principal.DistinguishedName)!;
         var values = bundle.ReadObjectAttributesAt(identity,
             ["objectClass", "objectSid", "groupType", "primaryGroupID", "sIDHistory"]).Snapshot();
-        identity = GpoSecurityFilterReader.Identity(identity, values);
+        identity = GpoCapturedIdentity.Normalize(identity, values);
         if (identity.ObjectGuid is null || identity.ObjectGuid == Guid.Empty
             || !Same(identity.PrincipalSid, sid) || guid is not null && identity.ObjectGuid != guid
             || (!Sid.IsBuiltinDomain(sid) && !Same(Sid.IssuingDomain(sid), domainSid(identity.DomainFqdn))))

@@ -1154,6 +1154,41 @@ Included means this directory permission filter only: hierarchy/link state, poli
 WMI conditions and setting-level precedence still have their own required answers.
 This slice changes no findings, UI, saved formats, production budgets or automatic WMI evaluation.
 
+**Captured computer/domain/OU link hierarchy - owner-approved 2026-11-10.**
+Read the selected captured computer's ancestor chain and stop at its declared domain naming context,
+using the shared escaped-DN operations rather than comma splitting or walking into its parent domain.
+Follow [MS-GPOL Domain SOM Search](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/6fc6f0fc-c26d-455f-af8f-1856cf5d2a4b)
+for the organizational-unit/domain scope sequence, skipping non-OU containers without dropping the domain.
+Every required container and linked GPO must bind to an unambiguous original captured row and usable
+object identity in a captured read domain; retain missing or unsupported rows explicitly.
+Retain each original link occurrence, source container, stored attribute value, original slot and options,
+including repeated links to the same GPO on the same or different containers.
+Malformed unconsumed link content must not disappear, and a readable link after an unreadable entry
+must keep its original positive slot rather than acquire a fabricated priority of zero.
+
+Use the [MS-GPOL link/inheritance flags](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/08090b22-bc16-49f4-8e10-f27a8fb16d18)
+and [GPO Search algorithm](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5c7ecdad-469f-4b30-94b3-450b7fff868f),
+not the internally contradictory overview page's prose.
+Correct ordinary per-container priority to place the first stored ordinary link highest:
+prepending ordinary links leaves it processed last.
+Retain disabled and enforced flag bits separately, but a disabled link never participates even when
+its enforced bit is also set.
+Block Inheritance affects higher non-enforced links, not links on the blocking container itself,
+and does not exclude enforced ancestors.
+Unknown lower-container inheritance must make an ordinary inherited link unresolved without erasing
+independently established own-container or enforced links.
+Unsupported option values, malformed link strings and unavailable source rows do not become empty
+successful scope or invented exclusions.
+Retain known relative domain/OU processing positions separately from excluded and unplaceable links.
+
+Directory evidence in this slice does not establish a computer's site: state that uncertainty rather
+than claiming no site-linked policies exist or discarding independently known domain/OU links.
+Structural link inclusion/order is not Read/Apply authorization, GPO-half status, a WMI condition,
+overall applicability, a winning configured setting, client processing or completed control/path proof.
+The approved correction changes existing linked-policy figures/row ordering through the shared
+reader, not screen wording/layout or new finding presentation.
+This slice changes no saved format, live capture, production budget, automatic WMI evaluation or finding adoption.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

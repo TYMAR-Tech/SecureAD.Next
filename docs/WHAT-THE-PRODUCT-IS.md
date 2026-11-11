@@ -1342,6 +1342,23 @@ an estimated 40-60 minutes, with a hard maximum of 75 minutes including 15 reser
 final correct-source rebuilding and cleanup; isolated rebuilt faults must stay outside the active
 working files, and the other boundaries above remain unchanged.
 
+**Captured computer/GPO link hierarchy - owner-approved 2026-11-10.**
+After the directory security-filter checkpoint was committed locally, the owner approved the next
+bounded shared calculation: establish captured domain/OU link scope, disabled links, Enforced and
+Block Inheritance, retaining every original link occurrence and explicit missing/unsupported evidence.
+First correct the shared link reader's reversed normal-link priority and the existing displayed
+figures/row ordering against Microsoft's protocol, without changing UI wording or layout.
+Where the captured evidence does not establish a computer's site, retain that site-scope uncertainty
+rather than claiming that no site-linked policies exist or erasing independently known domain/OU links.
+This is structural link reach/order, not overall applicability, WMI matching, winning settings,
+policy delivery, client processing or takeover/path proof.
+Implementation and short offline checks are approved; longer verification needs its own warning,
+estimate and approval, with no live access, recapture, saved-format change, new commit or push.
+After the 186-pass focused checkpoint, the owner separately approved final offline verification:
+an estimated 30-45 minutes, with a hard maximum of 60 minutes including 12 reserved for restoration,
+final correct-source rebuilding and cleanup; deliberately broken variants remain isolated from the
+active working files and all other boundaries above remain unchanged.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

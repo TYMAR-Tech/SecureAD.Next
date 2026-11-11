@@ -902,8 +902,8 @@ internal sealed class AttributeSectionViewModel : ObjectSectionViewModel
 /// <b>A section of its own because the value is a list pretending to be a string.</b> A container's
 /// <c>gPLink</c> holds every link concatenated into one line, so the generic field row shows it as
 /// a single unreadable value however wide the window is. More importantly the order it is stored in
-/// is the reverse of the order it takes effect in, and a reader left to assume otherwise gets the
-/// answer backwards on exactly the containers where two policies disagree.
+/// is the reverse of ordinary-link processing order: the first stored ordinary link is processed
+/// last. This list is container link priority, not the result for a particular computer or setting.
 /// </remarks>
 internal sealed class PolicyLinksSectionViewModel : ObjectSectionViewModel
 {

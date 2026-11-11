@@ -25,6 +25,16 @@ internal sealed record GpoSecurityAssessment(Guid CaptureGenerationId, string Ev
     FullControlRight ReadProperties, FullControlRight ApplyGroupPolicy, ControlEvaluationState Read,
     GpoSecurityDecision Decision, ImmutableArray<GpoTrusteeCheck> Trustees, ImmutableArray<AuditError> Limitations);
 
+internal static class GpoCapturedIdentity
+{
+    internal static CapturedObjectIdentity Normalize(CapturedObjectIdentity identity, ObjectAttributes values) => identity with
+    {
+        DistinguishedName = values.DistinguishedName, ObjectGuid = values.ObjectGuid,
+        DomainFqdn = values.DomainFqdn, ObjectClass = AttributeReading.LastText(values, "objectClass"),
+        PrincipalSid = RequesterTrusteeReading.SidOf(values),
+    };
+}
+
 internal sealed class GpoSecurityFilterReader : IDisposable
 {
     private static readonly string ApplyRight = SchemaGuidCatalog.Embedded.GuidFor("Apply-Group-Policy")
@@ -72,8 +82,8 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         var computerValues = Bundle.ReadObjectAttributesAt(computer,
             ["objectClass", "objectSid", "primaryGroupID", "sIDHistory", "userAccountControl"]).Snapshot();
         var policyValues = Bundle.ReadObjectAttributesAt(policy, ["objectClass", "objectSid"]).Snapshot();
-        computer = Identity(computer, computerValues);
-        policy = Identity(policy, policyValues);
+        computer = GpoCapturedIdentity.Normalize(computer, computerValues);
+        policy = GpoCapturedIdentity.Normalize(policy, policyValues);
         var permissions = Bundle.ReadPermissionsAt(policy);
         permissions = permissions with
         {
@@ -208,13 +218,6 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         _domainSids.Add(domain, value);
         return value;
     }
-
-    internal static CapturedObjectIdentity Identity(CapturedObjectIdentity identity, ObjectAttributes values) => identity with
-    {
-        DistinguishedName = values.DistinguishedName, ObjectGuid = values.ObjectGuid,
-        DomainFqdn = values.DomainFqdn, ObjectClass = AttributeReading.LastText(values, "objectClass"),
-        PrincipalSid = RequesterTrusteeReading.SidOf(values),
-    };
 
     private static FullControlRight Unqualified(FullControlRight proof) => proof with
     {

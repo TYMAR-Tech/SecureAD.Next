@@ -7,9 +7,9 @@ namespace SecureAD.Kernel.GroupPolicy;
 /// Where the link sits in the stored string, counting from one, reading left to right.
 /// </param>
 /// <param name="Precedence">
-/// Where the link sits in precedence, counting from one, where one wins. Microsoft: the links are
-/// read left to right and <b>applied in reverse</b>, so the last one in the string is applied first
-/// and the first one in the string can be overridden by every link after it.
+/// The ordinary link's priority on this container, counting from one, where one is highest.
+/// MS-GPOL 3.2.5.1.5 prepends ordinary links to the processing list, so the first stored link is
+/// processed last. This is not a computer's effective setting precedence.
 /// </param>
 /// <param name="DistinguishedName">The policy object the link names.</param>
 /// <param name="Options">
@@ -30,18 +30,16 @@ public sealed record PolicyLink(
 /// </para>
 /// <para>
 /// <b>Order is not precedence, and the difference is the whole point of reading this.</b> Learn
-/// states it plainly: the links are read left to right and applied in reverse, so the last link in
-/// the string has the highest precedence. A viewer that listed them in stored order and let a
-/// reader assume the first one wins would have the answer exactly backwards, which on a container
-/// with two policies setting the same thing is the difference between a setting applying and not.
+/// gives an internally contradictory account of stored order. MS-GPOL 3.2.5.1.5 is the authority:
+/// ordinary links are prepended to the processing list, leaving the first stored link processed
+/// last and therefore highest priority. Disabled/enforced links and inherited scope still require
+/// their own calculation.
 /// </para>
 /// <para>
-/// <b>The option flags are deliberately not worded.</b> A link can be disabled or enforced, and
-/// both matter enormously - an enforced link cannot be blocked lower down. But Learn's page for
-/// <c>gPLink</c> says only <i>a sorted list of Group Policy options, each option is a DWORD</i> and
-/// does not give the values, and this product does not word a bit it has not seen documented. The
-/// number is carried through to the screen as stored. This is the same refusal that kept
-/// <c>WRITE_OWNER</c> from being labelled with the file system's word for it.
+/// <b>The option flags remain original text.</b> MS-GPOL 2.2.2 defines disabled and enforced bits,
+/// but reading a container's stored links is not the same as calculating their reach or processing
+/// order for a computer. Callers must qualify those options separately rather than replacing the
+/// captured number with an inferred result.
 /// </para>
 /// </remarks>
 /// <param name="Links">The links, in stored order.</param>
@@ -68,10 +66,9 @@ public sealed record PolicyLinkList(IReadOnlyList<PolicyLink> Links, IReadOnlyLi
 
         while (!rest.IsEmpty)
         {
-            var open = rest.IndexOf('[');
             var close = rest.IndexOf(']');
 
-            if (open < 0 || close < open)
+            if (rest[0] != '[' || close < 0)
             {
                 errors.Add(
                     $"'{rest.ToString()}' is not a bracketed link, and the rest of the value was "
@@ -79,8 +76,8 @@ public sealed record PolicyLinkList(IReadOnlyList<PolicyLink> Links, IReadOnlyLi
                 break;
             }
 
-            var entry = rest[(open + 1)..close];
-            rest = rest[(close + 1)..];
+            var entry = rest[1..close];
+            rest = rest[(close + 1)..].Trim();
             order++;
 
             if (Split(entry, order, out var link, out var error))
@@ -89,7 +86,7 @@ public sealed record PolicyLinkList(IReadOnlyList<PolicyLink> Links, IReadOnlyLi
                 errors.Add(error!);
         }
 
-        return new PolicyLinkList(WithPrecedence(links), errors);
+        return new PolicyLinkList(links, errors);
     }
 
     /// <summary>
@@ -128,13 +125,7 @@ public sealed record PolicyLinkList(IReadOnlyList<PolicyLink> Links, IReadOnlyLi
             return false;
         }
 
-        link = new PolicyLink(order, 0, name.ToString(), options);
+        link = new PolicyLink(order, order, name.ToString(), options);
         return true;
     }
-
-    /// <summary>
-    /// Numbers the links by precedence, which is the reverse of the order they are stored in.
-    /// </summary>
-    private static List<PolicyLink> WithPrecedence(List<PolicyLink> links) =>
-        [.. links.Select(l => l with { Precedence = links.Count - l.Order + 1 })];
 }
