@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
+using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Security;
 using SecureAD.Storage;
 
@@ -1043,6 +1044,15 @@ public sealed partial class JudgementReader : IDisposable
         e.decryptor_name                    AS e_decryptor_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
         e.route_count                       AS e_route_count,
+        e.settings_outcome                  AS e_settings_outcome,
+        e.settings_reason                   AS e_settings_reason,
+        e.registry_entry_index              AS e_registry_entry_index,
+        e.registry_key_path                 AS e_registry_key_path,
+        e.registry_value_name               AS e_registry_value_name,
+        e.registry_type                     AS e_registry_type,
+        e.registry_data                     AS e_registry_data,
+        e.parse_error_count                 AS e_parse_error_count,
+        e.interpretation_issue_count        AS e_interpretation_issue_count,
         e.finding_id                        AS e_finding_id,
         t.trustee_sid                       AS t_trustee_sid,
         t.trustee_name                      AS t_trustee_name,
@@ -1448,7 +1458,8 @@ public sealed partial class JudgementReader : IDisposable
                 ReadLapsDecryptorRoutes(
                     findingId,
                     reader.GetInt64(reader.GetOrdinal("e_route_count"))),
-                reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
+                reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0,
+                ReadLapsPolicySettings(reader, findingId));
         }
         else
         {
@@ -1507,6 +1518,58 @@ public sealed partial class JudgementReader : IDisposable
         }
         if (route.Count != expectedLength) throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
         return route;
+    }
+
+    private LapsPolicySettingsEvidence ReadLapsPolicySettings(SqliteDataReader row, long findingId)
+    {
+        var parsed = new List<string>();
+        var issues = new List<RegistryPolicyIssue>();
+        var expectedParse = row.GetInt64(row.GetOrdinal("e_parse_error_count"));
+        var expectedIssues = row.GetInt64(row.GetOrdinal("e_interpretation_issue_count"));
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT kind,ordinal,entry_index,key_path,value_name,reason
+                FROM finding_laps_registry_limit WHERE finding_id=$id ORDER BY kind,ordinal
+                """;
+            command.Parameters.AddWithValue("$id", findingId);
+            using var limits = command.ExecuteReader();
+            while (limits.Read())
+            {
+                var kind = limits.GetString(0);
+                var ordinal = limits.GetInt64(1);
+                var reason = limits.GetString(5);
+                if (string.IsNullOrWhiteSpace(reason))
+                    throw new InvalidDataException("A saved LAPS registry limitation has no reason.");
+                if (kind == "Parse" && ordinal == parsed.Count && ordinal < expectedParse
+                    && limits.IsDBNull(2) && limits.IsDBNull(3) && limits.IsDBNull(4))
+                    parsed.Add(reason);
+                else if (kind == "Operation" && ordinal == issues.Count && ordinal < expectedIssues
+                    && !limits.IsDBNull(2) && limits.GetInt64(2) >= 0
+                    && !limits.IsDBNull(3) && !limits.IsDBNull(4))
+                    issues.Add(new(checked((int)limits.GetInt64(2)), limits.GetString(3), limits.GetString(4), reason));
+                else throw new InvalidDataException("A saved LAPS registry limitation does not match its original sequence.");
+            }
+        }
+        if (parsed.Count != expectedParse || issues.Count != expectedIssues)
+            throw new InvalidDataException("A saved LAPS policy-input assessment is missing limitations.");
+        if (!Enum.TryParse<GpoSettingsOutcome>(row.GetString(row.GetOrdinal("e_settings_outcome")), out var outcome)
+            || !Enum.IsDefined(outcome))
+            throw new InvalidDataException("The saved LAPS settings outcome is invalid.");
+        var reasonColumn = row.GetOrdinal("e_settings_reason");
+        var reasonText = row.IsDBNull(reasonColumn) ? null : row.GetString(reasonColumn);
+        if ((outcome == GpoSettingsOutcome.Read) != (reasonText is null))
+            throw new InvalidDataException("The saved LAPS settings coverage reason is inconsistent.");
+        var entry = new RegistryPolicyEntry(row.GetString(row.GetOrdinal("e_registry_key_path")),
+            row.GetString(row.GetOrdinal("e_registry_value_name")),
+            checked((uint)row.GetInt64(row.GetOrdinal("e_registry_type"))),
+            (byte[])row["e_registry_data"]);
+        var index = checked((int)row.GetInt64(row.GetOrdinal("e_registry_entry_index")));
+        var result = new LapsPolicySettingsEvidence(new(index, entry.KeyPath, LapsPolicySettingsEvidence.ValueName, entry),
+            outcome, reasonText, parsed, issues);
+        if (!result.Supports(row.GetString(row.GetOrdinal("e_configured_value"))))
+            throw new InvalidDataException("The saved LAPS registry occurrence does not support the displayed configured value.");
+        return result;
     }
 
     private LapsDecryptorRouteEvidence[] ReadLapsDecryptorRoutes(

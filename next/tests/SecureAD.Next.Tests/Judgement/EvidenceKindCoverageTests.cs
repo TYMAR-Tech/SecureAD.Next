@@ -426,7 +426,8 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                                 "Domain Users"),
                         ]),
                 ],
-                ExpansionWasComplete: true),
+                ExpansionWasComplete: true,
+                Settings: SyntheticLapsPolicySettings.Complete(@"CONTOSO\LAPS-Decryptors")),
             read =>
             {
                 var e = Assert.IsType<LapsDecryptorEvidence>(read);

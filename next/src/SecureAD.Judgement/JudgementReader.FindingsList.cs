@@ -160,7 +160,11 @@ public sealed partial class JudgementReader
                 """,
             "SEC-093" => """
                 SELECT CASE WHEN typeof(expansion_was_complete)='integer' AND expansion_was_complete IN (0,1)
-                    THEN expansion_was_complete AND decryptor_sid IS NOT NULL END
+                    AND typeof(parse_error_count)='integer' AND parse_error_count>=0
+                    AND typeof(interpretation_issue_count)='integer' AND interpretation_issue_count>=0
+                    AND settings_outcome IN ('NotCaptured','Unreadable','PartiallyRead','Read')
+                    THEN expansion_was_complete AND decryptor_sid IS NOT NULL
+                        AND settings_outcome='Read' AND parse_error_count=0 AND interpretation_issue_count=0 END
                 FROM finding_laps_decryptor WHERE finding_id=$id
                 """,
             _ => null,

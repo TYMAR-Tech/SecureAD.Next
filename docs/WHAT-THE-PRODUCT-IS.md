@@ -1411,6 +1411,33 @@ reserved for restoration, final correct-source rebuilding and cleanup; no full s
 Winning LAPS settings, automatic WMI matching, saved-format changes, finding/UI adoption, live
 access, recapture, production budgets, commit and push remain outside this batch.
 
+**SCOUT-16 registry-policy interpretation - owner-approved 2026-11-11.**
+The owner approved a shared ordered interpreter for registry-policy writes/deletes at the exact
+Windows LAPS Group Policy root, replacing SEC-093's suffix/last-usable-value selection while
+preserving original entries, values and diagnostics.
+Later blank, wrong-type or unsupported values must not leave an earlier broad value active or
+be guessed to mean a safe default; unqualified Windows behavior remains explicitly unresolved.
+Keep capture, registry interpretation and membership completeness separate through typed evidence,
+rule results and saved list/detail readback, retaining useful partial positives without claiming
+the final configured value is known.
+Keep SEC-093's existing severity, policy subject and finding identity, and use the existing details
+area without a layout change; complete-input wording and the separate membership caution stay intact.
+The approved partial-evidence text is: "A broad LAPS decryptor value was found in the readable policy
+settings. Some settings could not be read or interpreted, so SecureAD cannot confirm the final
+configured value. Review the saved policy file before changing this setting."
+The owner accepted judgment format 82 and rule version 2: older completed judgments need separately
+approved re-judging, with captures and previous results preserved rather than migrated or deleted.
+Implementation and short synthetic/offline checks are approved; longer verification needs its own
+warning, estimate and explicit approval.
+No new capture format, automatic re-judging, live access, recapture, winning-setting calculation,
+UI redesign, commit or push is authorized.
+After the 217-pass focused checkpoint, the owner separately approved isolated rebuilt-fault
+verification: an estimated 35-50 minutes, with a hard maximum of 60 minutes including twelve
+reserved for restoration, final correct-source rebuilding and cleanup; no full suite is approved.
+After verification-tooling recovery consumed that window, the owner separately approved 25
+additional minutes with the same twelve-minute reserve; the run stopped at the original reserve
+while awaiting that decision, and the inactive owner-decision pause was recorded separately.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

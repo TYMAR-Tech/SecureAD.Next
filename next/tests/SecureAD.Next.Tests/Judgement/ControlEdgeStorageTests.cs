@@ -17,6 +17,7 @@ public sealed class ControlEdgeStorageTests
     [InlineData(24)]
     [InlineData(76)]
     [InlineData(80)]
+    [InlineData(81)]
     public void OlderSchemasAreRefusedWithBothVersionNumbers(int version)
     {
         var directory = TempDirectories.Create("control-edge-old-schema");

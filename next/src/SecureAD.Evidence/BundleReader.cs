@@ -910,9 +910,21 @@ public sealed partial class BundleReader : IDisposable
     {
         var identifier = gpoGuid.ToString("D");
         var (outcome, reason) = SysvolCoverageOf(identifier);
+        var parseErrors = new List<string>();
+        using (var errors = Connection.CreateCommand())
+        {
+            errors.CommandText = """
+                SELECT message FROM gpo_file_error
+                WHERE gpo_guid=$gpo AND relative_path=$path COLLATE NOCASE ORDER BY ordinal
+                """;
+            errors.Parameters.AddWithValue("$gpo", identifier);
+            errors.Parameters.AddWithValue("$path", @"Machine\Registry.pol");
+            using var rows = errors.ExecuteReader();
+            while (rows.Read()) parseErrors.Add(rows.GetString(0));
+        }
 
         if (outcome is GpoSettingsOutcome.NotCaptured or GpoSettingsOutcome.Unreadable)
-            return new GpoRegistrySettings([], outcome, reason);
+            return new GpoRegistrySettings([], outcome, reason) { ParseErrors = parseErrors };
 
         using var command = Connection.CreateCommand();
         command.CommandText =
@@ -936,7 +948,7 @@ public sealed partial class BundleReader : IDisposable
                 (byte[])reader[3]));
         }
 
-        return new GpoRegistrySettings(settings, outcome, reason);
+        return new GpoRegistrySettings(settings, outcome, reason) { ParseErrors = parseErrors };
     }
 
     /// <summary>

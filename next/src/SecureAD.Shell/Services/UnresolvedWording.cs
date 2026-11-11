@@ -54,6 +54,8 @@ internal static class UnresolvedWording
                 || !Enum.TryParse<CapturedInputIssueKind>(input[2], out var issue)
                 || !Enum.IsDefined(issue) || input[2] != issue.ToString())
                 return $"{token} was undecided, and this version has no plainer way to say why.";
+            if (input[1] == "ADPasswordEncryptionPrincipal")
+                return SecureAD.Evidence.Findings.LapsPolicySettingsEvidence.IncompleteConfigurationText;
             var attribute = input[1] switch
             {
                 "msLAPS-PasswordExpirationTime" => "Windows expiry",

@@ -1254,6 +1254,26 @@ Represent conditions with their outcomes, not an enumeration of every cross-poli
 The existing overall applicability answer stays unchanged, and no automatic matching, saved format,
 finding adoption, presentation change, winning setting or live access is authorized by this slice.
 
+**SCOUT-16 registry-policy interpretation - owner-approved 2026-11-11.**
+Read only the exact case-insensitive hive-relative Windows LAPS Group Policy root, not a suffix,
+CSP/local/legacy root, prefixed hive or descendant location.
+Apply [MS-GPREG 3.2.5.1.2](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpreg/57226664-ce00-4487-994e-a6b3820f3e49)
+instructions sequentially, including overwrite, single/list/all-value deletion, immediate-subkey
+deletion and key recreation; retain original records and raw data rather than replacing evidence
+with the interpreted view.
+The normative all-value instruction is `**DelVals.` including the period, unlike the older Win32
+overview; unqualified aliases/encodings remain explicit interpretation limits rather than guesses.
+Conditional `**soft.` writes require pre-existing client state unless earlier captured instructions
+establish the value or its absence, and `**SecureKey` affects key security, not the configured value.
+Missing input, binary parse diagnostics, unsupported operations, unusable replacements and incomplete
+membership must remain distinct, including useful positive observations from incomplete settings.
+An explicit blank or wrong-type replacement must never restore an earlier broad value or establish
+Windows' default behavior without a separate qualification.
+Preserve SEC-093's severity, policy identity and membership supports, use the owner-approved
+partial-settings caution, and retain separate saved capture/interpretation/membership completeness.
+Judgment format 82 and rule version 2 refuse older completed interpretations without migration or
+deleting original results; captures remain unchanged and owner-data re-judging needs separate approval.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

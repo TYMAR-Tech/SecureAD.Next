@@ -702,6 +702,27 @@ public sealed class JudgementWriter : IDisposable
     }
 
     /// <inheritdoc />
+    private void WriteLapsRegistryLimit(SqliteTransaction transaction, long findingId, string kind, int ordinal,
+        int? entry, string? key, string? value, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason) || entry < 0)
+            throw new InvalidDataException("A saved LAPS registry limitation has no qualified reason or occurrence.");
+        Execute(transaction, """
+            INSERT INTO finding_laps_registry_limit
+            (finding_id,kind,ordinal,entry_index,key_path,value_name,reason)
+            VALUES ($id,$kind,$ordinal,$entry,$key,$value,$reason)
+            """, command =>
+        {
+            command.Parameters.AddWithValue("$id", findingId);
+            command.Parameters.AddWithValue("$kind", kind);
+            command.Parameters.AddWithValue("$ordinal", ordinal);
+            command.Parameters.AddWithValue("$entry", (object?)entry ?? DBNull.Value);
+            command.Parameters.AddWithValue("$key", (object?)key ?? DBNull.Value);
+            command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
+            command.Parameters.AddWithValue("$reason", reason);
+        });
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -1124,8 +1145,10 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
                     + "configured_value, form, decryptor_sid, decryptor_name, "
-                    + "expansion_was_complete, route_count) "
-                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $complete, $count)",
+                    + "expansion_was_complete, route_count,settings_outcome,settings_reason,registry_entry_index,"
+                    + "registry_key_path,registry_value_name,registry_type,registry_data,parse_error_count,interpretation_issue_count) "
+                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $complete, $count,"
+                    + "$outcome,$reason,$entry,$key,$name,$type,$data,$parse,$issues)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -1141,7 +1164,31 @@ public sealed class JudgementWriter : IDisposable
                             "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
                         command.Parameters.AddWithValue(
                             "$count", decryptor.BroadPrincipalRoutes.Count);
+                        var settings = decryptor.Settings;
+                        if (!Enum.IsDefined(settings.CaptureOutcome) || settings.Value.EntryIndex < 0
+                            || (settings.CaptureOutcome == GpoSettingsOutcome.Read) != (settings.CaptureReason is null)
+                            || !settings.Supports(decryptor.ConfiguredValue))
+                            throw new InvalidDataException("A saved LAPS policy-input assessment is inconsistent.");
+                        command.Parameters.AddWithValue("$outcome", settings.CaptureOutcome.ToString());
+                        command.Parameters.AddWithValue("$reason", (object?)settings.CaptureReason ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$entry", settings.Value.EntryIndex);
+                        command.Parameters.AddWithValue("$key", settings.Value.Source.KeyPath);
+                        command.Parameters.AddWithValue("$name", settings.Value.Source.ValueName);
+                        command.Parameters.AddWithValue("$type", (long)settings.Value.Source.RegistryType);
+                        command.Parameters.AddWithValue("$data", settings.Value.Source.Data);
+                        command.Parameters.AddWithValue("$parse", settings.ParseErrors.Count);
+                        command.Parameters.AddWithValue("$issues", settings.InterpretationIssues.Count);
                     });
+
+                for (var index = 0; index < decryptor.Settings.ParseErrors.Count; index++)
+                    WriteLapsRegistryLimit(transaction, findingId, "Parse", index, null, null, null,
+                        decryptor.Settings.ParseErrors[index]);
+                for (var index = 0; index < decryptor.Settings.InterpretationIssues.Count; index++)
+                {
+                    var issue = decryptor.Settings.InterpretationIssues[index];
+                    WriteLapsRegistryLimit(transaction, findingId, "Operation", index,
+                        issue.EntryIndex, issue.KeyPath, issue.ValueName, issue.Reason);
+                }
 
                 for (var routeOrdinal = 0;
                      routeOrdinal < decryptor.BroadPrincipalRoutes.Count;

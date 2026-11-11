@@ -44,7 +44,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
 {
     private const string RuleId = "SEC-093";
 
-    private const int RuleVersion = 1;
+    private const int RuleVersion = 2;
 
     /// <summary>
     /// The class this rule judges, tested as the object's <i>most derived</i> class.
@@ -52,7 +52,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
     private const string JudgedClass = "groupPolicyContainer";
 
     /// <summary>
-    /// The registry key a Windows LAPS Group Policy writes its settings under, matched as a suffix.
+    /// The exact hive-relative registry key a Windows LAPS Group Policy writes its settings under.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -87,17 +87,16 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
     /// is the whole reason a rule is not done until it has seen one.
     /// </para>
     /// <para>
-    /// <b>Matched as a suffix rather than in full</b> because <c>Registry.pol</c> stores the key
-    /// without the <c>HKLM\</c> prefix, and a reader should not depend on how the hive is spelled.
-    /// The tail is specific enough that no unrelated product collides with it.
+    /// Registry.pol selects the hive by its Machine/User location; a hive prefix is not part of
+    /// the key. A similarly ending path is a different location, not another spelling of LAPS.
     /// </para>
     /// </remarks>
-    private const string LapsKeySuffix = @"Microsoft\Windows\CurrentVersion\Policies\LAPS";
+    private const string LapsKey = LapsPolicySettingsEvidence.RegistryKey;
 
     /// <summary>
     /// The value naming who may decrypt, which is the whole of what this rule reads.
     /// </summary>
-    private const string DecryptorValueName = "ADPasswordEncryptionPrincipal";
+    private const string DecryptorValueName = LapsPolicySettingsEvidence.ValueName;
 
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
@@ -144,19 +143,20 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         }
 
         var settings = settingsOf(objectGuid);
-
-        if (DecryptorValueOf(settings.Settings) is not { } configured)
-        {
-            // NOTHING FOUND IS TWO DIFFERENT ANSWERS. Where the policy's files were read, it sets
-            // no decryptor, Microsoft's documented default of Domain Admins applies, and there is
-            // nothing to report. Where they were not, saying the same thing would report a policy
-            // as harmless because nobody looked at it - which docs/decisions/0002 forbids and
-            // which gate 4 caught in the first version of this rule.
-            return settings.IsComplete
-                ? RuleVerdict.Judged([])
-                : RuleVerdict.CouldNotResolve([new UnresolvedInput(
-                    DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived)]);
-        }
+        var interpreted = RegistryPolicyInterpreter.Evaluate(settings.Settings);
+        var interpretationIssues = interpreted.IssuesFor(LapsKey);
+        var quality = new List<CapturedInputIssue>();
+        if (!settings.IsComplete) quality.Add(new(DecryptorValueName, CapturedInputIssueKind.IncompleteValue));
+        if (settings.ParseErrors.Count != 0 || interpretationIssues.Count != 0)
+            quality.Add(new(DecryptorValueName, CapturedInputIssueKind.UnsupportedRepresentation));
+        var value = interpreted.Find(LapsKey, DecryptorValueName);
+        if (value is null) return Finish(RuleVerdict.Judged([]));
+        if (!RegistryPolicyInterpreter.TryReadString(value.Source, out var configured)
+            || string.IsNullOrWhiteSpace(configured) || configured != configured.Trim())
+            return Finish(RuleVerdict.CouldNotInterpret(
+                [new(DecryptorValueName, CapturedInputIssueKind.UnusableValue)]));
+        var policySettings = new LapsPolicySettingsEvidence(value, settings.Outcome, settings.Reason,
+            settings.ParseErrors, interpretationIssues);
 
         var domain = DnHelper.DnToFqdn(subject.DistinguishedName);
         var policyName = AttributeReading.Text(subject, "displayName");
@@ -167,7 +167,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         // domain controller does. So only the identifier form can be expanded, and the other two are
         // reported as what they are rather than guessed at.
         if (form is not LapsDecryptorForm.SecurityIdentifier)
-            return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
+            return Finish(RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form, policySettings)]));
 
         var expansion = MembersOfDecryptor(expand, configured, domain);
 
@@ -187,7 +187,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         // away an answer it already held and reported Critical exposure as unknown.
         if (BroadPrincipalCatalogue.IsBroad(configured))
         {
-            return RuleVerdict.Judged(
+            return Finish(RuleVerdict.Judged(
             [
                 Build(
                     subject,
@@ -202,14 +202,14 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                     // claimed complete: nothing nested below matters when the decryptor is itself
                     // broad, but saying the membership was fully read when it was not would be a
                     // different untruth.
-                    expansion.IsComplete),
-            ]);
+                    expansion.IsComplete, policySettings),
+            ]));
         }
 
         // Only now does not finding the principal matter. Below this line the question is what is
         // *inside* the decryptor, and that cannot be answered without the walk.
         if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalNotFound)
-            return RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form)]);
+            return Finish(RuleVerdict.Judged([Unresolved(subject, objectGuid, policyName, configured, form, policySettings)]));
 
         // NO SUCH DECRYPTOR EXISTS, SO THE POLICY DELEGATES DECRYPTION TO NOBODY. The identifier is
         // domain-relative, its domain was read in full, and nothing in that domain carries it -
@@ -224,7 +224,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         // for. Nothing well-known can reach here in any case, because a well-known identifier
         // carries no domain and so can never be judged non-existent.
         if (expansion.Outcome is PrincipalExpansionOutcome.PrincipalDoesNotExist)
-            return RuleVerdict.Judged([]);
+            return Finish(RuleVerdict.Judged([]));
 
         // The shortest route to each broad principal, for the reason SEC-090 keeps the shortest: it
         // is the link an operator would cut.
@@ -243,10 +243,10 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         {
             // Nothing broad inside. Silent where the walk finished, and refused where it did not,
             // because an incomplete walk finding nothing is not the same as there being nothing.
-            return expansion.IsComplete
+            return Finish(expansion.IsComplete
                 ? RuleVerdict.Judged([])
                 : RuleVerdict.CouldNotResolve([new UnresolvedInput(
-                    DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived)]);
+                    DerivedFactKind.PrincipalExpansion, UnresolvedReason.NotDerived)]));
         }
 
         var routes = reached
@@ -255,7 +255,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                 .Select(r => BuildRoute(r.Key, r.Value, context.PrincipalNames))
                 .ToArray();
 
-        return RuleVerdict.Judged(
+        return Finish(RuleVerdict.Judged(
         [
             Build(
                 subject,
@@ -265,8 +265,21 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                 form,
                 decryptorName,
                 routes,
-                expansion.IsComplete),
-        ]);
+                expansion.IsComplete, policySettings),
+        ]));
+
+        RuleVerdict Finish(RuleVerdict verdict)
+        {
+            var unresolved = verdict.Unresolved.ToList();
+            if (verdict.Findings.Any(finding => finding.Evidence is LapsDecryptorEvidence
+                { BroadPrincipalFound: true, ExpansionWasComplete: false }))
+                unresolved.Add(new(DerivedFactKind.PrincipalExpansion, UnresolvedReason.MembershipIncomplete));
+            return verdict with
+            {
+                InputIssues = verdict.InputIssues.Concat(quality).Distinct().ToArray(),
+                Unresolved = unresolved.Distinct().ToArray(),
+            };
+        }
     }
 
     /// <summary>
@@ -347,41 +360,6 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
 
     /// <summary>
-    /// The decryptor this policy configures, or null where it configures none.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>The last one wins.</b> A policy can set the same value more than once and a machine
-    /// applies the last, so the settings are read in file order and the final match is taken.
-    /// </para>
-    /// <para>
-    /// <b>A value that is present but blank counts as unset.</b> Microsoft's default applies when
-    /// the setting "isn't specified", and an empty string specifies nothing.
-    /// </para>
-    /// </remarks>
-    private static string? DecryptorValueOf(IReadOnlyList<RegistryPolicyEntry> settings)
-    {
-        string? found = null;
-
-        foreach (var entry in settings)
-        {
-            if (!entry.KeyPath.EndsWith(LapsKeySuffix, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (!string.Equals(
-                    entry.ValueName, DecryptorValueName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (entry.AsString() is { } text && !string.IsNullOrWhiteSpace(text))
-                found = text.Trim();
-        }
-
-        return found;
-    }
-
-    /// <summary>
     /// Which of the three forms Microsoft accepts this value was written in.
     /// </summary>
     /// <remarks>
@@ -417,7 +395,8 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         Guid objectGuid,
         string? policyName,
         string configured,
-        LapsDecryptorForm form)
+        LapsDecryptorForm form,
+        LapsPolicySettingsEvidence settings)
     {
         var evidence = new LapsDecryptorEvidence(
             policyName,
@@ -426,7 +405,8 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             DecryptorSid: null,
             DecryptorName: null,
             BroadPrincipalRoutes: [],
-            ExpansionWasComplete: false);
+            ExpansionWasComplete: false,
+            Settings: settings);
 
         return new Finding(
             RuleId,
@@ -456,7 +436,8 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
         LapsDecryptorForm form,
         string? decryptorName,
         IReadOnlyList<LapsDecryptorRouteEvidence> broadPrincipalRoutes,
-        bool complete)
+        bool complete,
+        LapsPolicySettingsEvidence settings)
     {
         var evidence = new LapsDecryptorEvidence(
             policyName,
@@ -465,7 +446,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             configured,
             decryptorName,
             broadPrincipalRoutes,
-            complete);
+            complete, settings);
 
         return new Finding(
             RuleId,
@@ -522,15 +503,19 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
     private static string Detail(string? policyName, LapsDecryptorEvidence evidence)
     {
         var policy = policyName ?? "This policy";
+        var membershipLimit = evidence.ExpansionWasComplete
+            ? string.Empty
+            : " The membership walk did not finish, so there may be more inside it than is shown.";
+        if (!evidence.Settings.IsComplete)
+            return "A broad LAPS decryptor value was found in the readable policy settings. "
+                + LapsPolicySettingsEvidence.IncompleteConfigurationText
+                + $" ADPasswordEncryptionPrincipal: '{evidence.ConfiguredValue}'. Supporting routes: "
+                + string.Join("; ", evidence.BroadPrincipalRoutes.Select(RouteDetail)) + "." + membershipLimit;
         var supports = evidence.BroadPrincipalRoutes.Count == 1
             ? SingleRouteDetail(policy, evidence.BroadPrincipalRoutes[0])
             : $"{policy} authorizes multiple broad principals to decrypt the Windows LAPS "
                 + "passwords it protects. Supporting routes: "
                 + string.Join("; ", evidence.BroadPrincipalRoutes.Select(RouteDetail));
-
-        var completeness = evidence.ExpansionWasComplete
-            ? string.Empty
-            : " The membership walk did not finish, so there may be more inside it than is shown.";
 
         return supports
             + $". The policy sets ADPasswordEncryptionPrincipal to '{evidence.ConfiguredValue}'. "
@@ -539,7 +524,7 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
             + "whatever the directory permissions say. Correcting the setting protects only "
             + "passwords written afterwards: the authorized decryptor cannot be changed after a "
             + "password is encrypted, so the stored passwords must also be rotated."
-            + completeness;
+            + membershipLimit;
     }
 
     private static string SingleRouteDetail(string policy, LapsDecryptorRouteEvidence route) =>
@@ -564,6 +549,10 @@ public sealed class LapsDecryptorBroadPrincipal : IObjectRule
                 + "this run did not read, or to an object since deleted."
             : "SecureAD resolves principals by identifier and this policy names one by name, so "
                 + "whether it resolves can only be settled on the machine.";
+
+        if (!evidence.Settings.IsComplete)
+            return $"ADPasswordEncryptionPrincipal: '{evidence.ConfiguredValue}'. {why} "
+                + LapsPolicySettingsEvidence.IncompleteConfigurationText;
 
         return $"{policy} sets ADPasswordEncryptionPrincipal to '{evidence.ConfiguredValue}', which "
             + $"this capture could not resolve to a principal. {why} Whether that principal is "

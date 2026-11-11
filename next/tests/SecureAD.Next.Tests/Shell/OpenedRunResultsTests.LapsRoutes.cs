@@ -141,7 +141,8 @@ public sealed partial class OpenedRunResultsTests
                 "bf967a86-0de6-11d0-a285-00aa003049e2", false),
             "SEC-093" => new LapsDecryptorEvidence("Recorded policy", path[0].Sid, LapsDecryptorForm.SecurityIdentifier,
                 path[0].Sid, path[0].Name,
-                [new LapsDecryptorRouteEvidence(path[1].Sid, null, path)], false),
+                [new LapsDecryptorRouteEvidence(path[1].Sid, null, path)], false,
+                SecureAD.Next.Tests.Judgement.SyntheticLapsPolicySettings.Complete(path[0].Sid)),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var version = rule == "SEC-090" ? 2 : 1;
@@ -184,7 +185,8 @@ public sealed partial class OpenedRunResultsTests
             "S-1-5-21-1-2-3-1100",
             "Delegated group",
             routes,
-            false);
+            false,
+            SecureAD.Next.Tests.Judgement.SyntheticLapsPolicySettings.Complete("S-1-5-21-1-2-3-1100"));
         var definition = new RuleDefinition(
             "SEC-093",
             "Recorded LAPS finding",

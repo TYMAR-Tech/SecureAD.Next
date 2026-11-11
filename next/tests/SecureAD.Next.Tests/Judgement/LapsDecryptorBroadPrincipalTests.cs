@@ -552,16 +552,19 @@ public sealed class LapsDecryptorBroadPrincipalTests
     }
 
     /// <summary>
-    /// A decryptor value that is present but blank counts as unset.
+    /// A blank captured value does not establish Windows' default-setting behavior.
     /// </summary>
     /// <remarks>
-    /// Microsoft's default applies when the setting "isn't specified", and an empty string
-    /// specifies nothing.
+    /// Unset and an explicit blank are different inputs; the client behavior remains unqualified.
     /// </remarks>
     [Fact]
-    public void ABlankDecryptorValueCountsAsUnset()
+    public void ABlankDecryptorValueIsNotGuessedAsUnset()
     {
-        AssertSilent([Setting(LapsKey, DecryptorValue, "   ")], Never());
+        var verdict = Verdict([Setting(LapsKey, DecryptorValue, "   ")], Never());
+        Assert.False(verdict.IsComplete);
+        Assert.Empty(verdict.Findings);
+        Assert.Contains(verdict.InputIssues, issue => issue.Attribute == DecryptorValue
+            && issue.Kind == CapturedInputIssueKind.UnusableValue);
     }
 
     /// <summary>
@@ -628,8 +631,9 @@ public sealed class LapsDecryptorBroadPrincipalTests
         var verdict = Verdict([], Never(), outcome);
 
         Assert.Empty(verdict.Findings);
-        var unresolved = Assert.Single(verdict.Unresolved);
-        Assert.Equal(DerivedFactKind.PrincipalExpansion, unresolved.Kind);
+        Assert.Empty(verdict.Unresolved);
+        Assert.Contains(verdict.InputIssues, issue => issue.Attribute == DecryptorValue
+            && issue.Kind == CapturedInputIssueKind.IncompleteValue);
     }
 
     /// <summary>
@@ -1100,7 +1104,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
         GpoSettingsOutcome outcome = GpoSettingsOutcome.Read) =>
         new LapsDecryptorBroadPrincipal().Judge(Policy(), Context(settings, expand, outcome));
 
-    private static JudgingContext Context(
+    internal static JudgingContext Context(
         IReadOnlyList<RegistryPolicyEntry> settings,
         Func<string, string, PrincipalExpansion> expand,
         GpoSettingsOutcome outcome = GpoSettingsOutcome.Read) =>
@@ -1144,7 +1148,7 @@ public sealed class LapsDecryptorBroadPrincipalTests
             (uint)RegistryValueType.String,
             Encoding.Unicode.GetBytes(value + '\0'));
 
-    private static ObjectAttributes Policy() => Object(PolicyDn, "groupPolicyContainer");
+    internal static ObjectAttributes Policy() => Object(PolicyDn, "groupPolicyContainer");
 
     /// <summary>
     /// The security identifier the lab plant set as the decryptor, as the captured file states it.

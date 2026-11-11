@@ -294,7 +294,8 @@ public sealed partial class OpenedRunResultsTests
             "SEC-090" => RecordedLapsReadFinding.Evidence(trustee, "Recorded group", broad, "Everyone", path,
                 "msLAPS-EncryptedPassword", LapsReadRights.Both, LapsGrantReach.ThisAttributeOnly, null, complete),
             "SEC-093" => new LapsDecryptorEvidence("Recorded policy", trustee, LapsDecryptorForm.SecurityIdentifier,
-                trustee, "Recorded group", [new(broad, "Everyone", path)], complete),
+                trustee, "Recorded group", [new(broad, "Everyone", path)], complete,
+                SecureAD.Next.Tests.Judgement.SyntheticLapsPolicySettings.Complete(trustee)),
             _ => throw new ArgumentOutOfRangeException(nameof(ruleId)),
         };
     }

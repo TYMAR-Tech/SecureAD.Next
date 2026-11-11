@@ -9,6 +9,7 @@ public enum CapturedInputIssueKind
     ZeroValue,
     UnusableValue,
     UnsupportedRepresentation,
+    IncompleteValue,
 }
 
 /// <summary>A captured-value limitation, distinct from an absent attribute or missing derivation.</summary>

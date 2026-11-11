@@ -72,9 +72,11 @@ public sealed record GpoRegistrySettings(
     GpoSettingsOutcome Outcome,
     string? Reason)
 {
+    public IReadOnlyList<string> ParseErrors { get; init; } = [];
+
     /// <summary>
     /// Whether everything this policy configures is present, so an absent setting is a fact about
     /// the policy rather than about the capture.
     /// </summary>
-    public bool IsComplete => Outcome is GpoSettingsOutcome.Read;
+    public bool IsComplete => Outcome is GpoSettingsOutcome.Read && ParseErrors.Count == 0;
 }

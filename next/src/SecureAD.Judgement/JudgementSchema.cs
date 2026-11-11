@@ -141,7 +141,8 @@ public static class JudgementSchema
     // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
     // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
     // Format 81 distinguishes unusable expiry inputs and captured value presence from management claims.
-    public const int Version = 81;
+    // Format 82 saves SEC-093's original registry value and independent policy-input limitations.
+    public const int Version = 82;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -681,7 +682,30 @@ public static class JudgementSchema
             decryptor_name                      TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
             route_count                         INTEGER NOT NULL CHECK (route_count >= 0),
+            settings_outcome                    TEXT NOT NULL,
+            settings_reason                     TEXT NULL,
+            registry_entry_index                INTEGER NOT NULL CHECK (registry_entry_index >= 0),
+            registry_key_path                   TEXT NOT NULL,
+            registry_value_name                 TEXT NOT NULL,
+            registry_type                       INTEGER NOT NULL,
+            registry_data                       BLOB NOT NULL,
+            parse_error_count                   INTEGER NOT NULL CHECK (parse_error_count >= 0),
+            interpretation_issue_count          INTEGER NOT NULL CHECK (interpretation_issue_count >= 0),
             PRIMARY KEY (finding_id)
+        )
+        """,
+
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_registry_limit (
+            finding_id INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('Parse','Operation')),
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            entry_index INTEGER NULL,
+            key_path TEXT NULL,
+            value_name TEXT NULL,
+            reason TEXT NOT NULL,
+            PRIMARY KEY (finding_id,kind,ordinal),
+            FOREIGN KEY (finding_id) REFERENCES finding_laps_decryptor(finding_id)
         )
         """,
 

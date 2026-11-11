@@ -176,6 +176,8 @@ public sealed class ControlEdgeLayoutTests
         // Observed format-81 published layout, including captured-value presence and SEC-090 support;
         // this is a new-build checkpoint, not a replacement for any historical forest anchor.
         [81] = "374FC340557F1508DA416E035F421AFA596FB5167559470FE276B4D69C6D88BC",
+        // Observed format-82 SEC-093 registry inputs/limits; all historical checkpoints stay fixed.
+        [82] = "B8DDB3C1F5FC9A4F03709610DF603158EF5B6702D5FE61A68BC4C984CAE11988",
     };
 
     [Fact]
