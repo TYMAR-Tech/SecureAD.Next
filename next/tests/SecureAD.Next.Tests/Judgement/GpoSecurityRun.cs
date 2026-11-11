@@ -38,6 +38,9 @@ internal static class GpoSecurityRun
         internal string Sid => (ChildDomain ? ChildSid : ParentSid) + "-" + Rid;
     }
 
+    internal sealed record OtherObject(string Dn, Guid Guid, IReadOnlyList<EvidenceAttribute> Attributes,
+        bool PolicyPermissions = false);
+
     internal sealed record Options
     {
         internal IReadOnlyList<Entry> Entries { get; init; } =
@@ -59,6 +62,7 @@ internal static class GpoSecurityRun
         internal string? DomainLinks { get; init; }
         internal IReadOnlyList<EvidenceAttribute> PolicyAttributes { get; init; } = [];
         internal (string Path, GpoTemplateVersionObservation Observation)? TemplateVersion { get; init; }
+        internal IReadOnlyList<OtherObject> OtherObjects { get; init; } = [];
     }
 
     internal static string Build(Options options)
@@ -66,11 +70,13 @@ internal static class GpoSecurityRun
         var directory = TempDirectories.Create("gpo-security-filter");
         var groups = new[] { new Group("Primary computers", 515, Global, false, [], []) }
             .Concat(options.Groups.Where(group => group.Rid != 515 || group.ChildDomain)).ToArray();
-        var parentCount = 3 + groups.Count(group => !group.ChildDomain) + options.OtherUsers.Count;
+        var parentCount = 3 + groups.Count(group => !group.ChildDomain) + options.OtherUsers.Count
+            + options.OtherObjects.Count(row => !InChild(row.Dn));
         var parent = new PartitionCoverage(Parent, NamingContextKind.Domain, "dc.example.test",
             ConnectionSecurityLevel.SignedAndSealed, parentCount, 1, 0, [], false);
         var child = new PartitionCoverage(Child, NamingContextKind.Domain, "dc.child.example.test",
-            ConnectionSecurityLevel.SignedAndSealed, 1 + groups.Count(group => group.ChildDomain), 1, 0, [], false);
+            ConnectionSecurityLevel.SignedAndSealed,
+            1 + groups.Count(group => group.ChildDomain) + options.OtherObjects.Count(row => InChild(row.Dn)), 1, 0, [], false);
         using (var writer = BundleWriter.Create(directory, Captured))
         {
             writer.WriteCoverage(parent);
@@ -108,30 +114,11 @@ internal static class GpoSecurityRun
                 [Text("objectClass", "top", "container", options.PolicyClass), .. options.PolicyAttributes], Captured));
             if (options.TemplateVersion is { } template)
                 writer.WriteGpoTemplateVersion(PolicyGuid, template.Path, template.Observation);
-            if (!options.NoDescriptor)
+            WritePermissions(writer, policyId, PolicyGuid, options);
+            foreach (var row in options.OtherObjects)
             {
-                var acl = options.NullDacl ? null : new RawAcl(GenericAcl.AclRevisionDS, options.Entries.Count);
-                foreach (var entry in options.NullDacl ? [] : options.Entries)
-                {
-                    var qualifier = entry.Deny ? AceQualifier.AccessDenied : AceQualifier.AccessAllowed;
-                    var trusteeSid = new SecurityIdentifier(entry.Sid);
-                    GenericAce ace = entry.Scope is { } scope
-                        ? new ObjectAce(entry.Flags, qualifier, entry.Mask, trusteeSid, ObjectAceFlags.ObjectAceTypePresent,
-                            Guid.Parse(scope), Guid.Empty, entry.Callback, entry.Callback ? new byte[4] : null)
-                        : new CommonAce(entry.Flags, qualifier, entry.Mask, trusteeSid, entry.Callback, entry.Callback ? new byte[4] : null);
-                    acl!.InsertAce(acl.Count, ace);
-                }
-                var descriptor = new RawSecurityDescriptor(ControlFlags.DiscretionaryAclPresent | ControlFlags.SelfRelative,
-                    new(options.Owner), new("S-1-5-18"), null, acl);
-                var bytes = new byte[descriptor.BinaryLength];
-                descriptor.GetBinaryForm(bytes, 0);
-                if (options.ShortDacl)
-                {
-                    var offset = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(16, 4));
-                    var count = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 4, 2));
-                    System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(offset + 4, 2), checked((ushort)(count + 1)));
-                }
-                writer.WriteSecurityDescriptor(policyId, bytes, AceNormalizer.Normalize(PolicyGuid, SecurityDescriptorParser.Parse(bytes)));
+                var id = writer.WriteObject(new(InChild(row.Dn) ? child : parent, row.Dn, row.Guid, row.Attributes, Captured));
+                if (row.PolicyPermissions) WritePermissions(writer, id, row.Guid, options);
             }
             writer.Complete(RunCoverage.Of(CoverageId.ForDomains("example.test", ["example.test", "child.example.test"]),
                 [DomainCoverage.Read("example.test"), DomainCoverage.Read("child.example.test")],
@@ -142,6 +129,33 @@ internal static class GpoSecurityRun
         }
         if (options.Derive) Derive(directory);
         return directory;
+    }
+
+    private static void WritePermissions(BundleWriter writer, long policyId, Guid policyGuid, Options options)
+    {
+        if (options.NoDescriptor) return;
+        var acl = options.NullDacl ? null : new RawAcl(GenericAcl.AclRevisionDS, options.Entries.Count);
+        foreach (var entry in options.NullDacl ? [] : options.Entries)
+        {
+            var qualifier = entry.Deny ? AceQualifier.AccessDenied : AceQualifier.AccessAllowed;
+            var trusteeSid = new SecurityIdentifier(entry.Sid);
+            GenericAce ace = entry.Scope is { } scope
+                ? new ObjectAce(entry.Flags, qualifier, entry.Mask, trusteeSid, ObjectAceFlags.ObjectAceTypePresent,
+                    Guid.Parse(scope), Guid.Empty, entry.Callback, entry.Callback ? new byte[4] : null)
+                : new CommonAce(entry.Flags, qualifier, entry.Mask, trusteeSid, entry.Callback, entry.Callback ? new byte[4] : null);
+            acl!.InsertAce(acl.Count, ace);
+        }
+        var descriptor = new RawSecurityDescriptor(ControlFlags.DiscretionaryAclPresent | ControlFlags.SelfRelative,
+            new(options.Owner), new("S-1-5-18"), null, acl);
+        var bytes = new byte[descriptor.BinaryLength];
+        descriptor.GetBinaryForm(bytes, 0);
+        if (options.ShortDacl)
+        {
+            var offset = System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(16, 4));
+            var count = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 4, 2));
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(offset + 4, 2), checked((ushort)(count + 1)));
+        }
+        writer.WriteSecurityDescriptor(policyId, bytes, AceNormalizer.Normalize(policyGuid, SecurityDescriptorParser.Parse(bytes)));
     }
 
     internal static void Derive(string directory)
@@ -157,4 +171,5 @@ internal static class GpoSecurityRun
         new(name, StoredAttributeCompleteness.Complete, [EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes(value)!)]);
     private static EvidenceAttribute Sids(string name, IReadOnlyList<string> values) =>
         new(name, StoredAttributeCompleteness.Complete, values.Select(value => EvidenceValue.OfBytes(SecureAD.Kernel.Security.Sid.ToBytes(value)!)).ToArray());
+    private static bool InChild(string dn) => dn.EndsWith(Child, StringComparison.OrdinalIgnoreCase);
 }

@@ -7,6 +7,50 @@ namespace SecureAD.Judgement;
 
 internal enum GpoApplicabilityState { Unknown, DoesNotApply, Applies }
 
+internal readonly record struct GpoWmiConditionKey(Guid CaptureGenerationId, string EvidenceSeal,
+    long ComputerObjectId, long FilterObjectId);
+
+internal sealed record GpoWmiAlternatives(GpoWmiConditionKey Condition,
+    GpoApplicabilityState WhenMatches, GpoApplicabilityState WhenDoesNotMatch);
+
+internal sealed record GpoConditionalApplicability(bool HasOpenPolicyScope, GpoWmiAlternatives? Wmi,
+    AuditError? UnavailableReason)
+{
+    internal static GpoConditionalApplicability Of(GpoLinkHierarchy hierarchy, GpoApplicabilityState domainOu,
+        GpoApplicabilityState policyState, GpoWmiFilterReading wmi)
+    {
+        var openScope = !hierarchy.SiteScopeResolved || !hierarchy.DomainOuEvidenceComplete;
+        if (!wmi.Definition.IsSuccess) return new(openScope, null, wmi.Definition.Error);
+        var queries = wmi.Definition.Value;
+        if (queries.Length != 1)
+            throw new InvalidDataException("A qualified WMI condition must contain one captured query.");
+        if (queries[0].Reading.State != WqlReadingState.ParsedConditions)
+            return new(openScope, null, queries[0].Reading.Error
+                ?? throw new InvalidDataException("An unqualified WMI query has no recorded reason."));
+        if (queries[0].Reading.Conditions is null || wmi.Filter is not { } filter || wmi.FilterValues is null
+            || hierarchy.CaptureGenerationId == Guid.Empty || string.IsNullOrWhiteSpace(hierarchy.EvidenceSeal)
+            || hierarchy.Computer.CaptureGenerationId != hierarchy.CaptureGenerationId
+            || wmi.Policy.CaptureGenerationId != hierarchy.CaptureGenerationId
+            || filter.CaptureGenerationId != hierarchy.CaptureGenerationId
+            || filter.ObjectId <= 0 || filter.ObjectGuid is null || filter.ObjectGuid == Guid.Empty)
+            throw new InvalidDataException("The conditional WMI outcome does not bind qualified captured sources.");
+        if (hierarchy.Computer.ObjectId <= 0 || hierarchy.Computer.ObjectGuid is null
+            || hierarchy.Computer.ObjectGuid == Guid.Empty
+            || !string.Equals(hierarchy.Computer.ObjectClass, "computer", StringComparison.OrdinalIgnoreCase))
+            return new(openScope, null, AuditError.Create(ErrorCategory.Evidence,
+                "GpoConditionalComputerUnqualified", ErrorSeverity.Degraded,
+                "The captured subject is not a qualified computer for conditional WMI outcomes.",
+                hierarchy.Computer.DistinguishedName));
+        var whenMatches = policyState == GpoApplicabilityState.DoesNotApply
+            || domainOu == GpoApplicabilityState.DoesNotApply && hierarchy.SiteScopeResolved
+                ? GpoApplicabilityState.DoesNotApply
+                : policyState == GpoApplicabilityState.Applies && domainOu == GpoApplicabilityState.Applies
+                    ? GpoApplicabilityState.Applies : GpoApplicabilityState.Unknown;
+        return new(openScope, new(new(hierarchy.CaptureGenerationId, hierarchy.EvidenceSeal,
+            hierarchy.Computer.ObjectId, filter.ObjectId), whenMatches, GpoApplicabilityState.DoesNotApply), null);
+    }
+}
+
 internal sealed record GpoProtocolAssessment(CapturedGpoProtocolInputs Inputs,
     uint? FunctionalityVersion, uint? Flags, uint? DirectoryVersion, ImmutableArray<AuditError> Limitations)
 {
@@ -31,6 +75,7 @@ internal sealed record GpoComputerApplicability(Guid CaptureGenerationId, string
     Guid? DerivationGenerationId, CapturedObjectIdentity Computer, CapturedObjectIdentity Policy,
     GpoLinkHierarchy Hierarchy, ImmutableArray<GpoHierarchyLink> PolicyLinks, GpoApplicabilityState DomainOuState,
     GpoSecurityAssessment Security, GpoProtocolAssessment Protocol, GpoWmiFilterReading Wmi,
+    GpoConditionalApplicability Conditional,
     GpoApplicabilityState PolicyState, GpoApplicabilityState State, ImmutableArray<AuditError> Limitations);
 
 internal sealed class GpoComputerApplicabilityReader : IDisposable
@@ -113,11 +158,13 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         errors.Add(Error("GpoApplicabilityWmiUnresolved",
             "Captured WMI configuration and parsed conditions do not establish that this policy is unfiltered or that its filter matches.",
             security.Policy.DistinguishedName));
+        var conditional = GpoConditionalApplicability.Of(hierarchy, domainOu, policyState, wmi);
+        if (conditional.UnavailableReason is { } unavailable) errors.Add(unavailable);
         token.ThrowIfCancellationRequested();
         RequireCurrent();
         return new GpoComputerApplicability(hierarchy.CaptureGenerationId, hierarchy.EvidenceSeal,
             security.DerivationGenerationId, hierarchy.Computer, security.Policy, hierarchy, links, domainOu,
-            security, protocol, wmi, policyState, state, errors.Distinct().ToImmutableArray());
+            security, protocol, wmi, conditional, policyState, state, errors.Distinct().ToImmutableArray());
     }
 
     private static GpoProtocolAssessment ReadProtocol(CapturedGpoProtocolInputs inputs)

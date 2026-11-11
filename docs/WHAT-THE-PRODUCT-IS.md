@@ -1395,6 +1395,22 @@ approved isolated rebuilt-fault verification: an estimated 15-25 minutes, with a
 35 minutes including eight reserved for restoration, final correct-source rebuilding and cleanup.
 The full suite and the other excluded activities above remain unapproved.
 
+**Conditional computer/GPO outcomes - owner-approved 2026-11-11.**
+The owner approved adding hypothetical match/non-match outcomes for a qualified captured WMI
+condition without changing the existing overall applicability conclusion or evaluating the filter.
+Policies referencing the same captured filter for the same computer must share the same source-bound
+condition; retain conditions and their two outcomes without enumerating every possible combination.
+Keep definite policy-wide exclusions, missing permissions, unsupported filters and unavailable
+evidence distinct, and preserve unknown site or incomplete hierarchy scope as open rather than
+claiming a complete set of possible policies.
+Implementation and short synthetic/offline checks are approved; longer fault verification needs
+its own warning, estimate and explicit approval.
+After 41 new and 226 existing checks passed, the owner separately approved isolated rebuilt-fault
+verification: an estimated 15-25 minutes, with a hard maximum of 35 minutes including eight
+reserved for restoration, final correct-source rebuilding and cleanup; no full suite is approved.
+Winning LAPS settings, automatic WMI matching, saved-format changes, finding/UI adoption, live
+access, recapture, production budgets, commit and push remain outside this batch.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

@@ -1238,6 +1238,22 @@ Carry site and WMI uncertainty without evaluating conditions or claiming a compl
 winning settings, client processing or control/path proof.
 This batch changes no findings, UI, saved formats, production budgets or live-access authorization.
 
+**Conditional applicability outcomes - owner-approved 2026-11-11.**
+For a qualified captured single-query WMI condition, retain separate hypothetical matching and
+non-matching outcomes without treating either assumption as an observed filter result.
+The condition identity must bind the exact evidence seal, capture generation, computer row and
+referenced filter row, sharing one condition across policies for the same computer/filter but not
+across computers, captures or distinct filter objects, even when their query text or logical IDs match.
+A non-matching filter excludes the policy under that assumption; a matching filter cannot erase a
+policy-wide exclusion or establish unavailable directory/protocol or scope prerequisites.
+Missing, rejected, unsupported or unavailable filter definitions do not become an unfiltered policy
+or a qualified pair of outcomes, and original queries, parser results and errors remain retained.
+Unresolved site scope or incomplete domain/OU evidence leaves the policy scope open, including
+possible additional policies; a complete pair of WMI assumptions is not a complete policy set.
+Represent conditions with their outcomes, not an enumeration of every cross-policy combination.
+The existing overall applicability answer stays unchanged, and no automatic matching, saved format,
+finding adoption, presentation change, winning setting or live access is authorized by this slice.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

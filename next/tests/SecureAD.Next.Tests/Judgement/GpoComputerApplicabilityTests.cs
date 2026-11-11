@@ -298,7 +298,7 @@ public sealed class GpoComputerApplicabilityTests
         Assert.Throws<InvalidOperationException>(() => reader.Assess(computer, policy, CancellationToken.None));
     }
 
-    private static Options Inputs(string? functionality = "2", string? flags = "0", string? directoryVersion = "1",
+    internal static Options Inputs(string? functionality = "2", string? flags = "0", string? directoryVersion = "1",
         uint? templateVersion = 1)
     {
         var attributes = new List<EvidenceAttribute> { Text("gPCFileSysPath", PolicyPath) };
