@@ -1590,6 +1590,19 @@ carried forward.
 No finding/UI change, production activation, live access, recapture, owner-data re-judging, commit
 or push is authorized.
 
+**Repeated current-selection checks - owner-approved 2026-11-12.**
+After committing policy-preparation reuse, the owner approved the next bounded batch: first count
+and time repeated checks that the held capture and derived analysis are still selected, then
+consolidate only work demonstrated to be genuinely redundant.
+This is not blanket removal of checks or permission to treat a previously successful check as
+current after a selection change or an unprotected gap.
+Preserve cancellation and disposed-reader refusal, exact capture/derivation/resource bindings,
+continuous file protection, changed-selection refusal and the final publication check.
+Start with a pinned source/build baseline and small fixed synthetic controls; larger verification
+or timing campaigns require a fresh scope, estimate, cap and explicit approval.
+Relevance pruning, shared saved storage, hierarchy/group-result caching, formats, finding/UI changes,
+production activation, live access, recapture, owner-data re-judging, commit and push remain excluded.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

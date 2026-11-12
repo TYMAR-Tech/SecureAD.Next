@@ -53,7 +53,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
 
     internal BundleReader Bundle => _sources.Bundle;
 
-    internal void RequireCurrent() => _sources.RequireCurrent();
+    internal JudgingInputs Sources => _sources;
 
     internal static Result<GpoSecurityFilterReader> Open(string directory, CancellationToken cancellationToken) =>
         Open(JudgingInputs.Open(directory, cancellationToken));

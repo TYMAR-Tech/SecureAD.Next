@@ -255,8 +255,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
 
     internal void RequireCurrent()
     {
-        _hierarchy.RequireCurrent();
-        _security.RequireCurrent();
+        _hierarchy.Sources.RequireCurrentWith(_security.Sources);
     }
 
     private static AuditError Error(string code, string description, string context) =>

@@ -38,7 +38,7 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
 
     internal BundleReader Bundle => _sources.Bundle;
 
-    internal void RequireCurrent() => _sources.RequireCurrent();
+    internal JudgingInputs Sources => _sources;
 
     internal static Result<GpoLinkHierarchyReader> Open(string directory, CancellationToken token) =>
         Open(JudgingInputs.Open(directory, token));

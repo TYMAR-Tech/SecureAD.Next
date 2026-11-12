@@ -92,6 +92,8 @@ internal static class ConfiguredLapsMeasurement
                 NameLookupCounterScope = "Timed JudgeAudit only, summed across its reader-local caches and listed SQLite sources; requests and cache hits are logical operations, *-sql counts are statement attempts, exact-hit counts successful exact-name attempts; misses are requests minus cache hits",
                 NameLookupCounterOverhead = "Enabled for every lookup; aggregate counters only, no per-lookup log or SQL trace; not independently calibrated",
                 GpoPreparationCounterScope = "Timed JudgeAudit only; GpoPreparations counts source-scoped preparation/read operations, not individual SQL statements; NativePreparations counts actual COM WQL Parse attempts and registry ReadInstructions executions across the whole single-audit process, including ordinary rules",
+                SourceGuardCounterScope = "Timed JudgeAudit, selected bundle only; logical owned-scope requests retained by RequireCurrent/RequireCurrentWith, fresh capture/derivation resolution attempts and aggregated validation milliseconds; samples count invocations, not logical scopes; no verdict is cached across calls; initial cancelled/disposed lifetime refusal is excluded",
+                SelectionManifestReadScope = "Independent counter at actual selected-root stream opening/deserialization; all capture/derivation/judgement root readers in the timed selected-bundle audit, not just JudgingInputs guards",
             });
             var previous = AnalysisStoreLifecycle.ResolveRoot(bundle, AnalysisStoreKind.Judgement);
             if (cancelAfter.HasValue && !previous.IsSuccess)
@@ -161,6 +163,9 @@ internal static class ConfiguredLapsMeasurement
                 NameResolutionReuseImplemented = true, NameLookups = observer.NameLookups,
                 NameLookupSources = observer.NameLookupSources,
                 GpoPreparations = observer.GpoPreparations, NativePreparations = observer.NativePreparations,
+                SourceGuards = observer.SourceGuards, SourceGuardMilliseconds = observer.SourceGuardMilliseconds,
+                SourceGuardSamples = observer.SourceGuardSamples,
+                SelectionManifestReads = observer.SelectionManifestReads,
             });
             Console.WriteLine("Measured synthetic judgement: " + output);
             return 0;

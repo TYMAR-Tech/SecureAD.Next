@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
 using SecureAD.Evidence;
@@ -11,6 +13,11 @@ namespace SecureAD.Judgement;
 
 internal sealed class JudgingInputs : IDisposable
 {
+    private static readonly Meter SelectionMeter = new("SecureAD.Judgement.Inputs");
+    private static readonly Counter<long> SelectionRequests = SelectionMeter.CreateCounter<long>("guard.logical_requests");
+    private static readonly Counter<long> CaptureResolves = SelectionMeter.CreateCounter<long>("guard.capture_resolves");
+    private static readonly Counter<long> DerivationResolves = SelectionMeter.CreateCounter<long>("guard.derivation_resolves");
+    private static readonly Histogram<double> SelectionMilliseconds = SelectionMeter.CreateHistogram<double>("guard.current_ms");
     private readonly ProtectedStoreFile _evidence;
     private readonly ProtectedRunFiles _files;
     private ProtectedRunFiles? _ownedFiles;
@@ -206,15 +213,55 @@ internal sealed class JudgingInputs : IDisposable
             throw OwnershipAuditStorage.InvalidProof();
     }
 
-    internal void RequireCurrent()
+    internal void RequireCurrent() => RequireCurrentCore(null);
+
+    internal void RequireCurrentWith(JudgingInputs other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        RequireCurrentCore(other);
+    }
+
+    private void RequireCurrentCore(JudgingInputs? other)
     {
         CheckLifetime();
-        var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
-        if (!capture.IsSuccess || capture.Value.Hash != _evidence.Root.Hash) throw OwnershipAuditStorage.InvalidProof();
-        if (_derivedFile?.Generation is not { } generation) return;
-        var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
-        if (!selected.IsSuccess || selected.Value.GenerationId != generation.GenerationId
-            || selected.Value.Hash != _derivedFile.Root.Hash) throw OwnershipAuditStorage.InvalidProof();
+        other?.CheckLifetime();
+        if (other is not null && (!ReferenceEquals(_files, other._files) || !ReferenceEquals(_evidence, other._evidence)))
+            throw OwnershipAuditStorage.InvalidProof();
+        var started = SelectionMilliseconds.Enabled ? Stopwatch.GetTimestamp() : 0;
+        RecordSelection(SelectionRequests, other is null ? 1 : 2);
+        try
+        {
+            RecordSelection(CaptureResolves);
+            var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+            if (!capture.IsSuccess || capture.Value.Hash != _evidence.Root.Hash
+                || other is not null && capture.Value.Hash != other._evidence.Root.Hash)
+                throw OwnershipAuditStorage.InvalidProof();
+            if (_derivedFile?.Generation is not null || other?._derivedFile?.Generation is not null)
+            {
+                RecordSelection(DerivationResolves);
+                var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
+                if (!selected.IsSuccess || !MatchesDerivation(selected.Value, _derivedFile)
+                    || !MatchesDerivation(selected.Value, other?._derivedFile))
+                    throw OwnershipAuditStorage.InvalidProof();
+            }
+            CheckLifetime();
+            other?.CheckLifetime();
+        }
+        finally
+        {
+            if (started != 0)
+                SelectionMilliseconds.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                    new KeyValuePair<string, object?>("bundle", Directory));
+        }
+    }
+
+    private static bool MatchesDerivation(StoreRootManifest selected, ProtectedStoreFile? file) =>
+        file?.Generation is not { } generation
+            || selected.GenerationId == generation.GenerationId && selected.Hash == file.Root.Hash;
+
+    private void RecordSelection(Counter<long> counter, long count = 1)
+    {
+        if (counter.Enabled) counter.Add(count, new KeyValuePair<string, object?>("bundle", Directory));
     }
 
     internal IDisposable? ProtectPublication(JudgementDescription description)

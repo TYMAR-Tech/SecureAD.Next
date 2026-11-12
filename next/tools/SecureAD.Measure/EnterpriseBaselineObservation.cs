@@ -24,6 +24,10 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     private readonly HashSet<string> _nameLookupSources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _gpoPreparations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _nativePreparations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _sourceGuards = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _selectionManifestReads = new(StringComparer.Ordinal);
+    private double _sourceGuardMilliseconds;
+    private long _sourceGuardSamples;
     private ExceptionDispatchInfo? _samplingFailure;
     private string _stage = "Preparing";
     private TimeSpan? _memoryExceeded;
@@ -44,15 +48,45 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         {
             if (instrument.Meter.Name == "SecureAD.Evidence.Readback"
                 && (instrument.Name == "store.verifications"
-                    || lookupDirectory is not null && instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation"))
+                    || lookupDirectory is not null && instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation" or "store.selection_manifest_reads"))
                 listener.EnableMeasurementEvents(instrument);
             if (lookupDirectory is not null
                 && (instrument.Meter.Name == "SecureAD.Evidence.WqlParser" && instrument.Name == "wql.native_parses"
                     || instrument.Meter.Name == "SecureAD.Kernel.GroupPolicy" && instrument.Name == "registry.instruction_decodes"))
                 listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null && instrument.Meter.Name == "SecureAD.Judgement.Inputs")
+                listener.EnableMeasurementEvents(instrument);
         };
         _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
+            if (instrument.Name == "store.selection_manifest_reads")
+            {
+                string? directory = null;
+                string? kind = null;
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "bundle") directory = tag.Value as string;
+                    if (tag.Key == "kind") kind = tag.Value as string;
+                }
+                if (directory is null || kind is null)
+                    throw new InvalidDataException("A selected-manifest read lacks its source or kind.");
+                if (string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                    lock (_gate)
+                        _selectionManifestReads[kind] = checked(_selectionManifestReads.GetValueOrDefault(kind) + value);
+                return;
+            }
+            if (instrument.Meter.Name == "SecureAD.Judgement.Inputs")
+            {
+                foreach (var tag in tags)
+                    if (tag.Key == "bundle" && tag.Value is string directory
+                        && string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                    {
+                        lock (_gate)
+                            _sourceGuards[instrument.Name] = checked(_sourceGuards.GetValueOrDefault(instrument.Name) + value);
+                        return;
+                    }
+                return;
+            }
             if (instrument.Name is "wql.native_parses" or "registry.instruction_decodes")
             {
                 lock (_gate)
@@ -95,6 +129,21 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
                 break;
             }
         });
+        _listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
+        {
+            if (instrument.Meter.Name != "SecureAD.Judgement.Inputs" || instrument.Name != "guard.current_ms") return;
+            foreach (var tag in tags)
+                if (tag.Key == "bundle" && tag.Value is string directory
+                    && string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    lock (_gate)
+                    {
+                        _sourceGuardMilliseconds += value;
+                        _sourceGuardSamples++;
+                    }
+                    return;
+                }
+        });
         _listener.Start();
         _sampling = Task.Run(SampleAsync);
     }
@@ -120,6 +169,16 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     {
         get { lock (_gate) return new Dictionary<string, long>(_nativePreparations, StringComparer.Ordinal); }
     }
+    internal IReadOnlyDictionary<string, long> SourceGuards
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_sourceGuards, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> SelectionManifestReads
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_selectionManifestReads, StringComparer.Ordinal); }
+    }
+    internal double SourceGuardMilliseconds { get { lock (_gate) return _sourceGuardMilliseconds; } }
+    internal long SourceGuardSamples { get { lock (_gate) return _sourceGuardSamples; } }
     internal int ResourceSamples { get { lock (_gate) return _resourceSamples; } }
     internal CancellationToken Token => _stopping.Token;
 
