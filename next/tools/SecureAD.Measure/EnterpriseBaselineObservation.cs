@@ -20,13 +20,16 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     private readonly Task _sampling;
     private readonly List<EnterpriseStageObservation> _stages = [];
     private readonly Dictionary<string, long> _verifications = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _nameLookups = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _nameLookupSources = new(StringComparer.Ordinal);
     private ExceptionDispatchInfo? _samplingFailure;
     private string _stage = "Preparing";
     private TimeSpan? _memoryExceeded;
     private int _resourceSamples;
     private bool _disposed;
 
-    internal EnterpriseBaselineObservation(string output, long physicalMemoryBytes, CancellationTokenSource stopping)
+    internal EnterpriseBaselineObservation(string output, long physicalMemoryBytes, CancellationTokenSource stopping,
+        string? nameLookupDirectory = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(physicalMemoryBytes);
         _output = Path.GetFullPath(output);
@@ -34,13 +37,37 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         _memoryLimit = Math.Min(48L * 1024 * 1024 * 1024, physicalMemoryBytes / 4 * 3);
         _writer = new StreamWriter(new FileStream(Path.Combine(output, "observations.jsonl"),
             FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
+        var lookupDirectory = nameLookupDirectory is null ? null : Path.GetFullPath(nameLookupDirectory);
         _listener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == "SecureAD.Evidence.Readback" && instrument.Name == "store.verifications")
+            if (instrument.Meter.Name == "SecureAD.Evidence.Readback"
+                && (instrument.Name == "store.verifications"
+                    || lookupDirectory is not null && instrument.Name == "evidence.name_lookup"))
                 listener.EnableMeasurementEvents(instrument);
         };
-        _listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
+            if (instrument.Name == "evidence.name_lookup")
+            {
+                string? operation = null;
+                string? source = null;
+                string? directory = null;
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "operation") operation = tag.Value as string;
+                    if (tag.Key == "source") source = tag.Value as string;
+                    if (tag.Key == "bundle") directory = tag.Value as string;
+                }
+                if (operation is null || source is null || directory is null)
+                    throw new InvalidDataException("A name-lookup observation lacks its operation or source.");
+                if (!string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase)) return;
+                lock (_gate)
+                {
+                    _nameLookups[operation] = checked(_nameLookups.GetValueOrDefault(operation) + value);
+                    _nameLookupSources.Add(source);
+                }
+                return;
+            }
             foreach (var tag in tags)
             {
                 if (tag.Value is not string path || !path.StartsWith(_output + Path.DirectorySeparatorChar,
@@ -63,6 +90,14 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     internal IReadOnlyDictionary<string, long> Verifications
     {
         get { lock (_gate) return new Dictionary<string, long>(_verifications, StringComparer.OrdinalIgnoreCase); }
+    }
+    internal IReadOnlyDictionary<string, long> NameLookups
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_nameLookups, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyList<string> NameLookupSources
+    {
+        get { lock (_gate) return _nameLookupSources.Order(StringComparer.Ordinal).ToArray(); }
     }
     internal int ResourceSamples { get { lock (_gate) return _resourceSamples; } }
     internal CancellationToken Token => _stopping.Token;

@@ -34,6 +34,45 @@ public sealed class ConfiguredLapsMeasurementTests
         Assert.Equal(ConfiguredLapsWorkload.Identity(dn), policy.ObjectGuid);
     }
 
+    [Fact]
+    public void MeasurementNameLookupCountsMatchExecutedSqlAndExcludeOtherSources()
+    {
+        var directory = LapsPrecedenceRun.Build([new(1,
+            [LapsPrecedenceRun.TextValue(LapsPrecedenceRun.Principal, LapsPrecedenceRun.GroupA)])]);
+        var other = LapsPrecedenceRun.Build([new(1, [])]);
+        using var reader = BundleReader.Open(directory).Value;
+        using var unrelated = BundleReader.Open(other).Value;
+        using var stopping = new CancellationTokenSource();
+        using var observer = new EnterpriseBaselineObservation(TempDirectories.Create("name-lookup-observation"),
+            8L * 1024 * 1024 * 1024, stopping, directory);
+        using var trace = new JudgingInputReuseTests.Statements(reader.Connection);
+        unrelated.ReadObjectIdentity(GpoSecurityRun.Policy);
+        observer.Measure("Judgement", () =>
+        {
+            reader.ReadObjectNameMatch(GpoSecurityRun.Policy);
+            reader.ReadObjectIdentity(GpoSecurityRun.Policy);
+            reader.ReadObjectNameMatch(GpoSecurityRun.Policy);
+            reader.ReadObjectIdentity(GpoSecurityRun.Policy);
+            return true;
+        });
+        observer.Dispose();
+        Assert.Equal(new[] { reader.Connection.DataSource }, observer.NameLookupSources);
+        Assert.Equal(2, observer.NameLookups.GetValueOrDefault("name-request"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("name-cache-hit"));
+        Assert.Equal(2, observer.NameLookups.GetValueOrDefault("identity-request"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("identity-cache-hit"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("exact-hit"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("exact-sql"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("identity-row-sql"));
+        Assert.Equal(1, observer.NameLookups.GetValueOrDefault("uniqueness-sql"));
+        Assert.False(observer.NameLookups.ContainsKey("identity-nocase-sql"));
+        Assert.Equal(3, trace.Sql.Count(sql => sql != "SELECT 73"));
+        Assert.Single(trace.Sql.Where(sql => sql.Contains("GROUP BY distinguished_name COLLATE NOCASE", StringComparison.Ordinal)));
+        Assert.Single(trace.Sql.Where(sql => sql.StartsWith("SELECT object_id FROM captured_object WHERE distinguished_name=", StringComparison.Ordinal)
+            && !sql.Contains("COLLATE NOCASE", StringComparison.Ordinal)));
+        Assert.Single(trace.Sql.Where(sql => sql.Contains("FROM captured_object o WHERE o.object_id=", StringComparison.Ordinal)));
+    }
+
     [Theory]
     [InlineData(ConfiguredLapsPolicy.Disabled)]
     [InlineData(ConfiguredLapsPolicy.AllCapturedComputers)]

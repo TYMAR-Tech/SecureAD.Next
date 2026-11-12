@@ -372,17 +372,20 @@ internal static class ObjectAttributesReader
         return values;
     }
 
-    internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation)
+    internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation,
+        long? objectId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         using var query = connection.CreateCommand();
         var objectClass = navigation ? "o.most_specific_class"
             : "(SELECT v.value FROM objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1)";
+        var predicate = objectId is null ? "o.distinguished_name=$dn COLLATE NOCASE" : "o.object_id=$id";
         query.CommandText = $"""
             SELECT o.distinguished_name,o.object_guid,{objectClass},o.domain_fqdn,o.objectsid,o.object_id
-            FROM captured_object o WHERE o.distinguished_name=$dn COLLATE NOCASE LIMIT 1
+            FROM captured_object o WHERE {predicate} LIMIT 1
             """;
-        query.Parameters.AddWithValue("$dn", distinguishedName);
+        if (objectId is { } id) query.Parameters.AddWithValue("$id", id);
+        else query.Parameters.AddWithValue("$dn", distinguishedName);
         using var row = query.ExecuteReader();
         return !row.Read() ? null : new(row.GetString(0),
             row.IsDBNull(1) ? null : Guid.Parse(row.GetString(1)),

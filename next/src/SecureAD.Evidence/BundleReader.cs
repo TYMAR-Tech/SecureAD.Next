@@ -111,6 +111,7 @@ public sealed partial class BundleReader : IDisposable
 {
     private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
     private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
+    private static readonly Counter<long> NameLookups = ReadbackMeter.CreateCounter<long>("evidence.name_lookup");
     private readonly SqliteConnection _connection;
     private readonly bool _navigation;
     private bool _delegations;
@@ -119,6 +120,10 @@ public sealed partial class BundleReader : IDisposable
     private (long ObjectId, string Dn)? _streamedIdentity;
     private bool? _streamedNamesAreUnambiguous;
     private Dictionary<string, long>? _bulkObjectIds;
+    private Dictionary<string, (long? ObjectId, bool Ambiguous)>? _objectNameMatches;
+    private Dictionary<string, CapturedObjectIdentity?>? _objectIdentities;
+    private CancellationToken _nameLookupCancellation;
+    private string? _nameLookupSource;
     private string? _verifiedFingerprint;
     private (SchemaGuidCatalog Schema, DelegationCoverage Coverage)? _delegationPreparation;
     private sealed class BrowseCache
@@ -284,6 +289,7 @@ public sealed partial class BundleReader : IDisposable
                 opened.Value._delegations = store.Role == StoreSegmentRole.Delegations;
                 opened.Value._verifiedFingerprint = store.Root.EvidenceSeal;
                 opened.Value._protection = lease;
+                opened.Value._nameLookupCancellation = cancellationToken;
                 opened.Value._browsing = BrowseCaches.GetValue(store, static _ => new());
                 lease = null;
             }
@@ -663,21 +669,94 @@ public sealed partial class BundleReader : IDisposable
     }
 
     /// <summary>Reads captured identity only, without attributes, permissions or analysis.</summary>
-    public CapturedObjectIdentity? ReadObjectIdentity(string distinguishedName) =>
-        ObjectAttributesReader.ReadIdentity(Connection, distinguishedName, _navigation) is { } identity
-            ? identity with { CaptureGenerationId = Description.CaptureGenerationId } : null;
+    public CapturedObjectIdentity? ReadObjectIdentity(string distinguishedName)
+    {
+        var connection = Connection;
+        _nameLookupCancellation.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
+        CountNameLookup("identity-request");
+        if (_objectIdentities is not null && _objectIdentities.TryGetValue(distinguishedName, out var saved))
+        {
+            CountNameLookup("identity-cache-hit");
+            return saved;
+        }
+
+        CapturedObjectIdentity? identity;
+        if (_objectNameMatches is not null && _objectNameMatches.TryGetValue(distinguishedName, out var match)
+            && !match.Ambiguous)
+        {
+            if (match.ObjectId is { } objectId)
+            {
+                CountNameLookup("identity-row-sql");
+                identity = ObjectAttributesReader.ReadIdentity(connection, distinguishedName, _navigation, objectId);
+            }
+            else identity = null;
+        }
+        else
+        {
+            // Ambiguous names retain the original LIMIT 1 selection, even after a name-match request.
+            CountNameLookup("identity-nocase-sql");
+            identity = ObjectAttributesReader.ReadIdentity(connection, distinguishedName, _navigation);
+        }
+        if (identity is not null) identity = identity with { CaptureGenerationId = Description.CaptureGenerationId };
+        _nameLookupCancellation.ThrowIfCancellationRequested();
+        if (_protection is not null)
+            (_objectIdentities ??= new(StringComparer.Ordinal)).Add(distinguishedName, identity);
+        return identity;
+    }
 
     /// <summary>Distinguishes a missing name from an ambiguous one without choosing the first row.</summary>
     internal (long? ObjectId, bool Ambiguous) ReadObjectNameMatch(string distinguishedName)
     {
+        var connection = Connection;
+        _nameLookupCancellation.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
-        using var command = Connection.CreateCommand();
+        CountNameLookup("name-request");
+        if (_objectNameMatches is not null && _objectNameMatches.TryGetValue(distinguishedName, out var saved))
+        {
+            CountNameLookup("name-cache-hit");
+            return saved;
+        }
+
+        if (_protection is not null && StreamedNamesAreUnambiguous())
+        {
+            using var exact = connection.CreateCommand();
+            exact.CommandText = "SELECT object_id FROM captured_object WHERE distinguished_name=$dn LIMIT 1";
+            exact.Parameters.AddWithValue("$dn", distinguishedName);
+            CountNameLookup("exact-sql");
+            using var row = exact.ExecuteReader();
+            if (row.Read())
+            {
+                CountNameLookup("exact-hit");
+                return Remember((row.GetInt64(0), false));
+            }
+        }
+
+        using var command = connection.CreateCommand();
         command.CommandText = "SELECT object_id FROM captured_object WHERE distinguished_name=$dn COLLATE NOCASE LIMIT 2";
         command.Parameters.AddWithValue("$dn", distinguishedName);
+        CountNameLookup("name-nocase-sql");
         using var rows = command.ExecuteReader();
-        if (!rows.Read()) return (null, false);
+        if (!rows.Read()) return Remember((null, false));
         var id = rows.GetInt64(0);
-        return rows.Read() ? (null, true) : (id, false);
+        return Remember(rows.Read() ? (null, true) : (id, false));
+
+        (long? ObjectId, bool Ambiguous) Remember((long? ObjectId, bool Ambiguous) match)
+        {
+            _nameLookupCancellation.ThrowIfCancellationRequested();
+            // Exact request keys avoid replacing SQLite NOCASE with Unicode case folding.
+            if (_protection is not null)
+                (_objectNameMatches ??= new(StringComparer.Ordinal)).Add(distinguishedName, match);
+            return match;
+        }
+    }
+
+    private void CountNameLookup(string operation)
+    {
+        if (!NameLookups.Enabled) return;
+        NameLookups.Add(1, new KeyValuePair<string, object?>("operation", operation),
+            new KeyValuePair<string, object?>("source", _nameLookupSource ??= _connection.DataSource),
+            new KeyValuePair<string, object?>("bundle", BundleDirectory));
     }
 
     /// <summary>Reads one original observed link, preferring the selected member's recorded backlink.</summary>
@@ -1030,6 +1109,7 @@ public sealed partial class BundleReader : IDisposable
 
     private bool StreamedNamesAreUnambiguous()
     {
+        _nameLookupCancellation.ThrowIfCancellationRequested();
         if (_streamedNamesAreUnambiguous is { } known)
             return known;
 
@@ -1039,8 +1119,10 @@ public sealed partial class BundleReader : IDisposable
         command.CommandText =
             "SELECT 1 FROM captured_object GROUP BY distinguished_name COLLATE NOCASE "
             + "HAVING COUNT(*) > 1 LIMIT 1";
+        CountNameLookup("uniqueness-sql");
         using var reader = command.ExecuteReader();
         var unambiguous = !reader.Read();
+        _nameLookupCancellation.ThrowIfCancellationRequested();
         _streamedNamesAreUnambiguous = unambiguous;
         return unambiguous;
     }
@@ -1207,6 +1289,8 @@ public sealed partial class BundleReader : IDisposable
 
         _disposed = true;
         _bulkObjectIds = null;
+        _objectNameMatches = null;
+        _objectIdentities = null;
 
         // The lease owns this connection when the reader was opened over a protected file, and its
         // own disposal closes the connection before releasing the file protection. Release it in a

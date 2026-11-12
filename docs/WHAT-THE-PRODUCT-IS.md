@@ -1556,6 +1556,22 @@ case exceeds the allotted resources or time.
 No full suite, owner-lab re-judging, live access, recapture, product optimisation, activation,
 finding/UI adoption, commit or push is authorized.
 
+**Source-bound name-resolution correction - owner-approved for the next session, 2026-11-12.**
+The owner selected the first bounded performance correction only: source-bound name-resolution
+reuse, exact-name lookup where its safety is established, and counters demonstrating actual
+lookup reduction against unchanged answers.
+Preserve SQLite's existing name-matching semantics, duplicate/missing/ambiguous results, exact
+source/generation binding, cancellation and protected reader lifetimes.
+This does not approve immutable-policy preparation, current-generation guard consolidation,
+relevance pruning, hierarchy/group-result caching, shared saved-input storage or capture-index/
+format changes; those remain separate batches.
+Implementation, focused short synthetic checks and counter-supported comparison preparation may
+begin in the next session, not this handoff session.
+Any long verification or measurement run still requires a fresh scope, duration estimate, cap
+and explicit approval; earlier run windows do not carry over.
+No finding/UI change, production activation, live access, recapture, owner-data re-judging,
+commit or push is authorized.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

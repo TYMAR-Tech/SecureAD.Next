@@ -194,8 +194,13 @@ Prepare a bounded calculation-cost trace and realistic mixed-policy comparison b
 
 **Finding RESP-01-LAPS-F01 - MEDIUM, open; source-confirmed repeated preparation, 2026-11-12.**
 Review of the supplied feedback confirms repeated case-insensitive name queries against the binary-collated captured-name index, repeated current-generation metadata checks and repeated policy-input/WQL/registry preparation in the automatic LAPS path; their relative runtime shares and the external benchmark figures have not been independently measured here.
-The first bounded correction candidate is source-generation-bound name-resolution reuse that preserves SQLite collation and missing/ambiguous-name behavior, followed by immutable policy preparation and justified guard consolidation under continuous file protection, without sharing computer-specific authorization answers or retaining every computer's membership workset.
-Relevance pruning and shared saved supports require separately approved output/proof changes, while any implementation or new profiling campaign remains unapproved and must preserve original captures, completed measurements, conditional answers, incompleteness and cancellation/publication behavior.
+The owner approved starting only source-generation-bound name-resolution reuse, safe exact lookup where qualified and attributable lookup counters in a new session, preserving SQLite collation and missing/ambiguous-name behavior without sharing computer-specific authorization answers or retaining every computer's membership workset.
+Immutable policy preparation, guard consolidation, relevance pruning and shared saved supports remain separate unapproved batches, and every new long verification/measurement campaign needs fresh approval while original captures, completed measurements, conditional answers, incompleteness and cancellation/publication behavior stay preserved.
+
+**Name-resolution correction checkpoint, 2026-11-12 - first correction offline verified.**
+The [source/binary-pinned verification](C:/Users/jistrand/.copilot/session-state/d9ef6d4f-76d9-4421-9d54-d4af0fdc418c/files/name-resolution/verified-name-resolution.json) passed 467 affected checks after final correct-source Release rebuilding, and all 19 new cases rejected eleven isolated rebuilt faults through 76 intended assertion failures and 157 restored passes.
+Native SQLite tracing confirmed 30 repeated name/identity requests executed 13 statements instead of 30 including uniqueness qualification; the separate 27-computer control recorded 720 requests, 477 cache hits and 246 statements including three reader-local qualification scans, without NOCASE fallbacks.
+All 27 saved computer payloads were character-identical after masking only the new judgement generation, with pending owner direction and original evidence/measurements preserved; the broader finding remains open, runtime-share and production acceptance are unproven, activation stays disabled and every later batch still needs separate approval.
 
 ### RESP-02 - Unify protected run lifetimes and trustworthy stage handoffs
 

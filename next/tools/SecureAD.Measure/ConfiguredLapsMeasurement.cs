@@ -89,13 +89,15 @@ internal static class ConfiguredLapsMeasurement
                 MemoryMethod = "100-ms sampled process private/working bytes; OS peak working set is process-lifetime, not additional LAPS memory",
                 TimingMethod = "Whole JudgeAudit including source verification, ordinary rules, other enabled host work and publication; generator, derivation and independent readback excluded",
                 ObserverOverheadCalibrated = false,
+                NameLookupCounterScope = "Timed JudgeAudit only, summed across its reader-local caches and listed SQLite sources; requests and cache hits are logical operations, *-sql counts are statement attempts, exact-hit counts successful exact-name attempts; misses are requests minus cache hits",
+                NameLookupCounterOverhead = "Enabled for every lookup; aggregate counters only, no per-lookup log or SQL trace; not independently calibrated",
             });
             var previous = AnalysisStoreLifecycle.ResolveRoot(bundle, AnalysisStoreKind.Judgement);
             if (cancelAfter.HasValue && !previous.IsSuccess)
                 throw new InvalidDataException("Cancellation needs a previous completed generation.");
             var previousInputs = cancelAfter.HasValue ? EnterpriseBaseline.FingerprintProducts(bundle) : [];
             using var stopping = new CancellationTokenSource();
-            using var observer = new EnterpriseBaselineObservation(output, build.PhysicalMemoryBytes, stopping);
+            using var observer = new EnterpriseBaselineObservation(output, build.PhysicalMemoryBytes, stopping, bundle);
             var progress = new CancellationProgress(stopping, cancelAfter);
             var allocated = GC.GetTotalAllocatedBytes(true);
             var watch = Stopwatch.StartNew();
@@ -154,7 +156,9 @@ internal static class ConfiguredLapsMeasurement
                 JudgementBytes = new[] { StoreSegmentRole.Judgement, StoreSegmentRole.JudgementFacts,
                     StoreSegmentRole.PermissionProof, StoreSegmentRole.PathProof }
                     .Sum(role => new FileInfo(Path.Combine(bundle, selected.Segment(role).FileName)).Length),
-                SourceInputsUnchanged = true, ProductOptimized = false, ProductionAcceptance = false,
+                SourceInputsUnchanged = true, ProductOptimized = true, ProductionAcceptance = false,
+                NameResolutionReuseImplemented = true, NameLookups = observer.NameLookups,
+                NameLookupSources = observer.NameLookupSources,
             });
             Console.WriteLine("Measured synthetic judgement: " + output);
             return 0;
