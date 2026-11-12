@@ -94,7 +94,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         if (_derivation is null) _memberships.Clear();
         var computerValues = Bundle.ReadObjectAttributesAt(computer,
             ["objectClass", "objectSid", "primaryGroupID", "sIDHistory", "userAccountControl"]).Snapshot();
-        var policyValues = Bundle.ReadObjectAttributesAt(policy, ["objectClass", "objectSid"]).Snapshot();
+        var policyValues = Bundle.ReadGpoPolicyValues(policy, ["objectClass", "objectSid"], cancellationToken);
         computer = GpoCapturedIdentity.Normalize(computer, computerValues);
         policy = GpoCapturedIdentity.Normalize(policy, policyValues);
         var permissions = Bundle.ReadPermissionsAt(policy);

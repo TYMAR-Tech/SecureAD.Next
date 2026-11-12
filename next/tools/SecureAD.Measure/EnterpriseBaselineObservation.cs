@@ -22,6 +22,8 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     private readonly Dictionary<string, long> _verifications = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, long> _nameLookups = new(StringComparer.Ordinal);
     private readonly HashSet<string> _nameLookupSources = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _gpoPreparations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _nativePreparations = new(StringComparer.Ordinal);
     private ExceptionDispatchInfo? _samplingFailure;
     private string _stage = "Preparing";
     private TimeSpan? _memoryExceeded;
@@ -42,12 +44,22 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         {
             if (instrument.Meter.Name == "SecureAD.Evidence.Readback"
                 && (instrument.Name == "store.verifications"
-                    || lookupDirectory is not null && instrument.Name == "evidence.name_lookup"))
+                    || lookupDirectory is not null && instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation"))
+                listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null
+                && (instrument.Meter.Name == "SecureAD.Evidence.WqlParser" && instrument.Name == "wql.native_parses"
+                    || instrument.Meter.Name == "SecureAD.Kernel.GroupPolicy" && instrument.Name == "registry.instruction_decodes"))
                 listener.EnableMeasurementEvents(instrument);
         };
         _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
-            if (instrument.Name == "evidence.name_lookup")
+            if (instrument.Name is "wql.native_parses" or "registry.instruction_decodes")
+            {
+                lock (_gate)
+                    _nativePreparations[instrument.Name] = checked(_nativePreparations.GetValueOrDefault(instrument.Name) + value);
+                return;
+            }
+            if (instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation")
             {
                 string? operation = null;
                 string? source = null;
@@ -63,7 +75,8 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
                 if (!string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase)) return;
                 lock (_gate)
                 {
-                    _nameLookups[operation] = checked(_nameLookups.GetValueOrDefault(operation) + value);
+                    var target = instrument.Name == "evidence.name_lookup" ? _nameLookups : _gpoPreparations;
+                    target[operation] = checked(target.GetValueOrDefault(operation) + value);
                     _nameLookupSources.Add(source);
                 }
                 return;
@@ -98,6 +111,14 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     internal IReadOnlyList<string> NameLookupSources
     {
         get { lock (_gate) return _nameLookupSources.Order(StringComparer.Ordinal).ToArray(); }
+    }
+    internal IReadOnlyDictionary<string, long> GpoPreparations
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_gpoPreparations, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> NativePreparations
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_nativePreparations, StringComparer.Ordinal); }
     }
     internal int ResourceSamples { get { lock (_gate) return _resourceSamples; } }
     internal CancellationToken Token => _stopping.Token;

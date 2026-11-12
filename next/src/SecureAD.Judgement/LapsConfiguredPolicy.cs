@@ -46,7 +46,10 @@ internal sealed record LapsDirectorySettingAssessment(LapsConfiguredValue? Value
 
 internal sealed record LapsRegistryPolicyInput(GpoComputerApplicability Applicability,
     GpoApplicabilityState RegistryExtension, ObjectAttributes ExtensionValues,
-    GpoRegistrySettings? Registry, AuditError? ExtensionLimitation);
+    GpoRegistrySettings? Registry, AuditError? ExtensionLimitation)
+{
+    internal required IReadOnlyList<RegistryPolicyInstruction> Instructions { get; init; }
+}
 
 internal sealed record LapsConfiguredPolicy(Guid CaptureGenerationId, string EvidenceSeal,
     Guid? DerivationGenerationId, CapturedObjectIdentity Computer, GpoComputerInputs Inputs,
@@ -181,8 +184,7 @@ internal static class LapsConfiguredPolicyCalculator
             var source = new LapsSettingSource(link, link.Policy,
                 policy?.Applicability.Protocol.Inputs.TemplateVersion.FileSysPath, null, null);
             var registry = policy?.Registry;
-            var instructions = registry is null ? []
-                : RegistryPolicyInterpreter.ReadInstructions(registry.Settings);
+            var instructions = policy is { Registry: not null } ? policy.Instructions : [];
             var qualified = policy is not null && policy.RegistryExtension == GpoApplicabilityState.Applies
                 && policy.Applicability.PolicyState == GpoApplicabilityState.Applies
                 && link.State == GpoLinkHierarchyState.Included;

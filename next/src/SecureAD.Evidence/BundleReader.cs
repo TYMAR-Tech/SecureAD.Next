@@ -112,6 +112,7 @@ public sealed partial class BundleReader : IDisposable
     private static readonly Meter ReadbackMeter = new("SecureAD.Evidence.Readback");
     private static readonly Counter<long> FormatChecks = ReadbackMeter.CreateCounter<long>("evidence.format_checks");
     private static readonly Counter<long> NameLookups = ReadbackMeter.CreateCounter<long>("evidence.name_lookup");
+    private static readonly Counter<long> GpoPreparations = ReadbackMeter.CreateCounter<long>("evidence.gpo_preparation");
     private readonly SqliteConnection _connection;
     private readonly bool _navigation;
     private bool _delegations;
@@ -1291,6 +1292,7 @@ public sealed partial class BundleReader : IDisposable
         _bulkObjectIds = null;
         _objectNameMatches = null;
         _objectIdentities = null;
+        ClearGpoPreparation();
 
         // The lease owns this connection when the reader was opened over a protected file, and its
         // own disposal closes the connection before releasing the file protection. Release it in a

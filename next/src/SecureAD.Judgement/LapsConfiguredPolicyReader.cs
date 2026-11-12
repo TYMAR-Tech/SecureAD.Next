@@ -9,6 +9,8 @@ namespace SecureAD.Judgement;
 internal sealed class LapsConfiguredPolicyReader : IDisposable
 {
     private readonly GpoComputerApplicabilityReader _inputs;
+    private readonly Dictionary<long, (GpoApplicabilityState State, AuditError? Error)> _extensions = [];
+    private readonly Dictionary<long, PreparedRegistry> _registries = [];
     private bool _disposed;
 
     private LapsConfiguredPolicyReader(GpoComputerApplicabilityReader inputs) => _inputs = inputs;
@@ -38,21 +40,59 @@ internal sealed class LapsConfiguredPolicyReader : IDisposable
         foreach (var assessment in batch.Value.Policies)
         {
             token.ThrowIfCancellationRequested();
-            var values = Bundle.ReadObjectAttributesAt(assessment.Policy, ["gPCMachineExtensionNames"]).Snapshot();
-            var state = RegistryExtension(values);
-            var error = state == GpoApplicabilityState.Unknown ? AuditError.Create(ErrorCategory.Evidence,
-                "LapsRegistryExtensionUnresolved", ErrorSeverity.Degraded,
-                "The captured machine-extension declaration does not establish a qualified registry-extension decision.",
-                assessment.Policy.DistinguishedName) : null;
-            var settings = state == GpoApplicabilityState.DoesNotApply
-                || assessment.PolicyState == GpoApplicabilityState.DoesNotApply ? null
-                : Bundle.ReadGpoMachineRegistrySettings(assessment.Policy.ObjectGuid!.Value);
-            policies.Add(assessment.Policy.ObjectId, new(assessment, state, values, settings, error));
+            var values = Bundle.ReadGpoPolicyValues(assessment.Policy, ["gPCMachineExtensionNames"], token);
+            if (!_extensions.TryGetValue(assessment.Policy.ObjectId, out var extension))
+            {
+                Bundle.RecordGpoPreparation("registry-extension-preparation");
+                var state = RegistryExtension(values);
+                var error = state == GpoApplicabilityState.Unknown ? AuditError.Create(ErrorCategory.Evidence,
+                    "LapsRegistryExtensionUnresolved", ErrorSeverity.Degraded,
+                    "The captured machine-extension declaration does not establish a qualified registry-extension decision.",
+                    assessment.Policy.DistinguishedName) : null;
+                extension = (state, error);
+                _extensions.Add(assessment.Policy.ObjectId, extension);
+            }
+            else Bundle.RecordGpoPreparation("registry-extension-hit");
+            Bundle.RecordGpoPreparation("registry-settings-request");
+            GpoRegistrySettings? settings = null;
+            IReadOnlyList<RegistryPolicyInstruction> instructions = [];
+            if (extension.State != GpoApplicabilityState.DoesNotApply && assessment.PolicyState != GpoApplicabilityState.DoesNotApply)
+            {
+                if (!_registries.TryGetValue(assessment.Policy.ObjectId, out var prepared))
+                {
+                    Bundle.RecordGpoPreparation("registry-settings-read");
+                    prepared = new(Bundle.ReadGpoMachineRegistrySettings(assessment.Policy.ObjectGuid!.Value));
+                    token.ThrowIfCancellationRequested();
+                    _registries.Add(assessment.Policy.ObjectId, prepared);
+                }
+                else Bundle.RecordGpoPreparation("registry-settings-hit");
+                (settings, instructions) = prepared.Copy();
+            }
+            policies.Add(assessment.Policy.ObjectId, new(assessment, extension.State, values, settings, extension.Error)
+            {
+                Instructions = instructions,
+            });
         }
         var result = LapsConfiguredPolicyCalculator.Calculate(batch.Value, policies, token);
         token.ThrowIfCancellationRequested();
         _inputs.RequireCurrent();
         return result;
+    }
+
+    private sealed class PreparedRegistry(GpoRegistrySettings original)
+    {
+        private readonly IReadOnlyList<RegistryPolicyInstruction> _instructions =
+            RegistryPolicyInterpreter.ReadInstructions(original.Settings);
+
+        internal (GpoRegistrySettings Registry, IReadOnlyList<RegistryPolicyInstruction> Instructions) Copy()
+        {
+            var entries = original.Settings.Select(entry => entry with { Data = entry.Data.ToArray() }).ToImmutableArray();
+            var instructions = _instructions.Select(instruction => instruction with
+            {
+                Source = entries[instruction.EntryIndex],
+            }).ToImmutableArray();
+            return (original with { Settings = entries, ParseErrors = original.ParseErrors.ToImmutableArray() }, instructions);
+        }
     }
 
     internal static GpoApplicabilityState RegistryExtension(ObjectAttributes values)
@@ -85,6 +125,8 @@ internal sealed class LapsConfiguredPolicyReader : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _extensions.Clear();
+        _registries.Clear();
         _inputs.Dispose();
     }
 }

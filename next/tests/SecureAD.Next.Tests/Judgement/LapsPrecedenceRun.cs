@@ -30,7 +30,7 @@ internal static class LapsPrecedenceRun
     internal static string Build(IReadOnlyList<Policy> policies, string? links = null,
         IReadOnlyDictionary<int, string>? filterDefinitions = null,
         IReadOnlyList<EvidenceAttribute>? computerAttributes = null, uint accountControl = 4096,
-        IReadOnlyList<OtherObject>? additionalObjects = null)
+        IReadOnlyList<OtherObject>? additionalObjects = null, IReadOnlyList<Entry>? permissions = null)
     {
         var first = policies.Single(policy => policy.Id == 1);
         var options = new Options
@@ -59,7 +59,7 @@ internal static class LapsPrecedenceRun
                     Text("msWMI-Parm2", filterDefinitions is not null && filterDefinitions.TryGetValue(id, out var definition)
                         ? definition : wrapper)]));
         if (additionalObjects is not null) others.AddRange(additionalObjects);
-        return GpoSecurityRun.Build(options with { OtherObjects = others });
+        return GpoSecurityRun.Build(options with { OtherObjects = others, Entries = permissions ?? options.Entries });
     }
 
     private static IReadOnlyList<EvidenceAttribute> Attributes(Policy policy) =>

@@ -92,6 +92,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
     private ProtectedRunFiles? _ownedFiles;
     private readonly GpoLinkHierarchyReader _hierarchy;
     private readonly GpoSecurityFilterReader _security;
+    private readonly Dictionary<long, GpoProtocolAssessment> _protocols = [];
     private bool _disposed;
 
     private GpoComputerApplicabilityReader(GpoLinkHierarchyReader hierarchy,
@@ -177,7 +178,13 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         var captured = Bundle.ReadGpoProtocolInputs(security.Policy, token);
         RequireCurrent();
         if (!captured.IsSuccess) return Result<GpoComputerApplicability>.Failure(captured.Error);
-        var protocol = ReadProtocol(captured.Value);
+        if (!_protocols.TryGetValue(captured.Value.Policy.ObjectId, out var protocol))
+        {
+            Bundle.RecordGpoPreparation("protocol-preparation");
+            protocol = ReadProtocol(captured.Value);
+            _protocols.Add(captured.Value.Policy.ObjectId, protocol);
+        }
+        else Bundle.RecordGpoPreparation("protocol-preparation-hit");
         var wmi = Bundle.ReadGpoWmiFilter(security.Policy, token);
         if (hierarchy.CaptureGenerationId != security.CaptureGenerationId
             || hierarchy.CaptureGenerationId != captured.Value.CaptureGenerationId
@@ -259,6 +266,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _protocols.Clear();
         _security.Dispose();
         _hierarchy.Dispose();
         _ownedFiles?.Dispose();

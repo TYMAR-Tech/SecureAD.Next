@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
 using System.Text;
 
 namespace SecureAD.Kernel.GroupPolicy;
@@ -47,6 +48,8 @@ public sealed record RegistryPolicyEvaluation(
 
 public static class RegistryPolicyInterpreter
 {
+    private static readonly Meter PreparationMeter = new("SecureAD.Kernel.GroupPolicy");
+    private static readonly Counter<long> InstructionDecodes = PreparationMeter.CreateCounter<long>("registry.instruction_decodes");
     private static readonly UnicodeEncoding StrictUnicode = new(false, false, true);
 
     public static RegistryPolicyEvaluation Evaluate(IReadOnlyList<RegistryPolicyEntry> entries)
@@ -104,6 +107,7 @@ public static class RegistryPolicyInterpreter
     public static IReadOnlyList<RegistryPolicyInstruction> ReadInstructions(IReadOnlyList<RegistryPolicyEntry> entries)
     {
         ArgumentNullException.ThrowIfNull(entries);
+        InstructionDecodes.Add(1);
         var result = new List<RegistryPolicyInstruction>();
         for (var index = 0; index < entries.Count; index++)
         {

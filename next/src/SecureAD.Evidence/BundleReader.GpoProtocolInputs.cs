@@ -9,8 +9,9 @@ public sealed partial class BundleReader
     internal Result<CapturedGpoProtocolInputs> ReadGpoProtocolInputs(CapturedObjectIdentity policy, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        var values = ReadObjectAttributesAt(policy,
-            ["objectClass", "gPCFileSysPath", "gPCFunctionalityVersion", "versionNumber", "flags", "gPCMachineExtensionNames"]).Snapshot();
+        RecordGpoPreparation("protocol-request");
+        var values = ReadGpoPolicyValues(policy,
+            ["objectClass", "gPCFileSysPath", "gPCFunctionalityVersion", "versionNumber", "flags", "gPCMachineExtensionNames"], token);
         policy = policy with
         {
             DistinguishedName = values.DistinguishedName, ObjectGuid = values.ObjectGuid,
@@ -31,12 +32,18 @@ public sealed partial class BundleReader
         }
         token.ThrowIfCancellationRequested();
         var sourcePath = SingleText(values.Find("gPCFileSysPath"))?.Trim();
+        if (_gpoTemplates is not null && _gpoTemplates.TryGetValue(policy.ObjectId, out var saved))
+        {
+            RecordGpoPreparation("protocol-template-hit");
+            return Reading(saved);
+        }
         using var command = Connection.CreateCommand();
         command.CommandText = """
             SELECT file_sys_path,outcome,original_bytes,original_version,version,reason
             FROM gpo_template_version WHERE gpo_guid=$gpo
             """;
         command.Parameters.AddWithValue("$gpo", guid.ToString("D"));
+        RecordGpoPreparation("protocol-template-read");
         using var read = command.ExecuteReader();
         if (!read.Read())
         {
@@ -65,7 +72,8 @@ public sealed partial class BundleReader
 
         Result<CapturedGpoProtocolInputs> Reading(CapturedGpoTemplateVersion template)
         {
-            token.ThrowIfCancellationRequested();
+            CheckGpoPreparationLifetime(token);
+            if (_protection is not null) (_gpoTemplates ??= []).TryAdd(policy.ObjectId, template);
             return new CapturedGpoProtocolInputs(Description.CaptureGenerationId, policy, values, template);
         }
         AuditError Error(string code, string description) =>

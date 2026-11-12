@@ -12,7 +12,7 @@ public sealed partial class BundleReader
     internal GpoWmiFilterReading ReadGpoWmiFilter(CapturedObjectIdentity policy, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var policyValues = ReadObjectAttributesAt(policy, ["objectClass", "displayName", "gPCWQLFilter"]).Snapshot();
+        var policyValues = ReadGpoPolicyValues(policy, ["objectClass", "displayName", "gPCWQLFilter"], cancellationToken);
         var identity = policy with
         {
             DistinguishedName = policyValues.DistinguishedName,
@@ -33,7 +33,7 @@ public sealed partial class BundleReader
         var rawReference = SingleText(capturedReference);
         if (rawReference is null)
             return Failure("GpoWmiReferenceUnsupported", "The captured WMI filter reference is not exactly one original text value.");
-        var decoded = CapturedWmiEncoding.Reference(rawReference);
+        var decoded = ReadPreparedWmiReference(identity.ObjectId, rawReference, cancellationToken);
         if (!decoded.IsSuccess) return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Failure(decoded.Error));
         reference = decoded.Value;
         cancellationToken.ThrowIfCancellationRequested();
@@ -51,7 +51,7 @@ public sealed partial class BundleReader
             return Failure("GpoWmiFilterNotCaptured", "The referenced WMI filter object was not captured at its exact domain-scoped location.");
         filter = ReadObjectIdentity(filterDn)
             ?? throw new InvalidDataException("The uniquely selected filter disappeared from its captured generation.");
-        filterValues = ReadObjectAttributesAt(filter, ["objectClass", "msWMI-ID", "msWMI-Name", "msWMI-Parm2"]).Snapshot();
+        filterValues = ReadGpoFilterValues(filter, cancellationToken);
         var capturedId = SingleText(filterValues.Find("msWMI-ID"));
         if (filter.ObjectGuid is null || filter.ObjectGuid == Guid.Empty
             || !string.Equals(filter.DomainFqdn, reference.DomainFqdn, StringComparison.OrdinalIgnoreCase)
@@ -61,19 +61,7 @@ public sealed partial class BundleReader
         var rawDefinition = SingleText(filterValues.Find("msWMI-Parm2"));
         if (rawDefinition is null)
             return Failure("GpoWmiDefinitionUnavailable", "The captured filter does not contain exactly one usable text query definition.");
-        var decodedQueries = CapturedWmiEncoding.Queries(rawDefinition, cancellationToken);
-        if (!decodedQueries.IsSuccess) return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Failure(decodedQueries.Error));
-        var queries = ImmutableArray.CreateBuilder<CapturedWmiQuery>();
-        foreach (var value in decodedQueries.Value)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var parsed = value.Language == "WQL"
-                ? WindowsWqlParser.Read(value.Query, cancellationToken)
-                : WqlQueryReading.Failed(value.Query, WqlReadingState.Unsupported, "WmiLanguageUnsupported",
-                    "The captured query does not declare the supported WQL language.", null);
-            queries.Add(new(value.Language, value.Namespace, value.Query, parsed));
-        }
-        return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Success(queries.ToImmutable()));
+        return Reading(ReadPreparedWmiDefinition(filter.ObjectId, rawDefinition, cancellationToken));
 
         GpoWmiFilterReading Reading(Result<ImmutableArray<CapturedWmiQuery>> definition) =>
             new(identity, policyValues, reference, filter, filterValues, definition);
@@ -81,6 +69,44 @@ public sealed partial class BundleReader
             Reading(Result<ImmutableArray<CapturedWmiQuery>>.Failure(AuditError.Create(ErrorCategory.Evidence,
                 reason, ErrorSeverity.Degraded, description, policy.DistinguishedName)));
     }
+
+    private Result<ImmutableArray<CapturedWmiQuery>> ReadPreparedWmiDefinition(long filterId, string raw,
+        CancellationToken token)
+    {
+        CheckGpoPreparationLifetime(token);
+        RecordGpoPreparation("wmi-definition-request");
+        if (_gpoWmiDefinitions is not null && _gpoWmiDefinitions.TryGetValue(filterId, out var saved))
+        {
+            RecordGpoPreparation("wmi-definition-hit");
+            return saved;
+        }
+        RecordGpoPreparation("wmi-definition-decode");
+        var decoded = CapturedWmiEncoding.Queries(raw, token);
+        if (!decoded.IsSuccess) return Remember(Result<ImmutableArray<CapturedWmiQuery>>.Failure(decoded.Error));
+        var queries = ImmutableArray.CreateBuilder<CapturedWmiQuery>();
+        foreach (var value in decoded.Value)
+        {
+            token.ThrowIfCancellationRequested();
+            var parsed = value.Language == "WQL" ? WindowsWqlParser.Read(value.Query, token)
+                : WqlQueryReading.Failed(value.Query, WqlReadingState.Unsupported, "WmiLanguageUnsupported",
+                    "The captured query does not declare the supported WQL language.", null);
+            queries.Add(new(value.Language, value.Namespace, value.Query, parsed));
+        }
+        return Remember(Result<ImmutableArray<CapturedWmiQuery>>.Success(queries.ToImmutable()));
+
+        Result<ImmutableArray<CapturedWmiQuery>> Remember(Result<ImmutableArray<CapturedWmiQuery>> definition)
+        {
+            CheckGpoPreparationLifetime(token);
+            if (_protection is not null && CanReuseWmiDefinition(definition))
+                (_gpoWmiDefinitions ??= []).Add(filterId, definition);
+            else RecordGpoPreparation("wmi-definition-not-retained");
+            return definition;
+        }
+    }
+
+    internal static bool CanReuseWmiDefinition(Result<ImmutableArray<CapturedWmiQuery>> definition) =>
+        !definition.IsSuccess || definition.Value.All(query =>
+            query.Reading.State != WqlReadingState.Unavailable && query.Reading.NativeCode is null);
 
     private static string? SingleText(ObjectAttribute? attribute) =>
         attribute is { Values.Count: 1 } && attribute.Values[0] is { Ordinal: 0, Text: { } text, Bytes: null }

@@ -412,8 +412,12 @@ public sealed class LapsConfiguredPolicyTests
         var registry = inputs.Policies.ToDictionary(policy => policy.Policy.ObjectId, policy =>
         {
             var extensions = reader.Bundle.ReadObjectAttributesAt(policy.Policy, ["gPCMachineExtensionNames"]).Snapshot();
+            var settings = reader.Bundle.ReadGpoMachineRegistrySettings(policy.Policy.ObjectGuid!.Value);
             return new LapsRegistryPolicyInput(policy, LapsConfiguredPolicyReader.RegistryExtension(extensions),
-                extensions, reader.Bundle.ReadGpoMachineRegistrySettings(policy.Policy.ObjectGuid!.Value), null);
+                extensions, settings, null)
+            {
+                Instructions = RegistryPolicyInterpreter.ReadInstructions(settings.Settings),
+            };
         });
         var result = LapsConfiguredPolicyCalculator.Calculate(inputs, registry, CancellationToken.None);
         Assert.Equal(40, Conditions(result).Length);

@@ -91,6 +91,7 @@ internal static class ConfiguredLapsMeasurement
                 ObserverOverheadCalibrated = false,
                 NameLookupCounterScope = "Timed JudgeAudit only, summed across its reader-local caches and listed SQLite sources; requests and cache hits are logical operations, *-sql counts are statement attempts, exact-hit counts successful exact-name attempts; misses are requests minus cache hits",
                 NameLookupCounterOverhead = "Enabled for every lookup; aggregate counters only, no per-lookup log or SQL trace; not independently calibrated",
+                GpoPreparationCounterScope = "Timed JudgeAudit only; GpoPreparations counts source-scoped preparation/read operations, not individual SQL statements; NativePreparations counts actual COM WQL Parse attempts and registry ReadInstructions executions across the whole single-audit process, including ordinary rules",
             });
             var previous = AnalysisStoreLifecycle.ResolveRoot(bundle, AnalysisStoreKind.Judgement);
             if (cancelAfter.HasValue && !previous.IsSuccess)
@@ -159,6 +160,7 @@ internal static class ConfiguredLapsMeasurement
                 SourceInputsUnchanged = true, ProductOptimized = true, ProductionAcceptance = false,
                 NameResolutionReuseImplemented = true, NameLookups = observer.NameLookups,
                 NameLookupSources = observer.NameLookupSources,
+                GpoPreparations = observer.GpoPreparations, NativePreparations = observer.NativePreparations,
             });
             Console.WriteLine("Measured synthetic judgement: " + output);
             return 0;

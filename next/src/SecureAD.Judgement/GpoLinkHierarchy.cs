@@ -196,7 +196,7 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
             return null;
         }
         var identity = Bundle.ReadObjectIdentity(dn)!;
-        var values = Bundle.ReadObjectAttributesAt(identity, ["objectClass"]).Snapshot();
+        var values = Bundle.ReadGpoPolicyValues(identity, ["objectClass"], token);
         identity = GpoCapturedIdentity.Normalize(identity, values);
         if (identity.ObjectGuid is null || identity.ObjectGuid == Guid.Empty || !Same(identity.ObjectClass, "groupPolicyContainer")
             || identity.DomainFqdn is null || !_domains.Contains(identity.DomainFqdn)

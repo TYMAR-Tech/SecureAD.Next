@@ -1572,6 +1572,24 @@ and explicit approval; earlier run windows do not carry over.
 No finding/UI change, production activation, live access, recapture, owner-data re-judging,
 commit or push is authorized.
 
+**Immutable policy-preparation reuse - owner-approved 2026-11-12.**
+After committing the name-resolution correction, the owner approved the next bounded batch:
+prepare fixed captured GPO metadata, WMI query definitions and registry-policy instructions once
+within their exact protected-source lifetime rather than repeat that preparation for each computer.
+Keep computer-specific permission checks, memberships, WMI assessments/conditions and winning-setting
+calculations independent; reusing fixed inputs must not reuse one computer's answer for another.
+Preserve original ordered inputs, policy/filter/resource identities, exact source/generation binding,
+missing/unsupported/incomplete outcomes, cancellation and all existing current-source checks.
+Use preparation counters and short synthetic controls to establish reduced repeated work and
+unchanged saved answers, with a pinned before-state source/build and original measurements retained.
+Guard consolidation remains a subsequent batch, not part of this approval; relevance pruning,
+hierarchy/group-result caching, shared saved-input storage and native-format changes are also excluded.
+Implementation and focused short synthetic verification may begin; any long verification or larger
+timing comparison needs a fresh scope, estimate, cap and explicit approval, with no earlier window
+carried forward.
+No finding/UI change, production activation, live access, recapture, owner-data re-judging, commit
+or push is authorized.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility
