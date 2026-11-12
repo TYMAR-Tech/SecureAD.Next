@@ -14,6 +14,8 @@ internal sealed record ConfiguredLapsScenario(ConfiguredLapsShape Shape, Guid Ca
 internal sealed record ConfiguredLapsScope(string Policy, string State, long Observed, long Considered,
     long Calculated, long Unassessed, Guid Generation, Guid CaptureGeneration, string EvidenceSeal);
 internal sealed record ConfiguredLapsCapturedCounts(long Objects, long Computers, long Policies, long Filters, long Partitions);
+internal sealed record ConfiguredLapsMixedCounts(long WindowsPolicies, long LegacyPolicies, long UnrelatedPolicies,
+    long LinkedPolicies, long UnlinkedPolicies);
 
 internal static class ConfiguredLapsMeasurement
 {
@@ -21,14 +23,24 @@ internal static class ConfiguredLapsMeasurement
 
     internal static int Run(string[] args)
     {
-        if (args.Length == 7 && args[0] == "generate")
-            return Generate(args[1], args[2], new(Parse(args[3]), Parse(args[4]), Parse(args[5]), Parse(args[6])));
-        if (args.Length is 5 or 6 && args[0] == "judge"
+        if (args.Length == 7 && args[0] is "generate" or "generate-mixed")
+            return Generate(args[1], args[2], new(Parse(args[3]), Parse(args[4]), Parse(args[5]), Parse(args[6]))
+            {
+                Profile = args[0] == "generate-mixed" ? ConfiguredLapsWorkloadProfile.MixedLegacyWindows : ConfiguredLapsWorkloadProfile.AllWindowsLaps,
+            });
+        if (args.Length is 5 or 6 && args[0] is "judge" or "judge-timing"
             && Enum.TryParse<ConfiguredLapsPolicy>(args[4], out var policy) && Enum.IsDefined(policy)
             && policy.ToString() == args[4])
-            return Judge(args[1], args[2], args[3], policy, args.Length == 6 ? Parse(args[5]) : null);
-        throw new ArgumentException("--configured-laps generate NEW_OUTPUT BUILD_RECORD COMPUTERS POLICIES GROUP_DEPTH FILLER | judge SCENARIO NEW_OUTPUT BUILD_RECORD Disabled|AllCapturedComputers [CANCEL_AFTER_QUESTIONS]");
+            return Judge(args[1], args[2], args[3], policy, args.Length == 6 ? Parse(args[5]) : null, WorkCountersEnabled(args[0]));
+        throw new ArgumentException("--configured-laps generate|generate-mixed NEW_OUTPUT BUILD_RECORD COMPUTERS POLICIES GROUP_DEPTH FILLER | judge|judge-timing SCENARIO NEW_OUTPUT BUILD_RECORD Disabled|AllCapturedComputers [CANCEL_AFTER_QUESTIONS]");
     }
+
+    internal static bool WorkCountersEnabled(string operation) => operation switch
+    {
+        "judge" => true,
+        "judge-timing" => false,
+        _ => throw new ArgumentException("Unknown judging observation mode.", nameof(operation)),
+    };
 
     private static int Generate(string path, string buildPath, ConfiguredLapsShape shape)
     {
@@ -54,6 +66,14 @@ internal static class ConfiguredLapsMeasurement
                 EnterpriseBaseline.FingerprintProducts(bundle));
             Save(output, "scenario.json", scenario);
             Save(output, "source-counts.json", counts);
+            if (shape.Profile == ConfiguredLapsWorkloadProfile.MixedLegacyWindows)
+            {
+                var mixed = InspectMixedCaptured(bundle);
+                var expectedLinked = 9L * shape.LinkedPoliciesPerDomain;
+                Require(mixed == new ConfiguredLapsMixedCounts(9, 9, 9L * (shape.PoliciesPerDomain - 2),
+                    expectedLinked, 9L * shape.PoliciesPerDomain - expectedLinked), "Mixed-policy populations differ from the independent recipe.");
+                Save(output, "mixed-source-counts.json", mixed);
+            }
             EnterpriseBaseline.VerifyBuild(build);
             Console.WriteLine("Generated and derived synthetic scenario: " + output);
             return 0;
@@ -66,7 +86,7 @@ internal static class ConfiguredLapsMeasurement
         }
     }
 
-    private static int Judge(string scenarioPath, string path, string buildPath, ConfiguredLapsPolicy policy, int? cancelAfter)
+    private static int Judge(string scenarioPath, string path, string buildPath, ConfiguredLapsPolicy policy, int? cancelAfter, bool workCounters)
     {
         var scenarioRoot = Path.GetFullPath(scenarioPath);
         var scenario = Read<ConfiguredLapsScenario>(Path.Combine(scenarioRoot, "scenario.json"));
@@ -89,8 +109,11 @@ internal static class ConfiguredLapsMeasurement
                 MemoryMethod = "100-ms sampled process private/working bytes; OS peak working set is process-lifetime, not additional LAPS memory",
                 TimingMethod = "Whole JudgeAudit including source verification, ordinary rules, other enabled host work and publication; generator, derivation and independent readback excluded",
                 ObserverOverheadCalibrated = false,
+                WorkCountersEnabled = workCounters,
+                CounterInterpretation = "Empty counter dictionaries mean not observed, never zero work; an older product may not publish later diagnostics",
                 NameLookupCounterScope = "Timed JudgeAudit only, summed across its reader-local caches and listed SQLite sources; requests and cache hits are logical operations, *-sql counts are statement attempts, exact-hit counts successful exact-name attempts; misses are requests minus cache hits",
-                NameLookupCounterOverhead = "Enabled for every lookup; aggregate counters only, no per-lookup log or SQL trace; not independently calibrated",
+                NameLookupCounterOverhead = workCounters ? "Enabled for every lookup; aggregate counters only, no per-lookup SQL trace; uncalibrated"
+                    : "Per-operation measurement listeners disabled for primary timings; phase logs and process sampling retained",
                 GpoPreparationCounterScope = "Timed JudgeAudit only; GpoPreparations counts source-scoped preparation/read operations, not individual SQL statements; NativePreparations counts actual COM WQL Parse attempts and registry ReadInstructions executions across the whole single-audit process, including ordinary rules",
                 SourceGuardCounterScope = "Timed JudgeAudit, selected bundle only; logical owned-scope requests retained by RequireCurrent/RequireCurrentWith, fresh capture/derivation resolution attempts and aggregated validation milliseconds; samples count invocations, not logical scopes; no verdict is cached across calls; initial cancelled/disposed lifetime refusal is excluded",
                 SelectionManifestReadScope = "Independent counter at actual selected-root stream opening/deserialization; all capture/derivation/judgement root readers in the timed selected-bundle audit, not just JudgingInputs guards",
@@ -100,7 +123,7 @@ internal static class ConfiguredLapsMeasurement
                 throw new InvalidDataException("Cancellation needs a previous completed generation.");
             var previousInputs = cancelAfter.HasValue ? EnterpriseBaseline.FingerprintProducts(bundle) : [];
             using var stopping = new CancellationTokenSource();
-            using var observer = new EnterpriseBaselineObservation(output, build.PhysicalMemoryBytes, stopping, bundle);
+            using var observer = new EnterpriseBaselineObservation(output, build.PhysicalMemoryBytes, stopping, workCounters ? bundle : null);
             var progress = new CancellationProgress(stopping, cancelAfter);
             var allocated = GC.GetTotalAllocatedBytes(true);
             var watch = Stopwatch.StartNew();
@@ -159,8 +182,8 @@ internal static class ConfiguredLapsMeasurement
                 JudgementBytes = new[] { StoreSegmentRole.Judgement, StoreSegmentRole.JudgementFacts,
                     StoreSegmentRole.PermissionProof, StoreSegmentRole.PathProof }
                     .Sum(role => new FileInfo(Path.Combine(bundle, selected.Segment(role).FileName)).Length),
-                SourceInputsUnchanged = true, ProductOptimized = true, ProductionAcceptance = false,
-                NameResolutionReuseImplemented = true, NameLookups = observer.NameLookups,
+                SourceInputsUnchanged = true, WorkCountersEnabled = workCounters, ProductionAcceptance = false,
+                NameLookups = observer.NameLookups,
                 NameLookupSources = observer.NameLookupSources,
                 GpoPreparations = observer.GpoPreparations, NativePreparations = observer.NativePreparations,
                 SourceGuards = observer.SourceGuards, SourceGuardMilliseconds = observer.SourceGuardMilliseconds,
@@ -223,6 +246,32 @@ internal static class ConfiguredLapsMeasurement
         return new(row.GetInt64(0), row.GetInt64(1), row.GetInt64(2), row.GetInt64(3), row.GetInt64(4));
     }
 
+    internal static ConfiguredLapsMixedCounts InspectMixedCaptured(string bundle)
+    {
+        using var connection = Open(BundleLayout.EvidencePath(bundle));
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(DISTINCT CASE WHEN key_path=$windows COLLATE NOCASE THEN gpo_guid END),
+                COUNT(DISTINCT CASE WHEN key_path=$legacy COLLATE NOCASE THEN gpo_guid END),
+                COUNT(DISTINCT CASE WHEN key_path=$other COLLATE NOCASE THEN gpo_guid END)
+            FROM gpo_registry_setting WHERE scope='Machine'
+            """;
+        command.Parameters.AddWithValue("$windows", ConfiguredLapsWorkload.RegistryKey);
+        command.Parameters.AddWithValue("$legacy", ConfiguredLapsWorkload.LegacyRegistryKey);
+        command.Parameters.AddWithValue("$other", ConfiguredLapsWorkload.UnrelatedRegistryKey);
+        long windows, legacy, other;
+        using (var row = command.ExecuteReader())
+        {
+            if (!row.Read()) throw new InvalidDataException("Mixed-policy counts are unavailable.");
+            windows = row.GetInt64(0); legacy = row.GetInt64(1); other = row.GetInt64(2);
+        }
+        using var reader = BundleReader.Open(bundle).Value;
+        var linked = Enumerable.Range(0, 9).Sum(domain =>
+            SecureAD.Kernel.GroupPolicy.PolicyLinkList.Of(reader.ReadObjectAttributes(ConfiguredLapsWorkload.Domain(domain), ["gPLink"])!
+                .Find("gPLink")!.OnlyValue!.Text).Links.Count);
+        return new(windows, legacy, other, linked, windows + legacy + other - linked);
+    }
+
     private static void InspectSavedQuestions(string bundle, ConfiguredLapsScenario scenario, StoreRootManifest root)
     {
         using var connection = Open(Path.Combine(bundle, root.Segment(StoreSegmentRole.JudgementFacts).FileName));
@@ -242,7 +291,7 @@ internal static class ConfiguredLapsMeasurement
             Require(value.GetProperty("CaptureGenerationId").GetGuid() == scenario.CaptureGeneration
                 && value.GetProperty("JudgementGenerationId").GetGuid() == root.GenerationId
                 && value.GetProperty("Settings").GetArrayLength() == 4
-                && value.GetProperty("Policies").GetArrayLength() == scenario.Shape.PoliciesPerDomain
+                && value.GetProperty("Policies").GetArrayLength() == scenario.Shape.LinkedPoliciesPerDomain
                 && !value.GetProperty("IsObservedWmiResult").GetBoolean()
                 && value.GetProperty("HasOpenPolicyScope").GetBoolean()
                 && !string.IsNullOrWhiteSpace(value.GetProperty("DirectoryAssumption").GetString()),

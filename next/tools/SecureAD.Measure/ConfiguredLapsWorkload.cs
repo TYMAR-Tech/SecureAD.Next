@@ -10,15 +10,21 @@ using SecureAD.Kernel.Security;
 
 namespace SecureAD.Measure;
 
+internal enum ConfiguredLapsWorkloadProfile { AllWindowsLaps, MixedLegacyWindows }
+
 internal sealed record ConfiguredLapsShape(int Computers, int PoliciesPerDomain, int GroupDepth, int FillerObjects)
 {
     internal const int Domains = 9;
+    public ConfiguredLapsWorkloadProfile Profile { get; init; }
     internal long Objects => checked(9L * (8 + GroupDepth + PoliciesPerDomain) + Computers + FillerObjects + 2);
+    internal int LinkedPoliciesPerDomain => Profile == ConfiguredLapsWorkloadProfile.MixedLegacyWindows
+        ? 2 + (PoliciesPerDomain - 1) / 2 : PoliciesPerDomain;
+    internal bool IsLinked(int policy) => Profile == ConfiguredLapsWorkloadProfile.AllWindowsLaps || policy < 2 || policy % 2 == 0;
 
     internal void Validate()
     {
         if (Computers < Domains || Computers % Domains != 0 || FillerObjects < 0 || FillerObjects % Domains != 0
-            || PoliciesPerDomain < 2 || GroupDepth < 1)
+            || PoliciesPerDomain < 2 || GroupDepth < 1 || !Enum.IsDefined(Profile))
             throw new ArgumentException("Computers and filler must divide across nine domains; at least two policies and one nested group per domain are required.");
         _ = Objects;
     }
@@ -28,6 +34,8 @@ internal static class ConfiguredLapsWorkload
 {
     internal static readonly DateTimeOffset When = new(2026, 11, 12, 0, 0, 0, TimeSpan.Zero);
     internal const string RegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\LAPS";
+    internal const string LegacyRegistryKey = @"Software\Policies\Microsoft Services\AdmPwd";
+    internal const string UnrelatedRegistryKey = @"Software\Policies\SyntheticUnrelated";
     private const string Apply = "edacfd8f-ffb3-11d1-b41d-00a0c968f939";
     private const string RegistryExtensions = "[{35378eac-683f-11d2-a89a-00c04fbbcfa2}{00000000-0000-0000-0000-000000000001}]";
     private const string Descriptor = "O:SYG:SYD:(A;;RP;;;S-1-5-11)";
@@ -58,7 +66,8 @@ internal static class ConfiguredLapsWorkload
             writer.WriteCoverage(coverage);
             var policyDns = Enumerable.Range(0, shape.PoliciesPerDomain)
                 .Select(index => "CN=" + Identity($"folder/{domain}/{index}").ToString("B") + ",CN=Policies,CN=System," + root).ToArray();
-            var links = string.Concat(policyDns.Reverse().Select(dn => "[LDAP://" + dn + ";0]"));
+            var links = string.Concat(policyDns.Select((dn, index) => (Dn: dn, Index: index))
+                .Where(policy => shape.IsLinked(policy.Index)).Reverse().Select(policy => "[LDAP://" + policy.Dn + ";0]"));
             WriteObject(coverage, root, ["top", "domainDNS"], sid, [Text("gPLink", links)]);
             WriteObject(coverage, ou, ["top", "organizationalUnit"], null, []);
             WriteObject(coverage, "CN=Domain Admins," + root, ["top", "group"], sid + "-512",
@@ -97,7 +106,10 @@ internal static class ConfiguredLapsWorkload
             for (var filter = 0; filter < 2; filter++)
             {
                 var logical = Identity($"logical-filter/{domain}/{filter}").ToString("B");
-                var queries = filter == 0
+                var queries = shape.Profile == ConfiguredLapsWorkloadProfile.MixedLegacyWindows
+                    ? new[] { filter == 0 ? "SELECT * FROM Win32_OperatingSystem WHERE Version < '10.0.17763'"
+                        : "SELECT * FROM Win32_OperatingSystem WHERE Version >= '10.0.17763'" }
+                    : filter == 0
                     ? new[] { "SELECT * FROM Win32_OperatingSystem WHERE ProductType = '3'" }
                     : ["SELECT * FROM Win32_OperatingSystem WHERE Version >= '10.0.17763'",
                         "SELECT * FROM Win32_OperatingSystem WHERE ProductType = '3'"];
@@ -126,6 +138,11 @@ internal static class ConfiguredLapsWorkload
                     new(RegistryKey, "ADPasswordEncryptionPrincipal", (uint)RegistryValueType.String, Encoding.Unicode.GetBytes(holder + "\0")),
                     Number("ADBackupDSRMPassword", 1),
                 };
+                if (shape.Profile == ConfiguredLapsWorkloadProfile.MixedLegacyWindows && policy == 0)
+                    settings = [new(LegacyRegistryKey, "AdmPwdEnabled", (uint)RegistryValueType.Dword, BitConverter.GetBytes(1u)),
+                        new(LegacyRegistryKey, "PasswordLength", (uint)RegistryValueType.Dword, BitConverter.GetBytes(14u))];
+                else if (shape.Profile == ConfiguredLapsWorkloadProfile.MixedLegacyWindows && policy >= 2)
+                    settings = [new(UnrelatedRegistryKey, "Setting", (uint)RegistryValueType.Dword, BitConverter.GetBytes((uint)policy))];
                 for (var index = 0; index < settings.Length; index++)
                 {
                     var setting = settings[index];

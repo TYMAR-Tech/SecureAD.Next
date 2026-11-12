@@ -1,6 +1,7 @@
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Measure;
+using SecureAD.Kernel;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Judgement;
@@ -33,6 +34,57 @@ public sealed class ConfiguredLapsMeasurementTests
         Assert.NotEqual(folder, policy.ObjectGuid);
         Assert.Equal(ConfiguredLapsWorkload.Identity(dn), policy.ObjectGuid);
     }
+
+    [Theory]
+    [InlineData("judge", true)]
+    [InlineData("judge-timing", false)]
+    public void ComparisonTimingModeExplicitlyDisablesWorkCounters(string operation, bool enabled) =>
+        Assert.Equal(enabled, ConfiguredLapsMeasurement.WorkCountersEnabled(operation));
+
+    [Fact]
+    public void UnknownComparisonModeIsNotASuccessShapedDefault() =>
+        Assert.Throws<ArgumentException>(() => ConfiguredLapsMeasurement.WorkCountersEnabled("unknown"));
+
+    [Fact]
+    public void MixedPolicyRecipeSeparatesPolicyKindsLinkedScopeAndVersionTargets()
+    {
+        var root = TempDirectories.Create("mixed-laps-measure");
+        var shape = new ConfiguredLapsShape(27, 12, 6, 9) { Profile = ConfiguredLapsWorkloadProfile.MixedLegacyWindows };
+        ConfiguredLapsWorkload.Write(root, shape, CancellationToken.None);
+        Assert.Equal(new ConfiguredLapsCapturedCounts(272, 27, 108, 18, 11), ConfiguredLapsMeasurement.InspectCaptured(root));
+        Assert.Equal(new ConfiguredLapsMixedCounts(9, 9, 90, 63, 45), ConfiguredLapsMeasurement.InspectMixedCaptured(root));
+        Assert.Equal(7, shape.LinkedPoliciesPerDomain);
+        var savedShape = System.Text.Json.JsonSerializer.Deserialize<ConfiguredLapsShape>(
+            System.Text.Json.JsonSerializer.Serialize(shape))!;
+        Assert.Equal(ConfiguredLapsWorkloadProfile.MixedLegacyWindows, savedShape.Profile);
+        Assert.Equal(7, savedShape.LinkedPoliciesPerDomain);
+        using var reader = BundleReader.Open(root).Value;
+        var policies = Enumerable.Range(0, 12).Select(index =>
+        {
+            var folder = ConfiguredLapsWorkload.Identity($"folder/0/{index}");
+            return reader.ReadObjectIdentity("CN=" + folder.ToString("B") + ",CN=Policies,CN=System," + ConfiguredLapsWorkload.Domain(0))!;
+        }).ToArray();
+        Assert.All(reader.ReadGpoMachineRegistrySettings(policies[0].ObjectGuid!.Value).Settings,
+            entry => Assert.Equal(ConfiguredLapsWorkload.LegacyRegistryKey, entry.KeyPath));
+        Assert.All(reader.ReadGpoMachineRegistrySettings(policies[1].ObjectGuid!.Value).Settings,
+            entry => Assert.Equal(ConfiguredLapsWorkload.RegistryKey, entry.KeyPath));
+        Assert.All(reader.ReadGpoMachineRegistrySettings(policies[2].ObjectGuid!.Value).Settings,
+            entry => Assert.Equal(ConfiguredLapsWorkload.UnrelatedRegistryKey, entry.KeyPath));
+        var legacy = reader.ReadGpoWmiFilter(policies[0], CancellationToken.None);
+        var windows = reader.ReadGpoWmiFilter(policies[1], CancellationToken.None);
+        Assert.Equal(WqlComparison.Less, Assert.IsType<WqlComparisonToken>(
+            Assert.Single(Assert.Single(legacy.Definition.Value).Reading.Conditions!.Postfix)).Comparison);
+        Assert.Equal(WqlComparison.GreaterOrEqual, Assert.IsType<WqlComparisonToken>(
+            Assert.Single(Assert.Single(windows.Definition.Value).Reading.Conditions!.Postfix)).Comparison);
+        Assert.NotEqual(legacy.Filter!.ObjectId, windows.Filter!.ObjectId);
+    }
+
+    [Fact]
+    public void MixedRecipeRejectsUnknownProfileBeforeCreatingInputs() =>
+        Assert.Throws<ArgumentException>(() => new ConfiguredLapsShape(27, 12, 6, 9)
+        {
+            Profile = (ConfiguredLapsWorkloadProfile)99,
+        }.Validate());
 
     [Fact]
     public void MeasurementNameLookupCountsMatchExecutedSqlAndExcludeOtherSources()

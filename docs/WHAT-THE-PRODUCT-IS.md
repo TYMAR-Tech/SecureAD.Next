@@ -1603,6 +1603,22 @@ or timing campaigns require a fresh scope, estimate, cap and explicit approval.
 Relevance pruning, shared saved storage, hierarchy/group-result caching, formats, finding/UI changes,
 production activation, live access, recapture, owner-data re-judging, commit and push remain excluded.
 
+**Combined LAPS correction comparison - owner-approved 2026-11-12.**
+The owner approved one fresh offline comparison of the pre-correction `ac1c6e8` product and the
+three-correction `9ccc0b8` product, using the same measurement driver on identical copied inputs
+while preserving the original campaign.
+Reuse the retained 270- and 1,350-computer synthetic cases and add one 270-computer mixed-policy
+case with one legacy-LAPS and one Windows-LAPS policy per domain, OS-version targeting, unrelated
+linked/unlinked policies and deeper groups; invented nine-domain topology is not production acceptance.
+Run Before/After/After/Before per case, disable per-operation counters in primary timings, collect
+diagnostics separately, compare every saved computer answer and record whole judging, calculation,
+storage, memory, saved size and cancellation preserving the previous result.
+The approved estimate is 60-75 minutes with a 90-minute hard cap including twenty minutes reserved
+for final correct-source rebuilding, provenance and cleanup; an eight-minute/four-GiB per-process
+safeguard stops scaling on failure or excess and is not a product limit.
+Measurement-runner/workload qualification is included, not product optimization, a full-suite run,
+live access, recapture, owner-data re-judging, activation, UI/format changes, commit or push.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility
