@@ -110,10 +110,14 @@ internal static class Program
         to.WriteLine("      Older measurement workloads, each with its own arguments.");
         to.WriteLine("  --enterprise-baseline control NEW_OUTPUT BUILD_RECORD");
         to.WriteLine("      Current-format synthetic producer/readback control, not enterprise or complete-UI acceptance.");
+        to.WriteLine("  --configured-laps generate|judge ...");
+        to.WriteLine("      Explicit synthetic automatic-LAPS cost comparison; no production activation.");
     }
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--configured-laps")
+            return ConfiguredLapsMeasurement.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--enterprise-baseline")
             return EnterpriseBaseline.Run(args[1..]);
         if (args.Length > 0 && args[0] == "--requester-generate")

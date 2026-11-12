@@ -1541,6 +1541,21 @@ verification: an estimated 25-40 minutes, with a hard maximum of 50 minutes incl
 for restoration, final correct-source rebuilding and cleanup; no full suite or workload campaign
 is approved.
 
+**Automatic LAPS workload measurements - owner-approved 2026-11-12.**
+The owner requested measurement after committing the judging integration and approved a bounded
+extension of the existing offline measurement executable, not product optimisation or activation.
+Compare calculation disabled/enabled on identical new synthetic captures at 27, 270 and 1,350
+computers across nine invented domains, plus increased policy fan-in and nested-group depth.
+Record whole judging time, calculation/storage costs, process memory, saved size, complete question
+counts and mid-calculation cancellation preserving the previous result, with exact source/build/input
+provenance and explicit modelling/observer limits.
+These probes are not production limits or proof of the documented production forest's performance.
+The approved window is estimated at 45-60 minutes, with a hard maximum of 75 minutes including
+fifteen reserved for final validation, recording results and cleanup; stop scaling when a smaller
+case exceeds the allotted resources or time.
+No full suite, owner-lab re-judging, live access, recapture, product optimisation, activation,
+finding/UI adoption, commit or push is authorized.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility
@@ -8803,6 +8818,18 @@ Production has nine domains and approximately 25 years of accumulated complexity
 return to the development box, but only production run logs and summaries can return here.
 Synthetic scale testing is informed by the observed production workload below, not a claim that
 matching object or domain counts reproduces that complexity.
+
+**Production LAPS workload and cost acceptance - owner-clarified 2026-11-12.**
+Production has approximately 100,000 computers, thousands of GPOs and deep group nesting.
+The owner corrected the LAPS arrangement to two LAPS-related GPOs in each domain: one for legacy
+LAPS and one for Windows LAPS, using WMI filters to target the computer's operating-system version.
+The total forest GPO count is not the number of LAPS-setting policies or the number of linked
+policies reaching an individual computer; preserve those distinctions when modelling its cost.
+The owner considers the new automatic LAPS cost unacceptable in its current form, and automatic
+activation stays disabled; the earlier acceptance of the broader judging duration is not approval
+for this additional cost.
+The initial synthetic probes, including the heavier all-Windows-LAPS-policy case, are not a
+reconstruction of this production arrangement or a validated production runtime forecast.
 
 **The three machines, and what each can be trusted for - owner clarification, 2026-10-17.**
 The development box is a fairly powerful work laptop; offline correctness work and relative-cost
