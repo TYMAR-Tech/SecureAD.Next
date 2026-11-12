@@ -62,6 +62,7 @@ internal static class GpoSecurityRun
         internal IReadOnlyList<string> OtherUsers { get; init; } = [];
         internal string? DomainLinks { get; init; }
         internal IReadOnlyList<EvidenceAttribute> PolicyAttributes { get; init; } = [];
+        internal IReadOnlyList<EvidenceAttribute> ComputerAttributes { get; init; } = [];
         internal (string Path, GpoTemplateVersionObservation Observation)? TemplateVersion { get; init; }
         internal IReadOnlyList<OtherObject> OtherObjects { get; init; } = [];
         internal IReadOnlyList<(Guid Guid, string Path, GpoRegistrySettings Settings)> RegistryPolicies { get; init; } = [];
@@ -96,6 +97,7 @@ internal static class GpoSecurityRun
             if (options.PrimaryGroup is { } primary) computer.Add(Text("primaryGroupID", primary.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (options.ComputerHistory.Count > 0) computer.Add(Sids("sIDHistory", options.ComputerHistory));
             if (options.Backlinks.Count > 0) computer.Add(Text("memberOf", options.Backlinks.ToArray()));
+            computer.AddRange(options.ComputerAttributes);
             writer.WriteObject(new(parent, Computer, ComputerGuid, computer, Captured));
             for (var index = 0; index < options.OtherUsers.Count; index++)
                 writer.WriteObject(new(parent, $"CN=Other user {index},{Parent}", Guid.NewGuid(),

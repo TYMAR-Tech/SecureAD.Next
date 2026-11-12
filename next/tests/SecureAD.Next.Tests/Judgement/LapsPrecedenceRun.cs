@@ -28,7 +28,8 @@ internal static class LapsPrecedenceRun
     internal static string FilterId(int id) => $"{{{id:D8}-1111-2222-3333-555555555555}}";
 
     internal static string Build(IReadOnlyList<Policy> policies, string? links = null,
-        IReadOnlyDictionary<int, string>? filterDefinitions = null)
+        IReadOnlyDictionary<int, string>? filterDefinitions = null,
+        IReadOnlyList<EvidenceAttribute>? computerAttributes = null, uint accountControl = 4096)
     {
         var first = policies.Single(policy => policy.Id == 1);
         var options = new Options
@@ -37,6 +38,8 @@ internal static class LapsPrecedenceRun
             DomainLinks = links ?? string.Concat(policies.Reverse().Select(policy =>
                 "[LDAP://" + PolicyDn(policy) + ";" + policy.LinkOptions + "]")),
             PolicyAttributes = Attributes(first),
+            ComputerAttributes = computerAttributes ?? [],
+            AccountControl = accountControl,
             RegistryPolicies = policies.Select(policy => (PolicyGuid(policy.Id), PathOf(policy),
                 new GpoRegistrySettings(policy.Entries, policy.Outcome,
                     policy.Outcome == GpoSettingsOutcome.Read ? null : "Recorded incomplete registry acquisition.")

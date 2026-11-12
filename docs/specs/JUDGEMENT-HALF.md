@@ -1317,6 +1317,38 @@ reason without discarding the other original queries or policy-wide exclusions.
 Actual applicability, unknown site/hierarchy scope, automatic matching, saved results/formats,
 findings and UI remain outside this batch.
 
+**Qualified directory-based WMI OS assessment - owner-approved 2026-11-11.**
+Keep this assessment distinct from confirmed WMI truth: it assumes the captured directory
+platform information represents the computer's WMI values and the specified namespace/class exists.
+Retain original computer attributes, complete query readings, the exact capture/seal/computer/filter
+condition and the explicit assumption with every derived outcome, including a selected LAPS value.
+Do not prune conditional alternatives, set actual applicability, close site scope, infer client
+processing or suppress a finding from this assumed result.
+The first supported subset is `root\CIMv2`, `Win32_OperatingSystem`, `Version` and `ProductType`,
+with native-parsed Boolean grouping and qualified comparisons; other inputs remain explicit limits.
+[Microsoft's WMI property definition](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-operatingsystem)
+defines Version as a string and ProductType as numeric workstation 1, DC 2, or other server 3.
+Normalize only a complete directory version of the form `major.minor (build)` or
+`major.minor.build`, preserving its original; do not borrow the deliberately looser capability
+classifier's partial-version result or use numerical build ordering for a string comparison.
+Recognize only unambiguous supported English Windows family labels, use the shared writable/RODC
+account-flag definition and refuse conflicting account types; an OU name or primary-group value
+must not manufacture a DC product type.
+Missing required facts are unknown, not WMI nulls; require one original text value for every input.
+Use [WQL operators and Boolean grouping](https://learn.microsoft.com/en-us/windows/win32/wmisdk/where-clause)
+with nonnegative integral ProductType constants, including the
+[published quoted ProductType examples](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/jj717288(v=ws.11)).
+For Version comparisons, restrict literals to ASCII digits/dots; qualify
+[LIKE](https://learn.microsoft.com/en-us/windows/win32/wmisdk/like-operator) only as an exact
+literal or one trailing `%`, not a guessed implementation of ranges, escapes or other patterns.
+Every query and required fragment must be qualified even if another Boolean branch or query
+already appears decisive; retain each unsupported reason and the whole-filter unresolved state.
+Selecting an outcome through this assessment must keep its assumption and source supports, refuse
+foreign or contradictory shared-filter support, and explicitly identify a required unresolved
+condition rather than inventing a default match.
+New Windows-produced conformance/reference collection remains separately authorized, not implied by
+synthetic checks; saved results/formats, findings, UI and live access are outside this batch.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

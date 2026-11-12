@@ -70,7 +70,8 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         token.ThrowIfCancellationRequested();
         _sources.RequireCurrent();
-        var values = Bundle.ReadObjectAttributesAt(computer, ["objectClass", "objectSid"]).Snapshot();
+        var values = Bundle.ReadObjectAttributesAt(computer,
+            ["objectClass", "objectSid", "operatingSystem", "operatingSystemVersion", "userAccountControl"]).Snapshot();
         computer = GpoCapturedIdentity.Normalize(computer, values);
         var containers = new List<GpoLinkContainer>();
         var links = new List<GpoHierarchyLink>();

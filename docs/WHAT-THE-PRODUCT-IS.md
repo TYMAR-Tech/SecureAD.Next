@@ -1476,6 +1476,25 @@ After 245 focused checks passed, the owner separately approved isolated rebuilt-
 an estimated 15-25 minutes, with a hard maximum of 35 minutes including eight reserved for
 restoration, final correct-source rebuilding and cleanup; no full suite is approved.
 
+**Qualified directory-based WMI OS assessment - owner-approved 2026-11-11.**
+After discussing the difference between directory-reported platform information and WMI values,
+the owner approved a narrow assessment of OS-version and product-type conditions using captured AD
+information, explicitly assuming that information represents the computer's WMI platform.
+This is not a confirmed WMI match, namespace/class-existence proof or evidence of client processing.
+Retain the assumption, original computer/filter inputs and both hypothetical filter/LAPS outcomes;
+the assessment must not become an unconditional coverage, exclusion or safety conclusion.
+Missing, conflicting or unsupported information remains unresolved rather than guessed, including
+non-OS queries, and unknown site scope remains a separate limitation.
+The directory-based interpretation can identify the supported conditional LAPS outcome but may not
+erase alternatives or silently change existing actual-applicability answers.
+Implementation and short synthetic/offline checks are approved; longer verification and any new
+Windows-generated lab reference collection require separate warning, scope and explicit approval.
+No live forest/endpoint access, recapture, saved-result/format or finding adoption, UI change,
+owner-data re-judging, production budget, commit or push is authorized.
+After 383 focused checks passed, the owner separately approved isolated rebuilt-fault verification:
+an estimated 25-40 minutes, with a hard maximum of 50 minutes including ten reserved for restoration,
+final correct-source rebuilding and cleanup; no full suite or new Windows/lab collection is approved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

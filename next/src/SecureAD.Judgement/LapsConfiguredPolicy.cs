@@ -37,6 +37,13 @@ internal sealed record LapsSettingResult(LapsPolicySetting Setting, LapsSettingD
     LapsConfiguredValue? UniformOrderedProjectionValue, bool IsDefiniteForComputer,
     ImmutableArray<LapsSettingSource> PossibleSources, int DecisionNodeCount);
 
+internal sealed record LapsDirectorySettingAssessment(LapsConfiguredValue? Value,
+    ImmutableArray<GpoDirectoryWmiAssessment> UsedAssessments, GpoWmiConditionKey? UnresolvedCondition, string? Reason)
+{
+    internal string Assumption => GpoDirectoryWmiAssessment.Assumption;
+    internal bool IsObservedWmiResult => false;
+}
+
 internal sealed record LapsRegistryPolicyInput(GpoComputerApplicability Applicability,
     GpoApplicabilityState RegistryExtension, ObjectAttributes ExtensionValues,
     GpoRegistrySettings? Registry, AuditError? ExtensionLimitation);
@@ -50,6 +57,35 @@ internal sealed record LapsConfiguredPolicy(Guid CaptureGenerationId, string Evi
 {
     internal bool IsGroupPolicyRootOnly => true;
     internal bool DefaultsRequireSelectionOfThisPolicyRoot => true;
+
+    internal LapsDirectorySettingAssessment UnderDirectoryAssessment(LapsPolicySetting setting)
+    {
+        var known = new Dictionary<GpoWmiConditionKey, GpoDirectoryWmiAssessment>();
+        foreach (var policy in RegistryPolicies)
+        {
+            var assessment = policy.Applicability.DirectoryAssessment;
+            if (assessment.CaptureGenerationId != CaptureGenerationId || assessment.EvidenceSeal != EvidenceSeal
+                || assessment.Computer != Computer || assessment.Condition != policy.Applicability.Conditional.Wmi?.Condition)
+                throw new InvalidDataException("A directory-based assessment belongs to another captured computer or filter.");
+            if (assessment.Condition is not { } key) continue;
+            if (known.TryGetValue(key, out var previous) && previous.State != assessment.State)
+                throw new InvalidDataException("Policies sharing one captured filter have inconsistent directory assessments.");
+            known[key] = assessment;
+        }
+        var assumptions = new Dictionary<GpoWmiConditionKey, bool>();
+        var used = ImmutableArray.CreateBuilder<GpoDirectoryWmiAssessment>();
+        var current = Settings[setting].Decision;
+        while (current is LapsSettingBranch branch)
+        {
+            if (!known.TryGetValue(branch.Condition, out var assessment) || assessment.State == GpoDirectoryWmiState.Unresolved)
+                return new(null, used.ToImmutable(), branch.Condition,
+                    "A required filter has no qualified directory-based outcome; both conditional alternatives remain retained.");
+            assumptions[branch.Condition] = assessment.State == GpoDirectoryWmiState.MatchesRecordedPlatform;
+            used.Add(assessment);
+            current = assumptions[branch.Condition] ? branch.WhenMatches : branch.WhenDoesNotMatch;
+        }
+        return new(UnderAssumptions(setting, assumptions), used.ToImmutable(), null, null);
+    }
 
     internal bool? RequestsAdEncryption(IReadOnlyDictionary<GpoWmiConditionKey, bool> assumptions)
     {

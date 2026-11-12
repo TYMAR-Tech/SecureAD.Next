@@ -81,7 +81,7 @@ internal sealed record GpoComputerApplicability(Guid CaptureGenerationId, string
     Guid? DerivationGenerationId, CapturedObjectIdentity Computer, CapturedObjectIdentity Policy,
     GpoLinkHierarchy Hierarchy, ImmutableArray<GpoHierarchyLink> PolicyLinks, GpoApplicabilityState DomainOuState,
     GpoSecurityAssessment Security, GpoProtocolAssessment Protocol, GpoWmiFilterReading Wmi,
-    GpoConditionalApplicability Conditional,
+    GpoConditionalApplicability Conditional, GpoDirectoryWmiAssessment DirectoryAssessment,
     GpoApplicabilityState PolicyState, GpoApplicabilityState State, ImmutableArray<AuditError> Limitations);
 
 internal sealed record GpoComputerInputs(GpoLinkHierarchy Hierarchy,
@@ -194,11 +194,12 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
             security.Policy.DistinguishedName));
         var conditional = GpoConditionalApplicability.Of(hierarchy, domainOu, policyState, wmi);
         if (conditional.UnavailableReason is { } unavailable) errors.Add(unavailable);
+        var directoryAssessment = GpoDirectoryWmiAssessment.Of(hierarchy, wmi, conditional, token);
         token.ThrowIfCancellationRequested();
         RequireCurrent();
         return new GpoComputerApplicability(hierarchy.CaptureGenerationId, hierarchy.EvidenceSeal,
             security.DerivationGenerationId, hierarchy.Computer, security.Policy, hierarchy, links, domainOu,
-            security, protocol, wmi, conditional, policyState, state, errors.Distinct().ToImmutableArray());
+            security, protocol, wmi, conditional, directoryAssessment, policyState, state, errors.Distinct().ToImmutableArray());
     }
 
     private static GpoProtocolAssessment ReadProtocol(CapturedGpoProtocolInputs inputs)
