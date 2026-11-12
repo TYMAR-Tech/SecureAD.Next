@@ -50,7 +50,7 @@ public sealed class LapsRegistryStorageTests
         }
         Assert.Equal(2, finding.RuleVersion);
         Assert.All(AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value.Segments,
-            part => Assert.Equal(83, part.SchemaVersion));
+            part => Assert.Equal(84, part.SchemaVersion));
     }
 
     [Fact]

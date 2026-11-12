@@ -44,6 +44,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
     private readonly IReadOnlySet<string> _readDomains;
     private readonly Dictionary<string, string?> _domainSids = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<(long Computer, string Resource), GpoComputerMembership> _memberships = [];
+    private long? _membershipComputer;
     private DerivationReader? _derivation;
     private bool _disposed;
 
@@ -85,6 +86,11 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
         _sources.RequireCurrent();
+        if (_membershipComputer != computer.ObjectId)
+        {
+            _memberships.Clear();
+            _membershipComputer = computer.ObjectId;
+        }
         if (_derivation is null) _memberships.Clear();
         var computerValues = Bundle.ReadObjectAttributesAt(computer,
             ["objectClass", "objectSid", "primaryGroupID", "sIDHistory", "userAccountControl"]).Snapshot();

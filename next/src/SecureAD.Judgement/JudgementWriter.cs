@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
@@ -149,24 +150,59 @@ public sealed class JudgementWriter : IDisposable
     }
 
     private StoreRootManifest? _lapsCaptureRoot;
+    private ConfiguredLapsSchedulingSummary? _configuredLapsScope;
 
-    internal void WriteLapsConfiguredPolicy(LapsConfiguredPolicy value, CancellationToken token = default)
+    private StoreRootManifest LapsCaptureRoot()
     {
-        ThrowIfFinishedWithinObject();
-        token.ThrowIfCancellationRequested();
         if (_lapsCaptureRoot is null)
         {
             var capture = AnalysisStoreLifecycle.ResolveCapture(_bundleDirectory);
             if (!capture.IsSuccess) throw new InvalidDataException(capture.Error.Description);
             _lapsCaptureRoot = capture.Value;
         }
-        if (value.EvidenceSeal != _evidenceSeal || value.CaptureGenerationId != _lapsCaptureRoot.GenerationId
-            || _lapsCaptureRoot.EvidenceSeal != _evidenceSeal
+        if (_lapsCaptureRoot.EvidenceSeal != _evidenceSeal) throw LapsConfiguredPolicyStorage.Invalid();
+        return _lapsCaptureRoot;
+    }
+
+    internal void WriteLapsConfiguredPolicy(LapsConfiguredPolicy value, CancellationToken token = default)
+    {
+        ThrowIfFinishedWithinObject();
+        token.ThrowIfCancellationRequested();
+        if (value.EvidenceSeal != _evidenceSeal || value.CaptureGenerationId != LapsCaptureRoot().GenerationId
             || value.DerivationGenerationId is not null && value.DerivationGenerationId != _derivationGenerationId)
             throw LapsConfiguredPolicyStorage.Invalid();
         var saved = SavedLapsConfiguredPolicy.Create(value, GenerationId, _derivationGenerationId,
             FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), token);
         LapsConfiguredPolicyStorage.Write(_connection, Batch(), saved, token);
+    }
+
+    internal ConfiguredLapsSchedulingSummary StartConfiguredLapsScheduling(ConfiguredLapsPolicy policy, bool captureComplete)
+    {
+        ThrowIfFinishedWithinObject();
+        var value = new ConfiguredLapsSchedulingSummary(GenerationId, LapsCaptureRoot().GenerationId, _evidenceSeal,
+            _derivationGenerationId, policy, ConfiguredLapsSchedulingState.Writing, _lapsComputers, 0, 0, 0, captureComplete);
+        LapsSchedulingStorage.Start(_connection, Batch(), value);
+        _configuredLapsScope = value;
+        return value;
+    }
+
+    internal void WriteUnassessedLapsComputer(CapturedObjectIdentity computer, AuditError reason)
+    {
+        ThrowIfFinishedWithinObject();
+        if (computer.CaptureGenerationId != LapsCaptureRoot().GenerationId || computer.ObjectId <= 0)
+            throw LapsSchedulingStorage.Invalid();
+        LapsSchedulingStorage.WriteUnassessed(_connection, Batch(), computer, reason);
+    }
+
+    internal void CompleteConfiguredLapsScheduling(ConfiguredLapsSchedulingSummary value)
+    {
+        ThrowIfFinishedWithinObject();
+        if (value.JudgementGenerationId != GenerationId || value.CaptureGenerationId != LapsCaptureRoot().GenerationId
+            || value.EvidenceSeal != _evidenceSeal || value.DerivationGenerationId != _derivationGenerationId)
+            throw LapsSchedulingStorage.Invalid();
+        LapsSchedulingStorage.Complete(_connection, Batch(), value);
+        _configuredLapsScope = value;
+        FlushObjects();
     }
 
     private readonly GroupMembershipTotals _groupMembershipTotals = new();
@@ -659,7 +695,8 @@ public sealed class JudgementWriter : IDisposable
         BestSupportedRouteStorage.RequirePublishable(_connection);
         JudgementStoreLayout.RequirePublishable(_connection);
 
-        var state = _evidenceIsComplete
+        var configuredLapsIncomplete = LapsSchedulingStorage.RequirePublishable(_connection, _configuredLapsScope);
+        var state = _evidenceIsComplete && !configuredLapsIncomplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;

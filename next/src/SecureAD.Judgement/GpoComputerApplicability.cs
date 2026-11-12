@@ -89,19 +89,35 @@ internal sealed record GpoComputerInputs(GpoLinkHierarchy Hierarchy,
 
 internal sealed class GpoComputerApplicabilityReader : IDisposable
 {
-    private readonly ProtectedRunFiles _files;
+    private ProtectedRunFiles? _ownedFiles;
     private readonly GpoLinkHierarchyReader _hierarchy;
     private readonly GpoSecurityFilterReader _security;
     private bool _disposed;
 
-    private GpoComputerApplicabilityReader(ProtectedRunFiles files, GpoLinkHierarchyReader hierarchy,
-        GpoSecurityFilterReader security) => (_files, _hierarchy, _security) = (files, hierarchy, security);
+    private GpoComputerApplicabilityReader(GpoLinkHierarchyReader hierarchy,
+        GpoSecurityFilterReader security) => (_hierarchy, _security) = (hierarchy, security);
 
     internal BundleReader Bundle => _hierarchy.Bundle;
 
     internal static Result<GpoComputerApplicabilityReader> Open(string directory, CancellationToken token)
     {
         var files = new ProtectedRunFiles(directory);
+        var accepted = false;
+        try
+        {
+            var opened = Open(files, token);
+            if (opened.IsSuccess)
+            {
+                opened.Value._ownedFiles = files;
+                accepted = true;
+            }
+            return opened;
+        }
+        finally { if (!accepted) files.Dispose(); }
+    }
+
+    internal static Result<GpoComputerApplicabilityReader> Open(ProtectedRunFiles files, CancellationToken token)
+    {
         GpoLinkHierarchyReader? hierarchy = null;
         GpoSecurityFilterReader? security = null;
         var accepted = false;
@@ -114,7 +130,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
             if (!permissions.IsSuccess) return Result<GpoComputerApplicabilityReader>.Failure(permissions.Error);
             security = permissions.Value;
             accepted = true;
-            return new GpoComputerApplicabilityReader(files, hierarchy, security);
+            return new GpoComputerApplicabilityReader(hierarchy, security);
         }
         finally
         {
@@ -122,7 +138,6 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
             {
                 security?.Dispose();
                 hierarchy?.Dispose();
-                files.Dispose();
             }
         }
     }
@@ -246,6 +261,6 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         _disposed = true;
         _security.Dispose();
         _hierarchy.Dispose();
-        _files.Dispose();
+        _ownedFiles?.Dispose();
     }
 }

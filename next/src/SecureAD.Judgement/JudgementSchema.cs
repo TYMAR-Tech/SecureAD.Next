@@ -143,7 +143,8 @@ public static class JudgementSchema
     // Format 81 distinguishes unusable expiry inputs and captured value presence from management claims.
     // Format 82 saves SEC-093's original registry value and independent policy-input limitations.
     // Format 83 saves selected-computer configured LAPS answers, shared conditions and source-bound assumptions.
-    public const int Version = 83;
+    // Format 84 records automatic configured LAPS scope and individual unassessed questions.
+    public const int Version = 84;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -796,6 +797,7 @@ public static class JudgementSchema
         Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
         LapsConfiguredPolicyStorage.CreateTables(connection);
+        LapsSchedulingStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
         JudgementStoreLayout.CreateReferences(connection);
     }

@@ -180,6 +180,8 @@ public sealed class ControlEdgeLayoutTests
         [82] = "B8DDB3C1F5FC9A4F03709610DF603158EF5B6702D5FE61A68BC4C984CAE11988",
         // Observed format-83 selected LAPS calculation storage; all prior pins remain unchanged.
         [83] = "767932A346D7CA31DE15299972AFB027A0BACF807E1A91C44FB0C0F5F96B0B5F",
+        // Observed format-84 automatic LAPS scope/refusal storage; all prior pins remain unchanged.
+        [84] = "B3DB0B386EB3994D46E291A1D273EBAC5609464F4B0FC5B3A4D41E80A34D910F",
     };
 
     [Fact]
@@ -214,6 +216,9 @@ public sealed class ControlEdgeLayoutTests
     [InlineData(StoreSegmentRole.PermissionProof, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
     [InlineData(StoreSegmentRole.PathProof, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
     [InlineData(StoreSegmentRole.JudgementFacts, "ALTER TABLE judgement_part ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.Judgement, "DROP TABLE laps_configured_scope")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "DROP TABLE laps_configured_unassessed")]
+    [InlineData(StoreSegmentRole.JudgementFacts, "ALTER TABLE laps_configured_unassessed ADD COLUMN unversioned TEXT")]
     public void LayoutCheckpointRejectsUnversionedChanges(StoreSegmentRole role, string mutation)
     {
         var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Judgement);

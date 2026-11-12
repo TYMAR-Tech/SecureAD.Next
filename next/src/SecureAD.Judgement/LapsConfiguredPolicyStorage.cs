@@ -107,6 +107,8 @@ internal static class LapsConfiguredPolicyStorage
             orphan.CommandText = "SELECT EXISTS(SELECT 1 FROM laps_configured_calculation WHERE computer_id=$computer)";
             orphan.Parameters.AddWithValue("$computer", computer.ObjectId);
             if ((long)orphan.ExecuteScalar()! != 0) throw Invalid();
+            var refusal = LapsSchedulingStorage.ReadRefusal(connection, description, computer);
+            if (refusal is not null) return Result<SavedLapsConfiguredPolicy>.Failure(refusal);
             return Result<SavedLapsConfiguredPolicy>.Failure(AuditError.Create(ErrorCategory.Evidence,
                 "LapsConfiguredCalculationNotSaved", ErrorSeverity.Degraded,
                 "No configured LAPS calculation was saved for this captured computer; it is unassessed scope, not an empty or safe policy.",

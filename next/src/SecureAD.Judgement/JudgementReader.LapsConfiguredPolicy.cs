@@ -5,6 +5,14 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
+    internal Result<ConfiguredLapsSchedulingSummary> ReadConfiguredLapsScope(CancellationToken token = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        token.ThrowIfCancellationRequested();
+        _readCancellation.ThrowIfCancellationRequested();
+        return LapsSchedulingStorage.ReadSummary(_connection, Description);
+    }
+
     internal Result<SavedLapsConfiguredPolicy> ReadLapsConfiguredPolicy(CapturedObjectIdentity computer,
         CancellationToken token = default)
     {

@@ -21,6 +21,13 @@ internal sealed class LapsConfiguredPolicyReader : IDisposable
             : Result<LapsConfiguredPolicyReader>.Failure(opened.Error);
     }
 
+    internal static Result<LapsConfiguredPolicyReader> Open(ProtectedRunFiles files, CancellationToken token)
+    {
+        var opened = GpoComputerApplicabilityReader.Open(files, token);
+        return opened.IsSuccess ? new LapsConfiguredPolicyReader(opened.Value)
+            : Result<LapsConfiguredPolicyReader>.Failure(opened.Error);
+    }
+
     internal Result<LapsConfiguredPolicy> Read(CapturedObjectIdentity computer, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

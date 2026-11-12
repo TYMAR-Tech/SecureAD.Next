@@ -44,6 +44,9 @@ public static class JudgingRun
     /// <summary>The shared GUI/CLI policy selects the three supported captured-question families.</summary>
     public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.SupportedCapturedQuestions;
 
+    /// <summary>Broad configured-LAPS scheduling awaits approved workload verification.</summary>
+    public const ConfiguredLapsPolicy ProductionConfiguredLapsPolicy = ConfiguredLapsPolicy.Disabled;
+
     /// <summary>
     /// How far a judging has got.
     /// </summary>
@@ -295,6 +298,15 @@ public static class JudgingRun
         DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
         IRunLog log, CancellationToken cancellationToken, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget,
         ProtectedRunFiles files)
+        => JudgeAudit(bundleDirectory, rules, requesterPolicy, startedUtc, evaluationAsOf, progress, log,
+            cancellationToken, selfMembershipDiscoveryBudget, files, ProductionConfiguredLapsPolicy);
+
+    /// <summary>Runs the same host coordinator with an explicit automatic captured-computer LAPS policy.</summary>
+    public static Result<JudgementRunState> JudgeAudit(
+        string bundleDirectory, IReadOnlyList<IRule> rules, PathRequesterPolicy requesterPolicy,
+        DateTimeOffset startedUtc, DateTimeOffset evaluationAsOf, IProgress<JudgingProgress> progress,
+        IRunLog log, CancellationToken cancellationToken, SelfMembershipDiscoveryBudget? selfMembershipDiscoveryBudget,
+        ProtectedRunFiles files, ConfiguredLapsPolicy configuredLapsPolicy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(progress);
@@ -303,11 +315,12 @@ public static class JudgingRun
         if (!string.Equals(Path.GetFullPath(bundleDirectory), files.Directory, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("The protected lifetime belongs to another run.", nameof(files));
         if (!Enum.IsDefined(requesterPolicy)) throw new ArgumentOutOfRangeException(nameof(requesterPolicy));
+        if (!Enum.IsDefined(configuredLapsPolicy)) throw new ArgumentOutOfRangeException(nameof(configuredLapsPolicy));
         selfMembershipDiscoveryBudget?.Validate();
         if (requesterPolicy == PathRequesterPolicy.Disabled)
             return JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true,
                 selfMembershipDiscoveryBudget, null, startedUtc, evaluationAsOf, progress, log, cancellationToken,
-                true, [], [], [], false, files);
+                true, [], [], [], false, files, configuredLapsPolicy);
 
         var previous = AnalysisStoreLifecycle.Resolve(bundleDirectory, AnalysisStoreKind.Judgement);
         var attempt = Guid.NewGuid();
@@ -325,7 +338,7 @@ public static class JudgingRun
             var result = JudgeCore(bundleDirectory, rules, [], SelfMembershipBudget.Default, true,
                 selfMembershipDiscoveryBudget, null, startedUtc, evaluationAsOf, watched, log, cancellationToken,
                 tier0DiscoveryRequested: true, requesterDaclRequests: [], ownAccountRequests: [], membershipDaclRequests: [],
-                offlineSelection: true, files);
+                offlineSelection: true, files, configuredLapsPolicy);
             Record(result.IsSuccess ? "Published" : "Failed");
             recorded = true;
             return result;
@@ -403,7 +416,7 @@ public static class JudgingRun
         IProgress<JudgingProgress> progress, IRunLog log, CancellationToken cancellationToken,
         bool tier0DiscoveryRequested, IReadOnlyList<RequesterDaclRequest> requesterDaclRequests,
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests, IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
-        bool offlineSelection, ProtectedRunFiles files)
+        bool offlineSelection, ProtectedRunFiles files, ConfiguredLapsPolicy configuredLapsPolicy = ConfiguredLapsPolicy.Disabled)
     {
         var account = new JudgingAccount();
         var began = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -415,7 +428,7 @@ public static class JudgingRun
                 bundleDirectory, rules, selfMembershipRequests, selfMembershipBudget, automaticDiscovery,
                 discoveryBudget, memberBudget, startedUtc, evaluationAsOf, status, log, cancellationToken,
                 tier0DiscoveryRequested, requesterDaclRequests, ownAccountRequests, membershipDaclRequests,
-                offlineSelection, account, files);
+                offlineSelection, account, files, configuredLapsPolicy);
 
             if (judged.IsSuccess)
             {
@@ -574,7 +587,7 @@ public static class JudgingRun
         IReadOnlyList<OwnAccountMembershipRequest> ownAccountRequests,
         IReadOnlyList<MembershipDaclRequest> membershipDaclRequests,
         bool offlineSelection,
-        JudgingAccount account, ProtectedRunFiles files)
+        JudgingAccount account, ProtectedRunFiles files, ConfiguredLapsPolicy configuredLapsPolicy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleDirectory);
         ArgumentNullException.ThrowIfNull(rules);
@@ -1362,6 +1375,12 @@ public static class JudgingRun
             ]);
         }
 
+        if (configuredLapsPolicy != ConfiguredLapsPolicy.Disabled)
+            Entering(progress, log, JudgingPhase.EvaluatingObjects, objectsRead);
+        var configuredLaps = ConfiguredLapsJudging.Run(configuredLapsPolicy, inputs, files, writer,
+            objectsRead, progress, log, cancellationToken);
+        if (!configuredLaps.IsSuccess) return Result<JudgementRunState>.Failure(configuredLaps.Error);
+
         Entering(progress, log, JudgingPhase.WritingFindings, objectsRead);
         if (duplicateSpns is not null)
         {
@@ -1454,6 +1473,7 @@ public static class JudgingRun
         }
 
         var state = scope.Value!.AllDeclaredDomainsAreComplete
+            && (configuredLaps.Value.Policy == ConfiguredLapsPolicy.Disabled || configuredLaps.Value.UnassessedComputers == 0)
             && tallies.All(t => t.Outcome == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
@@ -1587,7 +1607,7 @@ public static class JudgingRun
     /// Screen notifications keep their existing cadence. Log status has its own timer and does
     /// not wait for these notifications, which may be hours apart during an expensive rule.
     /// </remarks>
-    private const int ProgressEvery = 1_000;
+    internal const int ProgressEvery = 1_000;
 
     /// <summary>
     /// Wraps a lookup so it is asked once per distinct argument for the life of a judging.

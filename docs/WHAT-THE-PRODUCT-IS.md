@@ -1519,6 +1519,28 @@ After 500 focused checks passed, the owner separately approved isolated rebuilt-
 an estimated 25-40 minutes, with a hard maximum of 50 minutes including ten reserved for restoration,
 final correct-source rebuilding and cleanup; no full suite or owner-lab re-judging is approved.
 
+**Configured LAPS judging integration - owner-approved 2026-11-12.**
+The owner approved connecting captured-input calculation and saved answers to the shared judging
+coordinator, automatically deriving questions rather than requiring an administrator-maintained list.
+When enabled, this stage considers every captured ordinary-computer row, preserving exact row identity
+and recording saved calculations separately from computers that could not be calculated.
+Calculated does not mean definite: directory assumptions, conditional alternatives and unknown site
+scope remain explicit, and existing finding eligibility is unchanged.
+The shared GUI/CLI production policy remains disabled until runtime/memory checks justify broad
+activation; disabled scope must be recorded rather than presented as no matching policies.
+Persist scope counts and per-computer unassessed reasons with the same generation before publication,
+and preserve cancellation/failure behavior and the previous selected generation.
+Use current-only saved formats, with no migration or compatibility path; new scope metadata changes
+no capture format.
+Implementation and short synthetic/offline checks are approved, not a new measurement harness or
+campaign; long verification needs its own warning, estimate and explicit approval.
+No finding/UI wording or layout change, new production budget, discovery activation, live access,
+recapture, owner-data re-judging, commit or push is authorized.
+After the focused integration checks passed, the owner separately approved isolated rebuilt-fault
+verification: an estimated 25-40 minutes, with a hard maximum of 50 minutes including ten reserved
+for restoration, final correct-source rebuilding and cleanup; no full suite or workload campaign
+is approved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

@@ -1369,6 +1369,27 @@ results; all historical layout pins, captures and Windows reference evidence rem
 No automatic whole-forest calculation, finding/UI adoption, production limit, live access, recapture
 or owner-data re-judging is included in this batch.
 
+**Configured LAPS judging integration - owner-approved 2026-11-12.**
+Integrate one automatic captured-computer stage into the shared host judging coordinator, using a
+disabled production policy pending separately approved workload checks rather than a manual target list.
+The enabled policy streams every row whose most-derived captured class is computer, including rows
+with missing platform information; inherited computer class on a managed service account must not
+silently widen that population, and duplicate DNs must not rebind the selected row.
+Reuse the shared protected evidence/derivation lifetime, calculate the four settings once per computer,
+and save the same qualified result before publication; do not activate other discovery.
+Record observed, considered, saved and unassessed counts independently, with disabled scope distinct
+from an enabled stage that found no captured computers.
+Save per-computer calculation refusals and their original reasons rather than substituting empty
+policy/default answers; a calculated answer may still be conditional or unresolved.
+An enabled stage with unassessed questions is degraded, while an unexpected failure or cancellation
+must leave the previous selected generation intact.
+Require publication counts to agree with the recorded result/refusal rows, and bind scope/refusals to
+the exact capture and judgement sources; normal scope-summary readback must not open original proof.
+Keep per-computer preparation bounded to the active computer, report existing progress/log counters
+without new screen wording, and retain separate calculation/storage costs in existing diagnostics.
+Judgement format 84 supports only its current scheduling metadata and saved answers; captures and
+historical references remain unchanged, with no migration, compatibility, finding or UI adoption.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or
