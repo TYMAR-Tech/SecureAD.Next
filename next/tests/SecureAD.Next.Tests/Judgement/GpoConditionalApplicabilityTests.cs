@@ -5,6 +5,7 @@ using SecureAD.Kernel;
 using Xunit;
 using static SecureAD.Next.Tests.Judgement.GpoComputerApplicabilityTests;
 using static SecureAD.Next.Tests.Judgement.GpoSecurityRun;
+using static SecureAD.Next.Tests.Evidence.GpoWmiFilterTests;
 
 namespace SecureAD.Next.Tests.Judgement;
 
@@ -130,10 +131,13 @@ public sealed class GpoConditionalApplicabilityTests
         Assert.Equal(Query, wmi.Definition.Value[0].Reading.OriginalQuery);
     }
 
-    [Fact]
-    public void GpoConditionalTheSameComputerFilterSharesOneConditionAcrossPoliciesAndIgnoredFlags()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GpoConditionalTheSameComputerFilterSharesOneConditionAcrossPoliciesAndIgnoredFlags(bool multipleQueries)
     {
         var options = Filtered();
+        if (multipleQueries) options = options with { OtherObjects = [Filter(definition: MultipleQueryWrapper)] };
         var directory = Build(options with
         {
             DomainLinks = options.DomainLinks + "[LDAP://" + SecondPolicy + ";0]",
@@ -147,6 +151,60 @@ public sealed class GpoConditionalApplicabilityTests
         Assert.Equal(Qualified(first).Condition, Qualified(second).Condition);
         Assert.NotEqual(first.Wmi.Reference!.IgnoredFlags, second.Wmi.Reference!.IgnoredFlags);
         Assert.Equal(GpoApplicabilityState.Applies, Qualified(second).WhenMatches);
+        Assert.Equal(multipleQueries ? 2 : 1, first.Wmi.Definition.Value.Length);
+    }
+
+    [Fact]
+    public void GpoConditionalMultipleQueriesKeepOneWholeFilterAlternativeWithoutChangingActualApplicability()
+    {
+        var result = Assess(Filtered() with { OtherObjects = [Filter(definition: MultipleQueryWrapper)] });
+        var alternative = Qualified(result);
+        Assert.Equal(2, result.Wmi.Definition.Value.Length);
+        Assert.Equal(GpoApplicabilityState.Applies, alternative.WhenMatches);
+        Assert.Equal(GpoApplicabilityState.DoesNotApply, alternative.WhenDoesNotMatch);
+        Assert.Equal(result.Wmi.Filter!.ObjectId, alternative.Condition.FilterObjectId);
+        Assert.Equal(GpoApplicabilityState.Unknown, result.State);
+        Assert.True(result.Conditional.HasOpenPolicyScope);
+    }
+
+    [Theory]
+    [InlineData(0, "Unavailable")]
+    [InlineData(1, "Unavailable")]
+    [InlineData(0, "Rejected")]
+    [InlineData(1, "Rejected")]
+    [InlineData(0, "Unsupported")]
+    [InlineData(1, "Unsupported")]
+    public void GpoConditionalMultipleQueriesRequireEveryReadingAndKeepItsUnavailableReason(int index, string state)
+    {
+        var result = Assess(Filtered() with { OtherObjects = [Filter(definition: MultipleQueryWrapper)] });
+        var queries = result.Wmi.Definition.Value.ToArray();
+        var original = queries[index];
+        var unavailable = WqlQueryReading.Failed(original.Query, Enum.Parse<WqlReadingState>(state),
+            "RecordedMultiQueryReason", "Recorded query limitation", 123);
+        queries[index] = original with { Reading = unavailable };
+        var wmi = result.Wmi with { Definition = Result<ImmutableArray<CapturedWmiQuery>>.Success([.. queries]) };
+        var conditional = GpoConditionalApplicability.Of(result.Hierarchy, result.DomainOuState, result.PolicyState, wmi);
+        Assert.Null(conditional.Wmi);
+        Assert.Equal(unavailable.Error, conditional.UnavailableReason);
+        Assert.Equal(2, wmi.Definition.Value.Length);
+        Assert.Equal(original.Query, wmi.Definition.Value[index].Reading.OriginalQuery);
+        Assert.Equal(123, wmi.Definition.Value[index].Reading.NativeCode);
+        Assert.Equal(WqlReadingState.ParsedConditions, wmi.Definition.Value[1 - index].Reading.State);
+    }
+
+    [Fact]
+    public void GpoConditionalMultipleQueryParserLimitsRemainInTheCapturedAssessment()
+    {
+        var definition = MultipleQueryWrapper.Replace(";WQL;", ";SQL;", StringComparison.Ordinal);
+        var result = Assess(Filtered() with { OtherObjects = [Filter(definition: definition)] });
+        Assert.True(result.Wmi.Definition.IsSuccess);
+        Assert.Equal(2, result.Wmi.Definition.Value.Length);
+        Assert.All(result.Wmi.Definition.Value, query =>
+            Assert.Equal("Evidence.WmiLanguageUnsupported", query.Reading.Error!.Code));
+        Assert.Null(result.Conditional.Wmi);
+        Assert.Contains(result.Wmi.Definition.Value[1].Reading.Error!, result.Limitations);
+        Assert.Equal(result.Wmi.Definition.Value[0].Reading.Error, result.Conditional.UnavailableReason);
+        Assert.Equal(GpoApplicabilityState.Unknown, result.State);
     }
 
     [Fact]
@@ -236,7 +294,7 @@ public sealed class GpoConditionalApplicabilityTests
     [InlineData("filter-guid")]
     [InlineData("conditions")]
     [InlineData("empty-query-list")]
-    [InlineData("multiple-qualified-queries")]
+    [InlineData("later-conditions")]
     [InlineData("capture-generation")]
     [InlineData("evidence-seal")]
     [InlineData("missing-parser-reason")]
@@ -258,10 +316,11 @@ public sealed class GpoConditionalApplicabilityTests
             wmi = wmi with { Definition = Result<ImmutableArray<CapturedWmiQuery>>.Success([query with { Reading = query.Reading with { Conditions = null } }]) };
         }
         if (defect == "empty-query-list") wmi = wmi with { Definition = Result<ImmutableArray<CapturedWmiQuery>>.Success([]) };
-        if (defect == "multiple-qualified-queries")
+        if (defect == "later-conditions")
         {
             var query = Assert.Single(wmi.Definition.Value);
-            wmi = wmi with { Definition = Result<ImmutableArray<CapturedWmiQuery>>.Success([query, query]) };
+            wmi = wmi with { Definition = Result<ImmutableArray<CapturedWmiQuery>>.Success(
+                [query, query with { Reading = query.Reading with { Conditions = null } }]) };
         }
         if (defect == "missing-parser-reason")
         {
@@ -317,7 +376,8 @@ public sealed class GpoConditionalApplicabilityTests
     private static GpoWmiAlternatives Qualified(GpoComputerApplicability value)
     {
         Assert.True(value.Wmi.Definition.IsSuccess);
-        Assert.Equal(WqlReadingState.ParsedConditions, Assert.Single(value.Wmi.Definition.Value).Reading.State);
+        Assert.NotEmpty(value.Wmi.Definition.Value);
+        Assert.All(value.Wmi.Definition.Value, query => Assert.Equal(WqlReadingState.ParsedConditions, query.Reading.State));
         Assert.Null(value.Conditional.UnavailableReason);
         return Assert.IsType<GpoWmiAlternatives>(value.Conditional.Wmi);
     }

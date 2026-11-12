@@ -22,12 +22,18 @@ internal sealed record GpoConditionalApplicability(bool HasOpenPolicyScope, GpoW
         var openScope = !hierarchy.SiteScopeResolved || !hierarchy.DomainOuEvidenceComplete;
         if (!wmi.Definition.IsSuccess) return new(openScope, null, wmi.Definition.Error);
         var queries = wmi.Definition.Value;
-        if (queries.Length != 1)
-            throw new InvalidDataException("A qualified WMI condition must contain one captured query.");
-        if (queries[0].Reading.State != WqlReadingState.ParsedConditions)
-            return new(openScope, null, queries[0].Reading.Error
-                ?? throw new InvalidDataException("An unqualified WMI query has no recorded reason."));
-        if (queries[0].Reading.Conditions is null || wmi.Filter is not { } filter || wmi.FilterValues is null
+        if (queries.IsDefaultOrEmpty)
+            throw new InvalidDataException("A qualified WMI condition must contain captured queries.");
+        // ms-WMI-Som requires every query to return results; one condition represents that whole conjunction.
+        foreach (var query in queries)
+        {
+            if (query.Reading.State != WqlReadingState.ParsedConditions)
+                return new(openScope, null, query.Reading.Error
+                    ?? throw new InvalidDataException("An unqualified WMI query has no recorded reason."));
+            if (query.Reading.Conditions is null)
+                throw new InvalidDataException("A qualified WMI query has no parsed conditions.");
+        }
+        if (wmi.Filter is not { } filter || wmi.FilterValues is null
             || hierarchy.CaptureGenerationId == Guid.Empty || string.IsNullOrWhiteSpace(hierarchy.EvidenceSeal)
             || hierarchy.Computer.CaptureGenerationId != hierarchy.CaptureGenerationId
             || wmi.Policy.CaptureGenerationId != hierarchy.CaptureGenerationId

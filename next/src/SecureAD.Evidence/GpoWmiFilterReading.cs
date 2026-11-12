@@ -8,7 +8,7 @@ internal sealed record CapturedWmiReference(string DomainFqdn, Guid FilterId, st
 
 internal sealed record CapturedWmiQuery(string Language, string Namespace, string Query, WqlQueryReading Reading);
 
-/// <summary>Selected captured configuration and syntax only; none of these states means a filter matches.</summary>
+/// <summary>Source-bound conjunctive query definition; parsing never establishes a filter match.</summary>
 internal sealed record GpoWmiFilterReading(
     CapturedObjectIdentity Policy,
     ObjectAttributes PolicyValues,
@@ -88,22 +88,30 @@ internal static class CapturedWmiEncoding
             "The captured WMI filter reference is not a supported domain/filter/flags reference.", raw));
     }
 
-    internal static Result<(string Language, string Namespace, string Query)> Query(string raw)
+    internal static Result<ImmutableArray<(string Language, string Namespace, string Query)>> Queries(
+        string raw, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(raw);
+        cancellationToken.ThrowIfCancellationRequested();
         var position = 0;
-        if (!Number(out var count))
+        if (!Number(out var count) || count == 0)
             return Invalid("The captured WMI filter query wrapper has no usable query count.");
-        if (count != 1)
-            return Invalid("Only the independently recorded single-query WMI wrapper is supported in this batch.");
-        if (!Number(out var languageLength) || !Number(out var namespaceLength) || !Number(out var queryLength)
-            || !Part(languageLength, out var language) || !Part(namespaceLength, out var nameSpace)
-            || !Part(queryLength, out var query) || position != raw.Length)
-            return Invalid("The captured WMI filter query wrapper has inconsistent lengths, delimiters or trailing content.");
-        if (language.Length == 0 || nameSpace.Length == 0 || query.Length == 0
-            || language.Contains('\0') || nameSpace.Contains('\0') || query.Contains('\0'))
-            return Invalid("The captured WMI filter query wrapper has an empty or embedded-null field.");
-        return Result<(string, string, string)>.Success((language, nameSpace, query));
+        var queries = ImmutableArray.CreateBuilder<(string Language, string Namespace, string Query)>();
+        for (var index = 0; index < count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Number(out var languageLength) || !Number(out var namespaceLength) || !Number(out var queryLength)
+                || !Part(languageLength, out var language) || !Part(namespaceLength, out var nameSpace)
+                || !Part(queryLength, out var query))
+                return Invalid("The captured WMI filter query wrapper has inconsistent lengths or delimiters.");
+            if (language.Length == 0 || nameSpace.Length == 0 || query.Length == 0
+                || language.Contains('\0') || nameSpace.Contains('\0') || query.Contains('\0'))
+                return Invalid("The captured WMI filter query wrapper has an empty or embedded-null field.");
+            queries.Add((language, nameSpace, query));
+        }
+        if (position != raw.Length)
+            return Invalid("The captured WMI filter query wrapper has unconsumed trailing content.");
+        return Result<ImmutableArray<(string, string, string)>>.Success(queries.ToImmutable());
 
         bool Number(out int value)
         {
@@ -126,8 +134,8 @@ internal static class CapturedWmiEncoding
             return true;
         }
 
-        Result<(string, string, string)> Invalid(string description) =>
-            Result<(string, string, string)>.Failure(AuditError.Create(ErrorCategory.Evidence,
+        Result<ImmutableArray<(string, string, string)>> Invalid(string description) =>
+            Result<ImmutableArray<(string, string, string)>>.Failure(AuditError.Create(ErrorCategory.Evidence,
                 "GpoWmiDefinitionUnsupported", ErrorSeverity.Degraded, description, raw));
     }
 }

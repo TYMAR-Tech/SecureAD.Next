@@ -1460,6 +1460,22 @@ After 377 focused cases passed, the owner separately approved isolated rebuilt-f
 an estimated 35-50 minutes, with a hard maximum of 60 minutes including twelve reserved for
 restoration, final correct-source rebuilding and cleanup; no full suite is approved.
 
+**Complete multi-query WMI filter reading - owner-approved 2026-11-11.**
+After the setting-precedence checkpoint was committed locally, the owner approved the proposed
+backend-only support for captured filters containing multiple queries.
+Preserve every original query and its source, follow Microsoft's requirement that all queries
+return results, and retain one whole-filter condition shared by policies for the same captured
+computer/filter rather than independent assumptions for fragments of that filter.
+Unsupported queries or unavailable information must keep the filter explicitly unresolved;
+reading or parsing the definition is not proof that any query matches the computer.
+Implementation and short synthetic/offline checks are approved; longer fault verification needs
+its own warning, duration estimate and explicit approval.
+No automatic computer matching, saved-format/result or finding adoption, UI change, live access,
+recapture, owner-data re-judging, production budget, commit or push is authorized.
+After 245 focused checks passed, the owner separately approved isolated rebuilt-fault verification:
+an estimated 15-25 minutes, with a hard maximum of 35 minutes including eight reserved for
+restoration, final correct-source rebuilding and cleanup; no full suite is approved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

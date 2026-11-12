@@ -2,6 +2,7 @@ using System.Text;
 using SecureAD.Evidence;
 using SecureAD.Judgement;
 using SecureAD.Kernel.GroupPolicy;
+using SecureAD.Next.Tests.Evidence;
 using Xunit;
 using static SecureAD.Next.Tests.Judgement.LapsPrecedenceRun;
 
@@ -104,6 +105,49 @@ public sealed class LapsConfiguredPolicyTests
         Assert.Equal(matches ? GroupB : null, value.Principal);
         Assert.Equal(matches ? LapsConfiguredValueState.PolicyValue : LapsConfiguredValueState.DocumentedDefault, value.State);
         Assert.Equal(3, result.Settings[LapsPolicySetting.ADPasswordEncryptionPrincipal].DecisionNodeCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LapsPrecedenceMultipleQueryFiltersRemainOneCorrelatedWholeFilterCondition(bool matches)
+    {
+        var directory = LapsPrecedenceRun.Build(
+            [new(1, [TextValue(Principal, GroupA)]), new(2, [TextValue(Principal, GroupB)])],
+            filterDefinitions: new Dictionary<int, string> { [1] = GpoWmiFilterTests.MultipleQueryWrapper });
+        using var reader = LapsConfiguredPolicyReader.Open(directory, CancellationToken.None).Value;
+        var result = reader.Read(reader.Bundle.ReadObjectIdentity(GpoSecurityRun.Computer)!, CancellationToken.None).Value;
+        var key = Assert.Single(Conditions(result));
+        Assert.All(result.RegistryPolicies, policy =>
+        {
+            Assert.Equal(2, policy.Applicability.Wmi.Definition.Value.Length);
+            Assert.Equal(key, policy.Applicability.Conditional.Wmi!.Condition);
+        });
+        var value = result.UnderAssumptions(LapsPolicySetting.ADPasswordEncryptionPrincipal,
+            new Dictionary<GpoWmiConditionKey, bool> { [key] = matches });
+        Assert.Equal(matches ? GroupB : null, value.Principal);
+        Assert.Equal(matches ? LapsConfiguredValueState.PolicyValue : LapsConfiguredValueState.DocumentedDefault, value.State);
+        Assert.Equal(3, CountDecisionNodes(result.Settings[LapsPolicySetting.ADPasswordEncryptionPrincipal].Decision));
+        Assert.True(result.HasOpenPolicyScope);
+        Assert.False(result.Settings[LapsPolicySetting.ADPasswordEncryptionPrincipal].IsDefiniteForComputer);
+    }
+
+    [Fact]
+    public void LapsPrecedenceAnUnsupportedLaterQueryRemainsOpenInfluenceInsteadOfSelectingADecryptor()
+    {
+        var definition = GpoWmiFilterTests.MultipleQueryWrapper.Replace(";3;10;55;WQL;", ";3;10;55;SQL;", StringComparison.Ordinal);
+        var directory = LapsPrecedenceRun.Build([new(1, [TextValue(Principal, GroupB)])],
+            filterDefinitions: new Dictionary<int, string> { [1] = definition });
+        using var reader = LapsConfiguredPolicyReader.Open(directory, CancellationToken.None).Value;
+        var result = reader.Read(reader.Bundle.ReadObjectIdentity(GpoSecurityRun.Computer)!, CancellationToken.None).Value;
+        var policy = Assert.Single(result.RegistryPolicies);
+        Assert.Null(policy.Applicability.Conditional.Wmi);
+        Assert.Contains(policy.Applicability.Limitations, error => error.Code == "Evidence.WmiLanguageUnsupported");
+        var value = result.UnderAssumptions(LapsPolicySetting.ADPasswordEncryptionPrincipal, Empty());
+        Assert.Equal(LapsConfiguredValueState.Unresolved, value.State);
+        Assert.Null(value.Principal);
+        Assert.Null(value.DomainAdmins);
+        Assert.NotNull(value.Reason);
     }
 
     [Fact]

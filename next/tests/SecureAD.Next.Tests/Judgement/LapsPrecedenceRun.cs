@@ -27,7 +27,8 @@ internal static class LapsPrecedenceRun
         @"\\" + (policy.ChildDomain ? "child.example.test" : "example.test") + @"\SYSVOL\Policies\" + policy.Id;
     internal static string FilterId(int id) => $"{{{id:D8}-1111-2222-3333-555555555555}}";
 
-    internal static string Build(IReadOnlyList<Policy> policies, string? links = null)
+    internal static string Build(IReadOnlyList<Policy> policies, string? links = null,
+        IReadOnlyDictionary<int, string>? filterDefinitions = null)
     {
         var first = policies.Single(policy => policy.Id == 1);
         var options = new Options
@@ -51,7 +52,8 @@ internal static class LapsPrecedenceRun
             others.Add(new("CN=" + FilterId(id) + ",CN=SOM,CN=WMIPolicy,CN=System," + Parent,
                 Guid.Parse($"{id:D8}-aaaa-bbbb-cccc-555555555555"),
                 [Text("objectClass", "top", "msWMI-Som"), Text("msWMI-ID", FilterId(id)),
-                    Text("msWMI-Parm2", wrapper)]));
+                    Text("msWMI-Parm2", filterDefinitions is not null && filterDefinitions.TryGetValue(id, out var definition)
+                        ? definition : wrapper)]));
         return GpoSecurityRun.Build(options with { OtherObjects = others });
     }
 

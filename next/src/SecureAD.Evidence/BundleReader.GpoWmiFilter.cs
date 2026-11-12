@@ -61,16 +61,19 @@ public sealed partial class BundleReader
         var rawDefinition = SingleText(filterValues.Find("msWMI-Parm2"));
         if (rawDefinition is null)
             return Failure("GpoWmiDefinitionUnavailable", "The captured filter does not contain exactly one usable text query definition.");
-        var query = CapturedWmiEncoding.Query(rawDefinition);
-        if (!query.IsSuccess) return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Failure(query.Error));
-        cancellationToken.ThrowIfCancellationRequested();
-        var value = query.Value;
-        var parsed = value.Language == "WQL"
-            ? WindowsWqlParser.Read(value.Query, cancellationToken)
-            : WqlQueryReading.Failed(value.Query, WqlReadingState.Unsupported, "WmiLanguageUnsupported",
-                "The captured query does not declare the supported WQL language.", null);
-        return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Success(
-            [new(value.Language, value.Namespace, value.Query, parsed)]));
+        var decodedQueries = CapturedWmiEncoding.Queries(rawDefinition, cancellationToken);
+        if (!decodedQueries.IsSuccess) return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Failure(decodedQueries.Error));
+        var queries = ImmutableArray.CreateBuilder<CapturedWmiQuery>();
+        foreach (var value in decodedQueries.Value)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var parsed = value.Language == "WQL"
+                ? WindowsWqlParser.Read(value.Query, cancellationToken)
+                : WqlQueryReading.Failed(value.Query, WqlReadingState.Unsupported, "WmiLanguageUnsupported",
+                    "The captured query does not declare the supported WQL language.", null);
+            queries.Add(new(value.Language, value.Namespace, value.Query, parsed));
+        }
+        return Reading(Result<ImmutableArray<CapturedWmiQuery>>.Success(queries.ToImmutable()));
 
         GpoWmiFilterReading Reading(Result<ImmutableArray<CapturedWmiQuery>> definition) =>
             new(identity, policyValues, reference, filter, filterValues, definition);

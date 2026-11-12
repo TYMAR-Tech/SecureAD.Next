@@ -1295,6 +1295,28 @@ and requested backup/encryption/recovery configuration is not proof of client pr
 functional-level prerequisites, stored-password access, takeover or completed Tier 0 reachability.
 This slice changes no saved result format, finding adoption, UI, production budget or live-access authorization.
 
+**Complete multi-query WMI filter reading - owner-approved 2026-11-11.**
+Decode the complete nonempty length-framed query sequence in its original order, retaining
+repeated occurrences, each language/namespace/query and the original source-bound attribute.
+Microsoft marks [ms-WMI-Parm2](https://learn.microsoft.com/en-us/windows/win32/adschema/a-mswmi-parm2)
+as internal rather than publishing its framing grammar; qualify the repeated existing framing
+against the independently published
+[multi-query writer](https://www.powershellgallery.com/packages/NSP.ActiveDirectory/0.1.4/Content/Private%5CWmiFilterHelpers.ps1)
+and retain the recorded Windows single-query anchor without changing it.
+Do not present that writer as a captured Windows result or guess other encodings.
+Inconsistent counts, lengths, delimiters, empty/null fields or trailing data must refuse the
+whole definition explicitly, not return a successful prefix, truncate a query or imply no filter.
+Preserve each native-parser outcome and reason independently, including queries after one that
+is rejected, unsupported or unavailable.
+[Microsoft's ms-WMI-Som definition](https://learn.microsoft.com/en-us/windows/win32/adschema/c-mswmi-som)
+requires every query to return results: the hypothetical matching outcome therefore represents
+the whole conjunction, never any single query or a flattened cross-namespace query.
+Qualify that condition only when every required query has supported parsed conditions, sharing
+one exact computer/filter key across referring policies; otherwise retain an explicit unavailable
+reason without discarding the other original queries or policy-wide exclusions.
+Actual applicability, unknown site/hierarchy scope, automatic matching, saved results/formats,
+findings and UI remain outside this batch.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or
