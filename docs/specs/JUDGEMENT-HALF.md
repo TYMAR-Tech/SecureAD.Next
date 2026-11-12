@@ -1300,10 +1300,12 @@ Decode the complete nonempty length-framed query sequence in its original order,
 repeated occurrences, each language/namespace/query and the original source-bound attribute.
 Microsoft marks [ms-WMI-Parm2](https://learn.microsoft.com/en-us/windows/win32/adschema/a-mswmi-parm2)
 as internal rather than publishing its framing grammar; qualify the repeated existing framing
-against the independently published
+against the owner-created [Windows two-query reference](C:/Users/jistrand/.copilot/session-state/6c9a81b9-6381-456f-8c2a-34b1164a4b63/files/lab-wmi-multi-query-reference-20261112/verified-multi-query-reference.json),
+retaining the recorded Windows single-query anchor without changing it.
+The independently published
 [multi-query writer](https://www.powershellgallery.com/packages/NSP.ActiveDirectory/0.1.4/Content/Private%5CWmiFilterHelpers.ps1)
-and retain the recorded Windows single-query anchor without changing it.
-Do not present that writer as a captured Windows result or guess other encodings.
+is a secondary reference, not a Windows-produced result.
+Do not generalize the recorded example to other encodings or guess unsupported framing.
 Inconsistent counts, lengths, delimiters, empty/null fields or trailing data must refuse the
 whole definition explicitly, not return a successful prefix, truncate a query or imply no filter.
 Preserve each native-parser outcome and reason independently, including queries after one that
@@ -1348,6 +1350,24 @@ foreign or contradictory shared-filter support, and explicitly identify a requir
 condition rather than inventing a default match.
 New Windows-produced conformance/reference collection remains separately authorized, not implied by
 synthetic checks; saved results/formats, findings, UI and live access are outside this batch.
+
+**Qualified LAPS calculation save/readback - owner-approved 2026-11-11.**
+Save the four per-setting answers and conditional decision graph in the existing judgement store,
+retaining shared conditions/subgraphs rather than materializing every combination or recursively
+duplicating the graph as a tree.
+Retain original policy/link/instruction supports, source identities/resources, saved defaults,
+directory-based assumptions and selected assumed outcomes, and independent input/scope limitations.
+The exact capture generation/seal, derivation generation/seal and judgement generation must bind
+each saved calculation; do not infer identity from a DN, policy display name or query text.
+Selected-computer readback must use the saved answers without replaying permission checks, WMI
+parsing/evaluation, hierarchy processing or registry interpretation, and must explicitly refuse
+missing/mismatched support rather than repairing it from current evidence.
+An unsaved computer is unassessed scope, not an empty or safe configured policy; a cancelled or
+failed publication must not replace the previous selected generation with partial answers.
+Judgement format 83 refuses older saved interpretations without migration or deleting original
+results; all historical layout pins, captures and Windows reference evidence remain unchanged.
+No automatic whole-forest calculation, finding/UI adoption, production limit, live access, recapture
+or owner-data re-judging is included in this batch.
 
 #### Deliberately not fixed seeds under the current working policy
 

@@ -148,6 +148,27 @@ public sealed class JudgementWriter : IDisposable
         _lapsComputers++;
     }
 
+    private StoreRootManifest? _lapsCaptureRoot;
+
+    internal void WriteLapsConfiguredPolicy(LapsConfiguredPolicy value, CancellationToken token = default)
+    {
+        ThrowIfFinishedWithinObject();
+        token.ThrowIfCancellationRequested();
+        if (_lapsCaptureRoot is null)
+        {
+            var capture = AnalysisStoreLifecycle.ResolveCapture(_bundleDirectory);
+            if (!capture.IsSuccess) throw new InvalidDataException(capture.Error.Description);
+            _lapsCaptureRoot = capture.Value;
+        }
+        if (value.EvidenceSeal != _evidenceSeal || value.CaptureGenerationId != _lapsCaptureRoot.GenerationId
+            || _lapsCaptureRoot.EvidenceSeal != _evidenceSeal
+            || value.DerivationGenerationId is not null && value.DerivationGenerationId != _derivationGenerationId)
+            throw LapsConfiguredPolicyStorage.Invalid();
+        var saved = SavedLapsConfiguredPolicy.Create(value, GenerationId, _derivationGenerationId,
+            FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), token);
+        LapsConfiguredPolicyStorage.Write(_connection, Batch(), saved, token);
+    }
+
     private readonly GroupMembershipTotals _groupMembershipTotals = new();
 
     internal void StartGroupInventory(bool captureComplete)
@@ -605,6 +626,7 @@ public sealed class JudgementWriter : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         diagnostic?.Part("validate-laps");
         LapsInventoryStorage.RequirePublishable(_connection);
+        LapsConfiguredPolicyStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-permission-classifications");
         PermissionClassificationStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-path-fragments");

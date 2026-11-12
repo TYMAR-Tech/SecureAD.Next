@@ -1495,6 +1495,30 @@ After 383 focused checks passed, the owner separately approved isolated rebuilt-
 an estimated 25-40 minutes, with a hard maximum of 50 minutes including ten reserved for restoration,
 final correct-source rebuilding and cleanup; no full suite or new Windows/lab collection is approved.
 
+**Qualified LAPS calculation save/readback - owner-approved 2026-11-11.**
+The owner approved a backend-only save/readback batch in the existing judgement store for the four
+configured LAPS settings, shared conditional alternatives, exact policy/link/instruction supports,
+documented defaults and explicit missing-evidence/site limits.
+Retain the directory-based assessment's assumption and both hypothetical outcomes without promoting
+it to confirmed WMI truth, unconditional coverage or a safety conclusion.
+Bind saved answers to the exact capture, derivation and judgement generation; selected-computer
+readback must consume saved answers rather than rerunning analysis, and report unsaved scope
+explicitly rather than returning an invented empty result.
+The owner accepted judgement format 83: current readers refuse older saved judgements without
+migration, deletion or relabelling, while captures and previous results/binaries remain preserved.
+The owner reconfirmed that SecureAD.Next has never shipped and all product runs will be new:
+support only the current format, with no backward-compatible reader, migration or old-run workflow.
+Historical captures, results and binaries remain verification evidence, not a compatibility requirement.
+Regenerating any owner judgement, including the supplied lab run, still needs separate approval;
+this batch changes no capture format and authorizes no automatic whole-forest computation.
+Implementation and short synthetic/offline checks are approved; longer verification needs its own
+warning, estimate and explicit approval.
+No finding/UI adoption, live access, recapture, new production budget, owner-data re-judging,
+commit or push is authorized.
+After 500 focused checks passed, the owner separately approved isolated rebuilt-fault verification:
+an estimated 25-40 minutes, with a hard maximum of 50 minutes including ten reserved for restoration,
+final correct-source rebuilding and cleanup; no full suite or owner-lab re-judging is approved.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

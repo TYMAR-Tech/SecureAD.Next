@@ -178,6 +178,8 @@ public sealed class ControlEdgeLayoutTests
         [81] = "374FC340557F1508DA416E035F421AFA596FB5167559470FE276B4D69C6D88BC",
         // Observed format-82 SEC-093 registry inputs/limits; all historical checkpoints stay fixed.
         [82] = "B8DDB3C1F5FC9A4F03709610DF603158EF5B6702D5FE61A68BC4C984CAE11988",
+        // Observed format-83 selected LAPS calculation storage; all prior pins remain unchanged.
+        [83] = "767932A346D7CA31DE15299972AFB027A0BACF807E1A91C44FB0C0F5F96B0B5F",
     };
 
     [Fact]

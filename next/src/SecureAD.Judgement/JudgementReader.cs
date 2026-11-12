@@ -509,13 +509,15 @@ public sealed partial class JudgementReader : IDisposable
         finally { lease?.Dispose(); }
     }
 
-    private void OpenPart(StoreSegmentRole role)
+    private void OpenPart(StoreSegmentRole role) => OpenPart(role, _readCancellation);
+
+    private void OpenPart(StoreSegmentRole role, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _readCancellation.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested();
         if (_openedParts.Contains(role)) return;
         var protection = _protection ?? throw new InvalidOperationException("The judgement reader has no protected publication.");
-        var schema = protection.Attach(role, _readCancellation);
+        var schema = protection.Attach(role, cancellationToken);
         using var query = _connection.CreateCommand();
         query.CommandText = $"SELECT schema_version,role,generation,evidence_seal,derivation_generation FROM \"{schema}\".judgement_part";
         using var header = query.ExecuteReader();

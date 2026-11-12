@@ -142,7 +142,8 @@ public static class JudgementSchema
     // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
     // Format 81 distinguishes unusable expiry inputs and captured value presence from management claims.
     // Format 82 saves SEC-093's original registry value and independent policy-input limitations.
-    public const int Version = 82;
+    // Format 83 saves selected-computer configured LAPS answers, shared conditions and source-bound assumptions.
+    public const int Version = 83;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -794,6 +795,7 @@ public static class JudgementSchema
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
+        LapsConfiguredPolicyStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
         JudgementStoreLayout.CreateReferences(connection);
     }
