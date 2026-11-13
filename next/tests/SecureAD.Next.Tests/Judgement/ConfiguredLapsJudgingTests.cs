@@ -14,15 +14,33 @@ namespace SecureAD.Next.Tests.Judgement;
 public sealed class ConfiguredLapsJudgingTests
 {
     [Fact]
-    public void AutomaticLapsHostPolicyRemainsDisabledUntilWorkloadApproval()
+    public void AutomaticLapsHostPolicyCalculatesCapturedComputersByDefault()
     {
-        Assert.Equal(ConfiguredLapsPolicy.Disabled, JudgingRun.ProductionConfiguredLapsPolicy);
+        Assert.Equal(ConfiguredLapsPolicy.AllCapturedComputers, JudgingRun.ProductionConfiguredLapsPolicy);
         var directory = Build();
         using var files = new ProtectedRunFiles(directory);
         var result = JudgingRun.JudgeAudit(directory, [], PathRequesterPolicy.Disabled,
             GpoSecurityRun.Captured.AddMinutes(2), GpoSecurityRun.Captured, JudgingRun.NobodyIsWatching,
             RunLog.Discarded, CancellationToken.None, null, files);
         Assert.True(result.IsSuccess, result.Error?.Description);
+        using var reader = JudgementReader.Open(directory).Value;
+        var summary = Scope(reader);
+        Assert.Equal(ConfiguredLapsSchedulingState.Complete, summary.State);
+        Assert.Equal((1L, 1L, 1L, 0L), (summary.ObservedComputers, summary.QuestionsConsidered,
+            summary.SavedCalculations, summary.UnassessedComputers));
+        using var captured = BundleReader.Open(directory).Value;
+        var saved = reader.ReadLapsConfiguredPolicy(captured.ReadObjectIdentity(GpoSecurityRun.Computer)!);
+        Assert.True(saved.IsSuccess);
+        Assert.Equal(GroupA, saved.Value.UnderDirectoryAssessment(LapsPolicySetting.ADPasswordEncryptionPrincipal).Value!.Principal);
+        Assert.Equal(summary.JudgementGenerationId, saved.Value.JudgementGenerationId);
+        Assert.Equal(summary.CaptureGenerationId, saved.Value.CaptureGenerationId);
+    }
+
+    [Fact]
+    public void ExplicitlyDisabledConfiguredLapsStillRecordsDisabledScope()
+    {
+        var directory = Build();
+        Assert.True(Run(directory, ConfiguredLapsPolicy.Disabled).IsSuccess);
         using var reader = JudgementReader.Open(directory).Value;
         var summary = Scope(reader);
         Assert.Equal(ConfiguredLapsSchedulingState.Disabled, summary.State);

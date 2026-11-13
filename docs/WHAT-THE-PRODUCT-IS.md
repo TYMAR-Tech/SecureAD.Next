@@ -1671,6 +1671,43 @@ comparing every saved answer; measurement processes stop at two minutes or four 
 This does not approve a full suite, production data, live access, recapture, owner-data re-judging,
 commit or push, and no earlier run window is renewed.
 
+**Configured LAPS enabled for lab testing - owner-approved, 2026-11-12.**
+The owner requested enabling automatic configured-LAPS calculation so new audits can be tested
+in his laboratory.
+The shared normal GUI/CLI new-audit default now selects all captured computers, superseding the
+earlier disabled-policy direction for this build; this is not a lab-detecting switch and would also
+run elsewhere if the same build were used there, so production acceptance remains unestablished.
+Existing saved results are not recalculated, directory-based assumptions and conditional/unassessed
+answers remain explicit, and finding/UI presentation and saved formats are unchanged.
+The owner approved focused activation/scheduling checks and two isolated rebuilt disabled-default
+controls, estimated at 5-10 minutes with a fifteen-minute maximum including five reserved for final
+correct-source rebuilding and cleanup.
+After isolated-copy preparation consumed the experimental portion, the owner approved five
+additional minutes, extending the total cap to twenty minutes with the same five-minute final reserve.
+This authorizes no live access, recapture, owner-data re-judging, scale campaign, commit or push.
+
+**Shared application export, starting with LAPS CSV - owner direction, 2026-11-13.**
+The owner requested a fresh-session handoff for export before resuming the remaining rules, starting
+with LAPS information to identify servers needing investigation where an expiration timestamp was not observed.
+Export must be a reusable application-wide capability: LAPS CSV is the first dataset, not an isolated
+LAPS-only implementation, and later findings and other inventories must use the same export foundation.
+Keep common CSV encoding, source/scope/filter/count metadata and cancellable file-writing behavior
+separate from dataset-specific row/column selection and from individual screen view models.
+Build only the foundation the first dataset actually needs rather than a report designer or speculative
+multi-format/plugin framework, while leaving a clear path for additional datasets and formats.
+Missing captured timestamps are a reason to review LAPS deployment or processing, not proof that a
+GPO failed; Windows and legacy expiration values and their recorded quality must remain distinct.
+The existing saved inventory is the intended starting point, without password material, live queries,
+analysis replay or changes to the existing LAPS finding predicates.
+The export must state its source run, scope, complete exported/selected counts and exact filters
+under [0093](decisions/0093-an-export-states-what-it-contains.md), rather than export only loaded rows
+or label every missing value as confirmed failed management.
+CSV-first and shared application-wide reuse are settled direction; exact columns, scope/filter choices,
+concrete UI presentation, the bounded implementation plan and any verification window remain to
+be approved, and this turn requests commitment and handoff preparation rather than export implementation.
+Considering an owner-run production audit is not authorization for assistant live
+access, recapture or re-judging, and only production logs/summaries may return to this machine.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

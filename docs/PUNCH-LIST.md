@@ -20,6 +20,11 @@ Status: `open` · `blocked` (a named input is missing) · `decision` (needs an o
 
 ## Current bounded correction
 
+**EXPORT-01 - shared CSV export foundation, first dataset LAPS - next feature; concrete scope/presentation approval pending, 2026-11-13.**
+The owner requested a new-session export handoff before resuming remaining rules, with LAPS CSV as the first dataset of a reusable application-wide capability rather than a screen-specific writer.
+Separate common CSV/file lifecycle and run/scope/filter/count metadata from dataset adapters, export every matching saved row under decision 0093, preserve timestamp quality and explicit capture gaps, and treat missing expiration values as investigation signals rather than confirmed GPO-processing failures.
+Prepare and commit the current checkpoint now, then obtain only the outstanding column/scope/presentation and bounded implementation/verification approvals in the new session, without starting export code, repeating completed campaigns, changing finding predicates or authorizing production/live access, owner-data re-judging or push.
+
 **Current owner-selected priority - fast saved-result UI; slight judging overhead acceptable, owner-clarified 2026-10-15.**
 The owner explicitly accepts a slightly longer judgement but requires fast results in the UI, superseding slight per-operation judging increases as an automatic blocker rather than continuing to chase the recorded half-millisecond completion difference.
 Complete the remaining ARCH-04 browsing coverage and shared ARCH-02-through-ARCH-05 end-to-end acceptance as one coherent delivery rather than newly presented single-click projects, covering the operator's whole wait for Dashboard/Findings, directory/object browsing, LAPS, filters/pages and requested details at the documented production shape while preserving complete counts/answers, explicit incompleteness, exact bindings, independent seals and previous-completed-root protection, with existing completed screen evidence retained rather than repeated by default.

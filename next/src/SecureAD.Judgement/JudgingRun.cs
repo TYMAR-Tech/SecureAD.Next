@@ -44,8 +44,8 @@ public static class JudgingRun
     /// <summary>The shared GUI/CLI policy selects the three supported captured-question families.</summary>
     public const PathRequesterPolicy ProductionPathRequesterPolicy = PathRequesterPolicy.SupportedCapturedQuestions;
 
-    /// <summary>Broad configured-LAPS scheduling awaits approved workload verification.</summary>
-    public const ConfiguredLapsPolicy ProductionConfiguredLapsPolicy = ConfiguredLapsPolicy.Disabled;
+    /// <summary>The shared GUI/CLI policy calculates configured LAPS for captured computers.</summary>
+    public const ConfiguredLapsPolicy ProductionConfiguredLapsPolicy = ConfiguredLapsPolicy.AllCapturedComputers;
 
     /// <summary>
     /// How far a judging has got.
