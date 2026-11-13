@@ -25,6 +25,7 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
     internal GpoTrusteeCheck Match(PermissionTrustee trustee, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        using var matching = LapsCalculationDiagnostics.Measure("membership");
         var sid = trustee.Sid;
         if (_matches.TryGetValue(sid, out var saved)) return saved;
         GpoTrusteeCheck Answer(bool? matches, string reason, ImmutableArray<GpoMembershipWitness> route) =>
@@ -52,6 +53,7 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
     private void Prepare(CancellationToken token)
     {
         if (_prepared) return;
+        using var preparation = LapsCalculationDiagnostics.Measure("membership-preparation");
         _nodes.Clear();
         _parents.Clear();
         _groups.Clear();
@@ -68,7 +70,13 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
             return;
         }
         DelegationMembership graph;
-        try { graph = opened.Value.ReadContainingGroups(computer.PrincipalSid!, computer.DomainFqdn, token); }
+        try
+        {
+            using var loading = LapsCalculationDiagnostics.Measure("membership-graph");
+            graph = opened.Value.ReadContainingGroups(computer.PrincipalSid!, computer.DomainFqdn, token);
+            LapsCalculationDiagnostics.Count("membership-graph-nodes", graph.Nodes.Count);
+            LapsCalculationDiagnostics.Count("membership-graph-links", graph.Links.Count);
+        }
         catch (Exception error) when (error is InvalidDataException or InvalidOperationException or ArgumentException)
         {
             token.ThrowIfCancellationRequested();
@@ -147,6 +155,8 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
                 }
                 else
                 {
+                    using var reading = LapsCalculationDiagnostics.Measure("membership-witness");
+                    LapsCalculationDiagnostics.Count("membership-witness-reads", 1);
                     var observed = bundle.ReadMembershipWitness(memberValue.Identity, groupValue.Identity, token);
                     if (!observed.IsSuccess) { _historyIncomplete = true; _unavailable = observed.Error.Description; continue; }
                     attribute = observed.Value.Attribute;
@@ -175,6 +185,8 @@ internal sealed class GpoComputerMembership(BundleReader bundle, Func<Result<Der
     private (CapturedObjectIdentity Identity, ObjectAttributes Values)? Resolve(string sid, string scope, Guid? guid)
     {
         if (Sid.ToBytes(sid) is null || guid == Guid.Empty) return null;
+        using var resolving = LapsCalculationDiagnostics.Measure("membership-identity");
+        LapsCalculationDiagnostics.Count("membership-identity-resolutions", 1);
         DelegationPrincipal? principal;
         try { principal = bundle.ResolveDelegationPrincipal(sid, scope, guid); }
         catch (InvalidDataException error)

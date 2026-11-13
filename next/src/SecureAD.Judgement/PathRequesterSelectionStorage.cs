@@ -339,7 +339,7 @@ internal sealed class PathRequesterSelectionStorage : IPathRequesterSelectionSin
     private void RequireWriting()
     {
         _token.ThrowIfCancellationRequested();
-        _sources.RequireProtectedBinding(_description);
+        _sources.RequireFor(_description);
         if (_completed || _transaction.Connection != _connection) throw new InvalidOperationException("The selection writer no longer owns an active generation transaction.");
     }
 

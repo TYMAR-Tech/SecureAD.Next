@@ -129,7 +129,7 @@ internal sealed class OwnAccountMembershipProofs(SqliteConnection connection, Ju
         IReadOnlyDictionary<string, Tier0PathNode> nodes)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        sources.RequireProtectedBinding(description);
+        sources.RequireFor(description);
         if (proof.Assessment.GenerationId != description.GenerationId
             || proof.Assessment.DerivationGenerationId != description.DerivationGenerationId
             || proof.Assessment.EvidenceSeal != description.EvidenceSeal) throw Tier0PathStorage.InvalidProof();

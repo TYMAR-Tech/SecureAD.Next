@@ -249,7 +249,7 @@ public sealed class GpoSecurityFilterTests
     }
 
     [Fact]
-    public void GpoSecurityAbsentMembershipPreparationCanBeRetriedWithoutStaleFailure()
+    public void GpoSecurityMissingDerivationStaysUnresolvedUntilANewOperation()
     {
         var group = new Group("Delegated", 600, Global, false, [Computer], []);
         var directory = Build(new Options
@@ -262,7 +262,9 @@ public sealed class GpoSecurityFilterTests
         var policy = reader.Bundle.ReadObjectIdentity(Policy)!;
         Assert.Equal(GpoSecurityDecision.Unresolved, reader.Assess(computer, policy, CancellationToken.None).Decision);
         Derive(directory);
-        Assert.Equal(GpoSecurityDecision.Included, reader.Assess(computer, policy, CancellationToken.None).Decision);
+        Assert.Equal(GpoSecurityDecision.Unresolved, reader.Assess(computer, policy, CancellationToken.None).Decision);
+        using var fresh = GpoSecurityFilterReader.Open(directory, CancellationToken.None).Value;
+        Assert.Equal(GpoSecurityDecision.Included, fresh.Assess(computer, policy, CancellationToken.None).Decision);
     }
 
     [Fact]
@@ -287,8 +289,13 @@ public sealed class GpoSecurityFilterTests
         Assert.Equal(64, first.EvidenceSeal.Length);
         Assert.Equal(first.CaptureGenerationId, first.Computer.CaptureGenerationId);
         Derive(directory);
-        var changed = Assert.Throws<InvalidOperationException>(() => reader.Assess(computer, policy, CancellationToken.None));
-        Assert.Contains("source generation", changed.Message, StringComparison.Ordinal);
+        var failure = Record.Exception(() =>
+        {
+            var unchanged = reader.Assess(computer, policy, CancellationToken.None);
+            Assert.Equal(System.Text.Json.JsonSerializer.Serialize(first),
+                System.Text.Json.JsonSerializer.Serialize(unchanged));
+        });
+        Assert.Null(failure);
     }
 
     [Theory]

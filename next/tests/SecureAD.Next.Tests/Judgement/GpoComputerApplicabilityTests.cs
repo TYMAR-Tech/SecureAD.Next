@@ -280,22 +280,44 @@ public sealed class GpoComputerApplicabilityTests
         Assert.Throws<OperationCanceledException>(() => reader.Assess(computer, policy, cancelled.Token));
         Assert.Throws<OperationCanceledException>(() => GpoComputerApplicabilityReader.Open(directory, cancelled.Token));
         Derive(directory);
-        Assert.Throws<InvalidOperationException>(() => reader.Assess(computer, policy, CancellationToken.None));
+        var failure = Record.Exception(() =>
+        {
+            var held = reader.Assess(computer, policy, CancellationToken.None);
+            Assert.True(held.IsSuccess, held.Error?.Description);
+            Assert.Equal(result.DerivationGenerationId, held.Value.DerivationGenerationId);
+            Assert.Equal(result.CaptureGenerationId, held.Value.CaptureGenerationId);
+            Assert.Equal(result.PolicyState, held.Value.PolicyState);
+        });
+        Assert.Null(failure);
         reader.Dispose();
         Assert.Throws<ObjectDisposedException>(() => reader.Assess(computer, policy, CancellationToken.None));
     }
 
     [Fact]
-    public void GpoCombinedChangedCaptureSelectionCannotReuseTheHeldSources()
+    public void GpoCombinedChangedCaptureSelectionDoesNotRetargetHeldSources()
     {
         var directory = Build(Inputs());
         var replacement = Build(Inputs());
         using var reader = GpoComputerApplicabilityReader.Open(directory, CancellationToken.None).Value;
         var computer = reader.Bundle.ReadObjectIdentity(Computer)!;
         var policy = reader.Bundle.ReadObjectIdentity(Policy)!;
-        Assert.Equal(GpoApplicabilityState.Applies, reader.Assess(computer, policy, CancellationToken.None).Value.PolicyState);
+        var original = reader.Assess(computer, policy, CancellationToken.None).Value;
+        Assert.Equal(GpoApplicabilityState.Applies, original.PolicyState);
         File.Copy(BundleLayout.CaptureManifestPath(replacement), BundleLayout.CaptureManifestPath(directory), true);
-        Assert.Throws<InvalidOperationException>(() => reader.Assess(computer, policy, CancellationToken.None));
+        var failure = Record.Exception(() =>
+        {
+            var held = reader.Assess(computer, policy, CancellationToken.None);
+            Assert.True(held.IsSuccess, held.Error?.Description);
+            Assert.Equal(original.CaptureGenerationId, held.Value.CaptureGenerationId);
+            Assert.Equal(original.DerivationGenerationId, held.Value.DerivationGenerationId);
+            Assert.Equal(original.Computer, held.Value.Computer);
+            Assert.Equal(original.Policy, held.Value.Policy);
+            Assert.Equal(original.PolicyState, held.Value.PolicyState);
+            Assert.Equal(original.Wmi.Definition.Error.Code, held.Value.Wmi.Definition.Error.Code);
+            Assert.Equal(System.Text.Json.JsonSerializer.Serialize(original.Security),
+                System.Text.Json.JsonSerializer.Serialize(held.Value.Security));
+        });
+        Assert.Null(failure);
     }
 
     internal static Options Inputs(string? functionality = "2", string? flags = "0", string? directoryVersion = "1",

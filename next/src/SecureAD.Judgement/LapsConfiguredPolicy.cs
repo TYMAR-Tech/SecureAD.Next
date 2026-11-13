@@ -173,6 +173,7 @@ internal static class LapsConfiguredPolicyCalculator
             && link.DomainOuProcessingOrder is not null).OrderBy(link => link.DomainOuProcessingOrder))
         {
             token.ThrowIfCancellationRequested();
+            LapsCalculationDiagnostics.Count("ordered-links-visited", 1);
             policies.TryGetValue(link.Policy?.ObjectId ?? 0, out var policy);
             if (policy is not null && (link.Policy is not { } linked
                 || linked.ObjectGuid != policy.Applicability.Policy.ObjectGuid
@@ -202,6 +203,7 @@ internal static class LapsConfiguredPolicyCalculator
                     var current = prior;
                     foreach (var instruction in relevant)
                     {
+                        LapsCalculationDiagnostics.Count("registry-setting-instructions-applied", 1);
                         var occurrence = source with { EntryIndex = instruction.EntryIndex, Instruction = instruction.Source };
                         current = Apply(current, instruction, occurrence);
                     }
@@ -275,8 +277,12 @@ internal static class LapsConfiguredPolicyCalculator
     private static LapsSettingLeaf Unknown(LapsSettingDecision previous, LapsSettingSource source, string reason) =>
         new(LapsRegistryState.Unresolved, source, reason, previous);
 
-    private static LapsSettingDecision Choice(GpoWmiConditionKey condition, LapsSettingDecision yes, LapsSettingDecision no) =>
-        ReferenceEquals(yes, no) ? yes : new LapsSettingBranch(condition, yes, no);
+    private static LapsSettingDecision Choice(GpoWmiConditionKey condition, LapsSettingDecision yes, LapsSettingDecision no)
+    {
+        if (ReferenceEquals(yes, no)) return yes;
+        LapsCalculationDiagnostics.Count("conditional-branches-created", 1);
+        return new LapsSettingBranch(condition, yes, no);
+    }
 
     private static LapsSettingDecision Restrict(LapsSettingDecision root, GpoWmiConditionKey condition, bool matches)
     {

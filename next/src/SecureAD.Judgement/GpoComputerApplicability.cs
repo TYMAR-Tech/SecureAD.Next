@@ -99,6 +99,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         GpoSecurityFilterReader security) => (_hierarchy, _security) = (hierarchy, security);
 
     internal BundleReader Bundle => _hierarchy.Bundle;
+    internal string Directory => _hierarchy.Sources.Directory;
 
     internal static Result<GpoComputerApplicabilityReader> Open(string directory, CancellationToken token)
     {
@@ -117,17 +118,22 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         finally { if (!accepted) files.Dispose(); }
     }
 
-    internal static Result<GpoComputerApplicabilityReader> Open(ProtectedRunFiles files, CancellationToken token)
+    internal static Result<GpoComputerApplicabilityReader> Open(ProtectedRunFiles files, CancellationToken token) =>
+        Open(GpoLinkHierarchyReader.Open(files, token), token);
+
+    internal static Result<GpoComputerApplicabilityReader> Open(JudgingInputs inputs, CancellationToken token) =>
+        Open(GpoLinkHierarchyReader.Open(inputs, token), token);
+
+    private static Result<GpoComputerApplicabilityReader> Open(Result<GpoLinkHierarchyReader> links, CancellationToken token)
     {
         GpoLinkHierarchyReader? hierarchy = null;
         GpoSecurityFilterReader? security = null;
         var accepted = false;
         try
         {
-            var links = GpoLinkHierarchyReader.Open(files, token);
             if (!links.IsSuccess) return Result<GpoComputerApplicabilityReader>.Failure(links.Error);
             hierarchy = links.Value;
-            var permissions = GpoSecurityFilterReader.Open(files, token);
+            var permissions = GpoSecurityFilterReader.Open(hierarchy.Sources, token);
             if (!permissions.IsSuccess) return Result<GpoComputerApplicabilityReader>.Failure(permissions.Error);
             security = permissions.Value;
             accepted = true;
@@ -156,7 +162,12 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         token.ThrowIfCancellationRequested();
-        var hierarchy = _hierarchy.Read(computer, token);
+        using var applicability = LapsCalculationDiagnostics.Measure("applicability");
+        GpoLinkHierarchy hierarchy;
+        using (LapsCalculationDiagnostics.Measure("hierarchy"))
+            hierarchy = _hierarchy.Read(computer, token);
+        LapsCalculationDiagnostics.Count("hierarchy-containers", hierarchy.Containers.Length);
+        LapsCalculationDiagnostics.Count("hierarchy-link-occurrences", hierarchy.Links.Length);
         var results = ImmutableArray.CreateBuilder<GpoComputerApplicability>();
         foreach (var policy in hierarchy.Links.Where(link => link.State != GpoLinkHierarchyState.Excluded && link.Policy is not null)
             .Select(link => link.Policy!).DistinctBy(policy => policy.ObjectId))
@@ -166,7 +177,7 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
             if (!read.IsSuccess) return Result<GpoComputerInputs>.Failure(read.Error);
             results.Add(read.Value);
         }
-        RequireCurrent();
+        RequireActiveInputs();
         return new GpoComputerInputs(hierarchy, results.ToImmutable());
     }
 
@@ -174,9 +185,10 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        using var assessment = LapsCalculationDiagnostics.Measure("policy-assessment");
         var security = _security.Assess(hierarchy.Computer, policy, token);
         var captured = Bundle.ReadGpoProtocolInputs(security.Policy, token);
-        RequireCurrent();
+        RequireActiveInputs();
         if (!captured.IsSuccess) return Result<GpoComputerApplicability>.Failure(captured.Error);
         if (!_protocols.TryGetValue(captured.Value.Policy.ObjectId, out var protocol))
         {
@@ -216,9 +228,14 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
             security.Policy.DistinguishedName));
         var conditional = GpoConditionalApplicability.Of(hierarchy, domainOu, policyState, wmi);
         if (conditional.UnavailableReason is { } unavailable) errors.Add(unavailable);
-        var directoryAssessment = GpoDirectoryWmiAssessment.Of(hierarchy, wmi, conditional, token);
+        GpoDirectoryWmiAssessment directoryAssessment;
+        using (LapsCalculationDiagnostics.Measure("captured-os"))
+        {
+            directoryAssessment = GpoDirectoryWmiAssessment.Of(hierarchy, wmi, conditional, token);
+            LapsCalculationDiagnostics.Count("os-queries-assessed", directoryAssessment.Queries.Length);
+        }
         token.ThrowIfCancellationRequested();
-        RequireCurrent();
+        RequireActiveInputs();
         return new GpoComputerApplicability(hierarchy.CaptureGenerationId, hierarchy.EvidenceSeal,
             security.DerivationGenerationId, hierarchy.Computer, security.Policy, hierarchy, links, domainOu,
             security, protocol, wmi, conditional, directoryAssessment, policyState, state, errors.Distinct().ToImmutableArray());
@@ -253,9 +270,9 @@ internal sealed class GpoComputerApplicabilityReader : IDisposable
         }
     }
 
-    internal void RequireCurrent()
+    internal void RequireActiveInputs()
     {
-        _hierarchy.Sources.RequireCurrentWith(_security.Sources);
+        _hierarchy.Sources.RequireSameInputs(_security.Sources);
     }
 
     private static AuditError Error(string code, string description, string context) =>

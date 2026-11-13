@@ -143,14 +143,20 @@ public sealed class ProtectedStoreFile : IDisposable, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(generation);
         var selected = AnalysisStoreLifecycle.ResolveRoot(directory, generation.Kind);
         if (!selected.IsSuccess) return Result<ProtectedStoreFile>.Failure(selected.Error);
-        if (selected.Value.GenerationId != generation.GenerationId)
+        return OpenAnalysisSegment(directory, generation, selected.Value, role, cancellationToken);
+    }
+
+    internal static Result<ProtectedStoreFile> OpenAnalysisSegment(string directory, AnalysisStoreGeneration generation,
+        StoreRootManifest root, StoreSegmentRole role, CancellationToken cancellationToken)
+    {
+        if (root.GenerationId != generation.GenerationId)
             return Failure("GenerationChanged", "The selected analysis generation changed before opening.", directory);
-        if (!selected.Value.Segments.Any(segment => segment.Role == role))
+        if (!root.Segments.Any(segment => segment.Role == role))
             return Failure("Absent", "The publication root does not declare this analysis product.", directory);
         var path = BundleLayout.AnalysisSegmentDataPath(directory, generation, role);
         return Open(directory, generation, path, path + ".seal",
             () => BundleSealing.VerifySegment(path, path + ".seal", role.ToString(), cancellationToken),
-            cancellationToken, selected.Value, role);
+            cancellationToken, root, role);
     }
 
     private ProtectedStoreFile Related(StoreSegmentRole role, CancellationToken cancellationToken) =>

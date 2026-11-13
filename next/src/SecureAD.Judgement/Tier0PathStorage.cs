@@ -466,7 +466,7 @@ internal static class Tier0PathStorage
         CancellationToken cancellationToken, PostPassDiagnostics? diagnostic, RequesterMembershipContext? memberships,
         IPathRequesterSelectionSink sink)
     {
-        sources.RequireCurrent();
+        sources.RequireActiveInputs();
         var contexts = sources.ReadNamingContexts();
         if (!contexts.IsSuccess) throw InvalidProof();
         return new(sources.Bundle, inputs, nodes,

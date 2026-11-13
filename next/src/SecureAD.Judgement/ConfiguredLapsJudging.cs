@@ -8,7 +8,7 @@ namespace SecureAD.Judgement;
 internal static class ConfiguredLapsJudging
 {
     internal static Result<ConfiguredLapsSchedulingSummary> Run(ConfiguredLapsPolicy policy,
-        JudgingInputs inputs, ProtectedRunFiles files, JudgementWriter writer, long objectsRead,
+        JudgingInputs inputs, JudgementWriter writer, long objectsRead,
         JudgingStatus progress, IRunLog log, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -18,7 +18,7 @@ internal static class ConfiguredLapsJudging
         var storage = new Stopwatch();
         if (policy == ConfiguredLapsPolicy.AllCapturedComputers)
         {
-            var opened = LapsConfiguredPolicyReader.Open(files, token);
+            var opened = LapsConfiguredPolicyReader.Open(inputs, token);
             if (!opened.IsSuccess)
             {
                 log.Record("Judge", opened.Error, []);

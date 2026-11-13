@@ -30,52 +30,68 @@ internal sealed class LapsConfiguredPolicyReader : IDisposable
             : Result<LapsConfiguredPolicyReader>.Failure(opened.Error);
     }
 
+    internal static Result<LapsConfiguredPolicyReader> Open(JudgingInputs inputs, CancellationToken token)
+    {
+        var opened = GpoComputerApplicabilityReader.Open(inputs, token);
+        return opened.IsSuccess ? new LapsConfiguredPolicyReader(opened.Value)
+            : Result<LapsConfiguredPolicyReader>.Failure(opened.Error);
+    }
+
     internal Result<LapsConfiguredPolicy> Read(CapturedObjectIdentity computer, CancellationToken token)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         token.ThrowIfCancellationRequested();
+        using var calculation = LapsCalculationDiagnostics.Begin(_inputs.Directory);
         var batch = _inputs.ReadComputer(computer, token);
         if (!batch.IsSuccess) return Result<LapsConfiguredPolicy>.Failure(batch.Error);
         var policies = new Dictionary<long, LapsRegistryPolicyInput>();
-        foreach (var assessment in batch.Value.Policies)
+        using (LapsCalculationDiagnostics.Measure("registry-preparation"))
         {
-            token.ThrowIfCancellationRequested();
-            var values = Bundle.ReadGpoPolicyValues(assessment.Policy, ["gPCMachineExtensionNames"], token);
-            if (!_extensions.TryGetValue(assessment.Policy.ObjectId, out var extension))
+            foreach (var assessment in batch.Value.Policies)
             {
-                Bundle.RecordGpoPreparation("registry-extension-preparation");
-                var state = RegistryExtension(values);
-                var error = state == GpoApplicabilityState.Unknown ? AuditError.Create(ErrorCategory.Evidence,
-                    "LapsRegistryExtensionUnresolved", ErrorSeverity.Degraded,
-                    "The captured machine-extension declaration does not establish a qualified registry-extension decision.",
-                    assessment.Policy.DistinguishedName) : null;
-                extension = (state, error);
-                _extensions.Add(assessment.Policy.ObjectId, extension);
-            }
-            else Bundle.RecordGpoPreparation("registry-extension-hit");
-            Bundle.RecordGpoPreparation("registry-settings-request");
-            GpoRegistrySettings? settings = null;
-            IReadOnlyList<RegistryPolicyInstruction> instructions = [];
-            if (extension.State != GpoApplicabilityState.DoesNotApply && assessment.PolicyState != GpoApplicabilityState.DoesNotApply)
-            {
-                if (!_registries.TryGetValue(assessment.Policy.ObjectId, out var prepared))
+                token.ThrowIfCancellationRequested();
+                var values = Bundle.ReadGpoPolicyValues(assessment.Policy, ["gPCMachineExtensionNames"], token);
+                if (!_extensions.TryGetValue(assessment.Policy.ObjectId, out var extension))
                 {
-                    Bundle.RecordGpoPreparation("registry-settings-read");
-                    prepared = new(Bundle.ReadGpoMachineRegistrySettings(assessment.Policy.ObjectGuid!.Value));
-                    token.ThrowIfCancellationRequested();
-                    _registries.Add(assessment.Policy.ObjectId, prepared);
+                    Bundle.RecordGpoPreparation("registry-extension-preparation");
+                    var state = RegistryExtension(values);
+                    var error = state == GpoApplicabilityState.Unknown ? AuditError.Create(ErrorCategory.Evidence,
+                        "LapsRegistryExtensionUnresolved", ErrorSeverity.Degraded,
+                        "The captured machine-extension declaration does not establish a qualified registry-extension decision.",
+                        assessment.Policy.DistinguishedName) : null;
+                    extension = (state, error);
+                    _extensions.Add(assessment.Policy.ObjectId, extension);
                 }
-                else Bundle.RecordGpoPreparation("registry-settings-hit");
-                (settings, instructions) = prepared.Copy();
+                else Bundle.RecordGpoPreparation("registry-extension-hit");
+                Bundle.RecordGpoPreparation("registry-settings-request");
+                GpoRegistrySettings? settings = null;
+                IReadOnlyList<RegistryPolicyInstruction> instructions = [];
+                if (extension.State != GpoApplicabilityState.DoesNotApply && assessment.PolicyState != GpoApplicabilityState.DoesNotApply)
+                {
+                    if (!_registries.TryGetValue(assessment.Policy.ObjectId, out var prepared))
+                    {
+                        Bundle.RecordGpoPreparation("registry-settings-read");
+                        prepared = new(Bundle.ReadGpoMachineRegistrySettings(assessment.Policy.ObjectGuid!.Value));
+                        token.ThrowIfCancellationRequested();
+                        _registries.Add(assessment.Policy.ObjectId, prepared);
+                    }
+                    else Bundle.RecordGpoPreparation("registry-settings-hit");
+                    (settings, instructions) = prepared.Copy();
+                    LapsCalculationDiagnostics.Count("registry-instructions-copied", instructions.Count);
+                }
+                policies.Add(assessment.Policy.ObjectId, new(assessment, extension.State, values, settings, extension.Error)
+                {
+                    Instructions = instructions,
+                });
             }
-            policies.Add(assessment.Policy.ObjectId, new(assessment, extension.State, values, settings, extension.Error)
-            {
-                Instructions = instructions,
-            });
         }
-        var result = LapsConfiguredPolicyCalculator.Calculate(batch.Value, policies, token);
+        LapsConfiguredPolicy result;
+        using (LapsCalculationDiagnostics.Measure("settings-calculation"))
+            result = LapsConfiguredPolicyCalculator.Calculate(batch.Value, policies, token);
         token.ThrowIfCancellationRequested();
-        _inputs.RequireCurrent();
+        using (LapsCalculationDiagnostics.Measure("final-input-check"))
+            _inputs.RequireActiveInputs();
+        LapsCalculationDiagnostics.Count("computers-calculated", 1);
         return result;
     }
 

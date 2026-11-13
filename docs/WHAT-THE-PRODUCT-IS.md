@@ -1619,6 +1619,58 @@ safeguard stops scaling on failure or excess and is not a product limit.
 Measurement-runner/workload qualification is included, not product optimization, a full-suite run,
 live access, recapture, owner-data re-judging, activation, UI/format changes, commit or push.
 
+**Remaining LAPS calculation-cost breakdown - owner-approved for a fresh session, 2026-11-12.**
+After committing the combined comparison, the owner approved continuing in a fresh session with
+a narrow diagnostic breakdown of the remaining calculation cost, not another product rewrite.
+Reuse an isolated hash-verified copy of the retained mixed-policy synthetic input and distinguish
+permission checks, group-membership evidence loading, hierarchy processing, captured-OS filter
+assessments and applying the original ordered registry settings.
+Start with pinned source/build provenance, qualified counters/timers and short controls; account
+for nested timings and observer overhead rather than double-counting work or inventing a hotspot.
+Use the measured result to propose one bounded correction and its safety requirements before
+implementation; this does not approve pruning, shared saved storage or another optimization by guesswork.
+Preserve every saved answer/source binding, original evidence and measurements, explicit uncertainty,
+cancellation, changed-selection refusal and publication protection.
+No new diagnostic implementation or measurement starts during handoff preparation, no earlier long-run
+window carries into the next session, and any long verification or measurement needs fresh scope,
+estimate, cap, final-rebuild/cleanup reserve and explicit approval.
+No live access, recapture, owner-data re-judging, activation, finding/UI/format change, commit or push
+is authorized.
+
+For this diagnostic, the owner approved an estimated 45-60 minute execution window with a
+75-minute hard cap, including fifteen minutes reserved for final correct-source rebuilding,
+records and cleanup.
+Use aggregate instrumentation in the existing diagnostics, focused rebuilt-fault/cancellation/
+binding controls and four short counters-off/on/on/off observations on the retained 270-computer
+input, stopping each measurement at two minutes or four GiB; no full suite, larger workload or
+product optimization is included.
+
+After the first breakdown left substantial other calculation work, the owner approved attributing
+existing current-selection checks to active LAPS areas and timing the existing capture/derivation
+resolutions, with qualified attribution and two instrumented observations plus one counters-off
+control on the same input.
+This additional diagnostic has a 10-15 minute estimate and twenty-minute maximum within the original
+window, preserving its final fifteen-minute reserve and changing no safety check or product answer.
+
+**Fixed inputs during judging - owner-clarified, 2026-11-12.**
+A judging operation must keep using the exact capture and derivation selected when it starts;
+individual calculations must not reselect inputs or repeatedly look up which generations are current.
+Check the run-level capture/derivation binding once when opening those inputs and bind the resulting
+judgement to them, while keeping the inputs fixed and protected throughout the operation.
+Object/resource validation, independent computer-specific permission and setting decisions,
+cancellation and safe publication remain required.
+This requirement corrects the earlier proposal's assumption that every recurring current-selection
+boundary had to be preserved; that checking frequency is not a product requirement.
+The owner subsequently approved implementing this shared judging-input correction, including readers
+opened later in the operation, without new locking, UI/format changes or activation.
+The fresh focused-verification window is estimated at 60-75 minutes with a ninety-minute hard cap,
+including twenty minutes reserved for final correct-source rebuilding, records and cleanup.
+Use affected lifetime/GPO/LAPS/permission/path checks and isolated rebuilt faults, then two counters-off
+after timings and one diagnostic on an isolated verified copy of the retained 270-computer input,
+comparing every saved answer; measurement processes stop at two minutes or four GiB.
+This does not approve a full suite, production data, live access, recapture, owner-data re-judging,
+commit or push, and no earlier run window is renewed.
+
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.
 Preserve observed positives and normal optional-attribute behavior while stating the visibility

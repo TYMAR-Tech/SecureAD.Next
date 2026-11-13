@@ -61,6 +61,9 @@ internal sealed class GpoSecurityFilterReader : IDisposable
     internal static Result<GpoSecurityFilterReader> Open(ProtectedRunFiles files, CancellationToken cancellationToken) =>
         Open(JudgingInputs.Open(files, cancellationToken));
 
+    internal static Result<GpoSecurityFilterReader> Open(JudgingInputs inputs, CancellationToken cancellationToken) =>
+        Open(inputs.Fork(cancellationToken));
+
     private static Result<GpoSecurityFilterReader> Open(Result<JudgingInputs> opened)
     {
         if (!opened.IsSuccess) return Result<GpoSecurityFilterReader>.Failure(opened.Error);
@@ -85,7 +88,8 @@ internal sealed class GpoSecurityFilterReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
-        _sources.RequireCurrent();
+        using var assessment = LapsCalculationDiagnostics.Measure("permission");
+        _sources.RequireActiveInputs();
         if (_membershipComputer != computer.ObjectId)
         {
             _memberships.Clear();
@@ -98,6 +102,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         computer = GpoCapturedIdentity.Normalize(computer, computerValues);
         policy = GpoCapturedIdentity.Normalize(policy, policyValues);
         var permissions = Bundle.ReadPermissionsAt(policy);
+        LapsCalculationDiagnostics.Count("permission-entries-read", permissions.Entries.Count);
         permissions = permissions with
         {
             Entries = permissions.Entries.Select(entry => entry with { ApplicationData = entry.ApplicationData.ToArray() }).ToImmutableArray(),
@@ -160,6 +165,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
         ControlEvaluationState ApplyScope(PermissionEntry entry) => !entry.HasObjectType ? ControlEvaluationState.Established
             : !Guid.TryParse(entry.ObjectTypeGuid, out var guid) || guid == Guid.Empty ? ControlEvaluationState.Unknown
             : guid == applyGuid ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished;
+        LapsCalculationDiagnostics.Count("permission-right-evaluations", 3);
         readControl = FullControlEvaluator.AssessRequesterRight(source, 0x20000, WholeRead, Match);
         readProperties = FullControlEvaluator.AssessRequesterRight(source, 0x10, WholeRead, Match);
         apply = FullControlEvaluator.AssessRequesterRight(source, 0x100, ApplyScope, Match) with { ObjectType = ApplyRight };
@@ -198,7 +204,7 @@ internal sealed class GpoSecurityFilterReader : IDisposable
                 ? GpoSecurityDecision.Excluded
                 : read == ControlEvaluationState.Established && apply.State == ControlEvaluationState.Established
                     ? GpoSecurityDecision.Included : GpoSecurityDecision.Unresolved;
-            _sources.RequireCurrent();
+            _sources.RequireActiveInputs();
             return new(Bundle.Description.CaptureGenerationId, _sources.EvidenceSeal, _derivation?.Description.GenerationId,
                 computer, policy, computerValues, policyValues, permissions, readControl, readProperties, apply,
                 read, decision, trustees.Values.ToImmutableArray(), limitations.Distinct().ToImmutableArray());

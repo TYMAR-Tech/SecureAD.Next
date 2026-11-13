@@ -18,8 +18,11 @@ internal sealed class JudgingInputs : IDisposable
     private static readonly Counter<long> CaptureResolves = SelectionMeter.CreateCounter<long>("guard.capture_resolves");
     private static readonly Counter<long> DerivationResolves = SelectionMeter.CreateCounter<long>("guard.derivation_resolves");
     private static readonly Histogram<double> SelectionMilliseconds = SelectionMeter.CreateHistogram<double>("guard.current_ms");
-    private readonly ProtectedStoreFile _evidence;
-    private readonly ProtectedRunFiles _files;
+    private static readonly Counter<long> InputBindings = SelectionMeter.CreateCounter<long>("inputs.bindings");
+    private sealed record InputSet(ProtectedRunFiles Files, ProtectedStoreFile Evidence,
+        Result<StoreRootManifest> Derivation);
+    private readonly InputSet _inputs;
+    private readonly JudgingInputs? _parent;
     private ProtectedRunFiles? _ownedFiles;
     private readonly CancellationToken _cancellationToken;
     private ProtectedStoreFile? _derivedFile;
@@ -32,17 +35,18 @@ internal sealed class JudgingInputs : IDisposable
     private readonly Dictionary<string, string?> _domainSids = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
-    private JudgingInputs(ProtectedRunFiles files, ProtectedStoreFile evidence, BundleReader bundle, CancellationToken cancellationToken)
+    private JudgingInputs(InputSet inputs, BundleReader bundle, CancellationToken cancellationToken,
+        JudgingInputs? parent = null)
     {
-        _files = files;
-        _evidence = evidence;
+        _inputs = inputs;
+        _parent = parent;
         Bundle = bundle;
         _cancellationToken = cancellationToken;
     }
 
     internal BundleReader Bundle { get; }
-    internal string Directory => _evidence.BundleDirectory;
-    internal string EvidenceSeal => _evidence.Fingerprint;
+    internal string Directory => _inputs.Evidence.BundleDirectory;
+    internal string EvidenceSeal => _inputs.Evidence.Fingerprint;
     internal StoredDerivation Facts => _facts ?? throw OwnershipAuditStorage.InvalidProof();
 
     internal OwnerImplicitRightsSetting OwnerRights
@@ -75,8 +79,24 @@ internal sealed class JudgingInputs : IDisposable
     {
         var file = files.Capture(StoreSegmentRole.Evidence, cancellationToken);
         if (!file.IsSuccess) return Result<JudgingInputs>.Failure(file.Error);
+        var selected = AnalysisStoreLifecycle.ResolveRoot(files.Directory, AnalysisStoreKind.Derivation);
+        if (selected.IsSuccess && selected.Value.EvidenceSeal != file.Value.Fingerprint)
+            selected = Result<StoreRootManifest>.Failure(AuditError.Create(ErrorCategory.Evidence,
+                "ProtectedStoreGenerationChanged", ErrorSeverity.Failed,
+                "The selected analysis belongs to another capture.", files.Directory));
+        cancellationToken.ThrowIfCancellationRequested();
         var opened = BundleReader.Open(file.Value, cancellationToken);
-        return opened.IsSuccess ? new JudgingInputs(files, file.Value, opened.Value, cancellationToken)
+        if (!opened.IsSuccess) return Result<JudgingInputs>.Failure(opened.Error);
+        if (InputBindings.Enabled) InputBindings.Add(1, new KeyValuePair<string, object?>("bundle", files.Directory));
+        return new JudgingInputs(new(files, file.Value, selected), opened.Value, cancellationToken);
+    }
+
+    internal Result<JudgingInputs> Fork(CancellationToken cancellationToken)
+    {
+        CheckLifetime();
+        cancellationToken.ThrowIfCancellationRequested();
+        var opened = BundleReader.Open(_inputs.Evidence, cancellationToken);
+        return opened.IsSuccess ? new JudgingInputs(_inputs, opened.Value, cancellationToken, this)
             : Result<JudgingInputs>.Failure(opened.Error);
     }
 
@@ -89,7 +109,6 @@ internal sealed class JudgingInputs : IDisposable
         CheckLifetime();
         if (_derivation is not null)
         {
-            RequireCurrent();
             try
             {
                 if (readFacts && _facts is null) _facts = Freeze(_derivation.Read());
@@ -100,12 +119,12 @@ internal sealed class JudgingInputs : IDisposable
                 return Result<DerivationReader>.Failure(AuditError.Create(ErrorCategory.Evidence, "DerivationUnreadable",
                     ErrorSeverity.Failed, $"The verified derivation could not be read: {error.Message}", Directory));
             }
-            RequireCurrent();
+            CheckLifetime();
             return _derivation;
         }
-        var selected = AnalysisStoreLifecycle.Resolve(Directory, AnalysisStoreKind.Derivation);
+        var selected = _inputs.Derivation;
         if (!selected.IsSuccess) return Result<DerivationReader>.Failure(selected.Error);
-        var file = _files.Analysis(AnalysisStoreKind.Derivation, StoreSegmentRole.Derivation, _cancellationToken);
+        var file = _inputs.Files.BoundDerivation(_inputs.Evidence, selected.Value, _cancellationToken);
         if (!file.IsSuccess) return Result<DerivationReader>.Failure(file.Error);
         DerivationReader? reader = null;
         var accepted = false;
@@ -117,8 +136,9 @@ internal sealed class JudgingInputs : IDisposable
             // Full consumers must still validate stored products; selected membership questions
             // do not depend on unrelated protected-principal facts.
             var facts = readFacts ? reader.Read() : null;
-            var current = AnalysisStoreLifecycle.Resolve(Directory, AnalysisStoreKind.Derivation);
-            if (!current.IsSuccess || current.Value != selected.Value || reader.Description.EvidenceSeal != EvidenceSeal)
+            CheckLifetime();
+            if (reader.Description.GenerationId != selected.Value.GenerationId
+                || reader.Description.EvidenceSeal != EvidenceSeal || file.Value.Root.Hash != selected.Value.Hash)
                 throw OwnershipAuditStorage.InvalidProof();
             _facts = facts is null ? null : Freeze(facts);
             _derivedFile = file.Value;
@@ -164,7 +184,7 @@ internal sealed class JudgingInputs : IDisposable
     internal RequesterMembershipContext RequesterMemberships(Tier0InputBinding binding,
         IReadOnlyDictionary<string, Tier0Target> identities, CancellationToken cancellationToken)
     {
-        RequireCurrent();
+        CheckLifetime();
         if (_requesterMemberships is { } existing)
         {
             existing.RequireBinding(binding);
@@ -192,7 +212,7 @@ internal sealed class JudgingInputs : IDisposable
 
     internal Tier0InputBinding Binding()
     {
-        RequireCurrent();
+        CheckLifetime();
         var generation = _derivedFile?.Generation?.GenerationId ?? throw OwnershipAuditStorage.InvalidProof();
         var contexts = ReadNamingContexts();
         if (!contexts.IsSuccess) throw OwnershipAuditStorage.InvalidProof();
@@ -201,57 +221,56 @@ internal sealed class JudgingInputs : IDisposable
 
     internal void RequireFor(JudgementDescription description)
     {
-        RequireCurrent();
-        RequireProtectedBinding(description);
-    }
-
-    internal void RequireProtectedBinding(JudgementDescription description)
-    {
         CheckLifetime();
         if (description.EvidenceSeal != EvidenceSeal
             || description.DerivationGenerationId != _derivedFile?.Generation?.GenerationId)
             throw OwnershipAuditStorage.InvalidProof();
     }
 
-    internal void RequireCurrent() => RequireCurrentCore(null);
+    internal void RequireActiveInputs() => CheckLifetime();
 
-    internal void RequireCurrentWith(JudgingInputs other)
+    internal void RequireSameInputs(JudgingInputs other)
     {
         ArgumentNullException.ThrowIfNull(other);
-        RequireCurrentCore(other);
+        CheckLifetime();
+        other.CheckLifetime();
+        if (!ReferenceEquals(_inputs, other._inputs))
+            throw OwnershipAuditStorage.InvalidProof();
     }
 
-    private void RequireCurrentCore(JudgingInputs? other)
+    private void RequireSelectedForPublication()
     {
         CheckLifetime();
-        other?.CheckLifetime();
-        if (other is not null && (!ReferenceEquals(_files, other._files) || !ReferenceEquals(_evidence, other._evidence)))
-            throw OwnershipAuditStorage.InvalidProof();
-        var started = SelectionMilliseconds.Enabled ? Stopwatch.GetTimestamp() : 0;
-        RecordSelection(SelectionRequests, other is null ? 1 : 2);
+        var started = SelectionMilliseconds.Enabled || LapsCalculationDiagnostics.IsActive ? Stopwatch.GetTimestamp() : 0;
+        RecordSelection(SelectionRequests);
         try
         {
             RecordSelection(CaptureResolves);
-            var capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
-            if (!capture.IsSuccess || capture.Value.Hash != _evidence.Root.Hash
-                || other is not null && capture.Value.Hash != other._evidence.Root.Hash)
+            Result<StoreRootManifest> capture;
+            using (LapsCalculationDiagnostics.Measure("capture-selection"))
+                capture = AnalysisStoreLifecycle.ResolveCapture(Directory);
+            if (!capture.IsSuccess || capture.Value.Hash != _inputs.Evidence.Root.Hash)
                 throw OwnershipAuditStorage.InvalidProof();
-            if (_derivedFile?.Generation is not null || other?._derivedFile?.Generation is not null)
+            if (_derivedFile?.Generation is not null)
             {
                 RecordSelection(DerivationResolves);
-                var selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
-                if (!selected.IsSuccess || !MatchesDerivation(selected.Value, _derivedFile)
-                    || !MatchesDerivation(selected.Value, other?._derivedFile))
+                Result<StoreRootManifest> selected;
+                using (LapsCalculationDiagnostics.Measure("derivation-selection"))
+                    selected = AnalysisStoreLifecycle.ResolveRoot(Directory, AnalysisStoreKind.Derivation);
+                if (!selected.IsSuccess || !MatchesDerivation(selected.Value, _derivedFile))
                     throw OwnershipAuditStorage.InvalidProof();
             }
             CheckLifetime();
-            other?.CheckLifetime();
         }
         finally
         {
             if (started != 0)
-                SelectionMilliseconds.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+            {
+                var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+                SelectionMilliseconds.Record(elapsed,
                     new KeyValuePair<string, object?>("bundle", Directory));
+                LapsCalculationDiagnostics.RecordCurrentSelection(elapsed);
+            }
         }
     }
 
@@ -267,6 +286,7 @@ internal sealed class JudgingInputs : IDisposable
     internal IDisposable? ProtectPublication(JudgementDescription description)
     {
         RequireFor(description);
+        RequireSelectedForPublication();
         if (_derivedFile is null) return null;
         // Pin the mutable selection only for publication, closing the gap between its last
         // check and the judgement manifest replacement without locking it for the whole run.
@@ -275,6 +295,7 @@ internal sealed class JudgingInputs : IDisposable
         try
         {
             RequireFor(description);
+            RequireSelectedForPublication();
             return selection;
         }
         catch
@@ -288,6 +309,7 @@ internal sealed class JudgingInputs : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _cancellationToken.ThrowIfCancellationRequested();
+        _parent?.CheckLifetime();
     }
 
     private static StoredDerivation Freeze(StoredDerivation facts) => facts with

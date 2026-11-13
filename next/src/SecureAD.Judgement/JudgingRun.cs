@@ -1377,7 +1377,7 @@ public static class JudgingRun
 
         if (configuredLapsPolicy != ConfiguredLapsPolicy.Disabled)
             Entering(progress, log, JudgingPhase.EvaluatingObjects, objectsRead);
-        var configuredLaps = ConfiguredLapsJudging.Run(configuredLapsPolicy, inputs, files, writer,
+        var configuredLaps = ConfiguredLapsJudging.Run(configuredLapsPolicy, inputs, writer,
             objectsRead, progress, log, cancellationToken);
         if (!configuredLaps.IsSuccess) return Result<JudgementRunState>.Failure(configuredLaps.Error);
 

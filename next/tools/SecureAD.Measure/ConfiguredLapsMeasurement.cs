@@ -16,6 +16,8 @@ internal sealed record ConfiguredLapsScope(string Policy, string State, long Obs
 internal sealed record ConfiguredLapsCapturedCounts(long Objects, long Computers, long Policies, long Filters, long Partitions);
 internal sealed record ConfiguredLapsMixedCounts(long WindowsPolicies, long LegacyPolicies, long UnrelatedPolicies,
     long LinkedPolicies, long UnlinkedPolicies);
+internal sealed record ConfiguredLapsCalculationBreakdown(string State, IReadOnlyList<string> MissingOperations,
+    double? CalculationMilliseconds, IReadOnlyDictionary<string, double>? ExclusiveMilliseconds);
 
 internal static class ConfiguredLapsMeasurement
 {
@@ -115,8 +117,11 @@ internal static class ConfiguredLapsMeasurement
                 NameLookupCounterOverhead = workCounters ? "Enabled for every lookup; aggregate counters only, no per-lookup SQL trace; uncalibrated"
                     : "Per-operation measurement listeners disabled for primary timings; phase logs and process sampling retained",
                 GpoPreparationCounterScope = "Timed JudgeAudit only; GpoPreparations counts source-scoped preparation/read operations, not individual SQL statements; NativePreparations counts actual COM WQL Parse attempts and registry ReadInstructions executions across the whole single-audit process, including ordinary rules",
-                SourceGuardCounterScope = "Timed JudgeAudit, selected bundle only; logical owned-scope requests retained by RequireCurrent/RequireCurrentWith, fresh capture/derivation resolution attempts and aggregated validation milliseconds; samples count invocations, not logical scopes; no verdict is cached across calls; initial cancelled/disposed lifetime refusal is excluded",
+                SourceGuardCounterScope = "Timed JudgeAudit, selected bundle only; inputs.bindings counts operation input-set selection, guard.* counts final-publication freshness checks; calculation-time validation uses held inputs without resolving selections; current_ms is inclusive publication-check work, never added to whole judging",
                 SelectionManifestReadScope = "Independent counter at actual selected-root stream opening/deserialization; all capture/derivation/judgement root readers in the timed selected-bundle audit, not just JudgingInputs guards",
+                CalculationTimingScope = "Only synchronous configured-computer reader calls in this selected bundle; raw times are inclusive, samples count calls rather than successful answers; exclusive breakdown subtracts nested work exactly once and leaves other calculation explicit",
+                CalculationWorkScope = "Original permission positions read and three-right evaluations; containing-graph nodes/links loaded, selected identity/witness reads; hierarchy containers/link occurrences, OS query assessments, copied registry instructions and actual per-setting instruction applications/branch constructions",
+                CalculationCollectorCost = "Aggregation-only stopwatch lower bound; excludes tag filtering, dispatch, instrumentation, other listeners, sampling and phase logging; equal-input counters-off/on controls are needed and shared-host noise remains",
             });
             var previous = AnalysisStoreLifecycle.ResolveRoot(bundle, AnalysisStoreKind.Judgement);
             if (cancelAfter.HasValue && !previous.IsSuccess)
@@ -189,6 +194,10 @@ internal static class ConfiguredLapsMeasurement
                 SourceGuards = observer.SourceGuards, SourceGuardMilliseconds = observer.SourceGuardMilliseconds,
                 SourceGuardSamples = observer.SourceGuardSamples,
                 SelectionManifestReads = observer.SelectionManifestReads,
+                CalculationTimings = observer.CalculationTimings, CalculationWork = observer.CalculationWork,
+                CalculationBreakdown = BreakDownCalculation(observer.CalculationTimings),
+                CalculationCollectorMilliseconds = observer.CalculationCollectorMilliseconds,
+                CalculationCollectorEvents = observer.CalculationCollectorEvents,
             });
             Console.WriteLine("Measured synthetic judgement: " + output);
             return 0;
@@ -198,6 +207,44 @@ internal static class ConfiguredLapsMeasurement
             Save(output, "failure.json", new { State = "FailedMeasurementAttempt", Error = error.ToString(), ProductionAcceptance = false });
             Console.Error.WriteLine(error);
             return 1;
+        }
+    }
+
+    internal static ConfiguredLapsCalculationBreakdown BreakDownCalculation(
+        IReadOnlyDictionary<string, EnterpriseWorkTiming> timings)
+    {
+        string[] required = ["calculation", "applicability", "hierarchy", "policy-assessment", "permission",
+            "membership", "captured-os", "registry-preparation", "settings-calculation", "final-input-check"];
+        foreach (var timing in timings.Values)
+            if (timing.Samples <= 0 || !double.IsFinite(timing.ElapsedMs) || timing.ElapsedMs < 0)
+                throw new InvalidDataException("A calculation timing has no valid observations.");
+        var missing = required.Where(operation => !timings.ContainsKey(operation)).ToArray();
+        if (missing.Length != 0)
+            return new(timings.Count == 0 ? "Unobserved" : "IncompleteTimingCoverage", missing,
+                timings.TryGetValue("calculation", out var root) ? root.ElapsedMs : null, null);
+        var other = Difference("calculation", "applicability", "registry-preparation", "settings-calculation", "final-input-check")
+            + Difference("applicability", "hierarchy", "policy-assessment")
+            + Difference("policy-assessment", "permission", "captured-os");
+        var exclusive = new Dictionary<string, double>(StringComparer.Ordinal)
+        {
+            ["hierarchy"] = Time("hierarchy"),
+            ["permission-excluding-membership"] = Difference("permission", "membership"),
+            ["membership"] = Time("membership"),
+            ["captured-os"] = Time("captured-os"),
+            ["registry-preparation"] = Time("registry-preparation"),
+            ["settings-calculation"] = Time("settings-calculation"),
+            ["final-input-check"] = Time("final-input-check"),
+            ["other-calculation"] = other,
+        };
+        return new("Observed", [], Time("calculation"), exclusive);
+
+        double Time(string operation) => timings[operation].ElapsedMs;
+        double Difference(string parent, params string[] children)
+        {
+            var difference = Time(parent) - children.Sum(Time);
+            if (difference < 0)
+                throw new InvalidDataException("Nested calculation timings exceed their enclosing work: " + parent);
+            return difference;
         }
     }
 

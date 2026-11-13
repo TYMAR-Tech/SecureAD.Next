@@ -26,6 +26,10 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     private readonly Dictionary<string, long> _nativePreparations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _sourceGuards = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _selectionManifestReads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EnterpriseWorkTiming> _calculationTimings = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _calculationWork = new(StringComparer.Ordinal);
+    private double _calculationCollectorMilliseconds;
+    private long _calculationCollectorEvents;
     private double _sourceGuardMilliseconds;
     private long _sourceGuardSamples;
     private ExceptionDispatchInfo? _samplingFailure;
@@ -56,9 +60,25 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
                 listener.EnableMeasurementEvents(instrument);
             if (lookupDirectory is not null && instrument.Meter.Name == "SecureAD.Judgement.Inputs")
                 listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null && instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
+                listener.EnableMeasurementEvents(instrument);
         };
         _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
+            if (instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
+            {
+                var operation = CalculationOperation(tags, lookupDirectory);
+                if (operation is null) return;
+                if (value < 0) throw new InvalidDataException("A LAPS work count is negative.");
+                var started = Stopwatch.GetTimestamp();
+                try
+                {
+                    lock (_gate)
+                        _calculationWork[operation] = checked(_calculationWork.GetValueOrDefault(operation) + value);
+                }
+                finally { FinishCalculationObservation(started); }
+                return;
+            }
             if (instrument.Name == "store.selection_manifest_reads")
             {
                 string? directory = null;
@@ -131,6 +151,25 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         });
         _listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
         {
+            if (instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
+            {
+                var operation = CalculationOperation(tags, lookupDirectory);
+                if (operation is null) return;
+                if (!double.IsFinite(value) || value < 0)
+                    throw new InvalidDataException("A LAPS elapsed-work observation is invalid.");
+                var started = Stopwatch.GetTimestamp();
+                try
+                {
+                    lock (_gate)
+                    {
+                        var previous = _calculationTimings.GetValueOrDefault(operation);
+                        _calculationTimings[operation] = new(checked((previous?.Samples ?? 0) + 1),
+                            (previous?.ElapsedMs ?? 0) + value);
+                    }
+                }
+                finally { FinishCalculationObservation(started); }
+                return;
+            }
             if (instrument.Meter.Name != "SecureAD.Judgement.Inputs" || instrument.Name != "guard.current_ms") return;
             foreach (var tag in tags)
                 if (tag.Key == "bundle" && tag.Value is string directory
@@ -148,6 +187,39 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         _sampling = Task.Run(SampleAsync);
     }
 
+    private static string? CalculationOperation(ReadOnlySpan<KeyValuePair<string, object?>> tags, string? selected)
+    {
+        string? directory = null;
+        string? operation = null;
+        foreach (var tag in tags)
+        {
+            if (tag.Key == "bundle") directory = tag.Value as string;
+            if (tag.Key == "operation") operation = tag.Value as string;
+        }
+        if (directory is null || operation is null)
+            throw new InvalidDataException("A LAPS calculation observation lacks its source or operation.");
+        return string.Equals(directory, selected, StringComparison.OrdinalIgnoreCase) ? operation : null;
+    }
+
+    private void FinishCalculationObservation(long started)
+    {
+        lock (_gate)
+        {
+            _calculationCollectorMilliseconds += Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            _calculationCollectorEvents++;
+        }
+    }
+
+    internal IReadOnlyDictionary<string, EnterpriseWorkTiming> CalculationTimings
+    {
+        get { lock (_gate) return new Dictionary<string, EnterpriseWorkTiming>(_calculationTimings, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> CalculationWork
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_calculationWork, StringComparer.Ordinal); }
+    }
+    internal double CalculationCollectorMilliseconds { get { lock (_gate) return _calculationCollectorMilliseconds; } }
+    internal long CalculationCollectorEvents { get { lock (_gate) return _calculationCollectorEvents; } }
     internal IReadOnlyList<EnterpriseStageObservation> Stages { get { lock (_gate) return _stages.ToArray(); } }
     internal IReadOnlyDictionary<string, long> Verifications
     {
@@ -307,3 +379,5 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
 
 internal sealed record EnterpriseStageObservation(string Stage, bool Succeeded, double ElapsedMs,
     long ManagedAllocatedBytes, double CpuMs);
+
+internal sealed record EnterpriseWorkTiming(long Samples, double ElapsedMs);

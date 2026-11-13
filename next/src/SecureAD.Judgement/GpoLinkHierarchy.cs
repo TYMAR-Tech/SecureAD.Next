@@ -46,6 +46,9 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
     internal static Result<GpoLinkHierarchyReader> Open(ProtectedRunFiles files, CancellationToken token) =>
         Open(JudgingInputs.Open(files, token));
 
+    internal static Result<GpoLinkHierarchyReader> Open(JudgingInputs inputs, CancellationToken token) =>
+        Open(inputs.Fork(token));
+
     private static Result<GpoLinkHierarchyReader> Open(Result<JudgingInputs> opened)
     {
         if (!opened.IsSuccess) return Result<GpoLinkHierarchyReader>.Failure(opened.Error);
@@ -69,7 +72,7 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         token.ThrowIfCancellationRequested();
-        _sources.RequireCurrent();
+        _sources.RequireActiveInputs();
         var values = Bundle.ReadObjectAttributesAt(computer,
             ["objectClass", "objectSid", "operatingSystem", "operatingSystemVersion", "userAccountControl"]).Snapshot();
         computer = GpoCapturedIdentity.Normalize(computer, values);
@@ -154,7 +157,7 @@ internal sealed class GpoLinkHierarchyReader : IDisposable
             errors.Add(Error("GpoHierarchySiteUnresolved",
                 "Captured directory evidence does not establish this computer's site; site-linked scope and its possible enforced priority remain unresolved.",
                 computer.DistinguishedName));
-            _sources.RequireCurrent();
+            _sources.RequireActiveInputs();
             return new(Bundle.Description.CaptureGenerationId, _sources.EvidenceSeal, computer, values,
                 containers.ToImmutableArray(), links.ToImmutableArray(), complete, false, errors.Distinct().ToImmutableArray());
         }
