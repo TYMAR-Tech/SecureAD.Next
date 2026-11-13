@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
+using SecureAD.Shell.Services.Export;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -13,6 +14,10 @@ internal sealed partial class AssetsViewModel
     private LapsPageMark? _lapsNext;
 
     public bool HasSelectedLapsComputer => SelectedLapsComputer is not null;
+    public event Action<string, LapsQuery>? LapsExportRequested;
+    public string LapsExportLabel => ExportText.Get("Action");
+    public bool CanExportLaps => _active && ShowsLaps && HasListingResult && !HasLapsRefusal
+        && BundlePath is not null && Selected is not null;
     public string LapsTitle => LapsInventoryText.Get("Title");
     public string LapsCaption => LapsInventoryText.Get("Caption");
     public IReadOnlyList<string> LapsStateChoices { get; } =
@@ -33,6 +38,15 @@ internal sealed partial class AssetsViewModel
             selected = matches[0];
         }
         return new(container, Scope, LapsSearchText.Trim(), selected);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExportLaps))]
+    private void ExportLaps()
+    {
+        if (LapsExportRequested is null)
+            throw new InvalidOperationException("The application export presenter is not connected.");
+        LapsExportRequested(BundlePath ?? throw new InvalidOperationException("No run is selected."),
+            LapsQuestion(Selected?.DistinguishedName ?? throw new InvalidOperationException("No directory scope is selected.")));
     }
 
     [RelayCommand(CanExecute = nameof(HasMoreLaps))]
@@ -84,6 +98,8 @@ internal sealed partial class AssetsViewModel
 
     private void AnnounceLaps()
     {
+        OnPropertyChanged(nameof(CanExportLaps));
+        ExportLapsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(VisibleLapsComputers));
         OnPropertyChanged(nameof(LapsPageNumber));
         OnPropertyChanged(nameof(HasMoreLaps));

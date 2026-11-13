@@ -21,7 +21,7 @@ internal static class JudgementStoreLayout
         "finding_laps_password_reader_path", "finding_object_takeover", "finding_object_takeover_path",
         "finding_object_takeover_calculation",
         "finding_object_ownership", "finding_laps_decryptor", "finding_replication_permission",
-        "finding_service_account", "finding_tier0_route",
+        "finding_service_account", "finding_tier0_route", "finding_gmsa_reader", "finding_gpo_directory",
     ];
     private static readonly Reference[] ProductReferences =
     [

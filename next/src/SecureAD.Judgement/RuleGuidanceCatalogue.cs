@@ -39,6 +39,28 @@ public static class RuleGuidanceCatalogue
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-080", "Group Policy permissions", MitreTechnique: null,
+            WhyItMatters: GpoDirectoryPermissionRules.Explanation("SEC-080"),
+            WhatToDo: GpoDirectoryPermissionRules.Action("SEC-080"),
+            About: "Checks unexpected policy-related directory-property write or permission-list control on captured GPO directory objects. "
+                + "Rename-only, delete-only, ownership and WRITE_OWNER alone do not trigger this rule. "
+                + "An intentional delegation can still warrant review; unexpected does not mean unauthorized.\n\n" + GpoDirectoryPermissionRules.Caution,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-gpol/a0b3f9f6-da35-4c8a-8b8d-1318d4673e9d"),
+        new RuleGuidance("SEC-081", "Group Policy permissions", MitreTechnique: null,
+            WhyItMatters: GpoDirectoryPermissionRules.Explanation("SEC-081"),
+            WhatToDo: GpoDirectoryPermissionRules.Action("SEC-081"),
+            About: "Checks unexpected gPLink write permission on captured domain roots, OUs and sites, including scopes with no current links. "
+                + "gPOptions inheritance-control permission remains separate. An intentional delegation can still warrant review; unexpected does not mean unauthorized.\n\n"
+                + GpoDirectoryPermissionRules.Caution,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-gpol/a0b3f9f6-da35-4c8a-8b8d-1318d4673e9d"),
+        new RuleGuidance("SEC-102", "Service accounts", MitreTechnique: null,
+            WhyItMatters: GmsaPasswordReaders.Why,
+            WhatToDo: GmsaPasswordReaders.Guidance,
+            About: "Checks captured gMSA password-reader configuration for direct or group-held exposure to the shared broad identities. "
+                + "A named service host or purpose-built service group is not flagged merely for being non-administrative or large. "
+                + "This does not determine which individual hosts the organisation intended. "
+                + GmsaPasswordReaders.Scope,
+            MicrosoftReference: GmsaPasswordReaders.Reference),
         new RuleGuidance("SEC-002", "Credentials", MitreTechnique: null,
             WhyItMatters: UnexpectedDomainSecretReplication.Explanation,
             WhatToDo: UnexpectedDomainSecretReplication.Guidance,

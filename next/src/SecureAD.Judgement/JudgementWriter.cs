@@ -690,6 +690,12 @@ public sealed class JudgementWriter : IDisposable
             ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         ReplicationPermissionFindingStorage.RequirePublishable(_connection, _rulesWritten.Contains("SEC-002")
             ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        GmsaPasswordReaderStorage.RequirePublishable(_connection, GenerationId, _evidenceSeal, _derivationGenerationId,
+            _rulesWritten.Contains("SEC-102") ? _permissionControlDerivationSeal
+                ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        GpoDirectoryPermissionStorage.RequirePublishable(_connection, GenerationId, _evidenceSeal, _derivationGenerationId,
+            _rulesWritten.Overlaps(["SEC-080", "SEC-081"]) ? _permissionControlDerivationSeal
+                ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
@@ -937,6 +943,16 @@ public sealed class JudgementWriter : IDisposable
         var evidence = finding.Evidence;
         switch (evidence)
         {
+            case GpoDirectoryPermissionEvidence gpo:
+                GpoDirectoryPermissionStorage.Write(_connection, transaction, findingId, GenerationId, _evidenceSeal,
+                    _derivationGenerationId, _permissionControlDerivationSeal
+                        ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), finding, gpo,
+                    new SharedPermissionStorage(_connection, transaction, _statements, _session));
+                break;
+            case GmsaPasswordReaderEvidence gmsa:
+                GmsaPasswordReaderStorage.Write(_connection, transaction, findingId, GenerationId, _evidenceSeal, _derivationGenerationId,
+                    _permissionControlDerivationSeal ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), finding, gmsa);
+                break;
             case ReplicationPermissionEvidence replication:
                 ReplicationPermissionFindingStorage.Write(_connection, transaction, findingId, GenerationId, replication);
                 break;

@@ -956,6 +956,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </summary>
     private void Announce()
     {
+        OnPropertyChanged(nameof(CanExportLaps));
+        ExportLapsCommand.NotifyCanExecuteChanged();
         AnnounceObjectNavigation();
         AnnounceDelegations();
         AnnounceGroups();

@@ -144,7 +144,9 @@ public static class JudgementSchema
     // Format 82 saves SEC-093's original registry value and independent policy-input limitations.
     // Format 83 saves selected-computer configured LAPS answers, shared conditions and source-bound assumptions.
     // Format 84 records automatic configured LAPS scope and individual unassessed questions.
-    public const int Version = 84;
+    // Format 85 saves SEC-102's embedded password-reader proof and selected-only holder summaries.
+    // Format 86 saves scoped GPO-directory/link permission findings and prepared selected-entry pages.
+    public const int Version = 86;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -792,6 +794,8 @@ public static class JudgementSchema
         ServiceAccountFindingStorage.CreateTables(connection);
         AttributeWriteFindingStorage.CreateTables(connection);
         ReplicationPermissionFindingStorage.CreateTables(connection);
+        GmsaPasswordReaderStorage.CreateTables(connection);
+        GpoDirectoryPermissionStorage.CreateTables(connection);
         GroupInventoryStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);

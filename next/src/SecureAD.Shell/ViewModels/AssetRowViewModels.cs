@@ -498,13 +498,7 @@ internal sealed class LapsComputerViewModel
     /// never captured, and the first <c>ad.lab</c> run turned two excluded machines into findings
     /// precisely because there was nowhere else for them to appear.
     /// </remarks>
-    public string ScopeNotes =>
-        _computer.AccountState is LapsAttributes.AccountState.Unknown
-            ? LapsInventoryText.Get(IsDomainController ? "ControllerAccountUnknown" : "AccountUnknown")
-        : IsDomainController && IsDisabled ? "Domain controller, disabled"
-        : IsDomainController ? "Domain controller"
-        : IsDisabled ? LapsInventoryText.Get("ScopeDisabled")
-        : string.Empty;
+    public string ScopeNotes => LapsInventoryText.ScopeNotes(_computer);
 
     /// <summary>Whether either rule is in scope for this machine.</summary>
     public bool IsInRuleScope => _computer.IsInRuleScope;
@@ -683,6 +677,11 @@ internal sealed class RuleRowViewModel
                 + $"{_execution.FindingsProduced:N0}.",
             RuleExecutionOutcome.Succeeded =>
                 $"Judged {_execution.ObjectsJudged:N0} objects and reported nothing.",
+            RuleExecutionOutcome.Indeterminate when Rule == "SEC-102" =>
+                SavedGmsaPasswordReaders.IncompleteExplanation + "\n\n"
+                + string.Join("\n", _execution.MissingInputs.Select(input => SavedGmsaPasswordReaders.DescribeLimitation(input.Attribute)).Distinct()),
+            RuleExecutionOutcome.Indeterminate when Rule is "SEC-080" or "SEC-081" =>
+                SavedGpoDirectoryPermission.IncompleteExplanation,
             RuleExecutionOutcome.Indeterminate =>
                 $"Could not judge {_execution.ObjectsNotJudged:N0} of the objects it was offered, "
                 + $"because {UndecidedReason} What it reports is a floor, not a "

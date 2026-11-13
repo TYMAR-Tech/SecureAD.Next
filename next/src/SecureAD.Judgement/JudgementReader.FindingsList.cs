@@ -229,6 +229,8 @@ public sealed partial class JudgementReader
             "SEC-030" => SavedProtectionMarker.Statement,
             "SEC-031" or "SEC-032" => SavedOwnershipAssessment.ScopeNote,
             "SEC-100" or "SEC-101" => SavedServiceAccountContext.Statement(ruleId),
+            "SEC-102" => GmsaPasswordReaders.Scope,
+            "SEC-080" or "SEC-081" => GpoDirectoryPermissionRules.Caution,
             _ => row.GetString(7),
         });
         return new(ruleId, row.GetInt32(12), severity, new(subjectKind, row.GetString(3)),

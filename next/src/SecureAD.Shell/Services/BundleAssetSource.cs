@@ -69,6 +69,9 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         return () => session is not null && Holds(session) && session.IsCurrent;
     }
 
+    public Result<Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query) =>
+        WithRun(bundleDirectory, reader => reader.ReadLapsExport(bundleDirectory, query));
+
     private bool Holds(OpenedRunResults session)
     {
         lock (_sessionGate) return !_closed && ReferenceEquals(_results, session);
@@ -206,6 +209,13 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
         AttributeWritePermissionMark? after) =>
         WithRun(bundleDirectory, reader => reader.ReadAttributeWritePermission(bundleDirectory, reference, after));
+
+    public Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGmsaPasswordReaders(bundleDirectory, reference, after));
+    public Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGpoDirectoryPermission(bundleDirectory, reference, after));
 
     public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
         ReplicationPermissionMark? after) =>

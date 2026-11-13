@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using SecureAD.Judgement;
+using SecureAD.Evidence.Findings;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -20,4 +21,12 @@ internal static class LapsInventoryText
         LapsValuePresence.WindowsOnLegacyOnly => "ValuesPlatform",
         _ => throw new ArgumentOutOfRangeException(nameof(values)),
     });
+
+    internal static string ScopeNotes(LapsComputer computer) =>
+        computer.AccountState is LapsAttributes.AccountState.Unknown
+            ? Get(computer.DomainController.IsDomainController ? "ControllerAccountUnknown" : "AccountUnknown")
+        : computer.DomainController.IsDomainController && computer.IsDisabled ? "Domain controller, disabled"
+        : computer.DomainController.IsDomainController ? "Domain controller"
+        : computer.IsDisabled ? Get("ScopeDisabled")
+        : string.Empty;
 }

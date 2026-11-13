@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Title" xml:space="preserve"><value>Export {0}</value></data>
+  <data name="Action" xml:space="preserve"><value>Export CSV...</value></data>
+  <data name="SaveTitle" xml:space="preserve"><value>Save CSV export</value></data>
+  <data name="Subtitle" xml:space="preserve"><value>Saved inventory only. All matching pages are included.</value></data>
+  <data name="Matching" xml:space="preserve"><value>All matching {0}</value></data>
+  <data name="MatchingNote" xml:space="preserve"><value>Keep the current search and captured-value filter. Include every matching page.</value></data>
+  <data name="AllInScope" xml:space="preserve"><value>All {0} in this scope</value></data>
+  <data name="AllInScopeNote" xml:space="preserve"><value>Ignore search and captured-value filters explicitly. Keep the directory container and depth shown above.</value></data>
+  <data name="Count" xml:space="preserve"><value>{0:N0} of {1:N0} {2} in this scope</value></data>
+  <data name="MissingCaution" xml:space="preserve"><value>Missing expiration is a reason to investigate, not proof of GPO failure.</value></data>
+  <data name="Meaning" xml:space="preserve"><value>Windows and legacy values stay separate. No value captured, zero and unusable input remain distinct. A retained legacy value does not prove active management or completed migration.</value></data>
+  <data name="NoTypeFilter" xml:space="preserve"><value>No server-only, account-state or controller exclusion is applied.</value></data>
+  <data name="Preview" xml:space="preserve"><value>Row preview (up to 3 rows; CSV contains all matching rows)</value></data>
+  <data name="Columns" xml:space="preserve"><value>CSV columns</value></data>
+  <data name="CsvContext" xml:space="preserve"><value>CSV layout and source information</value></data>
+  <data name="CsvNote" xml:space="preserve"><value>A source/filter/count/coverage metadata block appears above the data table. Automated imports must skip that block. UTF-8 CSV uses commas, quoted values and full-precision UTC dates.</value></data>
+  <data name="TextSafety" xml:space="preserve"><value>Raw timestamp text is guarded with one leading apostrophe to preserve every digit. Formula/control-leading text is guarded too, and original apostrophe-leading text is guarded again. The file states this rule: remove exactly one leading export apostrophe to recover the original. Other text is unchanged.</value></data>
+  <data name="Empty" xml:space="preserve"><value>No matching {0}. An export will contain source context and column headings.</value></data>
+  <data name="Choose" xml:space="preserve"><value>Choose file and export...</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="CancelExport" xml:space="preserve"><value>Cancel export</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading saved export information...</value></data>
+  <data name="Writing" xml:space="preserve"><value>Exporting {0:N0} of {1:N0} {2}. The final CSV appears only after every row and source binding is checked.</value></data>
+  <data name="Saved" xml:space="preserve"><value>CSV saved - {0:N0} of {1:N0} {2}.</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Export cancelled. No new CSV was saved.</value></data>
+  <data name="Failed" xml:space="preserve"><value>Export failed. No new CSV was saved. {0}</value></data>
+  <data name="PreviewFailed" xml:space="preserve"><value>Saved export information could not be read. {0}</value></data>
+  <data name="SourceChanged" xml:space="preserve"><value>Export stopped because the saved run changed. No new CSV was saved. Reopen export from the intended saved run.</value></data>
+</root>

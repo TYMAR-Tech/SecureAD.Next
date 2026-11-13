@@ -1040,6 +1040,11 @@ public static class JudgingRun
         var replicationInput = replicationRule ? inputs.ReadMembershipInput() : null;
         var permissionControlInputs = rules.Any(rule => rule is BroadPrincipalCanTakeOverObject)
             ? new PermissionControlInputs(writer.GenerationId, inputs.Binding(), domainSids) : null;
+        var gmsaReaders = rules.Any(rule => rule is BroadGmsaPasswordReader)
+            ? new GmsaPasswordReaderInputs(writer.GenerationId, inputs.Binding(), scope.Value.AllDeclaredDomainsAreComplete, cancellationToken) : null;
+        var gpoPermissions = rules.Any(rule => rule is UnexpectedGpoDirectoryControl or UnexpectedGroupPolicyLinkWrite)
+            ? new GpoDirectoryPermissionInputs(writer.GenerationId, inputs.Binding(), domainSids,
+                scope.Value.AllDeclaredDomainsAreComplete, cancellationToken) : null;
         progress.BeginOperation("read-object");
         foreach (var subject in descriptors.Objects)
         {
@@ -1133,6 +1138,8 @@ public static class JudgingRun
             {
                 NamingContexts = controlContext.NamingContexts,
                 PermissionControlInputs = permissionControlInputs,
+                GmsaReaders = gmsaReaders,
+                GpoDirectoryPermissions = gpoPermissions,
             };
             if (attributeWriteRules && AttributeWriteRules.IsAccount(subject))
             {

@@ -49,6 +49,28 @@ internal sealed partial class AssetsViewModel
                     if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);
                     content = content with { AttributeWritePermission = permission.Value };
                 }
+                if (answer.Value.RuleId == "SEC-102")
+                {
+                    var readers = reader.ReadGmsaPasswordReaders(bundle, reference, null);
+                    if (!readers.IsSuccess) return Result<FindingDetailContent>.Failure(readers.Error);
+                    content = content with
+                    {
+                        GmsaPasswordReaders = readers.Value,
+                        ReadGmsaPasswordReaders = (after, readToken) => ReadBoundAsync(bundle, finding.IsCurrent,
+                            request => request.ReadGmsaPasswordReaders(bundle, reference, after), readToken, "read saved gMSA password readers"),
+                    };
+                }
+                if (SavedGpoDirectoryPermission.SupportsRule(answer.Value.RuleId))
+                {
+                    var permission = reader.ReadGpoDirectoryPermission(bundle, reference, null);
+                    if (!permission.IsSuccess) return Result<FindingDetailContent>.Failure(permission.Error);
+                    content = content with
+                    {
+                        GpoDirectoryPermission = permission.Value,
+                        ReadGpoDirectoryPermission = (after, readToken) => ReadBoundAsync(bundle, finding.IsCurrent,
+                            request => request.ReadGpoDirectoryPermission(bundle, reference, after), readToken, "read saved GPO-directory permissions"),
+                    };
+                }
                 if (answer.Value.RuleId == "SEC-026")
                 {
                     var duplicate = reader.ReadDuplicateSpn(bundle, reference, null);

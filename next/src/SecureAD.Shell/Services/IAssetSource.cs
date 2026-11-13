@@ -54,6 +54,9 @@ internal interface IAssetSource : IAssetReader
 /// <summary>Queries against a selected run, without the authority to select or close that run.</summary>
 internal interface IAssetReader
 {
+    /// <summary>Reads exact source context, counts and a bounded first page for saved LAPS export.</summary>
+    Result<Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query);
+
     /// <summary>Unverified sources cannot vouch for retained data; protected readers supply their own check.</summary>
     Func<bool> CaptureReadValidity() => () => false;
 
@@ -216,6 +219,13 @@ internal interface IAssetReader
     /// <summary>Reads selected saved SEC-014 context and one original shared-entry page.</summary>
     Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
         AttributeWritePermissionMark? after);
+
+    /// <summary>Reads selected saved SEC-102 context and a bounded named-holder page without access-check replay.</summary>
+    Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after);
+    /// <summary>Reads selected GPO-directory/link permission facts and one saved original-entry page.</summary>
+    Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after);
 
     /// <summary>Reads one saved replication assessment and a bounded original-entry page, without authorization replay.</summary>
     Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,

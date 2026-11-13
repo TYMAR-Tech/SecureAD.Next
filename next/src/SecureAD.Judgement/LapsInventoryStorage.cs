@@ -11,6 +11,10 @@ namespace SecureAD.Judgement;
 
 internal static class LapsInventoryStorage
 {
+    private const string SearchFilter = """
+        AND ($search='' OR laps_contains(name,$search) OR laps_contains(domain_fqdn,$search))
+        AND ($state IS NULL OR value_presence=$state)
+        """;
     private static readonly ResourceManager Messages = new("SecureAD.Judgement.Resources.LapsInventory", typeof(LapsInventoryStorage).Assembly);
     internal static string Message(string key) => Messages.GetString(key, CultureInfo.CurrentUICulture)
         ?? throw new MissingManifestResourceException(key);
@@ -116,91 +120,24 @@ internal static class LapsInventoryStorage
         LapsQuery query, LapsPageMark? after, ListingCoverage coverage, CancellationToken cancellationToken,
         IDictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> savedCounts)
     {
-        ArgumentNullException.ThrowIfNull(query);
-        ArgumentException.ThrowIfNullOrWhiteSpace(query.Container);
-        ArgumentNullException.ThrowIfNull(query.Search);
-        if (query.State is { } requestedState && !Enum.IsDefined(requestedState))
-            throw new ArgumentOutOfRangeException(nameof(query));
-        ArgumentNullException.ThrowIfNull(coverage);
-        ArgumentNullException.ThrowIfNull(savedCounts);
-        cancellationToken.ThrowIfCancellationRequested();
+        ValidateQuestion(query, coverage, cancellationToken);
         var question = JsonSerializer.Serialize(query, ProofSerialization.Options);
         if (after is not null && (after.GenerationId != description.GenerationId || after.Question != question
             || string.IsNullOrWhiteSpace(after.Name) || string.IsNullOrWhiteSpace(after.DistinguishedName)))
             throw new InvalidDataException("The LAPS continuation does not belong to this saved generation and question.");
-        long inventoryObjects;
-        using (var header = connection.CreateCommand())
-        {
-            header.CommandText = "SELECT generation_id, state, computer_count FROM laps_inventory_product WHERE singleton=1";
-            using var reader = header.ExecuteReader();
-            if (!reader.Read()) throw new InvalidOperationException(Message("Unavailable"));
-            if (reader.GetString(0) != description.GenerationId.ToString("D") || reader.GetString(1) != "Complete"
-                || reader.IsDBNull(2) || reader.GetInt64(2) < 0) throw Invalid();
-            inventoryObjects = reader.GetInt64(2);
-        }
-
-        var where = query.Scope switch
-        {
-            ListingScope.Base => "distinguished_name = $dn",
-            ListingScope.OneLevel => "(distinguished_name = $dn OR parent_dn = $dn)",
-            ListingScope.Subtree => "(dn_reversed = $reversed OR dn_reversed LIKE $prefix ESCAPE '\\')",
-            _ => throw new ArgumentOutOfRangeException(nameof(query)),
-        };
-        IReadOnlyDictionary<LapsValuePresence, int> counts;
-        lock (savedCounts)
-        {
-            if (savedCounts.TryGetValue((query.Container, query.Scope), out var saved))
-                counts = saved;
-            else
-            {
-                var measured = new Dictionary<LapsValuePresence, int>();
-                var selected = query.Scope == ListingScope.OneLevel
-                    ? """
-                      SELECT value_presence FROM laps_inventory WHERE distinguished_name=$dn
-                      UNION ALL SELECT value_presence FROM laps_inventory WHERE parent_dn=$dn AND distinguished_name<>$dn
-                      """
-                    : $"SELECT value_presence FROM laps_inventory WHERE {where}";
-                using var command = ScopedCommand(connection,
-                    $"SELECT value_presence,COUNT(*) FROM ({selected}) GROUP BY value_presence", query.Container);
-                using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (!Enum.TryParse<LapsValuePresence>(reader.GetString(0), out var state) || !Enum.IsDefined(state)) throw Invalid();
-                    measured.Add(state, checked((int)reader.GetInt64(1)));
-                }
-                counts = new ReadOnlyDictionary<LapsValuePresence, int>(measured);
-                savedCounts.Add((query.Container, query.Scope), counts);
-            }
-        }
+        var inventoryObjects = ReadHeader(connection, description);
+        var counts = ScopeCounts(connection, query, savedCounts, cancellationToken);
         var total = counts.Values.Sum();
-
-        connection.CreateFunction<string?, string, bool>("laps_contains",
-            static (value, search) => value?.Contains(search, StringComparison.OrdinalIgnoreCase) == true, isDeterministic: true);
+        ConfigureSearch(connection);
         var computers = new List<LapsComputer>();
         LapsPageMark? next = null;
-        var filters = $"""
-              AND ($search='' OR laps_contains(name,$search) OR laps_contains(domain_fqdn,$search))
-              AND ($state IS NULL OR value_presence=$state)
-              {(after is null ? "" : "AND (name,distinguished_name)>($afterName,$afterDn)")}
-            """;
-        const string select = "SELECT distinguished_name,value_presence,result,name,domain_fqdn FROM laps_inventory";
+        var filters = SearchFilter + (after is null ? "" : " AND (name,distinguished_name)>($afterName,$afterDn)");
         var ordered = query.Scope == ListingScope.Subtree && total > 100
             && (long)total * total >= inventoryObjects * 100;
-        var selection = query.Scope == ListingScope.OneLevel
-            ? $"""
-              {select} WHERE distinguished_name=$dn {filters}
-              UNION ALL {select} INDEXED BY ix_laps_inventory_parent
-              WHERE parent_dn=$dn AND distinguished_name<>$dn {filters}
-              """
-            : $"{select} {(ordered ? "INDEXED BY ix_laps_inventory_name" : "")} WHERE {where} {filters}";
-        using (var command = ScopedCommand(connection,
-            selection + " ORDER BY name,distinguished_name LIMIT 101", query.Container))
+        var selection = Selection(query, "distinguished_name,value_presence,result,name,domain_fqdn", filters, ordered);
+        using (var command = QuestionCommand(connection,
+            selection + " ORDER BY name,distinguished_name LIMIT 101", query, after))
         {
-            command.Parameters.AddWithValue("$search", query.Search.Trim());
-            command.Parameters.AddWithValue("$state", (object?)query.State?.ToString() ?? DBNull.Value);
-            command.Parameters.AddWithValue("$afterName", (object?)after?.Name ?? DBNull.Value);
-            command.Parameters.AddWithValue("$afterDn", (object?)after?.DistinguishedName ?? DBNull.Value);
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
@@ -221,6 +158,111 @@ internal static class LapsInventoryStorage
             }
         }
         return new(computers, total, counts, coverage.IsComplete, coverage.Shortfall) { Next = next };
+    }
+
+    internal static LapsInventorySummary Summarize(SqliteConnection connection, JudgementDescription description,
+        LapsQuery query, ListingCoverage coverage, CancellationToken cancellationToken,
+        IDictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> savedCounts)
+    {
+        ValidateQuestion(query, coverage, cancellationToken);
+        ReadHeader(connection, description);
+        var total = ScopeCounts(connection, query, savedCounts, cancellationToken).Values.Sum();
+        ConfigureSearch(connection);
+        using var command = QuestionCommand(connection,
+            $"SELECT COUNT(*) FROM ({Selection(query, "1", SearchFilter, ordered: false)})", query, null);
+        var matching = checked((int)(long)(command.ExecuteScalar() ?? throw Invalid()));
+        cancellationToken.ThrowIfCancellationRequested();
+        if (matching < 0 || matching > total) throw Invalid();
+        return new(description, query, total, matching, coverage.IsComplete, coverage.Shortfall);
+    }
+
+    private static void ValidateQuestion(LapsQuery query, ListingCoverage coverage, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentException.ThrowIfNullOrWhiteSpace(query.Container);
+        ArgumentNullException.ThrowIfNull(query.Search);
+        if (!Enum.IsDefined(query.Scope) || query.State is { } state && !Enum.IsDefined(state))
+            throw new ArgumentOutOfRangeException(nameof(query));
+        ArgumentNullException.ThrowIfNull(coverage);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private static long ReadHeader(SqliteConnection connection, JudgementDescription description)
+    {
+        using (var header = connection.CreateCommand())
+        {
+            header.CommandText = "SELECT generation_id, state, computer_count FROM laps_inventory_product WHERE singleton=1";
+            using var reader = header.ExecuteReader();
+            if (!reader.Read()) throw new InvalidOperationException(Message("Unavailable"));
+            if (reader.GetString(0) != description.GenerationId.ToString("D") || reader.GetString(1) != "Complete"
+                || reader.IsDBNull(2) || reader.GetInt64(2) < 0) throw Invalid();
+            return reader.GetInt64(2);
+        }
+    }
+
+    private static string ScopeWhere(ListingScope scope) => scope switch
+        {
+            ListingScope.Base => "distinguished_name = $dn",
+            ListingScope.OneLevel => "(distinguished_name = $dn OR parent_dn = $dn)",
+            ListingScope.Subtree => "(dn_reversed = $reversed OR dn_reversed LIKE $prefix ESCAPE '\\')",
+            _ => throw new ArgumentOutOfRangeException(nameof(scope)),
+        };
+
+    private static IReadOnlyDictionary<LapsValuePresence, int> ScopeCounts(SqliteConnection connection, LapsQuery query,
+        IDictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> savedCounts,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(savedCounts);
+        lock (savedCounts)
+        {
+            if (savedCounts.TryGetValue((query.Container, query.Scope), out var saved))
+                return saved;
+                var measured = new Dictionary<LapsValuePresence, int>();
+                var selected = query.Scope == ListingScope.OneLevel
+                    ? """
+                      SELECT value_presence FROM laps_inventory WHERE distinguished_name=$dn
+                      UNION ALL SELECT value_presence FROM laps_inventory WHERE parent_dn=$dn AND distinguished_name<>$dn
+                      """
+                    : $"SELECT value_presence FROM laps_inventory WHERE {ScopeWhere(query.Scope)}";
+                using var command = ScopedCommand(connection,
+                    $"SELECT value_presence,COUNT(*) FROM ({selected}) GROUP BY value_presence", query.Container);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!Enum.TryParse<LapsValuePresence>(reader.GetString(0), out var state) || !Enum.IsDefined(state)) throw Invalid();
+                    measured.Add(state, checked((int)reader.GetInt64(1)));
+                }
+                var counts = new ReadOnlyDictionary<LapsValuePresence, int>(measured);
+                savedCounts.Add((query.Container, query.Scope), counts);
+                return counts;
+        }
+    }
+
+    private static void ConfigureSearch(SqliteConnection connection) =>
+        connection.CreateFunction<string?, string, bool>("laps_contains",
+            static (value, search) => value?.Contains(search, StringComparison.OrdinalIgnoreCase) == true, isDeterministic: true);
+
+    private static string Selection(LapsQuery query, string columns, string filters, bool ordered)
+    {
+        var select = $"SELECT {columns} FROM laps_inventory";
+        return query.Scope == ListingScope.OneLevel
+            ? $"""
+              {select} WHERE distinguished_name=$dn {filters}
+              UNION ALL {select} INDEXED BY ix_laps_inventory_parent
+              WHERE parent_dn=$dn AND distinguished_name<>$dn {filters}
+              """
+            : $"{select} {(ordered ? "INDEXED BY ix_laps_inventory_name" : "")} WHERE {ScopeWhere(query.Scope)} {filters}";
+    }
+
+    private static SqliteCommand QuestionCommand(SqliteConnection connection, string sql, LapsQuery query, LapsPageMark? after)
+    {
+        var command = ScopedCommand(connection, sql, query.Container);
+            command.Parameters.AddWithValue("$search", query.Search.Trim());
+            command.Parameters.AddWithValue("$state", (object?)query.State?.ToString() ?? DBNull.Value);
+            command.Parameters.AddWithValue("$afterName", (object?)after?.Name ?? DBNull.Value);
+            command.Parameters.AddWithValue("$afterDn", (object?)after?.DistinguishedName ?? DBNull.Value);
+        return command;
     }
 
     private static SqliteCommand ScopedCommand(SqliteConnection connection, string sql, string dn)

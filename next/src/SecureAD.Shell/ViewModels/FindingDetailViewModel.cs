@@ -12,6 +12,10 @@ internal sealed record FindingDetailContent(FindingListItem Saved)
     internal SavedAccountSetting? AccountSetting { get; init; }
     internal SavedDelegationConfiguration? DelegationConfiguration { get; init; }
     internal SavedAttributeWritePermission? AttributeWritePermission { get; init; }
+    internal SavedGmsaPasswordReaders? GmsaPasswordReaders { get; init; }
+    internal SavedGpoDirectoryPermission? GpoDirectoryPermission { get; init; }
+    internal Func<GpoDirectoryPermissionMark?, CancellationToken, Task<Result<SavedGpoDirectoryPermission>>>? ReadGpoDirectoryPermission { get; init; }
+    internal Func<GmsaPasswordReaderMark?, CancellationToken, Task<Result<SavedGmsaPasswordReaders>>>? ReadGmsaPasswordReaders { get; init; }
     internal SavedDuplicateSpn? DuplicateSpn { get; init; }
     internal SavedSidHistory? SidHistory { get; init; }
     internal SavedProtectionMarker? ProtectionMarker { get; init; }
@@ -97,6 +101,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public bool HasDelegationConfiguration => DelegationConfiguration is not null;
     public AttributeWritePermissionViewModel? AttributeWritePermission { get; private set; }
     public bool HasAttributeWritePermission => AttributeWritePermission is not null;
+    public GmsaPasswordReadersViewModel? GmsaPasswordReaders { get; private set; }
+    public bool HasGmsaPasswordReaders => GmsaPasswordReaders is not null;
+    public GpoDirectoryPermissionViewModel? GpoDirectoryPermission { get; private set; }
+    public bool HasGpoDirectoryPermission => GpoDirectoryPermission is not null;
     public DuplicateSpnViewModel? DuplicateSpn { get; private set; }
     public bool HasDuplicateSpn => DuplicateSpn is not null;
     public SidHistoryViewModel? SidHistory { get; private set; }
@@ -120,8 +128,8 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     public PermissionControlViewModel? PermissionControl { get; private set; }
     public bool HasPermissionControl => PermissionControl is not null;
     public bool ShowsStandardPresentation => !HasPermissionControl;
-    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
-    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
+    public bool ShowsStandardIdentity => HasFinding && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasGmsaPasswordReaders && !HasGpoDirectoryPermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
+    public bool ShowsSavedDescription => HasFinding && !HasCapturedSetting && !HasDelegationConfiguration && !HasAttributeWritePermission && !HasGmsaPasswordReaders && !HasGpoDirectoryPermission && !HasDuplicateSpn && !HasSidHistory && !HasProtectionMarker && !HasOwnershipAssessment && !HasReplicationPermission && !HasServiceRegistration && !HasGroupReview && !HasCircularMembership && !HasBroadMembership && !HasServiceAccount && !HasPermissionControl;
     public bool IsLoading { get; private set; }
     public string? Refusal { get; private set; }
     public bool HasRefusal => Refusal is not null;
@@ -131,6 +139,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     {
         if (_active && _current()) return true;
         Refusal = SavedPathText.Get("GenerationChanged");
+        GpoDirectoryPermission?.Suspend();
+        GpoDirectoryPermission = null;
+        GmsaPasswordReaders?.Suspend();
+        GmsaPasswordReaders = null;
         Finding = null;
         CapturedSetting = null;
         DelegationConfiguration?.Suspend();
@@ -208,6 +220,24 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                 }
                 else if (content.AttributeWritePermission is not null)
                     throw new InvalidDataException("The selected finding has unrelated saved write-permission data.");
+                if (content.Saved.RuleId == "SEC-102")
+                {
+                    if (content.GmsaPasswordReaders is not { Context: not null } readers || content.ReadGmsaPasswordReaders is not { } readGmsa
+                        || !readers.Context.Matches(content.Saved) || !readers.IsExpectedPage(-1))
+                        throw new InvalidDataException(SavedGmsaPasswordReaders.InvalidDetails);
+                    GmsaPasswordReaders = new(readers, readGmsa, CheckCurrent);
+                }
+                else if (content.GmsaPasswordReaders is not null)
+                    throw new InvalidDataException(SavedGmsaPasswordReaders.InvalidDetails);
+                if (SavedGpoDirectoryPermission.SupportsRule(content.Saved.RuleId))
+                {
+                    if (content.GpoDirectoryPermission is not { Context: not null } gpo || content.ReadGpoDirectoryPermission is not { } readGpo
+                        || !gpo.Context.Matches(content.Saved) || !gpo.IsExpectedPage(-1))
+                        throw new InvalidDataException(SavedGpoDirectoryPermission.InvalidDetails);
+                    GpoDirectoryPermission = new(gpo, readGpo, CheckCurrent);
+                }
+                else if (content.GpoDirectoryPermission is not null)
+                    throw new InvalidDataException(SavedGpoDirectoryPermission.InvalidDetails);
                 if (content.Saved.RuleId == "SEC-026")
                 {
                     if (content.DuplicateSpn is not { Context: not null } duplicate || _readDuplicateSpn is null
@@ -315,6 +345,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         {
             if (_active && !pending.IsCancellationRequested && ReferenceEquals(_pending, pending))
             {
+                GpoDirectoryPermission?.Suspend();
+                GpoDirectoryPermission = null;
+                GmsaPasswordReaders?.Suspend();
+                GmsaPasswordReaders = null;
                 if (!_current())
                 {
                     Refusal = SavedPathText.Get("GenerationChanged");
@@ -324,6 +358,8 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
                     DelegationConfiguration = null;
                     AttributeWritePermission?.Suspend();
                     AttributeWritePermission = null;
+                    GmsaPasswordReaders?.Suspend();
+                    GmsaPasswordReaders = null;
                     DuplicateSpn?.Suspend();
                     DuplicateSpn = null;
                     SidHistory?.Suspend();
@@ -357,9 +393,13 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
     internal void Suspend()
     {
         _active = false;
+        GpoDirectoryPermission?.Suspend();
+        GpoDirectoryPermission = null;
         _pending?.Cancel();
         Finding = null;
         CapturedSetting = null;
+        GmsaPasswordReaders?.Suspend();
+        GmsaPasswordReaders = null;
         DelegationConfiguration?.Suspend();
         DelegationConfiguration = null;
         AttributeWritePermission?.Suspend();
@@ -392,6 +432,10 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDelegationConfiguration));
         OnPropertyChanged(nameof(AttributeWritePermission));
         OnPropertyChanged(nameof(HasAttributeWritePermission));
+        OnPropertyChanged(nameof(GmsaPasswordReaders));
+        OnPropertyChanged(nameof(HasGmsaPasswordReaders));
+        OnPropertyChanged(nameof(GpoDirectoryPermission));
+        OnPropertyChanged(nameof(HasGpoDirectoryPermission));
         OnPropertyChanged(nameof(DuplicateSpn));
         OnPropertyChanged(nameof(HasDuplicateSpn));
         OnPropertyChanged(nameof(SidHistory));

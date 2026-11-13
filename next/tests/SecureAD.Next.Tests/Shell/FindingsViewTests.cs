@@ -36,6 +36,9 @@ public sealed class FindingsViewTests
             Assert.Same(model.NextLapsCommand, next.Command);
             Assert.Equal(model.HasEarlierLaps, previous.IsEnabled);
             Assert.Equal(model.HasMoreLaps, next.IsEnabled);
+            var export = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, model.LapsExportLabel));
+            Assert.Same(model.ExportLapsCommand, export.Command);
+            Assert.Equal(model.CanExportLaps, export.IsEnabled);
             Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "Page " + model.LapsPageNumber);
             Assert.Contains(Descendants<TextBox>(view), text =>
                 Equals(text.ToolTip, "Filter computers in the selected scope by computer or domain."));
@@ -289,7 +292,7 @@ public sealed class FindingsViewTests
         return (model, source);
     }
 
-    internal static FrameworkElement View(AssetsViewModel model, string file = "FindingsView.xaml")
+    internal static FrameworkElement View(object model, string file = "FindingsView.xaml")
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -297,7 +300,8 @@ public sealed class FindingsViewTests
         var root = XDocument.Load(Path.Combine(shell, "Views", file)).Root!;
         root.Attribute(xaml + "Class")!.Remove();
         root.Attribute(xaml + "ClassModifier")!.Remove();
-        var ownedResources = root.Element(wpf + "UserControl.Resources");
+        var resourceProperty = wpf + (root.Name.LocalName + ".Resources");
+        var ownedResources = root.Element(resourceProperty);
         var dictionary = ownedResources?.Element(wpf + "ResourceDictionary")
             ?? new XElement(wpf + "ResourceDictionary", ownedResources?.Elements());
         ownedResources?.Remove();
@@ -308,12 +312,12 @@ public sealed class FindingsViewTests
         if (merged is null) { merged = new XElement(wpf + "ResourceDictionary.MergedDictionaries"); dictionary.AddFirst(merged); }
         merged.AddFirst(sources.Select(source => new XElement(wpf + "ResourceDictionary",
             new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source))));
-        root.AddFirst(new XElement(wpf + "UserControl.Resources", dictionary));
+        root.AddFirst(new XElement(resourceProperty, dictionary));
         using var xml = System.Xml.XmlReader.Create(new StringReader(root.ToString()));
         using var reader = new System.Xaml.XamlXmlReader(xml, XamlReader.GetWpfSchemaContext(), new System.Xaml.XamlXmlReaderSettings
         { LocalAssembly = typeof(AssetsViewModel).Assembly });
-        var view = (UserControl)XamlReader.Load(reader);
-        view.Foreground = Brushes.White;
+        var view = (FrameworkElement)XamlReader.Load(reader);
+        if (view is Control control) control.Foreground = Brushes.White;
         view.DataContext = model;
         Layout(view, 900, 430);
         return view;

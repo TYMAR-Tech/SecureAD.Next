@@ -4,6 +4,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Next.Tests.Judgement;
 using SecureAD.Shell.Services;
+using SecureAD.Shell.Services.Export;
 using SecureAD.Shell.ViewModels;
 using Xunit;
 
@@ -43,6 +44,16 @@ public sealed partial class OpenedRunResultsTests
         Assert.Same(row, screen.SelectedLapsComputer);
         Assert.Equal(205, screen.LapsTotal);
         Assert.Equal(201, screen.LapsCounts.Single(count => count.State == LapsValuePresence.WindowsOnly).Count);
+        LapsExportDataset? requestedExport = null;
+        screen.LapsExportRequested += (run, question) => requestedExport = new(source, run, question);
+        screen.ExportLapsCommand.Execute(null);
+        var export = Assert.IsType<LapsExportDataset>(requestedExport);
+        var preview = await export.PreviewAsync(ExportSelection.Matching, CancellationToken.None);
+        using var output = new CsvExportTests.Fixture();
+        var saved = await new CsvExportService().ExportAsync(export, preview, new(output.Destination, false),
+            new CsvExportTests.SilentProgress(), CancellationToken.None);
+        Assert.Equal((1L, 205L), (saved.Rows, saved.ScopeRows));
+        Assert.Contains("\"ZZ-Needle-LegacyOnly\"", File.ReadAllText(saved.Path));
         Assert.Equal((0L, 0L, 0L, 0L), (counts.EvidenceVerifications, counts.DerivationVerifications,
             counts.PermissionProofVerifications, counts.PathProofVerifications));
         Assert.Equal((1L, 1L, 0L), (counts.NavigationVerifications, counts.JudgementVerifications, counts.FactsVerifications));

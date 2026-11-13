@@ -1086,6 +1086,13 @@ public sealed partial class JudgementReader : IDisposable
         aw.proof                            AS aw_proof,
         aw.fingerprint                      AS aw_fingerprint,
         aw.generation                       AS aw_generation,
+        gmr.proof                           AS gmr_proof,
+        gmr.fingerprint                     AS gmr_fingerprint,
+        gmr.generation                      AS gmr_generation,
+        gdp.finding_id                      AS gdp_finding_id,
+        gdp.proof                           AS gdp_proof,
+        gdp.fingerprint                     AS gdp_fingerprint,
+        gdp.generation                      AS gdp_generation,
         mr.proof                            AS mr_proof,
         mr.fingerprint                      AS mr_fingerprint,
         mr.generation                       AS mr_generation,
@@ -1120,6 +1127,8 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_broad_group_membership am ON am.finding_id = f.finding_id
         LEFT JOIN finding_service_account svc ON svc.finding_id = f.finding_id
         LEFT JOIN finding_attribute_write aw ON aw.finding_id = f.finding_id
+        LEFT JOIN finding_gmsa_reader gmr ON gmr.finding_id = f.finding_id
+        LEFT JOIN finding_gpo_directory gdp ON gdp.finding_id = f.finding_id
         LEFT JOIN finding_membership_review mr ON mr.finding_id = f.finding_id
         LEFT JOIN finding_delegation_configuration dc ON dc.finding_id = f.finding_id
         LEFT JOIN finding_replication_permission rp ON rp.finding_id = f.finding_id
@@ -1247,6 +1256,32 @@ public sealed partial class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("domain_fqdn")), reader.GetString(reader.GetOrdinal("object_class")),
                 reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
                 Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-080" or "SEC-081")
+        {
+            OpenPart(StoreSegmentRole.PermissionProof);
+            if (reader.IsDBNull(reader.GetOrdinal("gdp_finding_id")) || versions[ruleId] != 1) throw GpoDirectoryPermissionRules.Invalid();
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GpoDirectoryPermissionStorage.Read(_connection, reader.GetInt64(reader.GetOrdinal("gdp_finding_id")),
+                reader.GetString(reader.GetOrdinal("gdp_proof")), (byte[])reader.GetValue(reader.GetOrdinal("gdp_fingerprint")),
+                reader.GetString(reader.GetOrdinal("gdp_generation")), Description, _findingDerivationSeal, ruleId,
+                Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))), reader.GetString(reader.GetOrdinal("distinguished_name")),
+                reader.GetString(reader.GetOrdinal("domain_fqdn")), reader.GetString(reader.GetOrdinal("object_class")),
+                reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
+                Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId == "SEC-102")
+        {
+            OpenPart(StoreSegmentRole.PermissionProof);
+            if (reader.IsDBNull(reader.GetOrdinal("gmr_proof")) || versions[ruleId] != 1)
+                throw GmsaPasswordReaderStorage.Invalid();
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GmsaPasswordReaderStorage.Read(reader.GetString(reader.GetOrdinal("gmr_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("gmr_fingerprint")), reader.GetString(reader.GetOrdinal("gmr_generation")),
+                Description, _findingDerivationSeal, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
         }
         else if (ruleId is "SEC-100" or "SEC-101")
         {

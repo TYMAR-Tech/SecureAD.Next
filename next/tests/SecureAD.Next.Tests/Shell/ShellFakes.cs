@@ -167,6 +167,12 @@ internal sealed class FakeConfirmation : IConfirmation
 
 internal sealed class FakeAssetSource : IAssetSource
 {
+    public Func<LapsQuery, Result<SecureAD.Shell.Services.Export.LapsExportSnapshot>>? LapsExport { get; set; }
+    public Result<SecureAD.Shell.Services.Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query) =>
+        LapsExport?.Invoke(query) ?? Result<SecureAD.Shell.Services.Export.LapsExportSnapshot>.Failure(AuditError.Create(
+            ErrorCategory.Shell, "TestExportNotSupplied", ErrorSeverity.Failed,
+            "No export source was supplied by this test.", bundleDirectory));
+
     private Guid _findingGeneration = Guid.NewGuid();
     private long _findingIdentity;
     private readonly Dictionary<FindingReference, FindingListItem> _findingDetails = [];
@@ -617,6 +623,8 @@ internal sealed class FakeAssetSource : IAssetSource
 
     public Func<FindingReference, DelegationConfigurationMark?, Result<SavedDelegationConfiguration>>? ResourceDelegationRead { get; set; }
     public Func<FindingReference, AttributeWritePermissionMark?, Result<SavedAttributeWritePermission>>? AttributeWritePermissionRead { get; set; }
+    public Func<FindingReference, GmsaPasswordReaderMark?, Result<SavedGmsaPasswordReaders>>? GmsaPasswordReadersRead { get; set; }
+    public Func<FindingReference, GpoDirectoryPermissionMark?, Result<SavedGpoDirectoryPermission>>? GpoDirectoryPermissionRead { get; set; }
     public Func<FindingReference, Result<SavedGroupReview>>? GroupReviewRead { get; set; }
     public Func<FindingReference, BroadMembershipMark?, Result<SavedBroadMembershipPage<SavedBroadIdentity>>>? BroadSourcesRead { get; set; }
     public Func<FindingReference, BroadMembershipMark?, Result<SavedBroadMembershipPage<SavedBroadMembershipLink>>>? BroadLinksRead { get; set; }
@@ -755,6 +763,24 @@ internal sealed class FakeAssetSource : IAssetSource
     }
 
     public List<(FindingReference Reference, AttributeWritePermissionMark? After)> AttributeWritePermissionReads { get; } = [];
+    public List<(FindingReference Reference, GmsaPasswordReaderMark? After)> GmsaPasswordReadersReads { get; } = [];
+    public List<(FindingReference Reference, GpoDirectoryPermissionMark? After)> GpoDirectoryPermissionReads { get; } = [];
+    public Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after)
+    {
+        GpoDirectoryPermissionReads.Add((reference, after));
+        return GpoDirectoryPermissionRead is { } read ? read(reference, after)
+            : Result<SavedGpoDirectoryPermission>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestGpoDirectoryPermissionUnavailable", ErrorSeverity.Failed, SavedGpoDirectoryPermission.InvalidDetails, bundleDirectory));
+    }
+    public Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after)
+    {
+        GmsaPasswordReadersReads.Add((reference, after));
+        return GmsaPasswordReadersRead is { } read ? read(reference, after)
+            : Result<SavedGmsaPasswordReaders>.Failure(AuditError.Create(ErrorCategory.Shell,
+                "TestGmsaPasswordReadersUnavailable", ErrorSeverity.Failed, SavedGmsaPasswordReaders.InvalidDetails, bundleDirectory));
+    }
     public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
         AttributeWritePermissionMark? after)
     {

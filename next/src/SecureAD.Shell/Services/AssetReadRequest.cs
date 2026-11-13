@@ -110,6 +110,9 @@ internal sealed partial class AssetReadRequest(
     public Result<LapsPage> ListLapsComputers(string bundleDirectory, LapsQuery query, LapsPageMark? after) =>
         WithRun(bundleDirectory, run => run.ReadLapsComputers(query, after, _readCancellation));
 
+    public Result<Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query) =>
+        WithRun(bundleDirectory, run => run.ReadLapsExport(query, _readCancellation));
+
     /// <inheritdoc/>
     public Result<ObjectPermissions?> ReadPermissions(string bundleDirectory, string distinguishedName) =>
         ReadCapturedObject(bundleDirectory, distinguishedName, (reader, identity) => reader.ReadPermissionsAt(identity));
@@ -208,6 +211,15 @@ internal sealed partial class AssetReadRequest(
         AttributeWritePermissionMark? after) =>
         Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
             reader => reader.ReadAttributeWritePermission(reference, after), _readCancellation)));
+
+    public Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadGmsaPasswordReaders(reference, after), _readCancellation)));
+    public Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after) =>
+        Flatten(WithRun(bundleDirectory, run => run.ReadFindings(
+            reader => reader.ReadGpoDirectoryPermission(reference, after), _readCancellation)));
 
     public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
         ReplicationPermissionMark? after) =>

@@ -273,6 +273,15 @@ public sealed class SchemaGuidCatalog
             ? null : string.Equals(assignedSet, propertySetGuid, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Retains the captured assignments needed to replay membership and exclusion for selected attributes.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> PropertySetsForAttributes(IEnumerable<string> attributeNames)
+    {
+        ArgumentNullException.ThrowIfNull(attributeNames);
+        var names = attributeNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return _propertySetMembers.Where(set => set.Value.Any(names.Contains))
+            .ToDictionary(set => set.Key, set => set.Value, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Every meaning of a GUID. Empty when the catalogue does not know it, which is an ordinary
     /// answer: a forest carries schema extensions this table cannot have heard of.

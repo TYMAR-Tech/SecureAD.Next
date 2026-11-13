@@ -99,6 +99,8 @@ public sealed record FindingListItem(
                 : finding.RuleId == "SEC-030" ? SavedProtectionMarker.Statement
                 : finding.RuleId is "SEC-031" or "SEC-032" ? SavedOwnershipAssessment.ScopeNote
                 : finding.RuleId is "SEC-100" or "SEC-101" ? SavedServiceAccountContext.Statement(finding.RuleId)
+                : finding.RuleId == "SEC-102" ? GmsaPasswordReaders.Scope
+                : finding.RuleId is "SEC-080" or "SEC-081" ? GpoDirectoryPermissionRules.Caution
                 : SavedAttributeWritePermission.SupportsRule(finding.RuleId)
                     ? SavedAttributeWritePermission.ScopeNoteForRule(finding.RuleId) : finding.Detail, finding.Coverage,
             finding.PrincipalName, membership is not null ? FindingListKind.Membership
@@ -115,6 +117,8 @@ public sealed record FindingListItem(
         DelegationConfigurationEvidence value => value.IsComplete,
         ServiceAccountFindingEvidence value => value.IsComplete,
         AttributeWritePermissionEvidence value => value.IsComplete,
+        GmsaPasswordReaderEvidence value => value.IsComplete,
+        GpoDirectoryPermissionEvidence value => value.IsComplete,
         ReplicationPermissionEvidence value => value.IsComplete,
         PrivilegedSidHistoryEvidence value => value.IsComplete,
         ObjectTakeoverEvidence value => value.IsComplete,

@@ -359,6 +359,42 @@ public sealed class LapsInventoryViewModelTests
         return screen;
     }
 
+    [Fact]
+    public void ExportCommandCapturesTheCompleteCurrentQuestionRatherThanVisibleRows()
+    {
+        var screen = Showing(SourceOf(APage(total: 4000)));
+        screen.Pane = AssetsPane.Laps;
+        screen.LapsSearchText = " FS01 ";
+        screen.LapsStateFilter = LapsInventoryText.Label(LapsValuePresence.None);
+        string? selectedRun = null;
+        LapsQuery? selectedQuestion = null;
+        screen.LapsExportRequested += (run, question) => (selectedRun, selectedQuestion) = (run, question);
+        Assert.True(screen.ExportLapsCommand.CanExecute(null));
+        screen.ExportLapsCommand.Execute(null);
+        Assert.Equal(BundlePath, selectedRun);
+        Assert.Equal(new LapsQuery(DomainDn, ListingScope.Subtree, "FS01", LapsValuePresence.None), selectedQuestion);
+        screen.LapsSearchText = "Something else";
+        Assert.Equal("FS01", selectedQuestion!.Search);
+        Assert.Equal(4000, screen.LapsTotal);
+    }
+
+    [Fact]
+    public void ExportIsUnavailableOutsideAReadableLapsListing()
+    {
+        var source = SourceOf(APage());
+        var screen = Showing(source);
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
+        screen.Pane = AssetsPane.Laps;
+        Assert.True(screen.ExportLapsCommand.CanExecute(null));
+        source.LapsListingFails = AuditError.Create(ErrorCategory.Evidence, "Unavailable", ErrorSeverity.Failed,
+            "This run has no saved LAPS inventory.", null);
+        screen.Read();
+        screen.Pane = AssetsPane.Laps;
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
+        screen.Clear();
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
+    }
+
     private static FakeAssetSource SourceOf(LapsPage page) => new()
     {
         Tree = TreeOfOneDomain(),

@@ -63,5 +63,10 @@ public sealed record LapsPage(
 /// <summary>Filters the complete selected saved scope before taking a bounded page.</summary>
 public sealed record LapsQuery(string Container, ListingScope Scope, string Search, LapsValuePresence? State);
 
+/// <summary>Exact matching and pre-filter scope counts, bound to one saved question and generation.</summary>
+public sealed record LapsInventorySummary(
+    JudgementDescription Description, LapsQuery Query, int Total, int Matching,
+    bool ComputersAreComplete, string? Shortfall);
+
 /// <summary>A stable sort position bound to the saved generation and complete submitted question.</summary>
 public sealed record LapsPageMark(Guid GenerationId, string Question, string Name, string DistinguishedName);

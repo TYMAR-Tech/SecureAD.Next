@@ -22,10 +22,10 @@ the record wins and this file is wrong.
 | Capture | Read objects, permissions, group memberships, schema, extended rights, SYSVOL/GPO files | built |
 | Reconcile and seal | Reconcile referrals with authorized scope, record uncertainty, then fingerprint immutable Evidence | built |
 | Derive | Compute reusable cross-object facts into a disposable store beside Evidence | built; group expansion, membership cycles and AdminSDHolder products persisted and readable |
-| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 32 rules |
+| Judge | Stream the bundle once for object rules, then publish saved path qualifications as findings in a separate store | built, 35 rules |
 | Read back | Run library, directory tree, object detail and findings | built |
 | Dashboard | Coverage and inventory: how much of the forest was read, and what it held | built |
-| Reports, compare and export | — | not built |
+| Reports, compare and export | Shared CSV export, starting with saved LAPS inventory; reports and compare remain unbuilt | started |
 
 **The counts and states in that table are checked rather than maintained by hand.**
 `StageStatusGateTests` holds each state to a witness — a type that exists if and only if that stage
@@ -1707,6 +1707,162 @@ concrete UI presentation, the bounded implementation plan and any verification w
 be approved, and this turn requests commitment and handoff preparation rather than export implementation.
 Considering an owner-run production audit is not authorization for assistant live
 access, recapture or re-judging, and only production logs/summaries may return to this machine.
+
+**Future grid column choices and export - owner direction, 2026-11-13.**
+The owner wants administrators to add or remove displayed grid columns and filter rows, then
+export the view they chose; future exports must honor that selected column set and active filters.
+This remains every matching page under decision 0093, not only the rows loaded on screen, and
+presentation choices do not change saved conclusions.
+The owner described those grid controls as later work and welcomed the current fixed-column LAPS
+CSV proposal for the immediate need; do not make grid customization a prerequisite or silently
+expand the first export slice to implement it.
+
+The owner then explicitly approved implementing the proposed fixed-column shared export slice:
+all matching saved LAPS pages by default, an explicit all-computers-in-the-same-scope option,
+the reviewed 20 columns, source/filter/count/coverage context inside the CSV, reversible
+spreadsheet text guards and cancellable staged file completion in the existing application services.
+The approved implementation/build/short-offline-check window is estimated at 60-90 minutes with
+a ninety-minute hard cap including twenty minutes reserved for final correct-source rebuilding,
+preservation checks and cleanup; longer fault qualification needs a separate fresh approval.
+No live access, recapture, owner-data re-judging, activation change, commit or push is included.
+
+After the 158-check implementation checkpoint, the owner separately approved final offline
+qualification of the 79 new or directly strengthened cases using isolated explicitly rebuilt
+faults and restored controls, followed by final correct-source Release checks, fingerprints
+and cleanup: estimated 35-50 minutes, with a sixty-minute hard cap including fifteen reserved
+for close-out and no full suite or performance campaign.
+
+**Directory-object rule candidates first - owner direction, 2026-11-13.**
+The owner selected SEC-102, SEC-080 and SEC-081 as the next remaining-rule group, before the
+SYSVOL-dependent SEC-064/065/066/082/083, and requested a handoff for a new session rather than
+implementation in this one.
+SEC-102 concerns gMSA password-retrieval permissions; SEC-080/081 concern captured AD permissions
+on GPO directory objects and Group Policy link-holder containers, so they remain GPO-related
+without requiring policy-file contents for their own directory-permission claims.
+The selection settles group priority, not an internal order, finding scope/grain, expected-holder
+policy, severity or concrete screen wording; recommend one bounded implementation proposal and
+obtain approval before new rule code or UI changes.
+Keep the verified uncommitted shared export and original evidence intact, leave grid customization
+for later and SEC-083 last with its optional scan off, and obtain fresh scope, estimate, hard cap
+and final-rebuild/cleanup reserve approval before long runs; no live work, recapture, owner-data
+re-judging, activation change, commit or push is included.
+
+**SEC-102 broad gMSA password-reader slice - owner-approved 2026-11-13.**
+The owner approved SEC-102 alone first, before a separately bounded SEC-080/081 batch.
+Assess the captured `msDS-GroupMSAMembership` descriptor, not the gMSA's ordinary object permissions,
+and report fixed High severity only for supported broad-reader exposure: one finding per
+gMSA/broad-identity pair, retaining independent supporting grants without multiplying group members.
+Use the shared broad-identity catalogue for direct grants and authorization-eligible captured
+membership within a granting security group; broad exposure is never expected.
+Do not flag a named host or purpose-built service group merely for being non-administrative or
+large, and do not claim this determines which individual hosts the organisation intended.
+Unknown identity, membership or permission candidates remain explicitly unassessed, not accepted,
+safe or established High findings; independently supported findings remain visible.
+Distinguish a NULL permission list from an empty list without inventing an Everyone entry.
+Save original embedded-descriptor occurrences and order, identities, supporting membership witnesses,
+permission results, limitations and exact capture/derivation/judgement binding, with compact selected
+readback prepared during judging rather than analysis replay during browsing.
+The owner approved a new current judgement format for these saved results, with no capture change,
+migration, automatic re-judging or alteration of previous results.
+Use the existing finding-window design and navigation, without a layout or theme redesign:
+- Title: **Broad gMSA password-reader permission**.
+- Facts: **Service account**, **Broad identity**, **Permission holder**,
+  **Included directly / Through a group**, and **Account state at capture**.
+- Why review: "The captured password-reader configuration grants the named holder password-reading
+  permission and includes a widely shared identity. Review whether access extends beyond the
+  intended service hosts."
+- What to review: "Confirm which hosts and services need this account. If access is unintended,
+  restrict the password-reader list or granting-group membership. Check dependent services before
+  changing access."
+- Limits: "This is captured permission and membership evidence, not an individual member's
+  authorization. No password was collected, no successful retrieval or sign-in was established,
+  and no takeover or path to Tier 0 is proven."
+- Incomplete assessment: "gMSA password-reader permissions could not be fully assessed from the
+  captured evidence. Established findings remain valid; other access may exist."
+Show specific missing or unsupported inputs separately, preserving capture gaps independently
+from unsupported analysis and unloaded detail pages.
+This approval authorizes no long verification run: obtain fresh scope, estimate, hard cap and
+final-rebuild/cleanup reserve approval before one, and preserve the dirty shared export,
+separately pinned later outputs and original evidence with no live work, recapture, owner-data
+re-judging, activation/budget changes, deployment, commit or push.
+The owner then separately approved the new SEC-102 offline verification window: changed-project
+Release builds, 74 new synthetic cases, focused existing permission/finding/saved-run checks,
+isolated explicitly rebuilt faults and restored controls for every new behavior check, and actual
+WPF views at the existing 900/1300-pixel test sizes.
+The estimate is 40-55 minutes with a 75-minute hard cap from the first build/test command,
+including twenty minutes reserved at the end for final correct-source rebuilding, preservation
+checks and cleanup; stop further fault work when that reserve begins and report unfinished work
+rather than extending or restarting silently.
+This is not a full-suite or performance campaign, owner-lab or physical-display acceptance,
+and does not authorize live work, recapture, owner-data re-judging, activation/budget changes,
+deployment, commit or push.
+After the incomplete first window, the owner approved finishing SEC-102 verification, including
+a judging-side regression proving capture/derivation verification is not repeated per account,
+and separately approved fresh limits on 2026-11-13.
+The new estimate is 40-55 minutes with a 75-minute hard cap from the first setup action,
+including twenty minutes reserved for final correct-source rebuilding and cleanup; staging
+must stop after five minutes if it is not ready, using only necessary source/runtime files
+rather than recursively copying old build/test-output trees.
+The scope remains isolated explicitly rebuilt faults and restored controls for the new checks,
+synthetic/offline work only, without a full suite, live access, owner-data re-judging,
+activation/budget changes, deployment, commit or push.
+
+**SEC-080/081 directory-permission batch - owner-approved 2026-11-13.**
+The owner approved implementing these two rules together after SEC-102 qualification.
+SEC-080 reports fixed High severity for established unexpected write permission on policy-related
+GPO directory properties or permission-list control on the captured `groupPolicyContainer`.
+Its property scope is `gPCFileSysPath`, `gPCFunctionalityVersion`, `flags`, `versionNumber`,
+`gPCMachineExtensionNames`, `gPCUserExtensionNames` and `gPCWQLFilter`; rename-only, delete-only,
+existing ownership and WRITE_OWNER alone do not trigger this first slice.
+SEC-081 reports fixed High severity for established unexpected `gPLink` write permission on a
+captured domain root, OU or site, including scopes with no current link; link membership, order
+and link options are covered, while `gPOptions` inheritance control remains separate.
+Emit one finding per rule, named holder and target, combining original supporting entries/properties
+without multiplying group members or routes.
+Reuse the existing scoped administrator policy, never treating broad identities as expected and
+never adding blanket exemptions for another domain's administrators, Group Policy Creator Owners
+or custom delegated editors; an intentional delegation can still warrant review, and unexpected
+does not mean unauthorized.
+Unsupported permission or unresolved expectedness stays explicitly unassessed, preserving
+independently established findings and the existing forest-wide BUILTIN/site resource-scope limit.
+Use the existing finding-window layout, styling and navigation with the approved fields
+**Permission holder**, **GPO / Link scope**, **Domain and location**, **Permission identified**
+and **Why the holder is unexpected**:
+- SEC-080 title: **Unexpected GPO-directory control permission**.
+- SEC-080 explanation: "The captured permissions establish control over this GPO's policy-related
+  directory properties or permission list. Review whether this delegation is required."
+- SEC-080 action: "Review the named holder and granting entries. Restrict only unintended directory
+  control, checking legitimate GPO administration and service dependencies before changing access."
+- SEC-081 title: **Unexpected Group Policy link-write permission**.
+- SEC-081 explanation: "The captured permissions establish write access to Group Policy links at
+  this scope. This can change the linked GPOs, their order or link options."
+- SEC-081 action: "Confirm who should manage links here. If access is unintended, restrict the
+  recorded link-write delegation. Review policy dependencies before changing permissions or links."
+- Shared caution: "This is captured directory-permission evidence, not authorization for every
+  group member. It does not prove a policy change, SYSVOL file modification, client processing
+  or a completed path to Tier 0."
+Save original permission occurrences, ordering, raw masks, denials, inheritance, captured-schema
+support, conclusions and exact capture/derivation/judgement bindings, serving prepared bounded
+pages without analysis replay.
+Preserve one capture-file check, one derivation-file check and one fixed input binding, with explicit
+regression checks for the pair, and use a new current judgement format with no capture change,
+migration, automatic re-judging, discovery activation or budget change.
+Implementation approval includes no new long-run window: obtain fresh verification scope, estimate,
+hard cap and final-rebuild/cleanup reserve approval before long runs, with original evidence,
+subsequent dirty work and pinned outputs preserved and no live work, recapture, owner-data
+re-judging, deployment, commit or push.
+The owner separately approved the implementation/build/short-synthetic-check window: estimated
+60-90 minutes with a 105-minute hard cap from the first application-code edit, including twenty
+minutes reserved for final correct-source rebuilding, preservation checks and cleanup.
+The longer rebuilt-defect qualification is not included; present its actual cases, estimate,
+hard cap and reserve for fresh approval once the implementation checks are ready.
+After the 309-check implementation result, the owner separately approved qualification of the
+79 new GPO cases against isolated explicitly rebuilt defects and correct restored controls,
+followed by final correct-source builds, focused checks, preservation and cleanup.
+The fresh estimate is 35-55 minutes with a 75-minute cap from the first setup action, including
+twenty minutes reserved at the end for rebuilding/cleanup and a five-minute minimal-staging cap;
+no full suite, production measurements, live work, owner-data re-judging, activation/budget change,
+deployment, commit or push is included.
 
 Requested-but-unreturned optional LDAP values can be unset or unreadable; encrypted transport,
 schema confidentiality flags and administrative membership cannot universally distinguish them.

@@ -31,6 +31,8 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="{Binding ScopeTreeAction}" Command="{Binding ToggleScopeTreeCommand}"
                         Margin="12,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="{Binding LapsExportLabel}" Command="{Binding ExportLapsCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="12,0,0,0" />
                 <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
                     <Run Text="Scope: " FontWeight="SemiBold" /><Run Text="{Binding LapsLocation,Mode=OneWay}" />
                 </TextBlock>

@@ -517,6 +517,101 @@
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasGpoDirectoryPermission,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Holder,StringFormat=Permission holder: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.GpoDirectoryPermission.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.TargetCaption}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Permission identified" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Operations}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,4" /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Why the holder is unexpected" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.WhyUnexpected}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Entries}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding EntryType}" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="{Binding PermissionScope,StringFormat=Permission scope: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Operations}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Assignment,StringFormat=Assignment: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding InheritanceNote}" TextWrapping="Wrap"
+                                                   Visibility="{Binding IsInherited,Converter={StaticResource Shown}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.GpoDirectoryPermission.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.GpoDirectoryPermission.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.GpoDirectoryPermission.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.GpoDirectoryPermission.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Caution}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasGmsaPasswordReaders,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.ServiceAccount,StringFormat=Service account: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.BroadIdentity,StringFormat=Broad identity: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GmsaPasswordReaders.Holders}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding PermissionHolder,StringFormat=Permission holder: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding Inclusion}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.GmsaPasswordReaders.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.GmsaPasswordReaders.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.GmsaPasswordReaders.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.GmsaPasswordReaders.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.GmsaPasswordReaders.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
                         Visibility="{Binding FindingDetails.HasAttributeWritePermission,Converter={StaticResource Shown}}">
                     <StackPanel>
                         <TextBlock Text="Captured write permission" Style="{StaticResource SectionTitle}" />
