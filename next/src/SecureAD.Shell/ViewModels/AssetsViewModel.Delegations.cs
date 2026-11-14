@@ -187,7 +187,7 @@ internal sealed partial class AssetsViewModel
             Announce();
             return;
         }
-        Open(SelectedDelegation!.RecordedOn, ObjectSectionCatalog.Permissions);
+        Open(SelectedDelegation!.RecordedOn, ObjectSectionCatalog.Permissions, expectedObjectGuid: null);
     }
 
     partial void OnDelegationPrincipalSearchChanged(string value)

@@ -52,7 +52,7 @@ internal sealed class ServicePageViewModel<TPage, TMark, TRow> : SavedFindingPag
     private readonly Func<TPage, TMark?, bool> _accepts;
     private readonly Action? _changed;
     internal ServicePageViewModel(TPage first, Func<TMark?, CancellationToken, Task<Result<TPage>>> read, Func<bool> current,
-        Func<TPage, IReadOnlyList<TRow>> rows, Func<TPage, TMark?> next, Func<TPage, TMark?, bool> accepts, Action? changed = null)
+        Func<TPage, IReadOnlyList<TRow>> rows, Func<TPage, TMark?> next, Func<TPage, TMark?, bool> accepts, Action? changed)
         : base(first, read, current)
     {
         (_rows, _next, _accepts, _changed) = (rows, next, accepts, changed);
@@ -83,7 +83,7 @@ internal sealed partial class ServiceRegistrationViewModel : ObservableObject
     {
         (_context, _reads, _current) = (first.Context, reads, current);
         Names = new(first, reads.Names, current, page => page.Names.Select(value => new ServiceNameViewModel(value.Value)).ToArray(),
-            page => page.Next, (page, after) => ValidNames(page, _context, after));
+            page => page.Next, (page, after) => ValidNames(page, _context, after), changed: null);
     }
     public string Account => _context.Name;
     public string Sid => _context.Sid;
@@ -153,7 +153,7 @@ internal sealed partial class ServiceRegistrationViewModel : ObservableObject
             if (!ValidSteps(page, group, route, null)) throw new InvalidDataException(SavedServiceRegistrations.InvalidDetails);
             Steps = new(page, (after, token) => _reads.Steps(group.Ordinal, route.Ordinal, after, token), _current,
                 value => value.Steps.Select(step => new ServiceStepViewModel(step)).ToArray(), value => value.Next,
-                (value, after) => ValidSteps(value, group, route, after));
+                (value, after) => ValidSteps(value, group, route, after), changed: null);
         });
     }
     private CancellationToken Token()

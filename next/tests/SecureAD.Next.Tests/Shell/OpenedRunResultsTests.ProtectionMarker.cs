@@ -22,7 +22,7 @@ public sealed partial class OpenedRunResultsTests
             Assert.True(read.IsSuccess, read.Error?.Description);
             Assert.True(read.Value.Matches(row));
             Assert.Equal("S-1-5-21-11-22-33-1105", read.Value.Sid);
-            Assert.Equal("Medium", new SecureAD.Shell.ViewModels.FindingRowViewModel(row).Severity);
+            Assert.Equal("Medium", new SecureAD.Shell.ViewModels.FindingRowViewModel(row, current: null).Severity);
         }
         Assert.Equal(before, CoverageFiles(directory));
     }

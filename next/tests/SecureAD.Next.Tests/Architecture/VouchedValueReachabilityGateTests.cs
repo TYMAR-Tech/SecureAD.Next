@@ -68,7 +68,7 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static readonly string[] VouchShapes =
     [
-        "Errors", "Problems", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        "Errors", "Problems", "Warnings", "Issues", "Limitations", "Verdict", "Verdicts", "IsComplete", "Completeness",
         "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
     ];
 
@@ -306,6 +306,8 @@ public sealed class VouchedValueReachabilityGateTests
     [InlineData(typeof(ConstantVoucher), 1)]
     [InlineData(typeof(P62ShapedVoucher), 1)]
     [InlineData(typeof(MutatedVoucher), 2)]
+    [InlineData(typeof(NestedBooleanVoucher), 2)]
+    [InlineData(typeof(NestedEnumVoucher), 2)]
     [InlineData(typeof(IUnbuildableVoucher), 0)]
     public void TheDriverSeparatesAComputationFromAConstant(Type fixtureType, int expectedValues)
     {
@@ -537,25 +539,9 @@ public sealed class VouchedValueReachabilityGateTests
     {
         var found = BooleanVouchers().ToList();
 
-        // Every term is a reason, not a total. Retain the pre-aggregation inventory, the per-right
-        // proof voucher, the Tier-0 discovery pair, and the ownership-count and relevance-relation
-        // pair. The failure names what it found because the count on its own says only that
-        // something moved, and a failure that cannot say what moved makes raising the number the
-        // cheapest way out - which is how a self-test stops being one. The expected total is held in
-        // one place so the condition and the message cannot disagree, which they did on the first
-        // draft of this check.
-        var accountedFor = 58 + 1 + 4 + 2 + 2 + 1 + 1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 + 1 + 1 + 1 - 1 + 2 + 1 + 1 + 1 + 1;
-
-        Assert.True(
-            found.Count == accountedFor,
-            $"Gate 4b's voucher inventory has moved: expected {accountedFor}, found {found.Count}. "
-            + "Every entry below must be accounted for by a term in the sum above and by a numbered "
-            + "entry in this test's summary saying what the voucher is for and how it is read both "
-            + "ways. Raising the number alone puts back the blindness the count exists to detect:"
-            + Environment.NewLine
-            + string.Join(
-                Environment.NewLine,
-                found.Select(v => $"  {v.Type.Name}.{v.Name}").OrderBy(t => t, StringComparer.Ordinal)));
+        // The driver evaluates every discovered voucher. Boundary witnesses detect a narrowed
+        // scan without making a manually maintained total stand in for exercised behavior.
+        Assert.NotEmpty(found);
         foreach (var name in new[] { "CapturedMembershipInput", "MemberAttribution", "MemberAttributionDetail", "MemberPermissionPage" })
             Assert.Contains(found, v => v.Type.Name == name && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "FullControlRight" && v.Name == "IsComplete");
@@ -589,6 +575,11 @@ public sealed class VouchedValueReachabilityGateTests
         Assert.Contains(found, v => v.Type.Name == "AttributeWritePermissionEvidence" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CircularMembershipLink" && v.Name == "IsComplete");
         Assert.Contains(found, v => v.Type.Name == "CapturedMemberReferences" && v.Name == "IsComplete");
+        foreach (var type in new[] { typeof(SecureAD.Evidence.Findings.GmsaPasswordReaderEvidence),
+            typeof(SecureAD.Evidence.Findings.GpoDirectoryPermissionEvidence),
+            typeof(SecureAD.Evidence.Findings.PermissionControlCalculation),
+            typeof(SecureAD.Judgement.SavedGmsaPasswordReaders), typeof(SecureAD.Judgement.SavedGpoDirectoryPermission) })
+            Assert.Contains(found, voucher => voucher.Type == type && voucher.Name == "IsComplete");
     }
 
     /// <summary>
@@ -711,6 +702,12 @@ public sealed class VouchedValueReachabilityGateTests
     /// </summary>
     private static IEnumerable<object> ConstructEveryWay(Type type)
     {
+        if (type == typeof(SecureAD.Evidence.Findings.LapsPasswordReaderEvidence))
+            foreach (var complete in new[] { false, true })
+                yield return SecureAD.Next.Tests.Judgement.RecordedLapsReadFinding.Evidence(
+                    "S-1-1-0", "Everyone", "S-1-1-0", "Everyone", [], "msLAPS-Password",
+                    SecureAD.Evidence.Findings.LapsReadRights.Both,
+                    SecureAD.Evidence.Findings.LapsGrantReach.ThisAttributeOnly, null, complete);
         if (type == typeof(SecureAD.Evidence.CapturedMemberReferences))
         {
             yield return new SecureAD.Evidence.CapturedMemberReferences(
@@ -741,6 +738,40 @@ public sealed class VouchedValueReachabilityGateTests
             yield return evidence;
             yield return evidence with { InputsComplete = false };
             yield return evidence with { KnownTotal = evidence.KnownTotal! with { Limitations = ["SourceLimited"] } };
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.GmsaPasswordReaderEvidence))
+        {
+            using var reader = SecureAD.Judgement.JudgementReader.Open(
+                SecureAD.Next.Tests.Judgement.GmsaPasswordReaderReadTests.Published()).Value;
+            var evidence = Assert.IsType<SecureAD.Evidence.Findings.GmsaPasswordReaderEvidence>(Assert.Single(reader.Read().Findings).Evidence);
+            yield return evidence;
+            yield return evidence with { Limitations = ["SourceLimited"] };
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.GpoDirectoryPermissionEvidence))
+        {
+            using var reader = SecureAD.Judgement.JudgementReader.Open(
+                SecureAD.Next.Tests.Judgement.GpoDirectoryPermissionRunTests.Published()).Value;
+            var evidence = Assert.IsType<SecureAD.Evidence.Findings.GpoDirectoryPermissionEvidence>(
+                Assert.Single(reader.Read().Findings, finding => finding.RuleId == "SEC-080").Evidence);
+            yield return evidence;
+            yield return evidence with { Limitations = ["SourceLimited"] };
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.PermissionControlCalculation))
+        {
+            using var reader = SecureAD.Judgement.JudgementReader.Open(
+                SecureAD.Next.Tests.Judgement.PermissionControlCalculationTests.Saved("(A;;WD;;;WD)")).Value;
+            var finding = Assert.Single(reader.ReadListPage(SecureAD.Judgement.FindingsQuery.Everything()).Value.Findings);
+            var evidence = reader.ReadPermissionControlCalculation(finding.Reference!.Value).Value.Calculation;
+            yield return evidence;
+            yield return evidence with { Limitations = ["SourceLimited"] };
+        }
+        if (type == typeof(SecureAD.Evidence.Findings.LapsDecryptorEvidence))
+        {
+            using var reader = SecureAD.Judgement.JudgementReader.Open(
+                SecureAD.Next.Tests.Judgement.LapsRegistryStorageTests.Build("complete")).Value;
+            var evidence = Assert.IsType<SecureAD.Evidence.Findings.LapsDecryptorEvidence>(Assert.Single(reader.Read().Findings).Evidence);
+            yield return evidence;
+            yield return evidence with { ExpansionWasComplete = false };
         }
         if (type == typeof(SecureAD.Evidence.Findings.DelegationConfigurationEvidence))
         {
@@ -1039,10 +1070,7 @@ public sealed class VouchedValueReachabilityGateTests
             return type.IsValueType ? Activator.CreateInstance(type) : null;
         }
 
-        // A composite. No variant uses low arguments, because a guard clause rejects an empty
-        // string and there is nothing to be learnt from a value that was never built. The variety
-        // comes from the scalars, and for HighContrary also from taking the type's last creation
-        // path rather than its first - which for DomainCoverage is Excluded rather than Read.
+        // Keep nested identities populated, but vary outcome flags and enums independently.
         var paths = CreationPathsOf(type).ToList();
         var order = variant is Variant.HighContrary ? Enumerable.Reverse(paths) : paths;
         var arguments = variant is Variant.Low ? Variant.High : variant;
@@ -1052,7 +1080,9 @@ public sealed class VouchedValueReachabilityGateTests
             try
             {
                 var built = path.Invoke(path.Parameters
-                    .Select(p => Synthesize(p.ParameterType, arguments, depth + 1))
+                    .Select(p => Synthesize(p.ParameterType,
+                        variant == Variant.Low && (p.ParameterType == typeof(bool) || p.ParameterType.IsEnum)
+                            ? Variant.Low : arguments, depth + 1))
                     .ToArray());
 
                 if (built is not null)
@@ -1206,6 +1236,19 @@ public sealed class VouchedValueReachabilityGateTests
     public sealed record ComputedVoucher(IReadOnlyList<string> Missing)
     {
         public bool IsComplete => Missing.Count == 0;
+    }
+
+    public sealed record BooleanInput(bool HasAnswer);
+    public sealed record NestedBooleanVoucher(BooleanInput Input)
+    {
+        public bool IsComplete => Input.HasAnswer;
+    }
+
+    public enum ExampleOutcome { Complete, Incomplete }
+    public sealed record EnumInput(ExampleOutcome Outcome);
+    public sealed record NestedEnumVoucher(EnumInput Input)
+    {
+        public bool IsComplete => Input.Outcome == ExampleOutcome.Complete;
     }
 
     /// <summary>

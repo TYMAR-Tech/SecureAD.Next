@@ -698,7 +698,7 @@ public sealed class MembershipReviewRuleTests
         Assert.False(saved.EvidenceIsComplete);
         Assert.Equal(SavedGroupReview.Statement("SEC-050"), saved.Detail);
         Assert.Contains("Direct count:", original.Detail, StringComparison.Ordinal);
-        Assert.Equal("May be incomplete", new SecureAD.Shell.ViewModels.FindingRowViewModel(saved).Coverage);
+        Assert.Equal("May be incomplete", new SecureAD.Shell.ViewModels.FindingRowViewModel(saved, current: null).Coverage);
     }
 
     private static Fixtures.Source[] PositiveSources()

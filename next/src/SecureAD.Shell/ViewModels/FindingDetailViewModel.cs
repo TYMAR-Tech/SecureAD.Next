@@ -65,17 +65,17 @@ internal sealed partial class FindingDetailViewModel : ObservableObject
 
     internal FindingDetailViewModel(FindingRowViewModel selected,
         Func<CancellationToken, Task<Result<FindingDetailContent>>> read, Func<bool> current,
-        Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? readDelegation = null,
-        Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission = null,
-        Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? readDuplicateSpn = null,
-        Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? readSidHistory = null,
-        Func<ReplicationPermissionMark?, CancellationToken, Task<Result<SavedReplicationPermission>>>? readReplication = null,
-        ServiceRegistrationReads? serviceReads = null,
-        Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? readGroupReferences = null,
-        CircularMembershipReads? circularReads = null,
-        BroadMembershipReads? broadReads = null,
-        ServiceAccountReads? serviceAccountReads = null,
-        Func<PermissionControlMark?, CancellationToken, Task<Result<SavedPermissionControlChain>>>? readPermissionControl = null)
+        Func<DelegationConfigurationMark?, CancellationToken, Task<Result<SavedDelegationConfiguration>>>? readDelegation,
+        Func<AttributeWritePermissionMark?, CancellationToken, Task<Result<SavedAttributeWritePermission>>>? readWritePermission,
+        Func<DuplicateSpnMark?, CancellationToken, Task<Result<SavedDuplicateSpn>>>? readDuplicateSpn,
+        Func<SidHistoryMark?, CancellationToken, Task<Result<SavedSidHistory>>>? readSidHistory,
+        Func<ReplicationPermissionMark?, CancellationToken, Task<Result<SavedReplicationPermission>>>? readReplication,
+        ServiceRegistrationReads? serviceReads,
+        Func<GroupReviewReferenceMark?, CancellationToken, Task<Result<SavedGroupReferences>>>? readGroupReferences,
+        CircularMembershipReads? circularReads,
+        BroadMembershipReads? broadReads,
+        ServiceAccountReads? serviceAccountReads,
+        Func<PermissionControlMark?, CancellationToken, Task<Result<SavedPermissionControlChain>>>? readPermissionControl)
     {
         (_selected, _read, _current, _readDelegation) = (selected, read, current, readDelegation);
         _readWritePermission = readWritePermission;

@@ -71,7 +71,7 @@ internal sealed partial class AssetsViewModel
     [RelayCommand(CanExecute = nameof(CanOpenLapsComputer))]
     private void OpenLapsComputer(LapsComputerViewModel? row) =>
         Open((row ?? SelectedLapsComputer ?? throw new InvalidOperationException("No LAPS computer is selected.")).DistinguishedName,
-            ObjectSectionCatalog.Overview);
+            ObjectSectionCatalog.Overview, expectedObjectGuid: null);
 
     partial void OnSelectedLapsComputerChanged(LapsComputerViewModel? value)
     {

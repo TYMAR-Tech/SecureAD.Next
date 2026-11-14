@@ -193,7 +193,7 @@ public sealed class FindingNavigationTests
             current = false;
             return Task.FromResult(Result<FindingDetailContent>.Success(FindingDetailContent.FromSaved(selected.Saved)));
         }
-        var details = new FindingDetailViewModel(selected, Read, () => current);
+        var details = new FindingDetailViewModel(selected, Read, () => current, readDelegation: null, readWritePermission: null, readDuplicateSpn: null, readSidHistory: null, readReplication: null, serviceReads: null, readGroupReferences: null, circularReads: null, broadReads: null, serviceAccountReads: null, readPermissionControl: null);
         Assert.True(details.HasRefusal);
         Assert.False(details.HasFinding);
     }
@@ -225,7 +225,7 @@ public sealed class FindingNavigationTests
         var content = FindingDetailContent.FromSaved(source.ReadSelectedFinding(
             @"C:\offline-fixture\finding-navigation", selected.Saved.Reference!.Value, false).Value);
         var release = new TaskCompletionSource<Result<FindingDetailContent>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var details = new FindingDetailViewModel(selected, _ => release.Task, () => true);
+        var details = new FindingDetailViewModel(selected, _ => release.Task, () => true, readDelegation: null, readWritePermission: null, readDuplicateSpn: null, readSidHistory: null, readReplication: null, serviceReads: null, readGroupReferences: null, circularReads: null, broadReads: null, serviceAccountReads: null, readPermissionControl: null);
         var pending = details.ReadCompletion;
         Assert.False(pending.IsCompleted);
         details.Suspend();

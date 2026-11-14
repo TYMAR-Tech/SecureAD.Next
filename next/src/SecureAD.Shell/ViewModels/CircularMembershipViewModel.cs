@@ -66,7 +66,7 @@ internal sealed class CircularMembershipPageViewModel<TPage, TMark, TRow> : Save
     private TPage _published;
     internal CircularMembershipPageViewModel(TPage first, Func<TMark?, CancellationToken, Task<Result<TPage>>> read,
         Func<bool> current, Func<TPage, TMark?> next, Func<TPage, TMark?, bool> valid,
-        Func<TPage, IReadOnlyList<TRow>> rows, Action? changed = null) : base(first, read, current)
+        Func<TPage, IReadOnlyList<TRow>> rows, Action? changed) : base(first, read, current)
     {
         (_next, _valid, _rows, _changed, _published) = (next, valid, rows, changed, first);
         Rows = rows(first);
@@ -169,7 +169,7 @@ internal sealed partial class CircularMembershipViewModel : ObservableObject
                 if (answer.Value.Context != _context || !answer.Value.IsExpectedPage(null)) throw Invalid();
                 Groups = new(answer.Value, _reads.Groups, IsCurrent, page => page.Next,
                     (page, after) => page.Context == _context && page.IsExpectedPage(after),
-                    page => page.Groups.Select(value => new CircularMembershipGroupRow(value, Open, CanOpen)).ToArray());
+                    page => page.Groups.Select(value => new CircularMembershipGroupRow(value, Open, CanOpen)).ToArray(), changed: null);
             }
             else if (selected is null)
             {

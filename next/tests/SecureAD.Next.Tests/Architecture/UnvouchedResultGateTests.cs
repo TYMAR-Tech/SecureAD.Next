@@ -117,7 +117,7 @@ public sealed class UnvouchedResultGateTests
     [
         // Portable summaries carry sanitized, counted errors as Problems. Readback failures must
         // reach that list too; PortableSummaryContentTests holds that behavior, not this name scan.
-        "Errors", "Problems", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        "Errors", "Problems", "Warnings", "Issues", "Limitations", "Verdict", "Verdicts", "IsComplete", "Completeness",
         "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
     ];
 
@@ -483,9 +483,49 @@ public sealed class UnvouchedResultGateTests
         typeof(ProblemContainer), VouchedLeaves([(typeof(ProblemContainer), typeof(ProblemContainer))]));
 
     [Fact]
+    public void AResultCarriesItsOutcomeThroughNestedSavedValues()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(IntermediateLeaf), typeof(CountLeaf)),
+            (typeof(NothingVouching), typeof(SecureAD.Kernel.Result<IntermediateLeaf>)),
+        ]);
+        Assert.Contains(typeof(IntermediateLeaf), leaves);
+        Assert.Contains(typeof(CountLeaf), leaves);
+    }
+
+    [Fact]
+    public void AnUnvouchedProducerBlocksNestedLeaves()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(ProblemContainer), typeof(IntermediateLeaf)),
+            (typeof(NothingVouching), typeof(IntermediateLeaf)),
+            (typeof(IntermediateLeaf), typeof(CountLeaf)),
+        ]);
+        Assert.DoesNotContain(typeof(IntermediateLeaf), leaves);
+        Assert.DoesNotContain(typeof(CountLeaf), leaves);
+    }
+
+    [Fact]
+    public void ContainmentCyclesWithoutAnOutcomeCannotVouchForThemselves()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(CycleFirst), typeof(CycleSecond)),
+            (typeof(CycleSecond), typeof(CycleFirst)),
+        ]);
+        Assert.DoesNotContain(typeof(CycleFirst), leaves);
+        Assert.DoesNotContain(typeof(CycleSecond), leaves);
+    }
+
+    [Fact]
     public void AStateNameAloneDoesNotVouchForCounts() => Assert.False(IsVouched(typeof(StateOnly)));
 
     private sealed record CountLeaf(int Count);
+    private sealed record IntermediateLeaf(CountLeaf Value);
+    private sealed record CycleFirst(CycleSecond Value);
+    private sealed record CycleSecond(CycleFirst Value);
     private sealed record ProblemContainer(IReadOnlyList<SecureAD.Kernel.AuditError> Problems);
     private sealed record StateOnly(string State, int Count);
 
@@ -502,7 +542,7 @@ public sealed class UnvouchedResultGateTests
             var producers = PublicMembers()
                 .Where(m => m.Type != leaf)
                 .Where(m => ExposedTypesOf(m.Returns).Contains(leaf))
-                .Select(m => m.Type)
+                .Select(m => IsVouched(m.Returns) ? m.Returns : m.Type)
                 .Distinct()
                 .ToList();
 
@@ -510,7 +550,7 @@ public sealed class UnvouchedResultGateTests
             Assert.All(
                 producers,
                 p => Assert.True(
-                    IsVouched(p) || IsExempt(ReadableName(p)),
+                    IsVouched(p) || IsExempt(ReadableName(p)) || VouchedByContainment.Value.Contains(p),
                     $"{ReadableName(leaf)} is cleared by containment but {ReadableName(p)} "
                     + "hands it back without vouching for it."));
         }
@@ -848,7 +888,8 @@ public sealed class UnvouchedResultGateTests
     /// </para>
     /// </remarks>
     private static bool IsVouched(Type type) =>
-        DeclaresVouchingName(type) || DeclaredMemberTypes(type).Any(DeclaresVouchingName);
+        IsResult(type)
+        || DeclaresVouchingName(type) || DeclaredMemberTypes(type).Any(DeclaresVouchingName);
 
     /// <summary>A member whose own name is one of the vouching shapes.</summary>
     private static bool DeclaresVouchingName(Type type) =>
@@ -923,16 +964,21 @@ public sealed class UnvouchedResultGateTests
                     exposersOf[exposed] = list;
                 }
 
-                list.Add(member.Type);
+                list.Add(IsVouched(member.Returns) ? member.Returns : member.Type);
             }
         }
 
-        return exposersOf
-            .Where(pair => pair.Value.Count > 0)
-            .Where(pair => pair.Value.All(
-                container => IsVouched(container) || IsExempt(ReadableName(container))))
-            .Select(pair => pair.Key)
-            .ToHashSet();
+        var leaves = new HashSet<Type>();
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var pair in exposersOf)
+                if (!leaves.Contains(pair.Key) && pair.Value.Count > 0 && pair.Value.All(
+                    container => IsVouched(container) || IsExempt(ReadableName(container)) || leaves.Contains(container)))
+                    changed |= leaves.Add(pair.Key);
+        } while (changed);
+        return leaves;
     }
 
     /// <summary>

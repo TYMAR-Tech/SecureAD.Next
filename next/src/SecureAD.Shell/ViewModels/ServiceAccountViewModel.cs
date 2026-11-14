@@ -80,7 +80,7 @@ internal sealed class ServiceAccountPageViewModel<T, TRow> : SavedFindingPageVie
     private SavedServiceAccountPage<T> _published;
     internal ServiceAccountPageViewModel(SavedServiceAccountPage<T> first,
         Func<ServiceAccountMark?, CancellationToken, Task<Result<SavedServiceAccountPage<T>>>> read,
-        Func<bool> current, Func<T, TRow> row, Action? changed = null) : base(first, read, current)
+        Func<bool> current, Func<T, TRow> row, Action? changed) : base(first, read, current)
     {
         (_context, _kind, _link, _row, _changed, _published) = (first.Context, first.Kind, first.SelectedLink, row, changed, first);
         Rows = first.Rows.Select(value => row(value.Value)).ToArray();
@@ -167,7 +167,7 @@ internal sealed partial class ServiceAccountViewModel : ObservableObject
     private void ViewNames()
     {
         if (CanViewNames()) ReadCompletion = Load(ServiceAccountPageKind.Names, _reads.Names,
-            page => Names = new(page, _reads.Names, IsCurrent, value => new(value)));
+            page => Names = new(page, _reads.Names, IsCurrent, value => new(value), changed: null), link: null);
     }
     private bool CanViewLinks() => IsAdministrative && IsCurrent() && !IsLoading && Links is null;
     [RelayCommand(CanExecute = nameof(CanViewLinks))]
@@ -175,14 +175,14 @@ internal sealed partial class ServiceAccountViewModel : ObservableObject
     {
         if (CanViewLinks()) ReadCompletion = Load(ServiceAccountPageKind.Links, _reads.Links,
             page => Links = new(page, _reads.Links, IsCurrent,
-                value => LinkRow(value, ServiceAccountPageKind.Links), () => PageChanged(ServiceAccountPageKind.Links)));
+                value => LinkRow(value, ServiceAccountPageKind.Links), () => PageChanged(ServiceAccountPageKind.Links)), link: null);
     }
     private bool CanViewLimitations() => IsAdministrative && HasRecordedLimitations && IsCurrent() && !IsLoading && Limitations is null;
     [RelayCommand(CanExecute = nameof(CanViewLimitations))]
     private void ViewLimitations()
     {
         if (CanViewLimitations()) ReadCompletion = Load(ServiceAccountPageKind.Limitations, _reads.Limitations,
-            page => Limitations = new(page, _reads.Limitations, IsCurrent, value => new(value)));
+            page => Limitations = new(page, _reads.Limitations, IsCurrent, value => new(value), changed: null), link: null);
     }
     private ServiceAccountLinkRow LinkRow(SavedServiceAccountLink link, ServiceAccountPageKind kind) =>
         new(link, kind == ServiceAccountPageKind.EntryMemberships, value => Select(value, kind), value => CanSelect(value, kind));
@@ -193,11 +193,11 @@ internal sealed partial class ServiceAccountViewModel : ObservableObject
         if (!CanSelect(link, kind)) return;
         ClearValues(); _selected = link; _selectedKind = kind;
         ReadCompletion = Load(ServiceAccountPageKind.Values, (after, token) => _reads.Values(link.Position, after, token),
-            page => Values = new(page, (after, token) => _reads.Values(link.Position, after, token), IsCurrent, value => new(value)), link);
+            page => Values = new(page, (after, token) => _reads.Values(link.Position, after, token), IsCurrent, value => new(value), changed: null), link);
     }
     private async Task Load<T>(ServiceAccountPageKind kind,
         Func<ServiceAccountMark?, CancellationToken, Task<Result<SavedServiceAccountPage<T>>>> read,
-        Action<SavedServiceAccountPage<T>> publish, SavedServiceAccountLink? link = null)
+        Action<SavedServiceAccountPage<T>> publish, SavedServiceAccountLink? link)
     {
         _pending?.Cancel();
         using var pending = new CancellationTokenSource(); _pending = pending; var revision = ++_revision;

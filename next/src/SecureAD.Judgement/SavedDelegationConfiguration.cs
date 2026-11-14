@@ -34,7 +34,7 @@ public sealed record SavedDelegationIdentity(Guid ObjectGuid, string Distinguish
 public readonly record struct DelegationConfigurationMark(Guid GenerationId, long FindingId, Guid ResourceGuid, long Offset);
 
 /// <summary>A saved configured holder, with an optional uniquely resolved captured name, never its expanded members.</summary>
-public sealed record SavedDelegationHolder(string Sid, string? Name = null)
+public sealed record SavedDelegationHolder(string Sid, string? Name)
 {
     internal bool IsValid => SecureAD.Kernel.Security.Sid.ToBytes(Sid) is not null
         && WellKnownSidCatalog.FindBySid(Sid)?.NamesAPrincipal != false && (Name is null || !string.IsNullOrWhiteSpace(Name));

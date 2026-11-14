@@ -192,6 +192,7 @@ public sealed class ViewBindingGateTests
         // It knows what the view models publish.
         Assert.Contains(nameof(PermissionsSectionViewModel.Counters), PublishedMembers);
         Assert.Contains(nameof(PermissionRightViewModel.Mark), PublishedMembers);
+        Assert.Contains(nameof(SecureAD.Judgement.SavedGmsaPasswordReaderHolder.PermissionHolder), PublishedMembers);
 
         // And it does not merely believe everything is published.
         Assert.DoesNotContain("APropertyNothingHasEverDeclared", PublishedMembers);
@@ -340,6 +341,7 @@ public sealed class ViewBindingGateTests
             typeof(PermissionsSectionViewModel).Assembly,
             typeof(SecureAD.Kernel.GroupPolicy.PolicyLink).Assembly,
             typeof(SecureAD.Evidence.ObjectPermissions).Assembly,
+            typeof(SecureAD.Judgement.SavedGmsaPasswordReaderHolder).Assembly,
         };
 
         foreach (var type in assemblies.Distinct().SelectMany(a => a.GetTypes()))

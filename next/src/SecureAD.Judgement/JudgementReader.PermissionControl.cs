@@ -67,7 +67,7 @@ public sealed partial class JudgementReader
         return Result<SavedPermissionControl>.Success(assessment);
     }
 
-    public Result<SavedPermissionControlChain> ReadPermissionControlChain(FindingReference reference, PermissionControlMark? after = null)
+    public Result<SavedPermissionControlChain> ReadPermissionControlChain(FindingReference reference, PermissionControlMark? after)
     {
         var selected = ReadPermissionControl(reference);
         if (!selected.IsSuccess) return Result<SavedPermissionControlChain>.Failure(selected.Error);

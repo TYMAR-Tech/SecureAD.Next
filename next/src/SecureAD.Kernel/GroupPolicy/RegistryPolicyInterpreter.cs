@@ -6,6 +6,8 @@ namespace SecureAD.Kernel.GroupPolicy;
 
 public sealed record RegistryPolicyValue(int EntryIndex, string KeyPath, string ValueName, RegistryPolicyEntry Source);
 public sealed record RegistryPolicyIssue(int EntryIndex, string KeyPath, string ValueName, string Reason);
+public sealed record RegistryPolicyInstructions(IReadOnlyList<RegistryPolicyInstruction> Instructions,
+    IReadOnlyList<RegistryPolicyIssue> Issues);
 
 public enum RegistryPolicyInstructionKind
 {
@@ -60,7 +62,7 @@ public static class RegistryPolicyInterpreter
         var cleared = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var deleted = new List<string>();
         var issues = new List<RegistryPolicyIssue>();
-        foreach (var instruction in ReadInstructions(entries))
+        foreach (var instruction in ReadInstructions(entries).Instructions)
         {
             var entry = instruction.Source;
             if (!keys.TryGetValue(instruction.KeyPath, out var values))
@@ -104,7 +106,7 @@ public static class RegistryPolicyInterpreter
             issues.ToArray());
     }
 
-    public static IReadOnlyList<RegistryPolicyInstruction> ReadInstructions(IReadOnlyList<RegistryPolicyEntry> entries)
+    public static RegistryPolicyInstructions ReadInstructions(IReadOnlyList<RegistryPolicyEntry> entries)
     {
         ArgumentNullException.ThrowIfNull(entries);
         InstructionDecodes.Add(1);
@@ -155,7 +157,9 @@ public static class RegistryPolicyInterpreter
             void Limit(string reason) =>
                 result.Add(new(index, entry, RegistryPolicyInstructionKind.Unsupported, entry.KeyPath, null, reason));
         }
-        return result;
+        return new(result, result.Where(instruction => instruction.Kind == RegistryPolicyInstructionKind.Unsupported)
+            .Select(instruction => new RegistryPolicyIssue(instruction.EntryIndex, instruction.Source.KeyPath,
+                instruction.Source.ValueName, instruction.Reason!)).ToArray());
     }
 
     public static bool TryReadString(RegistryPolicyEntry entry, [NotNullWhen(true)] out string? text)

@@ -6,7 +6,7 @@ namespace SecureAD.Judgement;
 public sealed partial class JudgementReader
 {
     /// <summary>Reads selected saved SID rows using the same catalogue interpretation as existing readback.</summary>
-    public Result<SavedSidHistory> ReadSidHistory(FindingReference reference, SidHistoryMark? after = null)
+    public Result<SavedSidHistory> ReadSidHistory(FindingReference reference, SidHistoryMark? after)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();

@@ -56,7 +56,7 @@ internal sealed class BroadMembershipPageViewModel<T, TRow> : SavedFindingPageVi
     private SavedBroadMembershipPage<T> _published;
     internal BroadMembershipPageViewModel(SavedBroadMembershipPage<T> first,
         Func<BroadMembershipMark?, CancellationToken, Task<Result<SavedBroadMembershipPage<T>>>> read,
-        Func<bool> current, Func<T, TRow> row, Action? changed = null) : base(first, read, current)
+        Func<bool> current, Func<T, TRow> row, Action? changed) : base(first, read, current)
     {
         (_context, _link, _row, _changed, _published) = (first.Context, first.SelectedLink, row, changed, first);
         Rows = first.Rows.Select(value => row(value.Value)).ToArray();
@@ -87,8 +87,8 @@ internal sealed partial class BroadMembershipViewModel : ObservableObject
         SavedBroadMembershipPage<AdministrativeMembershipLimitation>? limitations, BroadMembershipReads reads, Func<bool> current)
     {
         (_context, _reads, _current) = (first.Context, reads, current);
-        Sources = new(first, reads.Sources, IsCurrent, value => new(value));
-        if (limitations is not null) Limitations = new(limitations, reads.Limitations, IsCurrent, value => new(value));
+        Sources = new(first, reads.Sources, IsCurrent, value => new(value), changed: null);
+        if (limitations is not null) Limitations = new(limitations, reads.Limitations, IsCurrent, value => new(value), changed: null);
     }
     public string Group => DnHelper.ExtractFirstRdn(_context.Target.DistinguishedName);
     public string Sid => _context.Target.Sid;

@@ -16,6 +16,31 @@ namespace SecureAD.Next.Tests.Shell;
 public sealed class UnresolvedWordingTests
 {
     [Theory]
+    [InlineData(UnresolvedReason.GmsaReaderConditionalEntryUnsupported)]
+    [InlineData(UnresolvedReason.GmsaReaderScopeUnsupported)]
+    [InlineData(UnresolvedReason.GmsaReaderDenialUnassessed)]
+    [InlineData(UnresolvedReason.GmsaReaderGroupTypeUnavailable)]
+    public void GmsaSummaryUsesTheSameSpecificLimitationAsTheSelectedFinding(UnresolvedReason reason)
+    {
+        var token = $"{DerivedFactKind.PrincipalExpansion}.{reason}";
+        var text = UnresolvedWording.For(token);
+        Assert.Equal(SavedGmsaPasswordReaders.DescribeLimitation(token), text);
+        Assert.DoesNotContain("would settle", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("PrincipalExpansion.PermissionControlNotEvaluated")]
+    [InlineData("AdministrativeMembership.GpoDirectoryPermissionIncomplete")]
+    public void UnresolvedPermissionsPreservePositiveEvidenceWithoutClaimingCompleteAbsence(string token)
+    {
+        var text = UnresolvedWording.For(token);
+        Assert.Contains("could not be", text, StringComparison.Ordinal);
+        Assert.Contains("Existing findings remain evidence", text, StringComparison.Ordinal);
+        Assert.Contains("absence of a finding is not a complete answer", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("was not captured", text, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("AdministrativeMembership.NotDerived")]
     [InlineData("AdministrativeMembership.MembershipIncomplete")]
     [InlineData("AdministrativeMembership.IdentityUnreadable")]

@@ -8,13 +8,13 @@ namespace SecureAD.Judgement;
 public sealed partial class JudgementReader
 {
     /// <summary>Shows one recorded loop, retaining one successor per group rather than enumerating every possible cycle.</summary>
-    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(FindingReference reference, CircularMembershipLoopMark? after = null)
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(FindingReference reference, CircularMembershipLoopMark? after)
     {
         var selected = ReadCircularSelection(reference);
         if (!selected.IsSuccess) return Result<SavedCircularMembershipLoop>.Failure(selected.Error);
         var finding = selected.Value;
         RequireCircularPosition(finding, after?.GenerationId, after?.FindingId, after?.ComponentKey, after?.Offset);
-        var read = ReadCircularProof(finding, CircularMembershipReadKind.Loop, 0);
+        var read = ReadCircularProof(finding, CircularMembershipReadKind.Loop, 0, positions: null);
         if (read.FirstLinks.Count != read.Context.GroupCount
             || read.FirstLinks.Values.Any(value => !read.FirstLinks.ContainsKey(value.MemberGuid))) throw CircularInvalid();
         var visited = new Dictionary<Guid, int>();
@@ -32,7 +32,7 @@ public sealed partial class JudgementReader
         if (cycle.Length == 0 || start >= cycle.Length || after is { } mark && mark.LoopKey != key) throw CircularInvalid();
         var headers = cycle.Skip(checked((int)start)).Take(SavedCircularMembershipContext.PageSize).ToArray();
         var positions = headers.SelectMany(link => new[] { link.GroupGuid, link.MemberGuid }).Distinct()
-            .ToDictionary(guid => guid, guid => CircularGroupPosition(reference.FindingId, guid));
+            .ToDictionary(guid => guid, guid => CircularGroupPosition(reference.FindingId, guid, expected: null));
         var identities = ReadCircularProof(finding, CircularMembershipReadKind.Identities, 0, positions.Values.ToHashSet());
         if (identities.Context != read.Context) throw CircularInvalid();
         var steps = headers.Select((link, index) => new SavedCircularMembershipLoopStep(start + index,
@@ -49,14 +49,14 @@ public sealed partial class JudgementReader
     }
 
     /// <summary>Reads the original cycle-inventory flag and one saved group page, without reconstructing the graph.</summary>
-    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(FindingReference reference, CircularMembershipGroupMark? after = null)
+    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(FindingReference reference, CircularMembershipGroupMark? after)
     {
         var selected = ReadCircularSelection(reference);
         if (!selected.IsSuccess) return Result<SavedCircularMembershipGroups>.Failure(selected.Error);
         var finding = selected.Value;
         RequireCircularPosition(finding, after?.GenerationId, after?.FindingId, after?.ComponentKey, after?.Offset);
         var start = after?.Offset ?? 0;
-        var read = ReadCircularProof(finding, CircularMembershipReadKind.Groups, start);
+        var read = ReadCircularProof(finding, CircularMembershipReadKind.Groups, start, positions: null);
         var groups = read.Groups.Where(pair => pair.Key >= start && pair.Key < start + SavedCircularMembershipContext.PageSize)
             .OrderBy(pair => pair.Key).Select(pair => new SavedCircularMembershipGroup(pair.Key, pair.Value)).ToArray();
         CircularMembershipGroupMark? next = start + groups.Length < read.Context.GroupCount
@@ -67,16 +67,16 @@ public sealed partial class JudgementReader
     }
 
     /// <summary>Reads one requested page of direct links and only its endpoint identities, without original witness values.</summary>
-    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(FindingReference reference, CircularMembershipLinkMark? after = null)
+    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(FindingReference reference, CircularMembershipLinkMark? after)
     {
         var selected = ReadCircularSelection(reference);
         if (!selected.IsSuccess) return Result<SavedCircularMembershipLinks>.Failure(selected.Error);
         var finding = selected.Value;
         RequireCircularPosition(finding, after?.GenerationId, after?.FindingId, after?.ComponentKey, after?.Offset);
         var start = after?.Offset ?? 0;
-        var headers = ReadCircularProof(finding, CircularMembershipReadKind.Links, start);
+        var headers = ReadCircularProof(finding, CircularMembershipReadKind.Links, start, positions: null);
         var positions = headers.Links.SelectMany(link => new[] { link.GroupGuid, link.MemberGuid }).Distinct()
-            .ToDictionary(guid => guid, guid => CircularGroupPosition(reference.FindingId, guid));
+            .ToDictionary(guid => guid, guid => CircularGroupPosition(reference.FindingId, guid, expected: null));
         // Link endpoints occur earlier in the current JSON record. A second bounded projection
         // reads only those identities, rather than retaining every group or inventing a new format.
         var identities = ReadCircularProof(finding, CircularMembershipReadKind.Identities, 0, positions.Values.ToHashSet());
@@ -95,7 +95,7 @@ public sealed partial class JudgementReader
 
     /// <summary>Reads every original occurrence on the selected direct link in bounded pages, keeping member/memberOf source direction.</summary>
     public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(FindingReference reference,
-        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after = null)
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after)
     {
         var selected = ReadCircularSelection(reference);
         if (!selected.IsSuccess) return Result<SavedCircularMembershipWitnesses>.Failure(selected.Error);
@@ -103,11 +103,11 @@ public sealed partial class JudgementReader
         RequireCircularPosition(finding, after?.GenerationId, after?.FindingId, after?.ComponentKey, after?.Offset);
         if (groupGuid == Guid.Empty || memberGuid == Guid.Empty || after is { } mark && (mark.GroupGuid != groupGuid || mark.MemberGuid != memberGuid))
             throw CircularInvalid();
-        var header = ReadCircularProof(finding, CircularMembershipReadKind.FindLink, 0, group: groupGuid, member: memberGuid);
+        var header = ReadCircularProof(finding, CircularMembershipReadKind.FindLink, 0, group: groupGuid, member: memberGuid, positions: null);
         if (header.Links.Count != 1) throw CircularInvalid();
         var link = header.Links[0];
-        var groupPosition = CircularGroupPosition(reference.FindingId, groupGuid);
-        var memberPosition = CircularGroupPosition(reference.FindingId, memberGuid);
+        var groupPosition = CircularGroupPosition(reference.FindingId, groupGuid, expected: null);
+        var memberPosition = CircularGroupPosition(reference.FindingId, memberGuid, expected: null);
         var read = ReadCircularProof(finding, CircularMembershipReadKind.Witnesses, after?.Offset ?? 0,
             new HashSet<long> { groupPosition, memberPosition }, groupGuid, memberGuid, link.Position);
         if (read.Context != header.Context || read.Links.Count != 1 || read.Links[0] != link
@@ -133,7 +133,7 @@ public sealed partial class JudgementReader
     }
 
     private CircularMembershipProjectionResult ReadCircularProof(FindingListItem finding, CircularMembershipReadKind kind,
-        long offset, IReadOnlySet<long>? positions = null, Guid group = default, Guid member = default, long linkPosition = -1)
+        long offset, IReadOnlySet<long>? positions, Guid group = default, Guid member = default, long linkPosition = -1)
     {
         _readCancellation.ThrowIfCancellationRequested();
         OpenPart(StoreSegmentRole.PermissionProof);
@@ -163,7 +163,7 @@ public sealed partial class JudgementReader
         return result;
     }
 
-    private long CircularGroupPosition(long findingId, Guid guid, CircularMembershipGroup? expected = null)
+    private long CircularGroupPosition(long findingId, Guid guid, CircularMembershipGroup? expected)
     {
         _readCancellation.ThrowIfCancellationRequested();
         using var command = _connection.CreateCommand();

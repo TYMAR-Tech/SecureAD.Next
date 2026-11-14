@@ -184,15 +184,22 @@ public sealed partial class OwnAccountMembershipPathTests
         var directory = PrepareRisk(RiskCapture());
         var before = File.ReadAllText(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement));
         using var stopping = new CancellationTokenSource();
-        var log = new ReuseStopLog(directory, stopping, cancelled);
-        var failure = Record.Exception(() => JudgeCoverage(directory, cancellationToken: stopping.Token, log: log));
+        var log = new ReuseStopLog(stopping, cancelled);
+        var progress = new Sec071Progress(value =>
+        {
+            if (!cancelled && value.RequesterPhase == PathRequesterWorkPhase.SelectingQuestions
+                && value.WorkUnit == JudgingWorkUnit.IdentitiesIndexed && value.WorkCompleted > 0)
+                throw new InvalidOperationException("Injected selection failure.");
+        });
+        var failure = Record.Exception(() => JudgeCoverage(directory, progress, stopping.Token, log));
 
-        Assert.NotNull(failure);
+        if (cancelled) Assert.IsType<OperationCanceledException>(failure);
+        else Assert.Equal("Injected selection failure.", Assert.IsType<InvalidOperationException>(failure).Message);
         Assert.Equal(cancelled ? "cancelled" : "failed", log.Outcome);
         Assert.Equal(before, File.ReadAllText(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Judgement)));
     }
 
-    private sealed class ReuseStopLog(string directory, CancellationTokenSource stopping, bool cancel) : IRunLog
+    private sealed class ReuseStopLog(CancellationTokenSource stopping, bool cancel) : IRunLog
     {
         internal string? Outcome { get; private set; }
         public void Note(string phase, string message, IReadOnlyList<RunLogDetail> detail)
@@ -202,11 +209,6 @@ public sealed partial class OwnAccountMembershipPathTests
             Outcome = fields.GetValueOrDefault("outcome");
             if (Outcome != "started") return;
             if (cancel) stopping.Cancel();
-            else
-            {
-                // Refuse changed source generations inside the operation, without deleting the old evidence.
-                File.WriteAllText(AnalysisStoreLifecycle.ManifestPath(directory, AnalysisStoreKind.Derivation), "synthetic changed source selection");
-            }
         }
         public void Record(string phase, AuditError error, IReadOnlyList<RunLogDetail> detail) { }
     }

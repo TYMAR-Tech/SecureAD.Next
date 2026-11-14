@@ -12,34 +12,34 @@ public sealed partial class JudgementReader
         var selected = ReadServiceSelection(reference);
         if (!selected.IsSuccess) return Result<SavedServiceAccountDetails>.Failure(selected.Error);
         var kind = selected.Value.RuleId == "SEC-100" ? ServiceAccountPageKind.EntryMemberships : (ServiceAccountPageKind?)null;
-        var read = ReadServiceProof(selected.Value, kind, 0);
+        var read = ReadServiceProof(selected.Value, kind, 0, linkPosition: -1, wanted: null);
         var entries = kind is not null ? ServiceLinksPage(selected.Value, read, kind.Value, null) : null;
         return Result<SavedServiceAccountDetails>.Success(new(read.Context, entries));
     }
-    public Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(FindingReference reference, ServiceAccountMark? after = null)
+    public Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(FindingReference reference, ServiceAccountMark? after)
     {
         var selected = ReadServiceSelection(reference);
         if (!selected.IsSuccess) return Result<SavedServiceAccountPage<SavedServiceAccountName>>.Failure(selected.Error);
-        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Names, after?.Offset ?? 0);
-        return Result<SavedServiceAccountPage<SavedServiceAccountName>>.Success(ServicePage(read.Context, ServiceAccountPageKind.Names, read.Names, after));
+        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Names, after?.Offset ?? 0, linkPosition: -1, wanted: null);
+        return Result<SavedServiceAccountPage<SavedServiceAccountName>>.Success(ServicePage(read.Context, ServiceAccountPageKind.Names, read.Names, after, link: null));
     }
-    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(FindingReference reference, ServiceAccountMark? after = null) =>
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(FindingReference reference, ServiceAccountMark? after) =>
         ReadServiceLinks(reference, ServiceAccountPageKind.EntryMemberships, after);
-    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(FindingReference reference, ServiceAccountMark? after = null) =>
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(FindingReference reference, ServiceAccountMark? after) =>
         ReadServiceLinks(reference, ServiceAccountPageKind.Links, after);
     private Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceLinks(FindingReference reference, ServiceAccountPageKind kind, ServiceAccountMark? after)
     {
         var selected = ReadServiceSelection(reference, administrative: true);
         if (!selected.IsSuccess) return Result<SavedServiceAccountPage<SavedServiceAccountLink>>.Failure(selected.Error);
-        var read = ReadServiceProof(selected.Value, kind, after?.Offset ?? 0);
+        var read = ReadServiceProof(selected.Value, kind, after?.Offset ?? 0, linkPosition: -1, wanted: null);
         return Result<SavedServiceAccountPage<SavedServiceAccountLink>>.Success(ServiceLinksPage(selected.Value, read, kind, after));
     }
-    public Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(FindingReference reference, long linkPosition, ServiceAccountMark? after = null)
+    public Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(FindingReference reference, long linkPosition, ServiceAccountMark? after)
     {
         var selected = ReadServiceSelection(reference, administrative: true);
         if (!selected.IsSuccess) return Result<SavedServiceAccountPage<SavedServiceAccountWitness>>.Failure(selected.Error);
         if (linkPosition < 0) throw ServiceAccountInvalid();
-        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Values, after?.Offset ?? 0, linkPosition);
+        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Values, after?.Offset ?? 0, linkPosition, wanted: null);
         if (read.Links.Count != 1) throw ServiceAccountInvalid();
         var identities = ServiceAccountIdentities(selected.Value, read, ServiceAccountPageKind.Values, after?.Offset ?? 0, linkPosition);
         var link = ServiceAccountLink(read.Links[0], identities);
@@ -50,13 +50,13 @@ public sealed partial class JudgementReader
         }).ToArray();
         return Result<SavedServiceAccountPage<SavedServiceAccountWitness>>.Success(ServicePage(read.Context, ServiceAccountPageKind.Values, rows, after, link));
     }
-    public Result<SavedServiceAccountPage<AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(FindingReference reference, ServiceAccountMark? after = null)
+    public Result<SavedServiceAccountPage<AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(FindingReference reference, ServiceAccountMark? after)
     {
         var selected = ReadServiceSelection(reference, administrative: true);
         if (!selected.IsSuccess) return Result<SavedServiceAccountPage<AdministrativeMembershipLimitation>>.Failure(selected.Error);
-        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Limitations, after?.Offset ?? 0);
+        var read = ReadServiceProof(selected.Value, ServiceAccountPageKind.Limitations, after?.Offset ?? 0, linkPosition: -1, wanted: null);
         return Result<SavedServiceAccountPage<AdministrativeMembershipLimitation>>.Success(
-            ServicePage(read.Context, ServiceAccountPageKind.Limitations, read.Limitations, after));
+            ServicePage(read.Context, ServiceAccountPageKind.Limitations, read.Limitations, after, link: null));
     }
     private Result<FindingListItem> ReadServiceSelection(FindingReference reference, bool administrative = false)
     {
@@ -66,7 +66,7 @@ public sealed partial class JudgementReader
                 SavedServiceAccountContext.InvalidDetails, BundleDirectory));
     }
     private ServiceAccountProjectionResult ReadServiceProof(FindingListItem finding, ServiceAccountPageKind? kind, long offset,
-        long linkPosition = -1, IReadOnlySet<Guid>? wanted = null)
+        long linkPosition, IReadOnlySet<Guid>? wanted)
     {
         _readCancellation.ThrowIfCancellationRequested();
         if (offset < 0) throw ServiceAccountInvalid();
@@ -95,7 +95,7 @@ public sealed partial class JudgementReader
         var identities = ServiceAccountIdentities(finding, read, kind, after?.Offset ?? 0, -1);
         var rows = read.Links.Select(header =>
             new SavedServiceAccountRow<SavedServiceAccountLink>(header.PagePosition, ServiceAccountLink(header, identities))).ToArray();
-        return ServicePage(read.Context, kind, rows, after);
+        return ServicePage(read.Context, kind, rows, after, link: null);
     }
     private IReadOnlyDictionary<Guid, SavedServiceAccountIdentity> ServiceAccountIdentities(FindingListItem finding,
         ServiceAccountProjectionResult first, ServiceAccountPageKind kind, long offset, long link)
@@ -108,7 +108,7 @@ public sealed partial class JudgementReader
     private static SavedServiceAccountLink ServiceAccountLink(ServiceAccountLinkHeader header, IReadOnlyDictionary<Guid, SavedServiceAccountIdentity> identities) =>
         new(header.Position, identities[header.Group], identities[header.Member], identities[header.Reference], header.Witnesses, header.IsPrimaryGroup);
     private static SavedServiceAccountPage<T> ServicePage<T>(SavedServiceAccountContext context, ServiceAccountPageKind kind,
-        IReadOnlyList<SavedServiceAccountRow<T>> rows, ServiceAccountMark? after, SavedServiceAccountLink? link = null)
+        IReadOnlyList<SavedServiceAccountRow<T>> rows, ServiceAccountMark? after, SavedServiceAccountLink? link)
     {
         var total = kind switch
         {

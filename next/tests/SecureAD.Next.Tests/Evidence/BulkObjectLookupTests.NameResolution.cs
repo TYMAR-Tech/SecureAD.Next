@@ -263,7 +263,7 @@ public sealed partial class BulkObjectLookupTests
     }
 
     private static CapturedObjectIdentity? ReferenceIdentity(BundleReader reader, string name) =>
-        ObjectAttributesReader.ReadIdentity(reader.Connection, name, false) is { } identity
+        ObjectAttributesReader.ReadIdentity(reader.Connection, name, false, objectId: null) is { } identity
             ? identity with { CaptureGenerationId = reader.Description.CaptureGenerationId } : null;
 
     private static bool IsExactNameSql(string sql) =>

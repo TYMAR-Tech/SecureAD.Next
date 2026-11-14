@@ -64,7 +64,7 @@ public sealed partial class OpenedRunResultsTests
                 Assert.Equal((finding.Subject, finding.ObjectGuid, finding.RuleId, finding.Severity, FindingListItem.FromFinding(finding).Detail),
                     (item.Subject, item.ObjectGuid, item.RuleId, item.Severity, item.Detail));
                 Assert.Equal(1, read.Value.RulesRan);
-                Assert.Equal("May be incomplete", new FindingRowViewModel(item).Coverage);
+                Assert.Equal("May be incomplete", new FindingRowViewModel(item, current: null).Coverage);
             }
             Assert.Equal((1L, 1L, 0L, 0L, 0L, 0L),
                 (counts.Count("judgement"), counts.Count("permission"), counts.Count("path"),

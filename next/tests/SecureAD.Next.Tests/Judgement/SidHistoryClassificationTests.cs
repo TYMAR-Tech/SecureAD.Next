@@ -112,7 +112,7 @@ public sealed class SidHistoryClassificationTests
         Assert.Equal(new[] { values[0], values[1], values[2], values[9] }, evidence.Matches.Select(value => value.Sid));
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Dn)).Value.Findings);
         Assert.False(row.EvidenceIsComplete);
-        var flagged = reader.ReadSidHistory(row.Reference!.Value);
+        var flagged = reader.ReadSidHistory(row.Reference!.Value, after: null);
         Assert.True(flagged.IsSuccess, flagged.Error?.Description);
         Assert.True(flagged.Value.Context.Matches(row));
         Assert.Equal(new[] { 0, 1, 2, 9 }, flagged.Value.Values.Select(value => value.Ordinal));

@@ -11,7 +11,7 @@ public sealed partial class JudgementReader
         var read = ReadGroupReviewCore(reference, false, null);
         return read.IsSuccess ? Result<SavedGroupReview>.Success(read.Value.Context) : Result<SavedGroupReview>.Failure(read.Error);
     }
-    public Result<SavedGroupReferences> ReadGroupReviewReferences(FindingReference reference, GroupReviewReferenceMark? after = null) =>
+    public Result<SavedGroupReferences> ReadGroupReviewReferences(FindingReference reference, GroupReviewReferenceMark? after) =>
         ReadGroupReviewCore(reference, true, after);
 
     private Result<SavedGroupReferences> ReadGroupReviewCore(FindingReference reference, bool references, GroupReviewReferenceMark? after)

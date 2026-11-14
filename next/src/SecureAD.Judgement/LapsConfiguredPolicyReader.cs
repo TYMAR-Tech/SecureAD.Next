@@ -98,7 +98,7 @@ internal sealed class LapsConfiguredPolicyReader : IDisposable
     private sealed class PreparedRegistry(GpoRegistrySettings original)
     {
         private readonly IReadOnlyList<RegistryPolicyInstruction> _instructions =
-            RegistryPolicyInterpreter.ReadInstructions(original.Settings);
+            RegistryPolicyInterpreter.ReadInstructions(original.Settings).Instructions;
 
         internal (GpoRegistrySettings Registry, IReadOnlyList<RegistryPolicyInstruction> Instructions) Copy()
         {

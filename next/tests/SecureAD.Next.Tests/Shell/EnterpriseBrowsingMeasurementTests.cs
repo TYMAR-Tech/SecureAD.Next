@@ -121,9 +121,9 @@ public sealed class EnterpriseBrowsingMeasurementTests(
                         rules.Show(run);
                         await rules.ReadCompletion;
                         Assert.Null(rules.RulesRefusal);
-                        Assert.Equal(32, rules.VisibleRuleRows.Count);
+                        Assert.Equal(RuleCatalogue.All.Count, rules.VisibleRuleRows.Count);
                     }, () => ProductionViewThemeTests.View("RulesView.xaml", rules),
-                        view => GridProbe(view, rules.VisibleRuleRows, 32));
+                        view => GridProbe(view, rules.VisibleRuleRows, RuleCatalogue.All.Count));
                     await Measure(mode, "Objects", async () =>
                     {
                         assets.Pane = AssetsPane.Objects;

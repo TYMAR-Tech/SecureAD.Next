@@ -254,17 +254,23 @@ public sealed partial class OwnAccountMembershipPathTests
     {
         using var stopping = new CancellationTokenSource();
         using var fixture = PrerequisiteFixtureFor("both-permissions", token: stopping.Token);
-        fixture.Prerequisites.Create(fixture.Nodes, [new(UserDn, TargetDn)]);
+        var original = fixture.Prerequisites.Create(fixture.Nodes, [new(UserDn, TargetDn)]);
         if (change == "cancelled") stopping.Cancel();
         else if (change == "disposed") fixture.Sources.Dispose();
         else Derive(fixture.Reader.BundleDirectory);
 
         var error = Record.Exception(() => fixture.Prerequisites.Create(fixture.Nodes, [new(UserDn, TargetDn)]));
 
+        if (change == "replaced-derivation")
+        {
+            Assert.Null(error);
+            var reused = fixture.Prerequisites.Create(fixture.Nodes, [new(UserDn, TargetDn)]);
+            Assert.Same(Assert.Single(original).Assessment, Assert.Single(reused).Assessment);
+            return;
+        }
         Assert.NotNull(error);
         if (change == "cancelled") Assert.IsType<OperationCanceledException>(error);
-        else if (change == "disposed") Assert.IsType<ObjectDisposedException>(error);
-        else Assert.IsType<InvalidOperationException>(error);
+        else Assert.IsType<ObjectDisposedException>(error);
     }
 
     [Fact]

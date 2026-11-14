@@ -151,9 +151,9 @@ public sealed class ResourceDelegationDetailTests
                 "resource" => page with { Context = page.Context with { Resource = page.Context.Resource with { ObjectGuid = Guid.NewGuid() } } },
                 "generation" => page with { Context = page.Context with { Reference = reference with { GenerationId = Guid.NewGuid() } } },
                 "coverage" => page with { Context = page.Context with { EvidenceIsComplete = false } },
-                "too-many" => page with { Holders = [.. page.Holders, new("S-1-5-21-1-2-3-9999")] },
+                "too-many" => page with { Holders = [.. page.Holders, new("S-1-5-21-1-2-3-9999", Name: null)] },
                 "null-context" => page with { Context = null! },
-                "bad-sid" => page with { Holders = [new("not a SID")] },
+                "bad-sid" => page with { Holders = [new("not a SID", Name: null)] },
                 "empty-name" => page with { Holders = [new("S-1-5-21-1-2-3-1100", "")] },
                 _ => page with { Next = page.Next!.Value with { Offset = 51 } },
             };

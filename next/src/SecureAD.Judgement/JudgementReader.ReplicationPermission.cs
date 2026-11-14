@@ -9,7 +9,7 @@ namespace SecureAD.Judgement;
 public sealed partial class JudgementReader
 {
     /// <summary>Reads one saved replication header and one page of original entries, without routes or access replay.</summary>
-    public Result<SavedReplicationPermission> ReadReplicationPermission(FindingReference reference, ReplicationPermissionMark? after = null)
+    public Result<SavedReplicationPermission> ReadReplicationPermission(FindingReference reference, ReplicationPermissionMark? after)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();

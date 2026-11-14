@@ -21,11 +21,11 @@ internal static class FullControlEvaluator
         var checks = new List<FullControlRight>();
         foreach (var right in RequiredRights)
         {
-            checks.Add(Check(source, right, null, true));
+            checks.Add(Check(source, right, null, true, matchDeny: null, includeScoped: false, attributeScope: null));
             foreach (var scope in source.Entries.Where(entry => Applies(entry) && entry.HasObjectType
                 && IsDeny(entry) && (entry.AccessMask & right) != 0)
                 .Select(entry => entry.ObjectTypeGuid ?? "").Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal))
-                checks.Add(Check(source, right, scope, KnownScope(source, right, scope)));
+                checks.Add(Check(source, right, scope, KnownScope(source, right, scope), matchDeny: null, includeScoped: false, attributeScope: null));
         }
         var uncertainty = checks.Aggregate(ControlUncertainty.None, (value, check) => value | check.Uncertainty);
         var state = checks.Any(check => check.State == ControlEvaluationState.NotEstablished) ? ControlEvaluationState.NotEstablished
@@ -97,7 +97,7 @@ internal static class FullControlEvaluator
     }
 
     internal static FullControlRight AssessStandardRight(FullControlSource source, int right,
-        Func<PermissionEntry, bool?> matchDeny) => Check(source, right, null, true, matchDeny, includeScoped: true);
+        Func<PermissionEntry, bool?> matchDeny) => Check(source, right, null, true, matchDeny, includeScoped: true, attributeScope: null);
 
     internal static FullControlRight AssessAttributeRight(FullControlSource source, int right,
         Func<PermissionEntry, ControlEvaluationState> scope, Func<PermissionEntry, bool?> matchDeny,
@@ -109,8 +109,8 @@ internal static class FullControlEvaluator
         CheckCore(source, right, null, true, matchTrustee, true, scope, true, matchTrustee);
 
     private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope,
-        Func<PermissionEntry, bool?>? matchDeny = null, bool includeScoped = false,
-        Func<PermissionEntry, ControlEvaluationState>? attributeScope = null, bool holderIdentityEstablished = false) =>
+        Func<PermissionEntry, bool?>? matchDeny, bool includeScoped,
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope, bool holderIdentityEstablished = false) =>
         CheckCore(source, right, scope, knownScope, matchDeny, includeScoped, attributeScope, holderIdentityEstablished, null);
 
     private static FullControlRight CheckCore(FullControlSource source, int right, string? scope, bool knownScope,

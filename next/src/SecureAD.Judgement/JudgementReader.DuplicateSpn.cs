@@ -6,7 +6,7 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    public Result<SavedDuplicateSpn> ReadDuplicateSpn(FindingReference reference, DuplicateSpnMark? position = null)
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(FindingReference reference, DuplicateSpnMark? position)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();

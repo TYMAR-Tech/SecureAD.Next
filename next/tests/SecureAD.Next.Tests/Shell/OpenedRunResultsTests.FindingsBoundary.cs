@@ -48,7 +48,7 @@ public sealed partial class OpenedRunResultsTests
                     _ => item.Detail,
                 },
             };
-            return FindingDisplaySnapshot(new(item));
+            return FindingDisplaySnapshot(new(item, current: null));
         }).ToArray();
         var permissionHeaders = original.Findings.Any(finding => finding.Evidence is PrivilegedSidHistoryEvidence
             or ObjectOwnershipEvidence or ObjectTakeoverEvidence or LapsPasswordReaderEvidence or LapsDecryptorEvidence);
@@ -345,7 +345,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Null(source.ReadSelectedFinding(directory, listed.Reference!.Value, false).Value.Membership);
         var selected = source.ReadSelectedFinding(directory, listed.Reference.Value, true);
         Assert.True(selected.IsSuccess, selected.Error?.Description);
-        var display = new FindingRowViewModel(selected.Value);
+        var display = new FindingRowViewModel(selected.Value, current: null);
         Assert.True(display.HasMembershipEvidence);
         Assert.Equal("May be incomplete", display.Coverage);
         var membership = Assert.IsType<FindingMembershipDisplay>(selected.Value.Membership);
@@ -472,7 +472,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(new[]
         {
             "finding", "finding_circular_group", "group_inventory", "group_inventory_product", "judgement",
-            "laps_inventory", "laps_inventory_product",
+            "laps_configured_scope", "laps_inventory", "laps_inventory_product",
             "member_attribution_product", "membership_route",
             "membership_route_step", "membership_route_summary", "rule_execution", "rule_execution_missing_input",
             "tier0_distance", "tier0_distance_product", "tier0_finding_product", "tier0_path_calculation",

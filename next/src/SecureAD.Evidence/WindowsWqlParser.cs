@@ -11,8 +11,9 @@ internal static class WindowsWqlParser
 {
     private static readonly Meter PreparationMeter = new("SecureAD.Evidence.WqlParser");
     private static readonly Counter<long> NativeParses = PreparationMeter.CreateCounter<long>("wql.native_parses");
+    private const string ParserInterfaceId = "81166f58-dd98-11d3-a120-00105a1f515a";
     private static readonly Guid ParserClass = new("eac8a024-21e2-4523-ad73-a71a0aa2f56a");
-    private static readonly Guid ParserInterface = new("81166f58-dd98-11d3-a120-00105a1f515a");
+    private static readonly Guid ParserInterface = new(ParserInterfaceId);
     private const int ChangedApartment = unchecked((int)0x80010106);
 
     internal static WqlQueryReading Read(string query, CancellationToken cancellationToken)
@@ -216,7 +217,7 @@ internal static class WindowsWqlParser
         [FieldOffset(0)] public double Double;
     }
 
-    [ComImport, Guid("81166f58-dd98-11d3-a120-00105a1f515a"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [ComImport, Guid(ParserInterfaceId), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IWbemQuery
     {
         [PreserveSig] int Empty();

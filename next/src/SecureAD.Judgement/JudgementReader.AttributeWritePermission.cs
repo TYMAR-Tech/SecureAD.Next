@@ -7,7 +7,7 @@ namespace SecureAD.Judgement;
 public sealed partial class JudgementReader
 {
     /// <summary>Reads saved attribute-write context and one original permission-entry page without permission or schema replay.</summary>
-    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(FindingReference reference, AttributeWritePermissionMark? after = null)
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(FindingReference reference, AttributeWritePermissionMark? after)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();

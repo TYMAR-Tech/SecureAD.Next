@@ -697,7 +697,7 @@ public sealed partial class BundleReader : IDisposable
         {
             // Ambiguous names retain the original LIMIT 1 selection, even after a name-match request.
             CountNameLookup("identity-nocase-sql");
-            identity = ObjectAttributesReader.ReadIdentity(connection, distinguishedName, _navigation);
+            identity = ObjectAttributesReader.ReadIdentity(connection, distinguishedName, _navigation, objectId: null);
         }
         if (identity is not null) identity = identity with { CaptureGenerationId = Description.CaptureGenerationId };
         _nameLookupCancellation.ThrowIfCancellationRequested();

@@ -75,9 +75,9 @@ internal sealed partial class AssetsViewModel
     private bool CanPreviousTier0() => CanUseTier0() && _tier0Back.Count != 0;
 
     [RelayCommand(CanExecute = nameof(CanOpenTier0))]
-    private void OpenTier0Path() => Open(SelectedTier0Object!.DistinguishedName, ObjectSectionCatalog.SavedTier0Path);
+    private void OpenTier0Path() => Open(SelectedTier0Object!.DistinguishedName, ObjectSectionCatalog.SavedTier0Path, expectedObjectGuid: null);
     [RelayCommand(CanExecute = nameof(CanOpenTier0))]
-    private void OpenTier0Findings() => Open(SelectedTier0Object!.DistinguishedName, ObjectSectionCatalog.Findings);
+    private void OpenTier0Findings() => Open(SelectedTier0Object!.DistinguishedName, ObjectSectionCatalog.Findings, expectedObjectGuid: null);
     [RelayCommand(CanExecute = nameof(CanNextTier0))]
     private void NextTier0Page() { _tier0Back.Push(_tier0After); _tier0After = _tier0Next; LoadVisible(); }
     [RelayCommand(CanExecute = nameof(CanPreviousTier0))]

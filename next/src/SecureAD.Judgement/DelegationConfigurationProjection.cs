@@ -229,7 +229,7 @@ internal sealed class DelegationConfigurationProjection
                 }
             });
             _json.RequireKeys(keys, "TrusteeSid", "EntryOrdinals", "NullDacl");
-            _json.Require(sid is not null && new SavedDelegationHolder(sid).IsValid);
+            _json.Require(sid is not null && new SavedDelegationHolder(sid, Name: null).IsValid);
             if (nullDacl)
             {
                 _json.Require(entries == 0 && sid == WellKnownSidCatalog.AllSids.Single(value => value.ConstantName == "EVERYONE").Sid);
@@ -239,7 +239,7 @@ internal sealed class DelegationConfigurationProjection
             {
                 _json.Require(entries > 0);
                 if (_serviceCount >= _offset && _serviceCount < _offset + SavedDelegationConfiguration.PageSize)
-                    _holders.Add(new(sid!));
+                    _holders.Add(new(sid!, Name: null));
             }
             _serviceCount++;
         });

@@ -77,6 +77,14 @@ This approval changes no UI wording or layout, authorises no live access or reca
 
 ## What a finding means
 
+**Remaining CI explanations - owner-approved 2026-11-13.**
+Use the existing four gMSA detail explanations for unsupported reader entries, unsupported scope,
+requester-dependent denial and unavailable group type in rule summaries as well.
+For unresolved permission control or GPO-directory permissions, say that the entries, identities,
+scope or expected access could not be fully assessed; preserve established findings and state
+that absence of a finding is not a complete answer, without promising that recapture fixes
+unsupported analysis or changing rule severity, saved formats or layout.
+
 **Verification recommendations from captured evidence - owner clarification supplied with the
 Scout audit instructions, recorded at the owner's request on 2026-10-13.**
 SecureAD recommends what an administrator should verify from the evidence it gathered; a finding

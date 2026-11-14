@@ -137,7 +137,9 @@ public sealed class RegistryPolicyInterpreterTests
     {
         var source = Entry(Key, "**DeleteValues", "First;Second");
         var keyDelete = Entry("Software", "**DeleteKeys", "One;Two");
-        var instructions = RegistryPolicyInterpreter.ReadInstructions([source, keyDelete]);
+        var decoded = RegistryPolicyInterpreter.ReadInstructions([source, keyDelete]);
+        Assert.Empty(decoded.Issues);
+        var instructions = decoded.Instructions;
         Assert.Equal(4, instructions.Count);
         Assert.Equal([0, 0, 1, 1], instructions.Select(instruction => instruction.EntryIndex));
         Assert.Equal(["First", "Second"], instructions.Take(2).Select(instruction => instruction.ValueName));
@@ -157,11 +159,23 @@ public sealed class RegistryPolicyInterpreterTests
             Entry(@"Software\Microsoft\Windows\CurrentVersion\Policies", "**DeleteKeys", "LAPS"),
             new(Key, "**SecureKey", (uint)RegistryValueType.Dword, [1, 0, 0, 0]),
         ];
-        var instructions = RegistryPolicyInterpreter.ReadInstructions(entries);
+        var instructions = RegistryPolicyInterpreter.ReadInstructions(entries).Instructions;
         Assert.False(instructions[0].Affects(Key, Name));
         Assert.True(instructions[1].Affects(Key, Name));
         Assert.True(instructions[2].Affects(Key, Name));
         Assert.False(instructions[2].Affects(Key + "Other", Name));
         Assert.False(instructions[3].Affects(Key, Name));
+    }
+
+    [Fact]
+    public void UnsupportedInstructionsKeepTheirOriginalSourceAndAnExplicitIssue()
+    {
+        var unsupported = Entry(Key, "**UnknownOperation", "captured");
+        var decoded = RegistryPolicyInterpreter.ReadInstructions([Entry(Key, Name, "supported"), unsupported]);
+        var issue = Assert.Single(decoded.Issues);
+        Assert.Equal((1, Key, "**UnknownOperation"), (issue.EntryIndex, issue.KeyPath, issue.ValueName));
+        Assert.Equal(RegistryPolicyInstructionKind.Unsupported, decoded.Instructions[1].Kind);
+        Assert.Same(unsupported, decoded.Instructions[1].Source);
+        Assert.Equal(decoded.Instructions[1].Reason, issue.Reason);
     }
 }

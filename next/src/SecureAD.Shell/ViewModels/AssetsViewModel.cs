@@ -654,7 +654,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         if (finding?.HasTier0Routes != true || BundlePath is null) return;
         if (FindingDetails is { } details && !details.CheckCurrent()) return;
-        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path);
+        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path, expectedObjectGuid: null);
     }
 
     /// <summary>
@@ -667,10 +667,10 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (listed is null || BundlePath is null)
             return;
 
-        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview);
+        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview, expectedObjectGuid: null);
     }
 
-    private void Open(string distinguishedName, string section, Guid? expectedObjectGuid = null)
+    private void Open(string distinguishedName, string section, Guid? expectedObjectGuid)
     {
         if (BundlePath is null || _captureIsRunning || (!_active && !HasObjectPresentation)) return;
         CancelObjectRead();
@@ -692,7 +692,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         if (Pane == AssetsPane.Groups && _groupObjectBack.TryPop(out var group))
         {
-            Open(group, ObjectSectionCatalog.Membership);
+            Open(group, ObjectSectionCatalog.Membership, expectedObjectGuid: null);
             return;
         }
         DismissObjectDetails();

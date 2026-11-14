@@ -36,6 +36,12 @@ internal static class UnresolvedWording
         + "Recorded positive links do not establish that all other membership has been assessed.";
     private const string MembershipScopeUnsupported =
         "The captured membership relationship has unsupported or contradictory group scope; this run cannot establish authorization through that relationship.";
+    private const string PermissionControlIncomplete =
+        "One or more permission entries, identities or scopes could not be assessed. "
+        + "Existing findings remain evidence of the permissions shown; absence of a finding is not a complete answer.";
+    private const string GpoDirectoryPermissionIncomplete =
+        "The GPO-directory permission, or whether the holder's access is expected, could not be fully assessed from this run. "
+        + "Existing findings remain evidence of the permissions shown; absence of a finding is not a complete answer.";
 
     /// <summary>
     /// What to tell an operator about <paramref name="token"/>, as a judging recorded it.
@@ -107,6 +113,7 @@ internal static class UnresolvedWording
                 UnresolvedReason.AttributeWriteIncomplete =>
                     "The attribute-write permission or the holder's administrative expectedness could not be assessed completely. Established findings remain evidence of the permissions shown.",
                 UnresolvedReason.ReplicationPermissionIncomplete => UnexpectedDomainSecretReplication.IncompleteExplanation,
+                UnresolvedReason.GpoDirectoryPermissionIncomplete => GpoDirectoryPermissionIncomplete,
                 _ => $"{token} was undecided, and this version has no plainer way to say why.",
             };
 
@@ -176,6 +183,11 @@ internal static class UnresolvedWording
             UnresolvedReason.AttributeWriteIncomplete =>
                 "The requested attribute-write permission or its expectedness has unresolved captured or derived inputs.",
             UnresolvedReason.ReplicationPermissionIncomplete => UnexpectedDomainSecretReplication.IncompleteExplanation,
+            UnresolvedReason.PermissionControlNotEvaluated => PermissionControlIncomplete,
+            UnresolvedReason.GpoDirectoryPermissionIncomplete => GpoDirectoryPermissionIncomplete,
+            UnresolvedReason.GmsaReaderConditionalEntryUnsupported or UnresolvedReason.GmsaReaderScopeUnsupported
+                or UnresolvedReason.GmsaReaderDenialUnassessed or UnresolvedReason.GmsaReaderGroupTypeUnavailable =>
+                SavedGmsaPasswordReaders.DescribeLimitation($"{DerivedFactKind.PrincipalExpansion}.{reason}"),
 
             UnresolvedReason.OwnerServerBehaviorNotRecorded or UnresolvedReason.OwnerHeuristicNotRead or UnresolvedReason.OwnerRightsNotEvaluated =>
                 Ownership.GetString(reason.ToString(), CultureInfo.CurrentUICulture) ?? throw new MissingManifestResourceException(reason.ToString()),

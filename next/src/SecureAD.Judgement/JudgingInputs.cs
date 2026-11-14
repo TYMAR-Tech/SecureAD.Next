@@ -36,7 +36,7 @@ internal sealed class JudgingInputs : IDisposable
     private bool _disposed;
 
     private JudgingInputs(InputSet inputs, BundleReader bundle, CancellationToken cancellationToken,
-        JudgingInputs? parent = null)
+        JudgingInputs? parent)
     {
         _inputs = inputs;
         _parent = parent;
@@ -88,7 +88,7 @@ internal sealed class JudgingInputs : IDisposable
         var opened = BundleReader.Open(file.Value, cancellationToken);
         if (!opened.IsSuccess) return Result<JudgingInputs>.Failure(opened.Error);
         if (InputBindings.Enabled) InputBindings.Add(1, new KeyValuePair<string, object?>("bundle", files.Directory));
-        return new JudgingInputs(new(files, file.Value, selected), opened.Value, cancellationToken);
+        return new JudgingInputs(new(files, file.Value, selected), opened.Value, cancellationToken, parent: null);
     }
 
     internal Result<JudgingInputs> Fork(CancellationToken cancellationToken)

@@ -4,11 +4,11 @@ using SecureAD.Kernel;
 
 namespace SecureAD.Judgement;
 
-public sealed record SavedPermissionControlCalculation(FindingReference Reference, PermissionControlCalculation Calculation);
+internal sealed record SavedPermissionControlCalculation(FindingReference Reference, PermissionControlCalculation Calculation);
 
 public sealed partial class JudgementReader
 {
-    public Result<SavedPermissionControlCalculation> ReadPermissionControlCalculation(FindingReference reference)
+    internal Result<SavedPermissionControlCalculation> ReadPermissionControlCalculation(FindingReference reference)
     {
         var selected = ReadSelectedFindingCore(reference, false, "");
         if (!selected.IsSuccess) return Result<SavedPermissionControlCalculation>.Failure(selected.Error);

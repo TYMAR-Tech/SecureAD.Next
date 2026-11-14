@@ -34,7 +34,7 @@ public sealed partial class JudgementReader
                 "JudgementGenerationChanged", ErrorSeverity.Failed,
                 "The findings continuation belongs to a different saved judgement.", BundleDirectory));
         var page = ReadPageRows(query, ListColumns, "JOIN rule_execution r ON r.rule_id=f.rule_id",
-            row => (Id: row.GetInt64(0), Item: ReadListItem(row)));
+            row => (Id: row.GetInt64(0), Item: ReadListItem(row, includeMembership: false, statement: null)));
         if (!page.IsSuccess)
             return Result<FindingListPage>.Failure(page.Error);
         var findings = new List<FindingListItem>(page.Value.Rows.Count);
@@ -182,7 +182,7 @@ public sealed partial class JudgementReader
         return complete == 1;
     }
 
-    private FindingListItem ReadListItem(SqliteDataReader row, bool includeMembership = false, string? statement = null)
+    private FindingListItem ReadListItem(SqliteDataReader row, bool includeMembership, string? statement)
     {
         var kind = Enum.Parse<FindingListKind>(row.GetString(13));
         var complete = row.GetInt64(14);

@@ -25,7 +25,7 @@ internal sealed record LapsSettingSource(GpoHierarchyLink Link, CapturedObjectId
 
 internal abstract record LapsSettingDecision;
 internal sealed record LapsSettingLeaf(LapsRegistryState State, LapsSettingSource? Source, string? Reason,
-    LapsSettingDecision? Previous = null) : LapsSettingDecision;
+    LapsSettingDecision? Previous) : LapsSettingDecision;
 internal sealed record LapsSettingBranch(GpoWmiConditionKey Condition,
     LapsSettingDecision WhenMatches, LapsSettingDecision WhenDoesNotMatch) : LapsSettingDecision;
 
@@ -141,7 +141,7 @@ internal static class LapsConfiguredPolicyCalculator
         var domainAdmins = new LapsDomainAdmins(domain, domainSid is null ? null : domainSid + "-512");
         var errors = hierarchy.Limitations.ToList();
         var roots = Enum.GetValues<LapsPolicySetting>().ToDictionary(setting => setting,
-            _ => (LapsSettingDecision)new LapsSettingLeaf(LapsRegistryState.Untouched, null, null));
+            _ => (LapsSettingDecision)new LapsSettingLeaf(LapsRegistryState.Untouched, null, null, Previous: null));
         var generations = new HashSet<Guid>();
         foreach (var (rowId, policy) in policies)
         {
@@ -242,8 +242,8 @@ internal static class LapsConfiguredPolicyCalculator
     private static LapsSettingDecision Apply(LapsSettingDecision root, RegistryPolicyInstruction instruction,
         LapsSettingSource source)
     {
-        var assigned = new LapsSettingLeaf(LapsRegistryState.Assigned, source, null);
-        var deleted = new LapsSettingLeaf(LapsRegistryState.Deleted, source, null);
+        var assigned = new LapsSettingLeaf(LapsRegistryState.Assigned, source, null, Previous: null);
+        var deleted = new LapsSettingLeaf(LapsRegistryState.Deleted, source, null, Previous: null);
         var memo = new Dictionary<LapsSettingDecision, LapsSettingDecision>(ReferenceEqualityComparer.Instance);
         return Map(root);
 

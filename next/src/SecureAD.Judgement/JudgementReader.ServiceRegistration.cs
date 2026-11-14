@@ -9,7 +9,7 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    public Result<SavedServiceRegistrations> ReadServiceRegistrations(FindingReference reference, ServiceNameMark? after = null)
+    public Result<SavedServiceRegistrations> ReadServiceRegistrations(FindingReference reference, ServiceNameMark? after)
     {
         var saved = ReadServiceContext(reference);
         if (!saved.IsSuccess) return Result<SavedServiceRegistrations>.Failure(saved.Error);
@@ -35,7 +35,7 @@ public sealed partial class JudgementReader
         return Result<SavedServiceRegistrations>.Success(new(context, values, next));
     }
 
-    public Result<SavedInitialMemberships> ReadInitialMemberships(FindingReference reference, InitialMembershipMark? after = null)
+    public Result<SavedInitialMemberships> ReadInitialMemberships(FindingReference reference, InitialMembershipMark? after)
     {
         var saved = ReadServiceContext(reference);
         if (!saved.IsSuccess) return Result<SavedInitialMemberships>.Failure(saved.Error);
@@ -66,7 +66,7 @@ public sealed partial class JudgementReader
         return Result<SavedInitialMemberships>.Success(new(context, groups, next));
     }
 
-    public Result<SavedMembershipRoutes> ReadMembershipRoutes(FindingReference reference, int membershipOrdinal, MembershipRouteMark? after = null)
+    public Result<SavedMembershipRoutes> ReadMembershipRoutes(FindingReference reference, int membershipOrdinal, MembershipRouteMark? after)
     {
         var saved = ReadServiceContext(reference);
         if (!saved.IsSuccess) return Result<SavedMembershipRoutes>.Failure(saved.Error);
@@ -95,7 +95,7 @@ public sealed partial class JudgementReader
     }
 
     public Result<SavedMembershipSteps> ReadMembershipSteps(FindingReference reference, int membershipOrdinal, int routeOrdinal,
-        MembershipStepMark? after = null)
+        MembershipStepMark? after)
     {
         var saved = ReadServiceContext(reference);
         if (!saved.IsSuccess) return Result<SavedMembershipSteps>.Failure(saved.Error);

@@ -80,7 +80,7 @@ public sealed class FindingsPagingTests
             new UserAccountControlEvidence(0x400202));
 
     private static readonly RuleDefinition Sec027 = new(
-        "SEC-027", "Privileged identifier carried in SID history", Severity.High, 1,
+        "SEC-027", "Privileged identifier carried in SID history", Severity.High, PrivilegedSidHistory.RuleVersion,
         ["user", "computer", "group"],
         ["sIDHistory", "objectSid", "objectClass"],
         RequiredDerivedFacts: []);
@@ -97,7 +97,7 @@ public sealed class FindingsPagingTests
     private static Finding ASidHistoryFinding() =>
         new(
             "SEC-027",
-            1,
+            PrivilegedSidHistory.RuleVersion,
             Severity.High,
             new FindingSubject(FindingSubjectKind.Account, "svc-migrated"),
             Guid.NewGuid(),
@@ -611,7 +611,9 @@ public sealed class FindingsPagingTests
             writer.Complete(Started);
         }
 
-        var page = Page(directory, Query());
+        FindingsPage? page = null;
+        Assert.Null(Record.Exception(() => page = Page(directory, Query())));
+        Assert.NotNull(page);
 
         var marker = Assert.Single(page.Findings, f => f.RuleId == "SEC-030");
         Assert.Equal("S-1-5-21-1-2-3-1104", Assert.IsType<AdminCountWithoutProtectionEvidence>(

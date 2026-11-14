@@ -373,7 +373,7 @@ internal static class ObjectAttributesReader
     }
 
     internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation,
-        long? objectId = null)
+        long? objectId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         using var query = connection.CreateCommand();

@@ -15,7 +15,7 @@ public sealed record SavedLapsReadSupports(FindingReference Reference, LapsReadS
 public sealed partial class JudgementReader
 {
     /// <summary>Reads at most fifty requested supports without loading another page or replaying analysis.</summary>
-    public Result<SavedLapsReadSupports> ReadLapsReadSupports(FindingReference reference, LapsReadSupportMark? after = null)
+    public Result<SavedLapsReadSupports> ReadLapsReadSupports(FindingReference reference, LapsReadSupportMark? after)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         _readCancellation.ThrowIfCancellationRequested();

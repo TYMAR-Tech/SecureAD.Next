@@ -31,7 +31,7 @@ public sealed class LapsReadSavedSupportTests
         Assert.True(header.IsComplete);
         Assert.Equal(1, header.Assessment.ExposureCount);
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings);
-        var page = reader.ReadLapsReadSupports(row.Reference!.Value);
+        var page = reader.ReadLapsReadSupports(row.Reference!.Value, after: null);
         Assert.True(page.IsSuccess, page.Error?.Description);
         var proof = Assert.Single(page.Value.Exposures);
         Assert.Equal((flags, system, run.TargetGuid, Scout09LapsRun.Target),
@@ -50,7 +50,7 @@ public sealed class LapsReadSavedSupportTests
         var run = Scout09LapsRun.Create(scope: scope, attribute: "msLAPS-EncryptedPassword");
         using var reader = JudgementReader.Open(run.Directory).Value;
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings);
-        var page = reader.ReadLapsReadSupports(row.Reference!.Value).Value;
+        var page = reader.ReadLapsReadSupports(row.Reference!.Value, after: null).Value;
         var proof = Assert.Single(page.Exposures, value => value.Attribute == "msLAPS-EncryptedPassword");
         Assert.Equal(LapsReadState.Established, proof.State);
         Assert.Equal(LapsReadState.Established, proof.ReadProperty.State);
@@ -86,7 +86,7 @@ public sealed class LapsReadSavedSupportTests
         Assert.Equal(0, evidence.Assessment.EstablishedExposureCount);
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings);
         Assert.False(row.EvidenceIsComplete);
-        var support = Assert.Single(reader.ReadLapsReadSupports(row.Reference!.Value).Value.Exposures);
+        var support = Assert.Single(reader.ReadLapsReadSupports(row.Reference!.Value, after: null).Value.Exposures);
         Assert.Equal(LapsReadState.Unresolved, support.State);
     }
 
@@ -96,7 +96,7 @@ public sealed class LapsReadSavedSupportTests
         var run = Scout09LapsRun.Create(holders: 103);
         using var reader = JudgementReader.Open(run.Directory).Value;
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings);
-        var first = reader.ReadLapsReadSupports(row.Reference!.Value).Value;
+        var first = reader.ReadLapsReadSupports(row.Reference!.Value, after: null).Value;
         var second = reader.ReadLapsReadSupports(row.Reference.Value, Assert.IsType<LapsReadSupportMark>(first.Next)).Value;
         var third = reader.ReadLapsReadSupports(row.Reference.Value, Assert.IsType<LapsReadSupportMark>(second.Next)).Value;
         Assert.Equal((50, 50, 3), (first.Exposures.Count, second.Exposures.Count, third.Exposures.Count));
@@ -120,7 +120,7 @@ public sealed class LapsReadSavedSupportTests
         var run = Scout09LapsRun.Create(holders: 51);
         using var reader = JudgementReader.Open(run.Directory).Value;
         var reference = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings).Reference!.Value;
-        var after = Assert.IsType<LapsReadSupportMark>(reader.ReadLapsReadSupports(reference).Value.Next);
+        var after = Assert.IsType<LapsReadSupportMark>(reader.ReadLapsReadSupports(reference, after: null).Value.Next);
         after = defect switch
         {
             "generation" => after with { Reference = reference with { GenerationId = Guid.NewGuid() } },
@@ -175,7 +175,7 @@ public sealed class LapsReadSavedSupportTests
         });
         using var reader = JudgementReader.Open(run.Directory).Value;
         var row = Assert.Single(reader.ReadListPage(FindingsQuery.About(Scout09LapsRun.Target)).Value.Findings);
-        Assert.Throws<InvalidDataException>(() => reader.ReadLapsReadSupports(row.Reference!.Value));
+        Assert.Throws<InvalidDataException>(() => reader.ReadLapsReadSupports(row.Reference!.Value, after: null));
     }
 
     [Fact]

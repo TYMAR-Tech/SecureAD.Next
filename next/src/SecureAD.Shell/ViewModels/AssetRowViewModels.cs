@@ -260,11 +260,11 @@ internal sealed class FindingRowViewModel
 
     /// <summary>Creates a screen's view of one finding.</summary>
     /// <param name="finding">The finding as the judgement holds it.</param>
-    public FindingRowViewModel(Finding finding) : this(FindingListItem.FromFinding(finding))
+    public FindingRowViewModel(Finding finding) : this(FindingListItem.FromFinding(finding), current: null)
     {
     }
 
-    public FindingRowViewModel(FindingListItem finding, Func<bool>? current = null)
+    public FindingRowViewModel(FindingListItem finding, Func<bool>? current)
     {
         ArgumentNullException.ThrowIfNull(finding);
 

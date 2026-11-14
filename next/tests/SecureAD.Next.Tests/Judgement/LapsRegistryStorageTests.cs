@@ -121,7 +121,7 @@ public sealed class LapsRegistryStorageTests
         Assert.Throws<InvalidDataException>(() => reader.Read());
     }
 
-    private static string Build(string kind)
+    internal static string Build(string kind)
     {
         var directory = TempDirectories.Create("laps-registry-storage");
         RegistryPolicyEntry[] entries = kind == "operation"

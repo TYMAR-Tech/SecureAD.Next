@@ -8,11 +8,11 @@ namespace SecureAD.Judgement;
 public sealed partial class JudgementReader
 {
     /// <summary>Reads selected saved SEC-012 context and one original service page without analysis replay.</summary>
-    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(FindingReference reference, DelegationConfigurationMark? after = null)
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(FindingReference reference, DelegationConfigurationMark? after)
         => ReadDelegationConfiguration(reference, after, DelegationConfigurationKind.Constrained);
 
     /// <summary>Reads selected saved SEC-013 context and configured holders, without descriptor or authorization replay.</summary>
-    public Result<SavedDelegationConfiguration> ReadResourceDelegation(FindingReference reference, DelegationConfigurationMark? after = null)
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(FindingReference reference, DelegationConfigurationMark? after)
         => ReadDelegationConfiguration(reference, after, DelegationConfigurationKind.ResourceBased);
 
     private Result<SavedDelegationConfiguration> ReadDelegationConfiguration(FindingReference reference,

@@ -7,28 +7,28 @@ namespace SecureAD.Judgement;
 
 public sealed partial class JudgementReader
 {
-    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(FindingReference reference, BroadMembershipMark? after = null)
+    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(FindingReference reference, BroadMembershipMark? after)
     {
         var selected = ReadBroadSelection(reference);
         if (!selected.IsSuccess) return Result<SavedBroadMembershipPage<SavedBroadIdentity>>.Failure(selected.Error);
-        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Sources, after?.Offset ?? 0);
-        return Result<SavedBroadMembershipPage<SavedBroadIdentity>>.Success(BroadPage(read, BroadMembershipPageKind.Sources, read.Sources, after));
+        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Sources, after?.Offset ?? 0, linkPosition: -1, wanted: null);
+        return Result<SavedBroadMembershipPage<SavedBroadIdentity>>.Success(BroadPage(read, BroadMembershipPageKind.Sources, read.Sources, after, link: null));
     }
-    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(FindingReference reference, BroadMembershipMark? after = null)
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(FindingReference reference, BroadMembershipMark? after)
     {
         var selected = ReadBroadSelection(reference);
         if (!selected.IsSuccess) return Result<SavedBroadMembershipPage<SavedBroadMembershipLink>>.Failure(selected.Error);
-        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Links, after?.Offset ?? 0);
+        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Links, after?.Offset ?? 0, linkPosition: -1, wanted: null);
         var identities = BroadIdentities(selected.Value, read, BroadMembershipPageKind.Links, after?.Offset ?? 0, -1);
         var rows = read.Links.Select(header => new SavedBroadMembershipRow<SavedBroadMembershipLink>(header.Position, BroadLink(header, identities))).ToArray();
-        return Result<SavedBroadMembershipPage<SavedBroadMembershipLink>>.Success(BroadPage(read, BroadMembershipPageKind.Links, rows, after));
+        return Result<SavedBroadMembershipPage<SavedBroadMembershipLink>>.Success(BroadPage(read, BroadMembershipPageKind.Links, rows, after, link: null));
     }
-    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(FindingReference reference, long linkPosition, BroadMembershipMark? after = null)
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(FindingReference reference, long linkPosition, BroadMembershipMark? after)
     {
         var selected = ReadBroadSelection(reference);
         if (!selected.IsSuccess) return Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>>.Failure(selected.Error);
         if (linkPosition < 0) throw BroadInvalid();
-        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Values, after?.Offset ?? 0, linkPosition);
+        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Values, after?.Offset ?? 0, linkPosition, wanted: null);
         if (read.Links.Count != 1) throw BroadInvalid();
         var identities = BroadIdentities(selected.Value, read, BroadMembershipPageKind.Values, after?.Offset ?? 0, linkPosition);
         var link = BroadLink(read.Links[0], identities);
@@ -41,12 +41,12 @@ public sealed partial class JudgementReader
         }).ToArray();
         return Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>>.Success(BroadPage(read, BroadMembershipPageKind.Values, rows, after, link));
     }
-    public Result<SavedBroadMembershipPage<AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(FindingReference reference, BroadMembershipMark? after = null)
+    public Result<SavedBroadMembershipPage<AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(FindingReference reference, BroadMembershipMark? after)
     {
         var selected = ReadBroadSelection(reference);
         if (!selected.IsSuccess) return Result<SavedBroadMembershipPage<AdministrativeMembershipLimitation>>.Failure(selected.Error);
-        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Limitations, after?.Offset ?? 0);
-        return Result<SavedBroadMembershipPage<AdministrativeMembershipLimitation>>.Success(BroadPage(read, BroadMembershipPageKind.Limitations, read.Limitations, after));
+        var read = ReadBroadProof(selected.Value, BroadMembershipPageKind.Limitations, after?.Offset ?? 0, linkPosition: -1, wanted: null);
+        return Result<SavedBroadMembershipPage<AdministrativeMembershipLimitation>>.Success(BroadPage(read, BroadMembershipPageKind.Limitations, read.Limitations, after, link: null));
     }
 
     private Result<FindingListItem> ReadBroadSelection(FindingReference reference)
@@ -57,7 +57,7 @@ public sealed partial class JudgementReader
                 SavedBroadMembershipContext.InvalidDetails, BundleDirectory));
     }
     private BroadMembershipProjectionResult ReadBroadProof(FindingListItem finding, BroadMembershipPageKind kind, long offset,
-        long linkPosition = -1, IReadOnlySet<Guid>? wanted = null)
+        long linkPosition, IReadOnlySet<Guid>? wanted)
     {
         _readCancellation.ThrowIfCancellationRequested();
         if (offset < 0) throw BroadInvalid();
@@ -96,7 +96,7 @@ public sealed partial class JudgementReader
         return new(header.Position, group, member, reference, header.Witnesses);
     }
     private static SavedBroadMembershipPage<T> BroadPage<T>(BroadMembershipProjectionResult read, BroadMembershipPageKind kind,
-        IReadOnlyList<SavedBroadMembershipRow<T>> rows, BroadMembershipMark? after, SavedBroadMembershipLink? link = null)
+        IReadOnlyList<SavedBroadMembershipRow<T>> rows, BroadMembershipMark? after, SavedBroadMembershipLink? link)
     {
         var total = kind switch { BroadMembershipPageKind.Sources => read.Context.SourceCount, BroadMembershipPageKind.Links => read.Context.LinkCount,
             BroadMembershipPageKind.Values => link!.WitnessCount, _ => read.Context.LimitationCount };

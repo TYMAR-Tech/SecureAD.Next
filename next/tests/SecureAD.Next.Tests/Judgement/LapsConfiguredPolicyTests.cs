@@ -55,7 +55,7 @@ public sealed class LapsConfiguredPolicyTests
     public void LapsPrecedenceDomainAdminsDefaultWithoutAReceivingDomainRemainsUnresolved()
     {
         var value = LapsConfiguredPolicyCalculator.Describe(LapsPolicySetting.ADPasswordEncryptionPrincipal,
-            new(LapsRegistryState.Untouched, null, null), new(null, null));
+            new(LapsRegistryState.Untouched, null, null, Previous: null), new(null, null));
         Assert.Equal(LapsConfiguredValueState.Unresolved, value.State);
         Assert.Null(value.DomainAdmins);
         Assert.NotNull(value.Reason);
@@ -416,7 +416,7 @@ public sealed class LapsConfiguredPolicyTests
             return new LapsRegistryPolicyInput(policy, LapsConfiguredPolicyReader.RegistryExtension(extensions),
                 extensions, settings, null)
             {
-                Instructions = RegistryPolicyInterpreter.ReadInstructions(settings.Settings),
+                Instructions = RegistryPolicyInterpreter.ReadInstructions(settings.Settings).Instructions,
             };
         });
         var result = LapsConfiguredPolicyCalculator.Calculate(inputs, registry, CancellationToken.None);

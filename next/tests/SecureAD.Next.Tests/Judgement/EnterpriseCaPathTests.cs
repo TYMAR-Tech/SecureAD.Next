@@ -69,7 +69,7 @@ public sealed class EnterpriseCaPathTests(ITestOutputHelper output)
         command.CommandText = "SELECT schema_version FROM judgement";
         var storedVersion = Assert.IsType<long>(command.ExecuteScalar());
 
-        Assert.Equal((8, 17, (int?)2, (int?)2, ConfigurationDn),
+        Assert.Equal((9, 17, (int?)2, (int?)2, ConfigurationDn),
             (CapturedAttributeCatalog.Version, derivation.Description.SchemaVersion,
              binding?.PolicyVersion, binding?.ContractVersion, binding?.ConfigurationNamingContext));
         Assert.Equal((long)JudgementSchema.Version, storedVersion);
