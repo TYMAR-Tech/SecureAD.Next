@@ -1,7 +1,7 @@
 namespace SecureAD.Evidence.Findings;
 
 /// <summary>
-/// Whether an object is a domain controller, and whether the three ways of asking agree.
+/// Captured controller indicators, and whether those indicators agree.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -52,14 +52,13 @@ public sealed record DomainControllerSignals(
     private const int ReadOnlyDomainControllersGroup = 521;
 
     /// <summary>
-    /// Whether this is a domain controller, on the strength of any signal.
+    /// The legacy any-signal controller indicator, not class-qualified controller proof.
     /// </summary>
     /// <remarks>
-    /// Any signal is enough, which is the generous direction and is chosen knowingly: a real
-    /// domain controller wrongly judged an ordinary computer produces a loud false finding on
-    /// every domain controller in the forest, and an operator learns to ignore the rule. The
-    /// evasion this admits is answered by <see cref="SignalsDisagree"/> rather than by tightening
-    /// this into a test a legitimate controller could fail.
+    /// Existing inventory and other consumers retain their any-signal policy. Unconstrained
+    /// delegation exclusions instead require captured computer class and
+    /// <see cref="UserAccountControlEvidence.HasDomainControllerFlag"/>; a writable group or OU
+    /// must not suppress the finding whose disagreement would otherwise remain invisible.
     /// </remarks>
     public bool IsDomainController =>
         ServerTrustAccountBit || PrimaryGroupIsDomainController || UnderDomainControllersOu;

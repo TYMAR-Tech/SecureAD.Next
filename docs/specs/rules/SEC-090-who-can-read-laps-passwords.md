@@ -1,9 +1,9 @@
-# SEC-090 ΓÇö a broad principal can read LAPS passwords
+# SEC-090 - broad permissions on LAPS password attributes
 
-**Status:** specified 2026-09-03. Not yet built.
+**Status:** specified 2026-09-03; bounded calculation/readback correction approved 2026-11-10.
 **Severity:** High. Settled by the owner 2026-09-03. See [┬º7](#7-severity).
 **Rule identifier:** `SEC-090`.
-**Implemented by:** `LapsPasswordReadAccess` in `SecureAD.Judgement` (planned).
+**Implemented by:** `LapsPasswordReadAccess` in `SecureAD.Judgement`.
 
 ---
 
@@ -33,13 +33,17 @@ reasoned and is dropped.
 
 ## 1. What it finds
 
-A **computer object whose LAPS password attributes can be read by a broad principal** ΓÇö one that is
+A **computer object with captured LAPS password-attribute permission exposures connected to a broad principal** ΓÇö one that is
 broad in every organisation: `Everyone`, `Authenticated Users`, `Domain Users`, `Domain Computers`,
 `Guests`, `Anonymous Logon`.
 
-The principal need not be named in the access control entry. It counts if it falls out of the **full
-expansion** of whichever principal *is* named, however deeply nested, and the finding shows the
-membership path that reached it.
+The broad identity need not be named in the permission entry: captured expansion may connect it
+to the named holder, with a saved membership witness.
+Named-holder read permission, this membership attribution and an individual requester's actual
+authorization are separate answers; this rule must not construct a complete Windows token or
+claim password presence, retrieval, decryption, takeover or a completed Tier-0 path.
+Conditional entries and incomplete sources remain explicitly unresolved while independently
+established permission exposures are retained.
 
 In plain terms: *somebody delegated the right to read local administrator passwords, and when you
 follow the group memberships all the way down, the delegation reaches everybody.*
@@ -59,9 +63,11 @@ Administrative Models*, section *On Member Servers*:
 > memberships of those groups in the domain can gain administrative control of all systems on which
 > the group has been nested"
 
-**What the organisation can therefore mitigate:** an unnoticed path by which every authenticated user
-in the domain can retrieve the local administrator password of any managed machine, and so obtain
-administrative control of it ΓÇö locally, with no domain authentication and nothing logged centrally.
+**What the organisation can therefore mitigate:** broad directory read permissions that could
+expose a clear-text local administrator password if a value is stored, or permit retrieval of
+encrypted material that needs separate decryption permission.
+The rule does not establish that a password was obtained or used, or that a live operation would
+succeed or go unlogged.
 
 ## 3. What this rule refuses to claim
 
@@ -75,11 +81,12 @@ organisation running the audit knows.
 
 1. **A broad principal is in the fully expanded effective set.** This needs no local knowledge,
    because it is wrong in every organisation.
-2. **The scope the grant is inherited from, stated as a fact and not a verdict.** A grant inherited
-   from the domain root is reported as such and is not called an error; a domain-root delegation may
-   be intended.
-3. **The membership path**, so the operator can act. At depth six, naming the broad principal does
-   not tell anybody which link to cut.
+2. **The captured permission scope, stated as a fact and not a verdict.** Inheritance and its class
+   marker are retained, but `InheritedObjectType` is not an originating OU or domain root.
+   The originating container was not captured and must not be invented.
+3. **A captured membership witness and every independent supporting holder/attribute exposure.**
+   A selected short witness is not the only route and removing it does not establish that the
+   remaining read exposure is closed.
 
 **Testing the name of the delegated principal would not work anyway.** Microsoft's security groups
 reference gives the built-in `Users` group default members of *Authenticated Users* and *Domain
@@ -93,7 +100,7 @@ A finding exists only when something fired; an inventory has to exist when nothi
 
 ## 4. The two rights a confidential attribute needs
 
-**Every Windows LAPS password attribute is marked confidential.** Microsoft's schema reference gives
+**Microsoft ships the Windows LAPS password attributes as confidential.** Microsoft's schema reference gives
 `msLAPS-Password` a `SearchFlags` value of `904`, and lists the constituent bits ΓÇö one of which is
 `fCONFIDENTIAL`.[^schema]
 
@@ -108,7 +115,12 @@ A finding exists only when something fired; an inventory has to exist when nothi
 never looked at `READ_PROPERTY`. That names principals who cannot in fact read the password, which is
 the product telling a customer something false.
 
-**This rule requires both to raise a finding.** Settled by the owner, 2026-09-03.
+**A confidential attribute requires both rights.** Settled by the owner, 2026-09-03.
+The owner-approved 2026-11-10 correction applies that requirement to the actual captured
+`searchFlags` and `systemFlags`, including the documented base-schema exception.
+A known non-confidential attribute needs Read Property without the extra Control Access gate.
+Unknown flags remain unknown rather than becoming shipped defaults; independently established
+both-rights evidence remains useful even where the flags were not captured.
 
 **A `CONTROL_ACCESS`-only grant is still reported ΓÇö as a stated fact, not a finding.** It is a
 sensitive permission and Microsoft's own tooling hunts for it, but on its own it does not yield the
@@ -163,9 +175,9 @@ so. Decryption is governed by the `ADPasswordEncryptionPrincipal` policy setting
 ACL: "When a user is granted permission to query a password from Active Directory that doesn't
 automatically imply that the user has permission to decrypt an encrypted password."[^getstarted]
 
-**The DSRM and password-history variants are out of scope**, recorded on the punch list. They concern
-domain controllers rather than the member-machine population this rule judges, and folding them in
-would mix two questions.
+**The DSRM and password-history variants remain outside the existing three-attribute catalogue.**
+This correction must not silently expand that catalogue or narrow the existing computer-object
+population to Tier 0 or member servers.
 
 ## 7. Severity
 
@@ -189,9 +201,9 @@ modify the severity. Two reasons:
 | Input | Source | Why |
 | --- | --- | --- |
 | `objectClass` | captured attribute | the class test, most-derived, via `LapsAttributes.IsComputer` |
-| `userAccountControl` | captured attribute | the disabled-account exclusion, via `LapsAttributes.IsDisabled` |
+| Captured schema flags | `AttributeVisibility` | decide the additional confidentiality gate without substituting defaults |
 | the object's DACL | `JudgingContext.Permissions` | the entries, their masks, and `HasObjectType` |
-| the LAPS attribute schema GUIDs | the captured schema layer | to match an object-specific entry to the attribute it names |
+| LAPS attribute/class GUIDs and property-set assignments | the captured schema layer | qualify the full object/class/property-set/attribute scope hierarchy |
 | the expansion of each trustee | `JudgingContext.MembersOfPrincipal` | to reach a broad principal through nesting, with the path |
 
 **The schema GUIDs are resolved from the *captured* layer, not the shipped one.** A forest that never
@@ -199,7 +211,7 @@ ran `Update-LapsADSchema` has no such attribute at all, and an answer from a shi
 claim otherwise. This follows `docs/decisions/0014`, which requires every answer to state which layer
 it came from.
 
-**Declared derived fact:** `DerivedFactKind.PrincipalExpansion`. `JudgingRun` refuses the whole
+**Declared derived facts:** `PrincipalExpansion` and `AttributeVisibility`. `JudgingRun` refuses the whole
 judging where the nesting was not derived, rather than letting the rule report per-object silence ΓÇö
 a group nobody expanded and a group with nothing in it are opposite answers, and being handed the
 second when the first is true would report a broad delegation as safe.
@@ -215,7 +227,7 @@ second when the first is true would report a broad delegation as safe.
 | A trustee is not in the bundle ΓÇö a principal from a trusted external forest, or one from a domain the run could not read (`PrincipalExpansionOutcome.PrincipalNotFound`) | could not resolve, for that trustee | Not found is not *not broad*. |
 | A trustee's identifier belongs to a domain the run read **in full**, and nothing in that domain carries it (`PrincipalExpansionOutcome.PrincipalDoesNotExist`) | judged, nothing reported for that trustee | No such principal exists, so the entry grants the right to nobody. This is knowledge, not ignorance, and refusing on it costs a verdict for nothing. Usually an account deleted while the entries naming it were left behind. |
 | The expansion stopped at a budget (`StoppedAtBudget`) | could not resolve, for that trustee | Everything listed is genuinely inside; the absence of anything else is not a fact. `PrincipalExpansion.IsComplete` is what says so. |
-| The object is a disabled computer account | judged, nothing reported | Consistent with SEC-091: there is no live machine, so there is no local administrator password to read. |
+| The AD computer account is disabled or its account state is unreadable | Still assess captured read-permission exposures | Directory-account state does not establish password presence, a running endpoint or local-account state. |
 
 ## 10. Tests
 
@@ -223,10 +235,21 @@ second when the first is true would report a broad delegation as safe.
 [┬º4](#4-the-two-rights-a-confidential-attribute-needs) describes, so agreeing with it would be a
 defect rather than a check. Every value below is anchored to Microsoft or to the lab.
 
+The 2026-11-10 correction withdraws the old disabled-account inference rather than treating it as
+evidence that stored secrets or permissions disappeared.
+Known read exposures coexist with separate descriptor, schema, conditional-entry and membership
+limitations; an uncertain result is not a complete negative.
+One High finding remains bound to its computer and broad identity, retaining independent
+holder/attribute supports instead of only a representative shortest route.
+The native saved-judgment format changes for those supports and source limits, while original
+captures/results remain unchanged and no older result is migrated or reclassified on read.
+Ordinary finding views use prepared counts/text; supporting grants are read only as requested
+pages of at most 50, with exact finding/generation/resource binding and original occurrences.
+
 Negative controls that must each be observed failing:
 
 - an allow entry cancelled by a preceding deny ΓÇö must **not** be reported
-- an entry with `READ_PROPERTY` and no `CONTROL_ACCESS` ΓÇö must **not** be a finding
+- a known confidential attribute with `READ_PROPERTY` and no `CONTROL_ACCESS` must **not** be a finding
 - an entry with `CONTROL_ACCESS` and no `READ_PROPERTY` ΓÇö must be a stated fact, **not** a finding
 - an object entry carrying no `ObjectType` (`HasObjectType` false) ΓÇö must be treated as reaching the
   attribute, not as scoped to nothing

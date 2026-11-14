@@ -8,8 +8,8 @@ namespace SecureAD.Next.Tests.Kernel.GroupPolicy;
 /// </summary>
 /// <remarks>
 /// The format and the precedence rule are both from
-/// <c>learn.microsoft.com/windows-server/identity/ad-ds/manage/group-policy/group-policy-scope</c>,
-/// whose worked example is three links concatenated into one string.
+/// MS-GPOL 2.2.2 and 3.2.5.1.5: stored ordinary links are prepended to the processing list,
+/// leaving the first stored link processed last.
 /// </remarks>
 public sealed class PolicyLinkListTests
 {
@@ -48,16 +48,15 @@ public sealed class PolicyLinkListTests
     }
 
     /// <summary>
-    /// Microsoft: the links are read left to right and applied in reverse, so the last one in the
-    /// string is applied first and wins. Listing them in stored order and letting a reader assume
-    /// the first one wins has the answer exactly backwards.
+    /// MS-GPOL 3.2.5.1.5 prepends ordinary links to the processing list; the first stored
+    /// link is processed last, so its ordinary priority is one.
     /// </summary>
     [Fact]
-    public void ThePrecedenceIsTheReverseOfTheStoredOrder()
+    public void NormalLinkPriorityFollowsStoredOrderUnderMicrosoftProtocol()
     {
         var links = PolicyLinkList.Of(PolicyOne + PolicyTwo).Links;
 
-        Assert.Equal([2, 1], links.Select(l => l.Precedence));
+        Assert.Equal([1, 2], links.Select(l => l.Precedence));
     }
 
     [Fact]
@@ -71,9 +70,8 @@ public sealed class PolicyLinkListTests
     // ---------------------------------------------------------------------------------------
 
     /// <summary>
-    /// The options decide whether the link is enabled and whether it is enforced, and both matter -
-    /// but Learn's page for the attribute does not give the values, so the number is carried
-    /// through unworded rather than being invented.
+    /// The stored reader keeps original option text; computer scope and inheritance are
+    /// separate questions from parsing the container's value.
     /// </summary>
     [Fact]
     public void TheOptionsAreCarriedAsStoredAndNotWorded()
@@ -156,5 +154,33 @@ public sealed class PolicyLinkListTests
 
         Assert.Single(list.Links);
         Assert.Single(list.Errors);
+    }
+
+    [Theory]
+    [InlineData("prefix", 0)]
+    [InlineData("between", 1)]
+    [InlineData("suffix", 1)]
+    public void UnconsumedLinkContentCannotDisappear(string location, int retained)
+    {
+        var stored = location switch
+        {
+            "prefix" => "unread" + PolicyOne,
+            "between" => PolicyOne + "unread" + PolicyTwo,
+            "suffix" => PolicyOne + "unread",
+            _ => throw new ArgumentOutOfRangeException(nameof(location)),
+        };
+        var reading = PolicyLinkList.Of(stored);
+        Assert.Equal(retained, reading.Links.Count);
+        Assert.Single(reading.Errors);
+    }
+
+    [Fact]
+    public void AReadableLinkKeepsItsOriginalSlotAfterAnUnreadableEntry()
+    {
+        var reading = PolicyLinkList.Of("[LDAP://;0]" + PolicyOne);
+        var link = Assert.Single(reading.Links);
+        Assert.Single(reading.Errors);
+        Assert.Equal(2, link.Order);
+        Assert.Equal(2, link.Precedence);
     }
 }

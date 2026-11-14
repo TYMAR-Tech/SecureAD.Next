@@ -69,6 +69,9 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
         return () => session is not null && Holds(session) && session.IsCurrent;
     }
 
+    public Result<Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query) =>
+        WithRun(bundleDirectory, reader => reader.ReadLapsExport(bundleDirectory, query));
+
     private bool Holds(OpenedRunResults session)
     {
         lock (_sessionGate) return !_closed && ReferenceEquals(_results, session);
@@ -188,6 +191,100 @@ internal sealed partial class BundleAssetSource : IAssetSource, IDisposable
     /// <inheritdoc/>
     public Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query) =>
         WithRun(bundleDirectory, reader => reader.ReadFindingsList(bundleDirectory, query));
+
+    public Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership) =>
+        WithRun(bundleDirectory, reader => reader.ReadSelectedFinding(bundleDirectory, reference, includeMembership));
+
+    public Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadAccountSetting(bundleDirectory, reference));
+
+    public Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadConstrainedDelegation(bundleDirectory, reference, after));
+
+    public Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadResourceDelegation(bundleDirectory, reference, after));
+
+    public Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadAttributeWritePermission(bundleDirectory, reference, after));
+
+    public Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGmsaPasswordReaders(bundleDirectory, reference, after));
+    public Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGpoDirectoryPermission(bundleDirectory, reference, after));
+
+    public Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadReplicationPermission(bundleDirectory, reference, after));
+
+    public Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position) =>
+        WithRun(bundleDirectory, reader => reader.ReadDuplicateSpn(bundleDirectory, reference, position));
+
+    public Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadSidHistory(bundleDirectory, reference, after));
+
+    public Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadLapsReadSupports(bundleDirectory, reference, after));
+
+    public Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadProtectionMarker(bundleDirectory, reference));
+
+    public Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadOwnershipAssessment(bundleDirectory, reference));
+    public Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadPermissionControl(bundleDirectory, reference));
+    public Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadPermissionControlChain(bundleDirectory, reference, after));
+
+    public Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadGroupReview(bundleDirectory, reference));
+    public Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadGroupReviewReferences(bundleDirectory, reference, after));
+
+    public Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipSources(bundleDirectory, reference, after));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipLinks(bundleDirectory, reference, after));
+    public Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipValues(bundleDirectory, reference, linkPosition, after));
+    public Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadBroadMembershipLimitations(bundleDirectory, reference, after));
+
+    public Result<SavedServiceAccountDetails> ReadServiceAccount(string bundleDirectory, FindingReference reference) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccount(bundleDirectory, reference));
+    public Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountNames(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountEntryMemberships(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountLinks(bundleDirectory, reference, after));
+    public Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(string bundleDirectory, FindingReference reference, long linkPosition, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountValues(bundleDirectory, reference, linkPosition, after));
+    public Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(string bundleDirectory, FindingReference reference, ServiceAccountMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceAccountLimitations(bundleDirectory, reference, after));
+
+    public Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipGroups(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipLoop(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipLinks(bundleDirectory, reference, after));
+    public Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadCircularMembershipWitnesses(bundleDirectory, reference, groupGuid, memberGuid, after));
+
+    public Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadServiceRegistrations(bundleDirectory, reference, after));
+    public Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadInitialMemberships(bundleDirectory, reference, after));
+    public Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadMembershipRoutes(bundleDirectory, reference, membershipOrdinal, after));
+    public Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after) =>
+        WithRun(bundleDirectory, reader => reader.ReadMembershipSteps(bundleDirectory, reference, membershipOrdinal, routeOrdinal, after));
 
     public Result<FindingsPage> ReadFindings(string bundleDirectory, FindingsQuery query)
     {

@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using SecureAD.Evidence.Inventory;
 using SecureAD.Evidence.Run;
@@ -39,6 +40,17 @@ internal enum AnalysisPublicationPart
 /// </remarks>
 public static class AnalysisStoreLifecycle
 {
+    private static readonly Meter SelectionReadMeter = new("SecureAD.Evidence.Readback");
+    private static readonly Counter<long> SelectionManifestReads =
+        SelectionReadMeter.CreateCounter<long>("store.selection_manifest_reads");
+
+    private static void ObserveManifestRead(string directory, string kind)
+    {
+        if (SelectionManifestReads.Enabled)
+            SelectionManifestReads.Add(1, new KeyValuePair<string, object?>("bundle", Path.GetFullPath(directory)),
+                new KeyValuePair<string, object?>("kind", kind));
+    }
+
     /// <summary>Excludes another judgement writer or an explicitly requested discard in this bundle.</summary>
     public static IDisposable LockJudgementWrites(string bundleDirectory) =>
         new FileStream(BundleLayout.JudgementWriteLockPath(bundleDirectory), FileMode.OpenOrCreate,
@@ -302,6 +314,7 @@ public static class AnalysisStoreLifecycle
             // Publication replaces this name atomically. A short metadata read must not block
             // that replacement; its handle still describes the complete old or new manifest.
             using var stream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            ObserveManifestRead(bundleDirectory, Prefix(kind));
             var manifest = JsonSerializer.Deserialize<StoreRootManifest>(stream);
             var role = kind == AnalysisStoreKind.Derivation ? StoreSegmentRole.Derivation : StoreSegmentRole.Judgement;
             var roles = manifest?.Segments is { Count: > 1 }
@@ -459,6 +472,7 @@ public static class AnalysisStoreLifecycle
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidDataException("The capture root is a link.");
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            ObserveManifestRead(directory, "capture");
             var root = JsonSerializer.Deserialize<StoreRootManifest>(stream);
             if (!ValidRoot(root, [StoreSegmentRole.Evidence, StoreSegmentRole.Navigation, StoreSegmentRole.Overview, StoreSegmentRole.Delegations])
                 || root!.EvidenceSeal != root.Segment(StoreSegmentRole.Evidence).Hash || root.DerivationSummary is not null

@@ -122,6 +122,7 @@ public static class BundleMerge
         "unreadable_security_descriptor",
         "unresolved_reference",
         "sysvol_gpo_coverage",
+        "gpo_template_version",
         "gpo_registry_setting",
         "gpo_security_setting",
         "gpo_restricted_group",

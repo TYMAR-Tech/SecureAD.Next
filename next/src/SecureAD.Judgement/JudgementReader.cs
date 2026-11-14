@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Kernel;
+using SecureAD.Kernel.GroupPolicy;
 using SecureAD.Kernel.Security;
 using SecureAD.Storage;
 
@@ -34,7 +35,7 @@ public sealed record JudgementDescription(
 /// <param name="Outcome">What became of it.</param>
 /// <param name="ObjectsJudged">Objects it reached a verdict on.</param>
 /// <param name="ObjectsNotJudged">Objects it could not.</param>
-/// <param name="MissingInputs">The declared attributes that were absent.</param>
+/// <param name="MissingInputs">Recorded uncaptured, unusable or unresolved input reasons.</param>
 /// <param name="FindingsProduced">
 /// How many findings this rule wrote.
 /// <para>
@@ -159,7 +160,7 @@ public sealed partial class JudgementReader : IDisposable
     {
         internal readonly Dictionary<ControlEdgeStorage.Question, ControlEdgeStorage.Counts> Controls = [];
         internal readonly Dictionary<GroupInventoryQuery, int> Groups = [];
-        internal readonly Dictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsManagement, int>> Laps = [];
+        internal readonly Dictionary<(string Container, ListingScope Scope), IReadOnlyDictionary<LapsValuePresence, int>> Laps = [];
         internal FindingsFilterValues? Filters;
     }
     // A new connection must not repeat counts already answered under the same file protection.
@@ -508,13 +509,15 @@ public sealed partial class JudgementReader : IDisposable
         finally { lease?.Dispose(); }
     }
 
-    private void OpenPart(StoreSegmentRole role)
+    private void OpenPart(StoreSegmentRole role) => OpenPart(role, _readCancellation);
+
+    private void OpenPart(StoreSegmentRole role, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        _readCancellation.ThrowIfCancellationRequested();
+        cancellationToken.ThrowIfCancellationRequested();
         if (_openedParts.Contains(role)) return;
         var protection = _protection ?? throw new InvalidOperationException("The judgement reader has no protected publication.");
-        var schema = protection.Attach(role, _readCancellation);
+        var schema = protection.Attach(role, cancellationToken);
         using var query = _connection.CreateCommand();
         query.CommandText = $"SELECT schema_version,role,generation,evidence_seal,derivation_generation FROM \"{schema}\".judgement_part";
         using var header = query.ExecuteReader();
@@ -1027,9 +1030,14 @@ public sealed partial class JudgementReader : IDisposable
         r.attribute                         AS r_attribute,
         r.rights                            AS r_rights,
         r.reach                             AS r_reach,
-        r.inherited_from                    AS r_inherited_from,
+        r.inherited_class_guid              AS r_inherited_class_guid,
+        r.is_inherited                      AS r_is_inherited,
         r.expansion_was_complete            AS r_expansion_was_complete,
         r.route_length                      AS r_route_length,
+        r.assessment_complete               AS r_assessment_complete,
+        r.exposure_count                    AS r_exposure_count,
+        r.established_count                 AS r_established_count,
+        r.assessment_json                   AS r_assessment_json,
         r.finding_id                        AS r_finding_id,
         e.policy_display_name               AS e_policy_display_name,
         e.configured_value                  AS e_configured_value,
@@ -1038,6 +1046,15 @@ public sealed partial class JudgementReader : IDisposable
         e.decryptor_name                    AS e_decryptor_name,
         e.expansion_was_complete            AS e_expansion_was_complete,
         e.route_count                       AS e_route_count,
+        e.settings_outcome                  AS e_settings_outcome,
+        e.settings_reason                   AS e_settings_reason,
+        e.registry_entry_index              AS e_registry_entry_index,
+        e.registry_key_path                 AS e_registry_key_path,
+        e.registry_value_name               AS e_registry_value_name,
+        e.registry_type                     AS e_registry_type,
+        e.registry_data                     AS e_registry_data,
+        e.parse_error_count                 AS e_parse_error_count,
+        e.interpretation_issue_count        AS e_interpretation_issue_count,
         e.finding_id                        AS e_finding_id,
         t.trustee_sid                       AS t_trustee_sid,
         t.trustee_name                      AS t_trustee_name,
@@ -1069,6 +1086,13 @@ public sealed partial class JudgementReader : IDisposable
         aw.proof                            AS aw_proof,
         aw.fingerprint                      AS aw_fingerprint,
         aw.generation                       AS aw_generation,
+        gmr.proof                           AS gmr_proof,
+        gmr.fingerprint                     AS gmr_fingerprint,
+        gmr.generation                      AS gmr_generation,
+        gdp.finding_id                      AS gdp_finding_id,
+        gdp.proof                           AS gdp_proof,
+        gdp.fingerprint                     AS gdp_fingerprint,
+        gdp.generation                      AS gdp_generation,
         mr.proof                            AS mr_proof,
         mr.fingerprint                      AS mr_fingerprint,
         mr.generation                       AS mr_generation,
@@ -1103,6 +1127,8 @@ public sealed partial class JudgementReader : IDisposable
         LEFT JOIN finding_broad_group_membership am ON am.finding_id = f.finding_id
         LEFT JOIN finding_service_account svc ON svc.finding_id = f.finding_id
         LEFT JOIN finding_attribute_write aw ON aw.finding_id = f.finding_id
+        LEFT JOIN finding_gmsa_reader gmr ON gmr.finding_id = f.finding_id
+        LEFT JOIN finding_gpo_directory gdp ON gdp.finding_id = f.finding_id
         LEFT JOIN finding_membership_review mr ON mr.finding_id = f.finding_id
         LEFT JOIN finding_delegation_configuration dc ON dc.finding_id = f.finding_id
         LEFT JOIN finding_replication_permission rp ON rp.finding_id = f.finding_id
@@ -1134,6 +1160,8 @@ public sealed partial class JudgementReader : IDisposable
     private Finding ReadFinding(SqliteDataReader reader, IReadOnlyDictionary<string, int> versions)
     {
         var ruleId = reader.GetString(reader.GetOrdinal("rule_id"));
+        if (ruleId == "SEC-027" && versions[ruleId] != PrivilegedSidHistory.RuleVersion)
+            throw new InvalidDataException(SavedSidHistory.UnsupportedVersion);
 
         // Which table answered decides the kind. Checked before anything is read out of any of
         // them, because a finding whose evidence row is missing everywhere has lost what it rests
@@ -1228,6 +1256,32 @@ public sealed partial class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("domain_fqdn")), reader.GetString(reader.GetOrdinal("object_class")),
                 reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
                 Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId is "SEC-080" or "SEC-081")
+        {
+            OpenPart(StoreSegmentRole.PermissionProof);
+            if (reader.IsDBNull(reader.GetOrdinal("gdp_finding_id")) || versions[ruleId] != 1) throw GpoDirectoryPermissionRules.Invalid();
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GpoDirectoryPermissionStorage.Read(_connection, reader.GetInt64(reader.GetOrdinal("gdp_finding_id")),
+                reader.GetString(reader.GetOrdinal("gdp_proof")), (byte[])reader.GetValue(reader.GetOrdinal("gdp_fingerprint")),
+                reader.GetString(reader.GetOrdinal("gdp_generation")), Description, _findingDerivationSeal, ruleId,
+                Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))), reader.GetString(reader.GetOrdinal("distinguished_name")),
+                reader.GetString(reader.GetOrdinal("domain_fqdn")), reader.GetString(reader.GetOrdinal("object_class")),
+                reader.GetString(reader.GetOrdinal("subject_key")), reader.GetString(reader.GetOrdinal("subject_kind")),
+                Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
+        }
+        else if (ruleId == "SEC-102")
+        {
+            OpenPart(StoreSegmentRole.PermissionProof);
+            if (reader.IsDBNull(reader.GetOrdinal("gmr_proof")) || versions[ruleId] != 1)
+                throw GmsaPasswordReaderStorage.Invalid();
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            evidence = GmsaPasswordReaderStorage.Read(reader.GetString(reader.GetOrdinal("gmr_proof")),
+                (byte[])reader.GetValue(reader.GetOrdinal("gmr_fingerprint")), reader.GetString(reader.GetOrdinal("gmr_generation")),
+                Description, _findingDerivationSeal, Guid.Parse(reader.GetString(reader.GetOrdinal("object_guid"))),
+                reader.GetString(reader.GetOrdinal("distinguished_name")), reader.GetString(reader.GetOrdinal("domain_fqdn")),
+                reader.GetString(reader.GetOrdinal("object_class")), reader.GetString(reader.GetOrdinal("subject_key")),
+                reader.GetString(reader.GetOrdinal("subject_kind")), Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))));
         }
         else if (ruleId is "SEC-100" or "SEC-101")
         {
@@ -1367,7 +1421,7 @@ public sealed partial class JudgementReader : IDisposable
         {
             var findingId = reader.GetInt64(reader.GetOrdinal("r_finding_id"));
             var trusteeName = reader.GetOrdinal("r_trustee_name");
-            var inheritedFrom = reader.GetOrdinal("r_inherited_from");
+            var inheritedClass = reader.GetOrdinal("r_inherited_class_guid");
 
             evidence = new LapsPasswordReaderEvidence(
                 reader.GetString(lapsReaderTrustee),
@@ -1380,8 +1434,16 @@ public sealed partial class JudgementReader : IDisposable
                 reader.GetString(reader.GetOrdinal("r_attribute")),
                 Enum.Parse<LapsReadRights>(reader.GetString(reader.GetOrdinal("r_rights"))),
                 Enum.Parse<LapsGrantReach>(reader.GetString(reader.GetOrdinal("r_reach"))),
-                reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
-                reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete")) != 0);
+                reader.IsDBNull(inheritedClass) ? null : reader.GetString(inheritedClass),
+                LapsReadFindingStorage.Bit(reader.GetInt64(reader.GetOrdinal("r_expansion_was_complete"))))
+            {
+                IsInherited = LapsReadFindingStorage.Bit(reader.GetInt64(reader.GetOrdinal("r_is_inherited"))),
+                Assessment = LapsReadFindingStorage.ReadSummary(reader.GetString(reader.GetOrdinal("r_assessment_json")),
+                    reader.GetInt64(reader.GetOrdinal("r_exposure_count")),
+                    reader.GetInt64(reader.GetOrdinal("r_established_count")),
+                    reader.GetInt64(reader.GetOrdinal("r_assessment_complete"))),
+                SupportingExposures = null,
+            };
         }
         else if (!reader.IsDBNull(takeoverTrustee))
         {
@@ -1399,7 +1461,11 @@ public sealed partial class JudgementReader : IDisposable
                 Enum.Parse<ObjectTakeoverRight>(
                     reader.GetString(reader.GetOrdinal("t_takeover_right"))),
                 reader.IsDBNull(inheritedFrom) ? null : reader.GetString(inheritedFrom),
-                reader.GetInt64(reader.GetOrdinal("t_expansion_was_complete")) != 0);
+                reader.GetInt64(reader.GetOrdinal("t_expansion_was_complete")) != 0)
+            {
+                Calculation = ruleId == "SEC-060" && versions[ruleId] == BroadPrincipalCanTakeOverObject.RuleVersion
+                    ? PermissionControlCalculationStorage.Read(_connection, findingId) : null,
+            };
         }
         else if (!reader.IsDBNull(ownershipOwner))
         {
@@ -1429,7 +1495,8 @@ public sealed partial class JudgementReader : IDisposable
                 ReadLapsDecryptorRoutes(
                     findingId,
                     reader.GetInt64(reader.GetOrdinal("e_route_count"))),
-                reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0);
+                reader.GetInt64(reader.GetOrdinal("e_expansion_was_complete")) != 0,
+                ReadLapsPolicySettings(reader, findingId));
         }
         else
         {
@@ -1438,7 +1505,7 @@ public sealed partial class JudgementReader : IDisposable
                 + "with no evidence row, so what it rests on has been lost. A finding that cannot "
                 + "say what it rests on must not be presented as one.");
         }
-        return new Finding(
+        var finding = new Finding(
             ruleId,
             versions[ruleId],
             Enum.Parse<Severity>(reader.GetString(reader.GetOrdinal("severity"))),
@@ -1452,6 +1519,16 @@ public sealed partial class JudgementReader : IDisposable
             reader.GetString(reader.GetOrdinal("detail")),
             Enum.Parse<EvidenceCompleteness>(reader.GetString(reader.GetOrdinal("coverage"))),
             evidence) { PrincipalName = reader.GetString(reader.GetOrdinal("principal_name")) };
+        if (ruleId == "SEC-060" && (versions[ruleId] == BroadPrincipalCanTakeOverObject.RuleVersion
+            || evidence is ObjectTakeoverEvidence { Calculation: not null }))
+        {
+            PermissionControlCalculationStorage.Validate(finding, Description.GenerationId, Description.EvidenceSeal,
+                Description.DerivationGenerationId);
+            _findingDerivationSeal ??= FindingInputBinding.DerivationSeal(BundleDirectory, Description.DerivationGenerationId);
+            if (((ObjectTakeoverEvidence)evidence).Calculation!.DerivationSeal != _findingDerivationSeal)
+                throw PermissionControlCalculationStorage.Invalid();
+        }
+        return finding;
     }
 
     private MembershipRouteSummary ReadMembershipRoutes(long findingId)
@@ -1478,6 +1555,58 @@ public sealed partial class JudgementReader : IDisposable
         }
         if (route.Count != expectedLength) throw new InvalidDataException(LapsInventoryStorage.Message("InvalidRoute"));
         return route;
+    }
+
+    private LapsPolicySettingsEvidence ReadLapsPolicySettings(SqliteDataReader row, long findingId)
+    {
+        var parsed = new List<string>();
+        var issues = new List<RegistryPolicyIssue>();
+        var expectedParse = row.GetInt64(row.GetOrdinal("e_parse_error_count"));
+        var expectedIssues = row.GetInt64(row.GetOrdinal("e_interpretation_issue_count"));
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = """
+                SELECT kind,ordinal,entry_index,key_path,value_name,reason
+                FROM finding_laps_registry_limit WHERE finding_id=$id ORDER BY kind,ordinal
+                """;
+            command.Parameters.AddWithValue("$id", findingId);
+            using var limits = command.ExecuteReader();
+            while (limits.Read())
+            {
+                var kind = limits.GetString(0);
+                var ordinal = limits.GetInt64(1);
+                var reason = limits.GetString(5);
+                if (string.IsNullOrWhiteSpace(reason))
+                    throw new InvalidDataException("A saved LAPS registry limitation has no reason.");
+                if (kind == "Parse" && ordinal == parsed.Count && ordinal < expectedParse
+                    && limits.IsDBNull(2) && limits.IsDBNull(3) && limits.IsDBNull(4))
+                    parsed.Add(reason);
+                else if (kind == "Operation" && ordinal == issues.Count && ordinal < expectedIssues
+                    && !limits.IsDBNull(2) && limits.GetInt64(2) >= 0
+                    && !limits.IsDBNull(3) && !limits.IsDBNull(4))
+                    issues.Add(new(checked((int)limits.GetInt64(2)), limits.GetString(3), limits.GetString(4), reason));
+                else throw new InvalidDataException("A saved LAPS registry limitation does not match its original sequence.");
+            }
+        }
+        if (parsed.Count != expectedParse || issues.Count != expectedIssues)
+            throw new InvalidDataException("A saved LAPS policy-input assessment is missing limitations.");
+        if (!Enum.TryParse<GpoSettingsOutcome>(row.GetString(row.GetOrdinal("e_settings_outcome")), out var outcome)
+            || !Enum.IsDefined(outcome))
+            throw new InvalidDataException("The saved LAPS settings outcome is invalid.");
+        var reasonColumn = row.GetOrdinal("e_settings_reason");
+        var reasonText = row.IsDBNull(reasonColumn) ? null : row.GetString(reasonColumn);
+        if ((outcome == GpoSettingsOutcome.Read) != (reasonText is null))
+            throw new InvalidDataException("The saved LAPS settings coverage reason is inconsistent.");
+        var entry = new RegistryPolicyEntry(row.GetString(row.GetOrdinal("e_registry_key_path")),
+            row.GetString(row.GetOrdinal("e_registry_value_name")),
+            checked((uint)row.GetInt64(row.GetOrdinal("e_registry_type"))),
+            (byte[])row["e_registry_data"]);
+        var index = checked((int)row.GetInt64(row.GetOrdinal("e_registry_entry_index")));
+        var result = new LapsPolicySettingsEvidence(new(index, entry.KeyPath, LapsPolicySettingsEvidence.ValueName, entry),
+            outcome, reasonText, parsed, issues);
+        if (!result.Supports(row.GetString(row.GetOrdinal("e_configured_value"))))
+            throw new InvalidDataException("The saved LAPS registry occurrence does not support the displayed configured value.");
+        return result;
     }
 
     private LapsDecryptorRouteEvidence[] ReadLapsDecryptorRoutes(
@@ -1599,11 +1728,9 @@ public sealed partial class JudgementReader : IDisposable
     /// Which of a finding's stored SID history values name a privileged principal.
     /// </summary>
     /// <remarks>
-    /// <b>Recomputed rather than stored, like the delegation table's two answers.</b> Whether a
-    /// value is privileged, and what Microsoft calls it, are both asked of
-    /// <see cref="PrivilegedSidHistory.PrivilegedName"/> - the same decision the rule made when it
-    /// wrote the row. Storing either would create a copy that can disagree with the value it came
-    /// from, and a second copy of the decision could disagree with the rule itself.
+    /// Only the current rule version reaches this interpretation; older results are explicitly
+    /// refused rather than silently reclassified. Both this reader and the rule use
+    /// <see cref="PrivilegedSidCatalogue.PrivilegedName"/> while retaining every original value.
     /// </remarks>
     private static IReadOnlyList<PrivilegedSidHistoryMatch> PrivilegedSidHistoryMatches(
         IReadOnlyList<string> values) =>

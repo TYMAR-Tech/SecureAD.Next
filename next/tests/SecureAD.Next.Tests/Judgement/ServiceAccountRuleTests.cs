@@ -803,7 +803,7 @@ public sealed class ServiceAccountRuleTests
         Assert.Equal("May be incomplete", partial.Coverage);
         Assert.Equal(FactState.NotEstablished, partial.State);
         Assert.Equal(finding.Severity, partial.Rank);
-        Assert.Equal(finding.Detail, partial.Detail);
+        Assert.Equal(rule is "SEC-100" or "SEC-101" ? SavedServiceAccountContext.Statement(rule) : finding.Detail, partial.Detail);
         Assert.False(partial.HasTier0Routes);
     }
 

@@ -145,7 +145,7 @@ public sealed class SelfMembershipWorkflowTests
     }
 
     [Fact]
-    public async Task UnconfiguredShellReportsNoScanRatherThanNoAuthorizedRequestersAsync()
+    public void UnconfiguredShellReportsNoScanRatherThanNoAuthorizedRequestersAsync() => OneThread.Run(async () =>
     {
         var directory = Bundle();
 
@@ -159,12 +159,12 @@ public sealed class SelfMembershipWorkflowTests
         Assert.Contains("The separate Self-Membership scan was not run because no processing limit is configured", completion.JudgingReport);
         Assert.Contains("Tier 0 requester checks have their own saved coverage", completion.JudgingReport);
         Assert.Contains("this does not mean nobody can add themselves to a group", completion.JudgingReport);
-    }
+    });
 
     [Theory]
     [InlineData(0, "ProcessingStopped", "the scan stopped at its configured limit before reading everything captured")]
     [InlineData(1000, "CapturedInputScanFinished", "from 1 discovered account/group pair(s)")]
-    public async Task ShellCompletionDistinguishesStoppedAndFinishedSyntheticScansAsync(int pairs, string verdict, string report)
+    public void ShellCompletionDistinguishesStoppedAndFinishedSyntheticScansAsync(int pairs, string verdict, string report) => OneThread.Run(async () =>
     {
         var directory = Bundle();
 
@@ -172,7 +172,7 @@ public sealed class SelfMembershipWorkflowTests
 
         Assert.Equal(verdict, Summary(directory).Verdict);
         Assert.Contains(report, completion.JudgingReport);
-    }
+    });
 
     [Fact]
     public async Task CliOfflineJudgingWithTheProductionNullBudgetStoresAnInactiveScanAsync()
@@ -196,14 +196,21 @@ public sealed class SelfMembershipWorkflowTests
 
     private static async Task<NewAuditViewModel> RunShellAsync(string directory, SelfMembershipDiscoveryBudget? budget)
     {
+        Assert.NotNull(SynchronizationContext.Current);
+        var ownerThread = Environment.CurrentManagedThreadId;
+        var progressThreads = new System.Collections.Concurrent.ConcurrentQueue<int>();
         var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
         var location = new RunLibraryLocation(settings);
         location.Load();
         var capture = new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) };
         var screen = new NewAuditViewModel(location, capture, new FakeNewAuditDialog(), new FakeRunOpener(),
             new DerivationLauncher(), new JudgingLauncher(budget), new DomainConcurrency(settings));
+        screen.Progress.RecentReports.CollectionChanged += (_, _) =>
+            progressThreads.Enqueue(Environment.CurrentManagedThreadId);
         await screen.OpenAsync();
         await screen.StartAsync();
+        Assert.NotEmpty(progressThreads);
+        Assert.All(progressThreads, thread => Assert.Equal(ownerThread, thread));
         return screen;
     }
 

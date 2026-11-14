@@ -169,7 +169,7 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
 
     internal void SaveMembership(SavedOwnAccountMembershipProof proof, PathSharedProofStorage.PreparedOwnAccount reference)
     {
-        sources.RequireProtectedBinding(description);
+        sources.RequireFor(description);
         if (!ReferenceEquals(proof.Assessment, reference.Assessment) || proof.Steps.Count != 0)
             throw Tier0PathStorage.InvalidProof();
         var request = proof.Assessment.Request;
@@ -191,7 +191,7 @@ internal sealed class PathRequesterWorkPlan(SqliteConnection connection, SqliteT
 
     internal Membership ReadMembership(OwnAccountMembershipRequest request, PathSharedProofStorage shared)
     {
-        sources.RequireProtectedBinding(description);
+        sources.RequireFor(description);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """

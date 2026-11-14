@@ -8,7 +8,7 @@ using Xunit;
 
 namespace SecureAD.Next.Tests.Evidence;
 
-public sealed class BulkObjectLookupTests
+public sealed partial class BulkObjectLookupTests
 {
     private const string Domain = "DC=lookup,DC=test";
     private const string Alice = "CN=Alice," + Domain;

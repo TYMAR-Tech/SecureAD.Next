@@ -75,14 +75,14 @@ public sealed class LapsInventoryViewModelTests
 
         var rows = screen.LapsComputers.ToDictionary(row => row.Name);
 
-        Assert.Equal(string.Empty, rows["FS01"].NotJudgedBecause);
-        Assert.True(rows["FS01"].IsJudged);
+        Assert.Equal(string.Empty, rows["FS01"].ScopeNotes);
+        Assert.True(rows["FS01"].IsInRuleScope);
 
-        Assert.Equal("Disabled", rows["OLD1"].NotJudgedBecause);
-        Assert.False(rows["OLD1"].IsJudged);
+        Assert.Equal("Disabled AD computer account", rows["OLD1"].ScopeNotes);
+        Assert.False(rows["OLD1"].IsInRuleScope);
 
-        Assert.Equal("Domain controller", rows["DC01"].NotJudgedBecause);
-        Assert.False(rows["DC01"].IsJudged);
+        Assert.Equal("Domain controller", rows["DC01"].ScopeNotes);
+        Assert.False(rows["DC01"].IsInRuleScope);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public sealed class LapsInventoryViewModelTests
     /// looked modern and the legacy value it still carried was invisible.
     /// </remarks>
     [Fact]
-    public void AMigratedMachineShowsBothOfItsTimestamps()
+    public void AComputerWithBothValuesShowsBothExpirations()
     {
         var assets = SourceOf(APage());
         var screen = Showing(assets);
@@ -102,7 +102,7 @@ public sealed class LapsInventoryViewModelTests
 
         var migrated = screen.LapsComputers.Single(row => row.Name == "WS01");
 
-        Assert.Equal("Migrated", migrated.Management);
+        Assert.Equal("Both expiry values", migrated.ValuePresence);
         Assert.NotEqual(string.Empty, migrated.WindowsLapsExpiry);
         Assert.NotEqual(string.Empty, migrated.LegacyLapsExpiry);
     }
@@ -125,13 +125,13 @@ public sealed class LapsInventoryViewModelTests
 
         var counts = screen.LapsCounts.ToDictionary(count => count.State, count => count.Count);
 
-        Assert.Equal(Enum.GetValues<LapsManagement>().Length, screen.LapsCounts.Count);
-        Assert.Equal(0, counts[LapsManagement.Unexpected]);
+        Assert.Equal(Enum.GetValues<LapsValuePresence>().Length, screen.LapsCounts.Count);
+        Assert.Equal(0, counts[LapsValuePresence.WindowsOnLegacyOnly]);
 
         // Two: the unmanaged member server and the domain controller. The counts describe every
         // machine in the container, including the ones no rule is in scope for - which is the
         // difference between this grid and the findings.
-        Assert.Equal(2, counts[LapsManagement.NotManaged]);
+        Assert.Equal(2, counts[LapsValuePresence.None]);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public sealed class LapsInventoryViewModelTests
             new LapsPage(
                 [],
                 0,
-                new Dictionary<LapsManagement, int>(),
+                new Dictionary<LapsValuePresence, int>(),
                 ComputersAreComplete: false,
                 Shortfall: "'ph.ad.lab' was recorded as Excluded."));
 
@@ -298,9 +298,9 @@ public sealed class LapsInventoryViewModelTests
         screen.LapsSearchText = "WS01";
         Assert.Equal("WS01", Assert.Single(screen.VisibleLapsComputers).Name);
         Assert.Equal(4_000, screen.LapsTotal);
-        Assert.Equal(Enum.GetValues<LapsManagement>().Length, screen.LapsCounts.Count);
+        Assert.Equal(Enum.GetValues<LapsValuePresence>().Length, screen.LapsCounts.Count);
 
-        screen.LapsStateFilter = "Not managed";
+        screen.LapsStateFilter = "No expiry values";
         Assert.Empty(screen.VisibleLapsComputers);
         screen.LapsSearchText = "";
         Assert.Equal(2, screen.VisibleLapsComputers.Count);
@@ -321,12 +321,78 @@ public sealed class LapsInventoryViewModelTests
         Assert.False(screen.HasLapsRefusal);
     }
 
+    [Theory]
+    [InlineData(LapsValuePresence.None, "No expiry values")]
+    [InlineData(LapsValuePresence.WindowsOnly, "Windows value only")]
+    [InlineData(LapsValuePresence.LegacyOnly, "Legacy value only")]
+    [InlineData(LapsValuePresence.Both, "Both expiry values")]
+    [InlineData(LapsValuePresence.WindowsOnLegacyOnly, "Platform review")]
+    public void Scout14EveryApprovedFilterSelectsItsExactSavedValueGroup(LapsValuePresence values, string label)
+    {
+        var computers = Enum.GetValues<LapsValuePresence>()
+            .Select(value => Computer(value.ToString(), value, LapsAttributes.AccountState.Enabled)).ToArray();
+        var page = new LapsPage(computers, 5, computers.ToDictionary(row => row.ValuePresence, _ => 1), true, null);
+        var screen = Showing(SourceOf(page));
+        screen.Pane = AssetsPane.Laps;
+        Assert.Contains(label, screen.LapsStateChoices);
+        screen.LapsStateFilter = label;
+        Assert.Equal(values.ToString(), Assert.Single(screen.VisibleLapsComputers).Name);
+        Assert.Equal(5, screen.LapsTotal);
+        Assert.All(screen.LapsCounts, count => Assert.Equal(1, count.Count));
+    }
+
+    [Fact]
+    public void Scout14TheApprovedCaptionDoesNotPromiseDeploymentMigrationOrCompletedAssessment()
+    {
+        var screen = Showing(SourceOf(APage()));
+        Assert.Equal("LAPS expiry evidence", screen.LapsTitle);
+        Assert.Equal("Captured expiry values do not prove active LAPS management or completed migration. "
+            + "Scope notes describe exclusions or uncertainty, not completed assessment.", screen.LapsCaption);
+        Assert.Equal("All value groups", screen.LapsStateChoices[0]);
+    }
+
     private static AssetsViewModel Showing(FakeAssetSource assets)
     {
         var screen = new AssetsViewModel(assets);
         screen.Show(BundlePath, aCaptureIsRunning: false);
 
         return screen;
+    }
+
+    [Fact]
+    public void ExportCommandCapturesTheCompleteCurrentQuestionRatherThanVisibleRows()
+    {
+        var screen = Showing(SourceOf(APage(total: 4000)));
+        screen.Pane = AssetsPane.Laps;
+        screen.LapsSearchText = " FS01 ";
+        screen.LapsStateFilter = LapsInventoryText.Label(LapsValuePresence.None);
+        string? selectedRun = null;
+        LapsQuery? selectedQuestion = null;
+        screen.LapsExportRequested += (run, question) => (selectedRun, selectedQuestion) = (run, question);
+        Assert.True(screen.ExportLapsCommand.CanExecute(null));
+        screen.ExportLapsCommand.Execute(null);
+        Assert.Equal(BundlePath, selectedRun);
+        Assert.Equal(new LapsQuery(DomainDn, ListingScope.Subtree, "FS01", LapsValuePresence.None), selectedQuestion);
+        screen.LapsSearchText = "Something else";
+        Assert.Equal("FS01", selectedQuestion!.Search);
+        Assert.Equal(4000, screen.LapsTotal);
+    }
+
+    [Fact]
+    public void ExportIsUnavailableOutsideAReadableLapsListing()
+    {
+        var source = SourceOf(APage());
+        var screen = Showing(source);
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
+        screen.Pane = AssetsPane.Laps;
+        Assert.True(screen.ExportLapsCommand.CanExecute(null));
+        source.LapsListingFails = AuditError.Create(ErrorCategory.Evidence, "Unavailable", ErrorSeverity.Failed,
+            "This run has no saved LAPS inventory.", null);
+        screen.Read();
+        screen.Pane = AssetsPane.Laps;
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
+        screen.Clear();
+        Assert.False(screen.ExportLapsCommand.CanExecute(null));
     }
 
     private static FakeAssetSource SourceOf(LapsPage page) => new()
@@ -344,13 +410,13 @@ public sealed class LapsInventoryViewModelTests
     {
         IReadOnlyList<LapsComputer> computers =
         [
-            Computer("FS01", LapsManagement.NotManaged, LapsAttributes.AccountState.Enabled),
-            Computer("WS01", LapsManagement.Migrated, LapsAttributes.AccountState.Enabled),
-            Computer("OLD1", LapsManagement.WindowsLaps, LapsAttributes.AccountState.Disabled),
-            Computer("DC01", LapsManagement.NotManaged, LapsAttributes.AccountState.Enabled, controller: true),
+            Computer("FS01", LapsValuePresence.None, LapsAttributes.AccountState.Enabled),
+            Computer("WS01", LapsValuePresence.Both, LapsAttributes.AccountState.Enabled),
+            Computer("OLD1", LapsValuePresence.WindowsOnly, LapsAttributes.AccountState.Disabled),
+            Computer("DC01", LapsValuePresence.None, LapsAttributes.AccountState.Enabled, controller: true),
         ];
 
-        var counts = computers.CountBy(computer => computer.Management).ToDictionary();
+        var counts = computers.CountBy(computer => computer.ValuePresence).ToDictionary();
 
         return new LapsPage(computers, total ?? computers.Count, counts, true, null);
     }
@@ -358,14 +424,14 @@ public sealed class LapsInventoryViewModelTests
     private const string Timestamp = "133700000000000000";
 
     private static LapsComputer Computer(
-        string name, LapsManagement management, LapsAttributes.AccountState account, bool controller = false) =>
+        string name, LapsValuePresence management, LapsAttributes.AccountState account, bool controller = false) =>
         new(
             $"CN={name},{DomainDn}",
             name,
             Guid.NewGuid(),
             "contoso.com",
-            TimestampFor(management is LapsManagement.WindowsLaps or LapsManagement.Migrated),
-            TimestampFor(management is LapsManagement.Migrated),
+            TimestampFor(management is LapsValuePresence.WindowsOnly or LapsValuePresence.Both or LapsValuePresence.WindowsOnLegacyOnly),
+            TimestampFor(management is LapsValuePresence.LegacyOnly or LapsValuePresence.Both),
             "Windows Server 2022 Datacenter",
             "10.0 (20348)",
             controller ? "532480" : account is LapsAttributes.AccountState.Disabled ? "4098" : "4096",

@@ -24,6 +24,12 @@ public sealed class InMemorySysvolFileReader : ISysvolFileReader
     private readonly List<string> _denied = [];
     private readonly HashSet<string> _vanished = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Creates a readable policy root with its required version file and both descriptors.</summary>
+    public InMemorySysvolFileReader WithPolicy(string path, byte[] descriptor) =>
+        WithDescriptor(path, "", descriptor)
+            .WithFile(path, "GPT.ini", System.Text.Encoding.ASCII.GetBytes("[General]\r\nVersion=1\r\n"))
+            .WithDescriptor(path, "GPT.ini", descriptor);
+
     /// <summary>Puts a file on the share, beneath a policy's folder.</summary>
     public InMemorySysvolFileReader WithFile(string gpoFileSysPath, string relativePath, byte[] content)
     {

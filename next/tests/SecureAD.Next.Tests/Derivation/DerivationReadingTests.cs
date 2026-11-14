@@ -398,12 +398,20 @@ public sealed class DerivationReadingTests
         var sourceGeneration = Current(source);
         var destinationGeneration = AnalysisStoreLifecycle.Generation(
             destination, AnalysisStoreKind.Derivation, sourceGeneration.GenerationId);
-        File.Copy(
-            DataPath(source, sourceGeneration),
-            DataPath(destination, destinationGeneration));
-        File.Copy(
-            SealPath(source, sourceGeneration),
-            SealPath(destination, destinationGeneration));
+        var root = AnalysisStoreLifecycle.ResolveRoot(source, AnalysisStoreKind.Derivation).Value;
+        Assert.Equal(new[] { StoreSegmentRole.Derivation, StoreSegmentRole.Membership },
+            root.Segments.Select(segment => segment.Role));
+        var sourceOpened = DerivationReader.Open(source);
+        Assert.True(sourceOpened.IsSuccess, sourceOpened.Error?.Description);
+        using (var original = sourceOpened.Value)
+            Assert.Equal(sourceSeal, original.Description.EvidenceSeal);
+        foreach (var segment in root.Segments)
+        {
+            var sourcePath = BundleLayout.AnalysisSegmentDataPath(source, sourceGeneration, segment.Role);
+            var destinationPath = BundleLayout.AnalysisSegmentDataPath(destination, destinationGeneration, segment.Role);
+            File.Copy(sourcePath, destinationPath);
+            File.Copy(sourcePath + ".seal", destinationPath + ".seal");
+        }
         File.Copy(
             AnalysisStoreLifecycle.ManifestPath(source, AnalysisStoreKind.Derivation),
             AnalysisStoreLifecycle.ManifestPath(destination, AnalysisStoreKind.Derivation));

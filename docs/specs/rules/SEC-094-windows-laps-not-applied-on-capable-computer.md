@@ -1,9 +1,9 @@
 # SEC-094 ΓÇö Windows LAPS expected, but only a legacy timestamp present
 
-**Status:** specified 2026-09-03. Not yet built.
+**Status:** specified 2026-09-03; bounded classification correction approved 2026-11-10.
 **Severity:** Low. Settled by the owner 2026-09-03. See [┬º7](#7-severity).
 **Rule identifier:** `SEC-094`.
-**Implemented by:** `WindowsLapsNotAppliedOnCapableComputer` in `SecureAD.Judgement` (planned).
+**Implemented by:** `WindowsLapsNotAppliedOnCapableComputer` in `SecureAD.Judgement`.
 
 ---
 
@@ -32,6 +32,17 @@ configuration. Whether that is honest reporting or noise is the judgement this r
 
 A **computer capable of running Windows LAPS** that carries the **legacy** expiration timestamp
 `ms-Mcs-AdmPwdExpirationTime` and **not** the modern `msLAPS-PasswordExpirationTime`.
+
+**Captured-quality correction, owner-approved 2026-11-10.**
+The legacy observation must be a usable date; a zero or malformed legacy value cannot establish
+this rule's legacy-only finding.
+An unusable modern value beside a usable legacy date leaves the assessment incomplete rather than
+proving either modern management or its absence.
+Preserve independently decisive negatives: a usable modern date, no captured legacy value, and the
+existing platform/account/controller exclusions.
+Keep unusable captured values separate from uncaptured attributes and retain their originals,
+following the [shared quality requirements](SEC-091-laps-missing-on-a-computer.md#captured-expiry-quality---owner-approved-2026-11-10).
+Neither a usable date nor value presence establishes active deployment or completed migration.
 
 In plain terms: *this machine could be managed by the current version of LAPS, and the directory
 shows no sign that it is. What it does show is a timestamp from the old product, which may be live
@@ -135,6 +146,15 @@ auditor is entitled to see it.
 Reporting a Server 2016 machine here would be reporting it for not running software Microsoft never
 shipped for it.
 
+**A missing or unusable server build is not build zero.** A server version such as `10.0`,
+`10.0 (oops)` or `10.0 (0)` must use the existing operating-system-name fallback, recording that
+basis, or remain `Unknown` if the name cannot identify a supported generation.
+Windows clients may still be classified from their major version without a server build.
+Version and release-name rules apply only to a reported Windows platform; a non-Windows or
+unidentified platform must not borrow Windows eligibility from a numeric version or a year.
+Platform eligibility does not establish that the required update is installed, that an endpoint
+is running LAPS, or that its recorded timestamps describe active management.
+
 ## 6. What is **not** reported, and why
 
 1. **A machine in emulation mode is not distinguished from one with a broken policy.** Stated above,
@@ -206,6 +226,8 @@ same and the consequence of skipping it is worse.
 | `msLAPS-PasswordExpirationTime` is confidential in this forest | **`CouldNotJudge`**, naming it. Never a finding ΓÇö see [┬º8](#8-what-the-rule-reads) |
 | The Windows LAPS schema extension is absent from the forest | No finding. No machine in the forest can carry the attribute, so its absence is not evidence about any machine. Stated in the About text |
 | `operatingSystemVersion` absent (a bundle sealed before it was captured) | Capability falls back to the `operatingSystem` name, and the finding records that it did so |
+| Server build missing, malformed, zero or outside the supported numeric representation | Use the same explicit name fallback, or `Unknown`; never infer a legacy platform from an invented zero |
+| Non-Windows or unidentified platform | `Unknown`, even if the numeric version resembles a Windows version |
 | Both attributes absent | Not this rule. `SEC-091` |
 | `operatingSystem` and `operatingSystemVersion` both absent | Capability is `Unknown`, and an unknown machine is **not** reported here ΓÇö it cannot be shown to be capable |
 
@@ -239,6 +261,14 @@ implementation that fires whenever a legacy timestamp exists reports every machi
 successfully ΓÇö which is the largest population in exactly the estates this rule is aimed at.
 
 Each mutated in both directions, **one mutation at a time**.
+
+**Corrected classification version 2 - owner-approved 2026-11-10.**
+New SEC-094 assessments and inventory must use the same corrected classifier and retain the
+original name/version and actual decision basis.
+Previously saved classifications remain recorded answers rather than being recalculated on read;
+this correction authorizes neither owner-data re-judging nor alteration of historical results.
+The inventory basis label is "operating system version", not "build number", because a client's
+major version can decide eligibility without a captured build.
 
 ## 11. Verified against `ad.lab`, 2026-09-03
 

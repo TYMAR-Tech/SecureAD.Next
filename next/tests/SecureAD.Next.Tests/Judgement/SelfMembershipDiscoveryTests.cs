@@ -38,15 +38,25 @@ public sealed class SelfMembershipDiscoveryTests
         var hash = Hash(directory);
         if (host == "shell")
         {
-            var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
-            var location = new RunLibraryLocation(settings);
-            location.Load();
-            var capture = new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) };
-            var screen = new NewAuditViewModel(location, capture, new FakeNewAuditDialog(), new FakeRunOpener(),
-                new DerivationLauncher(), new JudgingLauncher(TestBudget), new DomainConcurrency(settings));
-            await screen.OpenAsync();
-            await screen.StartAsync();
-            Assert.DoesNotContain("could not be judged", screen.JudgingReport, StringComparison.OrdinalIgnoreCase);
+            OneThread.Run(async () =>
+            {
+                Assert.NotNull(SynchronizationContext.Current);
+                var ownerThread = Environment.CurrentManagedThreadId;
+                var progressThreads = new System.Collections.Concurrent.ConcurrentQueue<int>();
+                var settings = new FakeSettingsStore { Stored = new ShellSettings(Path.GetDirectoryName(directory)!, DomainsAtOnce: null) };
+                var location = new RunLibraryLocation(settings);
+                location.Load();
+                var capture = new FakeCaptureLauncher { Outcome = new CaptureOutcome(true, directory) };
+                var screen = new NewAuditViewModel(location, capture, new FakeNewAuditDialog(), new FakeRunOpener(),
+                    new DerivationLauncher(), new JudgingLauncher(TestBudget), new DomainConcurrency(settings));
+                screen.Progress.RecentReports.CollectionChanged += (_, _) =>
+                    progressThreads.Enqueue(Environment.CurrentManagedThreadId);
+                await screen.OpenAsync();
+                await screen.StartAsync();
+                Assert.NotEmpty(progressThreads);
+                Assert.All(progressThreads, thread => Assert.Equal(ownerThread, thread));
+                Assert.DoesNotContain("could not be judged", screen.JudgingReport, StringComparison.OrdinalIgnoreCase);
+            });
         }
         else if (host == "cli-offline")
         {

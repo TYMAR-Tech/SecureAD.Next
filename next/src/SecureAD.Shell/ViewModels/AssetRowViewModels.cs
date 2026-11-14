@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
+using SecureAD.Shell.Services;
 using SecureAD.Kernel.Naming;
 
 namespace SecureAD.Shell.ViewModels;
@@ -47,7 +48,7 @@ internal sealed partial class TreeNodeViewModel : ObservableObject
     /// <summary>Creates a screen's view of one container.</summary>
     /// <param name="node">The container as the evidence rebuilt it.</param>
     /// <param name="observe">Connects selection only when a presented node is created.</param>
-    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe = null)
+    public TreeNodeViewModel(TreeNode node, Action<TreeNodeViewModel>? observe)
     {
         ArgumentNullException.ThrowIfNull(node);
 
@@ -253,20 +254,28 @@ internal sealed class ListedObjectViewModel
 /// </remarks>
 internal sealed class FindingRowViewModel
 {
+    private static readonly IReadOnlyDictionary<string, string> Titles =
+        RuleCatalogue.All.ToDictionary(rule => rule.Definition.Id, rule => rule.Definition.Name, StringComparer.Ordinal);
     private readonly FindingListItem _finding;
 
     /// <summary>Creates a screen's view of one finding.</summary>
     /// <param name="finding">The finding as the judgement holds it.</param>
-    public FindingRowViewModel(Finding finding) : this(FindingListItem.FromFinding(finding))
+    public FindingRowViewModel(Finding finding) : this(FindingListItem.FromFinding(finding), current: null)
     {
     }
 
-    public FindingRowViewModel(FindingListItem finding)
+    public FindingRowViewModel(FindingListItem finding, Func<bool>? current)
     {
         ArgumentNullException.ThrowIfNull(finding);
 
         _finding = finding;
+        IsCurrent = current ?? (() => false);
     }
+
+    internal FindingListItem Saved => _finding;
+    internal Func<bool> IsCurrent { get; }
+    public string FindingTitle => Titles.TryGetValue(Rule, out var title) ? title : Rule;
+    public string FindingLabel => FindingTitle == Rule ? Rule : FindingTitle + " (" + Rule + ")";
 
     /// <summary>How serious this is, in the word an operator reads.</summary>
     public string Severity => _finding.Severity.ToString();
@@ -299,58 +308,15 @@ internal sealed class FindingRowViewModel
     /// <summary>The domain it was found in.</summary>
     public string Domain => _finding.DomainFqdn;
 
+    public string ObjectClass => _finding.ObjectClass;
+
     /// <summary>What was found, said plainly enough to act on.</summary>
     public string Detail => _finding.Detail;
 
-    public bool HasMembershipEvidence => _finding.Membership is not null;
-
-    public string MembershipCompleteness => _finding.Membership is { } evidence
-        ? evidence.MembershipRoutes.CompletenessDescription : string.Empty;
-
-    public string MembershipDetails
-    {
-        get
-        {
-            if (_finding.Membership is not { } evidence)
-                return string.Empty;
-            var blocks = new List<string>();
-            if (evidence.DirectProtectionName is { } direct)
-                blocks.Add($"Direct protection basis: {direct} (catalogue entry {evidence.DirectProtectionCatalogueEntryId}, version {evidence.ProtectionCatalogueVersion}). Membership changes do not remove this basis.");
-            foreach (var membership in evidence.MembershipRoutes.Memberships)
-            {
-                var lines = new List<string> { "Initial membership: " + MembershipPrincipal(membership.InitialMembership) };
-                foreach (var route in membership.Routes)
-                {
-                    var authorization = route.Authorization switch
-                    {
-                        MembershipRouteAuthorization.SecurityEnabled => "Security-enabled membership chain; this is not an effective-access calculation.",
-                        MembershipRouteAuthorization.DistributionGroup => "Contains a distribution group: this chain does not confer membership-based authorization.",
-                        _ => "Group type was not captured: membership-based authorization is unknown.",
-                    };
-                    var protection = route.EstablishesProtection ? "Protection is established by this chain."
-                        : route.Steps.Any(s => s.IsPrimaryGroup)
-                            ? "Protection through primary-group membership is not established."
-                            : "Protection propagation from this root is not established or is excluded by the forest.";
-                    var chain = string.Join("", route.Steps.Select((step, index) =>
-                        (index == 0 ? string.Empty : step.IsPrimaryGroup ? " --primary group--> " : " --member of--> ")
-                        + MembershipPrincipal(step.Principal)));
-                    lines.Add($"Root: {route.RootName} (catalogue entry {route.CatalogueEntryId})");
-                    lines.Add(chain);
-                    lines.Add(authorization + " " + protection);
-                }
-                blocks.Add(string.Join(Environment.NewLine, lines));
-            }
-            blocks.Add("Supporting chains are grouped by initial membership, not every possible path. They are not a minimum set of removals. Changing a shared group may affect other accounts; removing these memberships does not establish that every other form of privilege is gone.");
-            return string.Join(Environment.NewLine + Environment.NewLine, blocks);
-        }
-    }
-
-    private static string MembershipPrincipal(MembershipRoutePrincipal principal) =>
-        (principal.DistinguishedName is { } dn ? dn + " [" + principal.Sid + "]" : principal.Sid)
-        + (principal.Scope is { } scope ? " (" + scope + ")" : string.Empty);
+    public bool HasMembershipEvidence => _finding.Kind == FindingListKind.Membership;
 
     private bool EvidenceIsComplete => _finding.Coverage == EvidenceCompleteness.Complete
-        && _finding.EvidenceIsComplete;
+        && (_finding.RuleId == "SEC-052" ? _finding.CircularInventoryComplete == true : _finding.EvidenceIsComplete);
 
     /// <summary>
     /// Whether the evidence this rests on was complete, in words.
@@ -359,7 +325,10 @@ internal sealed class FindingRowViewModel
     /// <b>Said rather than left blank.</b> An empty cell beside a finding reads as though the
     /// question was not worth asking, and the answer here changes what the finding is worth.
     /// </remarks>
-    public string Coverage => EvidenceIsComplete
+    public string Coverage => _finding.RuleId == "SEC-052" && _finding.CircularInventoryComplete is null
+        ? _finding.Coverage != EvidenceCompleteness.Complete || !_finding.EvidenceIsComplete
+            ? "May be incomplete; cycle inventory: open details" : "Cycle inventory: open details"
+        : EvidenceIsComplete
         ? "Complete"
         : "May be incomplete";
 
@@ -472,31 +441,13 @@ internal sealed class LapsComputerViewModel
     /// <summary>The full name, for an operator who needs to find the object.</summary>
     public string DistinguishedName => _computer.DistinguishedName;
 
-    /// <summary>What the directory shows about its password management.</summary>
-    public string Management => _computer.Management switch
-    {
-        LapsManagement.WindowsLaps => "Windows LAPS",
-        LapsManagement.LegacyLaps => "Legacy LAPS",
-        LapsManagement.Migrated => "Migrated",
-        LapsManagement.Unexpected => "Unexpected",
-        _ => "Not managed",
-    };
+    /// <summary>Which expiration values were captured, not whether management is active.</summary>
+    public string ValuePresence => LapsInventoryText.Label(_computer.ValuePresence);
 
     /// <summary>
     /// How that reads as a state a view can colour.
     /// </summary>
-    /// <remarks>
-    /// <b>Unexpected is not established-bad.</b> The machine is managed and there is no exposure -
-    /// what is wrong is that Microsoft says the combination cannot occur, which is a fact about the
-    /// forest rather than a risk. <see cref="FactState.NotEstablished"/> is the honest mark: the
-    /// product cannot say what is going on.
-    /// </remarks>
-    public FactState State => _computer.Management switch
-    {
-        LapsManagement.WindowsLaps or LapsManagement.Migrated => FactState.EstablishedGood,
-        LapsManagement.NotManaged => FactState.EstablishedBad,
-        _ => FactState.NotEstablished,
-    };
+    public FactState State => FactState.NotEstablished;
 
     /// <summary>The operating system, or a statement that none was captured.</summary>
     public string OperatingSystem => _computer.OperatingSystem ?? "Not captured";
@@ -519,16 +470,18 @@ internal sealed class LapsComputerViewModel
     /// </remarks>
     public string CapabilityBasis => _computer.Capability.Basis switch
     {
-        LapsCapabilityBasis.OperatingSystemVersion => "build number",
+        LapsCapabilityBasis.OperatingSystemVersion => "operating system version",
         LapsCapabilityBasis.OperatingSystemName => "operating system name",
         _ => "nothing to read",
     };
 
     /// <summary>When Windows LAPS next expects to rotate, or why there is no date.</summary>
     public string WindowsLapsExpiry => Expiry(_computer.WindowsLaps);
+    public bool HasUnusableWindowsExpiry => _computer.WindowsLaps.Reading is LapsTimestampReading.Zero or LapsTimestampReading.Unreadable;
 
     /// <summary>When legacy LAPS next expected to rotate, or why there is no date.</summary>
     public string LegacyLapsExpiry => Expiry(_computer.LegacyLaps);
+    public bool HasUnusableLegacyExpiry => _computer.LegacyLaps.Reading is LapsTimestampReading.Zero or LapsTimestampReading.Unreadable;
 
     /// <summary>Whether this is a domain controller, which both LAPS rules leave alone.</summary>
     public bool IsDomainController => _computer.DomainController.IsDomainController;
@@ -545,30 +498,22 @@ internal sealed class LapsComputerViewModel
     /// never captured, and the first <c>ad.lab</c> run turned two excluded machines into findings
     /// precisely because there was nowhere else for them to appear.
     /// </remarks>
-    public string NotJudgedBecause =>
-        _computer.AccountState is LapsAttributes.AccountState.Unknown
-            ? LapsInventoryText.Get(IsDomainController ? "ControllerAccountUnknown" : "AccountUnknown")
-        : IsDomainController && IsDisabled ? "Domain controller, disabled"
-        : IsDomainController ? "Domain controller"
-        : IsDisabled ? "Disabled"
-        : string.Empty;
+    public string ScopeNotes => LapsInventoryText.ScopeNotes(_computer);
 
     /// <summary>Whether either rule is in scope for this machine.</summary>
-    public bool IsJudged => _computer.IsJudged;
+    public bool IsInRuleScope => _computer.IsInRuleScope;
 
     /// <summary>
     /// Reads one timestamp for showing, keeping absent and unreadable apart.
     /// </summary>
-    /// <remarks>
-    /// <b>An unreadable value is not shown as an absent one.</b> A machine whose timestamp is
-    /// present but undecodable is managed, and a blank cell would say the opposite.
-    /// </remarks>
     private static string Expiry(StoredLapsTimestamp timestamp) => timestamp.Reading switch
     {
         LapsTimestampReading.Present =>
             timestamp.ExpiresUtc!.Value.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-        LapsTimestampReading.Unreadable => "Present, unreadable",
-        _ => string.Empty,
+        LapsTimestampReading.Zero => LapsInventoryText.Get("ExpiryZero"),
+        LapsTimestampReading.Unreadable => LapsInventoryText.Get("ExpiryUnusable"),
+        LapsTimestampReading.Absent => LapsInventoryText.Get("ExpiryNone"),
+        _ => throw new System.IO.InvalidDataException("The saved expiry reading is not recognized."),
     };
 }
 
@@ -585,27 +530,20 @@ internal sealed class LapsCountViewModel
     /// <summary>Creates one count.</summary>
     /// <param name="state">The state being counted.</param>
     /// <param name="count">How many computers are in it.</param>
-    public LapsCountViewModel(LapsManagement state, int count)
+    public LapsCountViewModel(LapsValuePresence state, int count)
     {
         State = state;
         Count = count;
     }
 
     /// <summary>The state being counted.</summary>
-    public LapsManagement State { get; }
+    public LapsValuePresence State { get; }
 
     /// <summary>How many computers are in it.</summary>
     public int Count { get; }
 
     /// <summary>The state in the words an operator reads.</summary>
-    public string Label => State switch
-    {
-        LapsManagement.WindowsLaps => "Windows LAPS",
-        LapsManagement.LegacyLaps => "Legacy LAPS",
-        LapsManagement.Migrated => "Migrated",
-        LapsManagement.Unexpected => "Unexpected",
-        _ => "Not managed",
-    };
+    public string Label => LapsInventoryText.Label(State);
 }
 
 /// <summary>
@@ -739,9 +677,14 @@ internal sealed class RuleRowViewModel
                 + $"{_execution.FindingsProduced:N0}.",
             RuleExecutionOutcome.Succeeded =>
                 $"Judged {_execution.ObjectsJudged:N0} objects and reported nothing.",
+            RuleExecutionOutcome.Indeterminate when Rule == "SEC-102" =>
+                SavedGmsaPasswordReaders.IncompleteExplanation + "\n\n"
+                + string.Join("\n", _execution.MissingInputs.Select(input => SavedGmsaPasswordReaders.DescribeLimitation(input.Attribute)).Distinct()),
+            RuleExecutionOutcome.Indeterminate when Rule is "SEC-080" or "SEC-081" =>
+                SavedGpoDirectoryPermission.IncompleteExplanation,
             RuleExecutionOutcome.Indeterminate =>
                 $"Could not judge {_execution.ObjectsNotJudged:N0} of the objects it was offered, "
-                + $"because {MissingNamed} was not captured. What it reports is a floor, not a "
+                + $"because {UndecidedReason} What it reports is a floor, not a "
                 + "total.",
             RuleExecutionOutcome.Error =>
                 "This rule failed while running, so nothing has been established either way. "
@@ -770,6 +713,11 @@ internal sealed class RuleRowViewModel
     private string MissingNamed => _execution is { MissingInputs.Count: > 0 }
         ? string.Join(", ", _execution.MissingInputs.Select(m => m.Attribute).Distinct())
         : "an input it declared";
+
+    private string UndecidedReason => _execution is { MissingInputs.Count: > 0 }
+        && _execution.MissingInputs.Any(input => input.Attribute.StartsWith(CapturedInputIssue.TokenPrefix, StringComparison.Ordinal))
+            ? string.Join("; ", _execution.MissingInputs.Select(input => UnresolvedWording.For(input.Attribute).TrimEnd('.')).Distinct()) + "."
+            : MissingNamed + " was not captured.";
 }
 
 internal sealed record RuleInputViewModel(string Label, string Attribute);

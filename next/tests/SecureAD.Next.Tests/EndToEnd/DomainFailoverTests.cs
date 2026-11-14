@@ -217,7 +217,7 @@ public sealed class DomainFailoverTests(ITestOutputHelper output)
                 ("objectClass", ["top", "container", "groupPolicyContainer"]),
                 ("gPCFileSysPath", [path]),
                 ("nTSecurityDescriptor", [Descriptor("S-1-5-21-1-2-3-1001")]));
-            Sysvol.WithDescriptor(path, "", Descriptor());
+            Sysvol.WithPolicy(path, Descriptor());
         }
 
         public Result<IDirectoryChannel> Connect(CaptureUnit unit)

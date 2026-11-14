@@ -68,6 +68,29 @@ public sealed class ProtectedRunFiles : IDisposable, IAsyncDisposable
         return Complete(RequestAnalysis(kind, role), cancellationToken);
     }
 
+    internal Result<ProtectedStoreFile> BoundDerivation(ProtectedStoreFile evidence, StoreRootManifest root,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            ThrowIfClosing();
+            if (evidence.Role != StoreSegmentRole.Evidence || evidence.BundleDirectory != Directory
+                || _captureRootHash != evidence.Root.Hash
+                || !_files.TryGetValue((StoreSegmentRole.Evidence, evidence.Root.GenerationId), out var captured)
+                || !captured.IsCompletedSuccessfully || !captured.Result.IsSuccess
+                || !ReferenceEquals(captured.Result.Value, evidence))
+                return Failure("The bound evidence belongs to another protected lifetime.");
+        }
+        if (root.EvidenceSeal != evidence.Fingerprint
+            || root.Segments.FirstOrDefault()?.Role != StoreSegmentRole.Derivation)
+            return Failure("The bound derivation does not belong to this capture.");
+        return Complete(Start(StoreSegmentRole.Derivation, root, evidence.Root.Hash,
+            token => ProtectedStoreFile.OpenAnalysisSegment(Directory,
+                new(AnalysisStoreKind.Derivation, root.GenerationId), root, StoreSegmentRole.Derivation, token)),
+            cancellationToken);
+    }
+
     /// <summary>Joins a check of this product that is already running, without starting one.</summary>
     /// <remarks>
     /// A reader calls this before it takes any lock of its own, so that a slow check holds up only the

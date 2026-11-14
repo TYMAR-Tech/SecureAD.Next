@@ -59,12 +59,12 @@ public sealed class EnterpriseBaselineTests
     }
 
     [Theory]
-    [InlineData(16, 343, 795, 7, 343, 5)]
-    [InlineData(17, 342, 795, 7, 343, 5)]
-    [InlineData(17, 343, 794, 7, 343, 5)]
-    [InlineData(17, 343, 795, 6, 343, 5)]
-    [InlineData(17, 343, 795, 7, 342, 5)]
-    [InlineData(17, 343, 795, 7, 343, 4)]
+    [InlineData(17, 343, 795, 7, 343, 5)]
+    [InlineData(18, 342, 795, 7, 343, 5)]
+    [InlineData(18, 343, 794, 7, 343, 5)]
+    [InlineData(18, 343, 795, 6, 343, 5)]
+    [InlineData(18, 343, 795, 7, 342, 5)]
+    [InlineData(18, 343, 795, 7, 343, 4)]
     public void EveryIndependentCapturedCounterMustMatch(int version, long objects, long members,
         long positions, long links, long partitions) =>
         Assert.Throws<InvalidDataException>(() => EnterpriseBaseline.RequireControlCounts(
@@ -77,8 +77,8 @@ public sealed class EnterpriseBaselineTests
         EnterpriseControlWorkload.Write(run, CancellationToken.None);
         var counts = EnterpriseBaseline.InspectCaptured(run);
 
-        Assert.Equal(new EnterpriseCapturedCounts(17, 343, 795, 7, 343, 5), counts);
-        EnterpriseBaseline.RequireControlCounts(counts);
+        Assert.Equal(new EnterpriseCapturedCounts(18, 343, 795, 7, 343, 5), counts);
+        Assert.Null(Record.Exception(() => EnterpriseBaseline.RequireControlCounts(counts)));
     }
 
     [Fact]

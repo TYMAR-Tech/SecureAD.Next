@@ -226,8 +226,8 @@ public sealed class UnconstrainedDelegationRuleTests
     }
 
     /// <summary>
-    /// A computer parked in the Domain Controllers container is excluded on that signal alone, and
-    /// the disagreement between signals is recorded rather than resolved away.
+    /// A computer parked in the Domain Controllers container remains a finding, carrying the
+    /// disagreement instead of disappearing before it can be reported.
     /// </summary>
     [Fact]
     public void SignalsThatDisagreeAreRecorded()
@@ -245,7 +245,10 @@ public sealed class UnconstrainedDelegationRuleTests
         Assert.True(signals.SignalsDisagree);
         Assert.False(signals.ServerTrustAccountBit);
         Assert.True(signals.UnderDomainControllersOu);
-        Assert.Empty(OnComputer.Judge(imposter).Findings);
+        var verdict = OnComputer.Judge(imposter);
+        Assert.True(verdict.IsComplete);
+        var finding = Assert.Single(verdict.Findings);
+        Assert.Equal(signals, Assert.IsType<UnconstrainedDelegationEvidence>(finding.Evidence).DomainController);
     }
 
     /// <summary>
@@ -267,7 +270,7 @@ public sealed class UnconstrainedDelegationRuleTests
         var rodc = Account(
             "RODC01$",
             "CN=RODC01,OU=Branch,DC=ph,DC=ad,DC=lab",
-            0x00081000,
+            0x04081000,
             521,
             "computer");
 
@@ -276,11 +279,10 @@ public sealed class UnconstrainedDelegationRuleTests
     }
 
     /// <summary>
-    /// An object with no objectGUID produces nothing. 0023 makes objectGUID part of a finding's
-    /// identity, and a finding nothing can match is one no acceptance could ever attach to.
+    /// An otherwise positive object without identity is unassessed, never a complete empty verdict.
     /// </summary>
     [Fact]
-    public void AnObjectWithNoGuidProducesNothing()
+    public void AnObjectWithNoGuidIsExplicitlyNotJudged()
     {
         var nameless = Account(
             "nameless",
@@ -295,6 +297,7 @@ public sealed class UnconstrainedDelegationRuleTests
         var verdict = OnAccount.Judge(nameless);
 
         Assert.Empty(verdict.Findings);
-        Assert.True(verdict.IsComplete);
+        Assert.False(verdict.IsComplete);
+        Assert.Equal(new[] { "objectGUID" }, verdict.InputsNotCaptured);
     }
 }

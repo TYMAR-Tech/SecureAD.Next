@@ -25,7 +25,7 @@ public sealed class TreeIconTests
         var node = new TreeNode("OU=Misleading,DC=example", "Example", null, TreeNodeOrigin.Captured, [])
         { ObjectClass = objectClass };
 
-        Assert.Equal(expected, new TreeNodeViewModel(node).IconKind.ToString());
+        Assert.Equal(expected, new TreeNodeViewModel(node, observe: null).IconKind.ToString());
     }
 
     [Theory]
@@ -37,7 +37,7 @@ public sealed class TreeIconTests
         var node = new TreeNode("CN=UnrelatedName,DC=example", "UnrelatedName", null, TreeNodeOrigin.Partition, [])
         { PartitionKind = kind, ObjectClass = "container" };
 
-        Assert.Equal(expected, new TreeNodeViewModel(node).IconKind.ToString());
+        Assert.Equal(expected, new TreeNodeViewModel(node, observe: null).IconKind.ToString());
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class TreeIconTests
     {
         var node = new TreeNode("OU=Missing,DC=example", "Missing", null, TreeNodeOrigin.NeverCaptured, [])
         { ObjectClass = "organizationalUnit" };
-        var row = new TreeNodeViewModel(node);
+        var row = new TreeNodeViewModel(node, observe: null);
 
         Assert.Equal(TreeNodeIconKind.Unknown, row.IconKind);
         Assert.True(row.HasDetail);
@@ -65,7 +65,7 @@ public sealed class TreeIconTests
         var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
         var resources = new ResourceDictionary { Source = new Uri($"pack://application:,,,/{assembly};component/Themes/Tree.xaml") };
         var row = new TreeNodeViewModel(new("CN=Example,DC=example", "Example", null, TreeNodeOrigin.Captured, [])
-        { ObjectClass = objectClass });
+        { ObjectClass = objectClass }, observe: null);
         var control = new ContentControl { Content = row, ContentTemplate = (DataTemplate)resources["TreeNodeIcon"] };
         control.Resources.MergedDictionaries.Add(new ResourceDictionary
         {

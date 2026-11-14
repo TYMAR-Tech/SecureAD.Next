@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.Security.Cryptography;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
@@ -33,7 +34,7 @@ public sealed partial class OpenedRunResultsTests
     [Theory]
     [InlineData(null, LapsTimestampReading.Absent)]
     [InlineData("not a date", LapsTimestampReading.Unreadable)]
-    [InlineData("0", LapsTimestampReading.Unreadable)]
+    [InlineData("0", LapsTimestampReading.Zero)]
     [InlineData("133700000000000000", LapsTimestampReading.Present)]
     public void P248SavedLapsPreservesTimestampReading(string? raw, LapsTimestampReading expected)
     {
@@ -52,8 +53,8 @@ public sealed partial class OpenedRunResultsTests
         // Deliberately distinguish the recorded interpretation from what today's raw-value classifiers
         // would produce. This is synthetic, resealed evidence of passive readback, not tamper resistance.
         MutateControlRun(directory, """
-            UPDATE laps_inventory SET management='LegacyLaps', result=json_set(result,
-                '$.Management','LegacyLaps', '$.Capability.Kind','Unknown', '$.Capability.Basis','OperatingSystemName',
+            UPDATE laps_inventory SET value_presence='LegacyOnly', result=json_set(result,
+                '$.ValuePresence','LegacyOnly', '$.Capability.Kind','Unknown', '$.Capability.Basis','OperatingSystemName',
                 '$.AccountState','Unknown', '$.DomainController.PrimaryGroupIsDomainController',json('true'),
                 '$.WindowsLaps.Reading','Unreadable', '$.WindowsLaps.ExpiresUtc',NULL)
             """);
@@ -61,10 +62,36 @@ public sealed partial class OpenedRunResultsTests
 
         var row = Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers);
 
-        Assert.Equal((LapsManagement.LegacyLaps, LapsCapabilityKind.Unknown, LapsCapabilityBasis.OperatingSystemName,
+        Assert.Equal((LapsValuePresence.LegacyOnly, LapsCapabilityKind.Unknown, LapsCapabilityBasis.OperatingSystemName,
             LapsAttributes.AccountState.Unknown, true, LapsTimestampReading.Unreadable, (DateTimeOffset?)null),
-            (row.Management, row.Capability.Kind, row.Capability.Basis, row.AccountState,
+            (row.ValuePresence, row.Capability.Kind, row.Capability.Basis, row.AccountState,
              row.DomainController.PrimaryGroupIsDomainController, row.WindowsLaps.Reading, row.WindowsLaps.ExpiresUtc));
+    }
+
+    [Fact]
+    public void Scout04EarlierSavedPlatformAnswersRemainRecordedWithoutReclassification()
+    {
+        var directory = CreateLapsRun();
+        MutateControlRun(directory, """
+            UPDATE laps_inventory SET value_presence='WindowsOnLegacyOnly', result=json_set(result,
+                '$.ValuePresence','WindowsOnLegacyOnly', '$.OperatingSystemVersion','10.0',
+                '$.Capability.Version','10.0', '$.Capability.Kind','LegacyLapsOnly',
+                '$.Capability.Basis','OperatingSystemVersion')
+            """);
+        var original = Snapshots();
+        using var source = new BundleAssetSource();
+        var page = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
+        Assert.True(page.IsSuccess, page.Error?.Description);
+        var row = Assert.Single(page.Value.Computers);
+        Assert.Equal(new LapsCapability(LapsCapabilityKind.LegacyLapsOnly, LapsCapabilityBasis.OperatingSystemVersion,
+            "Windows Server 2022 Datacenter", "10.0"), row.Capability);
+        Assert.Equal(LapsValuePresence.WindowsOnLegacyOnly, row.ValuePresence);
+        Assert.Equal(1, page.Value.CountOf(LapsValuePresence.WindowsOnLegacyOnly));
+        Assert.Equal(original, Snapshots());
+
+        string[] Snapshots() => Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(directory, path) + ":" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))))
+            .Order(StringComparer.Ordinal).ToArray();
     }
 
     [Fact]
@@ -97,6 +124,23 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal((expected, expected), (page.Total, page.Computers.Count));
     }
 
+    [Theory]
+    [InlineData("'$.WindowsLaps.Reading','Present'")]
+    [InlineData("'$.WindowsLaps.HasUnsupportedRepresentation',json('true')")]
+    [InlineData("'$.WindowsLaps.Reading','Absent'")]
+    [InlineData("'$.WindowsLaps.Raw',NULL")]
+    [InlineData("'$.WindowsLaps.Reading','Unreadable','$.WindowsLaps.Raw',NULL")]
+    [InlineData("'$.WindowsLaps.Reading','Present','$.WindowsLaps.ExpiresUtc','2026-09-11T00:00:00+01:00'")]
+    public void Scout14SavedTimestampQualityContradictionsAreExplicitRefusals(string change)
+    {
+        var directory = CreateLapsRun(modern: "0");
+        MutateControlRun(directory, "UPDATE laps_inventory SET result=json_set(result," + change + ")");
+        using var source = new BundleAssetSource();
+        var result = source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Error);
+    }
+
     [Fact]
     public void P248SavedLapsEscapesScopeWildcards()
     {
@@ -125,7 +169,7 @@ public sealed partial class OpenedRunResultsTests
         var second = source.ListLapsComputers(directory, query, Assert.IsType<LapsPageMark>(first.Next)).Value;
 
         Assert.Equal((100, 3, 103, 103, 103),
-            (first.Computers.Count, second.Computers.Count, first.Total, second.Total, second.CountOf(LapsManagement.WindowsLaps)));
+            (first.Computers.Count, second.Computers.Count, first.Total, second.Total, second.CountOf(LapsValuePresence.WindowsOnly)));
     }
 
     [Fact]
@@ -133,7 +177,7 @@ public sealed partial class OpenedRunResultsTests
     {
         var directory = CreateLapsRun();
         MutateControlRun(directory, """
-            INSERT INTO laps_inventory VALUES ('CN=Other,DC=ad,DC=lab','Other','DC=ad,DC=lab','lab,ad,Other','NotManaged','ad.lab','not json');
+            INSERT INTO laps_inventory VALUES ('CN=Other,DC=ad,DC=lab','Other','DC=ad,DC=lab','lab,ad,Other','None','ad.lab','not json');
             UPDATE laps_inventory_product SET computer_count=2
             """);
         using var source = new BundleAssetSource();
@@ -184,7 +228,7 @@ public sealed partial class OpenedRunResultsTests
 
     [Theory]
     [InlineData("result='not json'")]
-    [InlineData("management='NotManaged'")]
+    [InlineData("value_presence='None'")]
     public void P248SavedLapsRefusesInvalidRequestedRows(string assignment)
     {
         var directory = CreateLapsRun();
@@ -269,7 +313,7 @@ public sealed partial class OpenedRunResultsTests
 
         var row = new LapsComputerViewModel(Assert.Single(source.ListLapsComputers(directory, new(LapsRoot, ListingScope.Subtree, "", null), null).Value.Computers));
 
-        Assert.Equal(expected, row.NotJudgedBecause);
+        Assert.Equal(expected, row.ScopeNotes);
     }
 
     private static string CreateLapsRun(uint? account = 4096, string? modern = "133700000000000000", string? legacy = null,

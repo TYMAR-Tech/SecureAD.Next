@@ -89,6 +89,27 @@ internal sealed class ReachabilityTrace
         return trace;
     }
 
+    internal static IReadOnlySet<MethodBase> CalledMethods(MethodBase root, IReadOnlySet<MethodBase> boundaries)
+    {
+        var seen = new HashSet<MethodBase> { root };
+        var pending = new Queue<MethodBase>();
+        pending.Enqueue(root);
+        while (pending.TryDequeue(out var method))
+        {
+            if (boundaries.Contains(method)) continue;
+            var calls = ResolveTokens(method).OfType<MethodBase>()
+                .Concat(StateMachines(method).SelectMany(AllMethods));
+            foreach (var called in calls)
+            {
+                if (called.DeclaringType?.Assembly.GetName().Name is { } assembly
+                    && assembly.StartsWith("SecureAD", StringComparison.Ordinal)
+                    && seen.Add(called))
+                    pending.Enqueue(called);
+            }
+        }
+        return seen;
+    }
+
     private void Run(IReadOnlyList<Assembly> applications)
     {
         foreach (var application in applications)

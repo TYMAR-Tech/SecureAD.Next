@@ -16,7 +16,7 @@ an answer**. Three things were taken from it and one was rejected:
 | From the card | Taken? |
 | --- | --- |
 | Fire when the stored expiration is at or before the reference time | **Partly** ΓÇö the intent, but with a 24-hour grace (┬º8) and measured from the *newest* lapsed timestamp, which `ad.lab` forced (┬º11) |
-| Sentinel values (null, zero, negative) are *never set*, not *stale* | Yes ΓÇö ┬º6 |
+| Sentinel values are not stale dates | Absence, zero and unusable input remain distinct; see section 6 |
 | Its domain-controller exclusion matched `OU=Domain Controllers` in the DN | **No** ΓÇö ┬º5 |
 | Severity `High` | **No** ΓÇö Medium, the owner's decision of 2026-09-03, ┬º7 |
 
@@ -132,17 +132,22 @@ object, so a machine promoted into a child domain leaves a member-server compute
 the parent domain that carries none of a controller's signals. That account is excluded here anyway
 ΓÇö it is disabled, which is exactly what `ad.lab` showed for `BADC` and `PHDC`.
 
-## 6. Sentinel values are *never set*, not *stale*
+## 6. Zero and unusable values are not stale dates
 
-A null, zero or negative FILETIME is not a password that expired in 1601. It is a value written
-empty. Reporting it as stale would put an absurdity in front of an operator and would also duplicate
-SEC-091, which owns the *nothing is managing this machine* case.
+**Owner-approved quality correction, 2026-11-10.**
+No captured value, zero, unusable text and a usable date are different observations.
+Zero is not a password expiration four centuries overdue, and by itself proves neither that a reset
+was requested nor that management is absent.
+The [shared captured-quality requirements](SEC-091-laps-missing-on-a-computer.md#captured-expiry-quality---owner-approved-2026-11-10)
+apply here without changing the existing comparison time, combined-signal predicate or 24-hour grace.
 
-**This needs no new code.** `LapsTimestamp.Decode` already refuses `fileTime <= 0` and anything
-outside the FILETIME range, returning `null` from `ExpiresUtc`; `LapsTimestamp.Reading` then reports
-`Unreadable` rather than `Present`. So the rule fires only on a value that decoded to a real
-instant, and every sentinel falls out before any comparison happens. A negative control is owed for
-each of null, zero and negative (┬º10).
+An independently fresh usable date still settles the existing combined-signal question.
+Without that independent answer, a zero or unusable other value must leave the assessment incomplete:
+an old readable date does not establish that an unreadable other value was also old.
+If neither value was captured, retain the ordinary no-timestamp negative control rather than calling
+that normal optional-value absence malformed.
+Retain raw observations and separately test zero, malformed/negative/out-of-range values, a fresh
+usable alternative, and an old usable value beside an unusable alternative.
 
 ## 7. Severity
 
@@ -221,10 +226,11 @@ Negative controls, one per exclusion and one per boundary:
 - A timestamp in the future is not reported.
 - A timestamp lapsed by less than 24 hours is not reported.
 - A timestamp lapsed by exactly 24 hours is not reported, and one lapsed by a minute more is.
-- A null, a zero and a negative FILETIME are each not reported (three separate cases).
+- A null, a zero and a negative FILETIME are each not reported, with absent versus unusable
+  assessment outcomes checked separately (three separate cases).
 - Where both timestamps have lapsed, the age is measured from the **newer** ΓÇö see ┬º11, which is
   where that was learned.
-- An unreadable non-numeric value is not reported.
+- An unreadable non-numeric value is not reported as stale or as a complete clean assessment.
 - A disabled computer with a lapsed timestamp is not reported.
 - A domain controller with a lapsed timestamp is not reported.
 - A group managed service account with a lapsed timestamp is not reported.

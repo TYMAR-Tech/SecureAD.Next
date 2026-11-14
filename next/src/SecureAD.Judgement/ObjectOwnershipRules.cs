@@ -177,7 +177,7 @@ public sealed class ObjectOwnedByNonAdministrator : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         RuleId,
-        "An object is owned by somebody who is not an administrator",
+        SavedOwnershipAssessment.OrdinaryTitle,
         Severity.Low,
         Version: RuleVersion,
         SubjectClasses: [],
@@ -255,7 +255,7 @@ public sealed class ProtectedObjectOwnedByNonAdministrator : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         RuleId,
-        "A protected object is owned by somebody who is not an administrator",
+        SavedOwnershipAssessment.ProtectedTitle,
         Severity.Medium,
         Version: RuleVersion,
         SubjectClasses: [],

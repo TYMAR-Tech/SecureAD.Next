@@ -25,6 +25,7 @@ namespace SecureAD.Judgement;
 internal static class UnconstrainedDelegation
 {
     internal const uint TrustedForDelegation = 0x00080000;
+    internal const int RuleVersion = 2;
 
     internal static IReadOnlyList<string> RequiredAttributes { get; } =
         ["userAccountControl", "objectClass", "primaryGroupID"];
@@ -51,20 +52,23 @@ internal static class UnconstrainedDelegation
         if (missing.Length > 0)
             return RuleVerdict.CouldNotJudge(missing);
 
-        if (subject.ObjectGuid is not { } objectGuid)
-            return RuleVerdict.Judged([]);
-
         if (AttributeReading.UnsignedInteger(subject, "userAccountControl") is not { } control)
             return RuleVerdict.CouldNotJudge(["userAccountControl"]);
+
+        if (AttributeReading.SignedInteger(subject, "primaryGroupID") is not { } primaryGroup)
+            return RuleVerdict.CouldNotJudge(["primaryGroupID"]);
 
         var isComputer = IsComputer(subject);
 
         if ((control & TrustedForDelegation) == 0 || isComputer != wantComputer)
             return RuleVerdict.Judged([]);
 
-        var signals = DomainControllerSignals.Of(subject);
-        if (signals.IsDomainController)
+        var signals = DomainControllerSignals.Of(control, primaryGroup, subject.DistinguishedName);
+        if (isComputer && new UserAccountControlEvidence(control).HasDomainControllerFlag)
             return RuleVerdict.Judged([]);
+
+        if (subject.ObjectGuid is not { } objectGuid || objectGuid == Guid.Empty)
+            return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
         var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
@@ -95,7 +99,7 @@ public sealed class UnconstrainedDelegationOnAccount : IObjectRule
         "SEC-010",
         "Unconstrained delegation",
         Severity.High,
-        Version: 1,
+        Version: UnconstrainedDelegation.RuleVersion,
         UnconstrainedDelegation.SubjectClasses,
         UnconstrainedDelegation.RequiredAttributes,
         RequiredDerivedFacts: []);
@@ -118,9 +122,9 @@ public sealed class UnconstrainedDelegationOnNonDomainController : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         "SEC-011",
-        "Unconstrained delegation on a non-domain controller",
+        "Unconstrained delegation on a computer-class account",
         Severity.High,
-        Version: 1,
+        Version: UnconstrainedDelegation.RuleVersion,
         UnconstrainedDelegation.SubjectClasses,
         UnconstrainedDelegation.RequiredAttributes,
         RequiredDerivedFacts: []);

@@ -2,6 +2,7 @@ using System.Windows;
 using SecureAD.Audit.Sysvol;
 using SecureAD.Judgement;
 using SecureAD.Shell.Services;
+using SecureAD.Shell.Services.Export;
 using SecureAD.Shell.Settings;
 using SecureAD.Shell.ViewModels;
 using SecureAD.Shell.Views;
@@ -195,6 +196,13 @@ internal partial class App : Application
             protections.Dispose();
         };
         _ = new ObjectDetailPresenter(shell.Assets, window);
+        _ = new FindingDetailPresenter(shell.Assets, window);
+        var csvExport = new CsvExportService();
+        var exportDestination = new ExportDestinationPicker();
+        var exportPresenter = new CsvExportPresenter(window,
+            dataset => new ExportViewModel(dataset, csvExport, exportDestination));
+        shell.Assets.LapsExportRequested += (path, question) =>
+            exportPresenter.Show(new LapsExportDataset(assets, path, question));
         _prepared(window, shell);
         window.Show();
         _startup(AppStartupPoint.WindowShown);

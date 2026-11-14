@@ -141,7 +141,7 @@ internal static class ReplicationPermissionFindingStorage
             throw Invalid();
     }
 
-    private static void RequireSource(ReplicationPermissionEvidence proof, ControlEdge edge)
+    internal static void RequireSource(ReplicationPermissionEvidence proof, ControlEdge edge)
     {
         if (edge.Capability != ControlCapability.CanReplicateSecretDomainData || !edge.IsComplete || !edge.IsCounted
             || edge.Expectedness != ControlExpectedness.Unexpected || edge.ExpectednessReason.ToString() != proof.ExpectednessReason

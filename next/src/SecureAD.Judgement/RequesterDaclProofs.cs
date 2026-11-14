@@ -106,7 +106,7 @@ internal static class RequesterDaclProofs
             internal SavedRequesterDaclProof Assess(Question question, string? obtainedFingerprint)
             {
                 owner._token.ThrowIfCancellationRequested();
-                owner._sources.RequireProtectedBinding(owner._description);
+                owner._sources.RequireFor(owner._description);
                 var request = question.Request;
                 if (request.TargetDn != targetDn) throw Tier0PathStorage.InvalidProof();
                 if (_previousRequester != request.RequesterDn)

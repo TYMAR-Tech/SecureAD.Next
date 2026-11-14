@@ -1,4 +1,27 @@
+using SecureAD.Kernel.GroupPolicy;
+
 namespace SecureAD.Evidence.Findings;
+
+public sealed record LapsPolicySettingsEvidence(
+    RegistryPolicyValue Value, GpoSettingsOutcome CaptureOutcome, string? CaptureReason,
+    IReadOnlyList<string> ParseErrors, IReadOnlyList<RegistryPolicyIssue> InterpretationIssues)
+{
+    public const string RegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\LAPS";
+    public const string ValueName = "ADPasswordEncryptionPrincipal";
+    public const string IncompleteConfigurationText =
+        "Some settings could not be read or interpreted, so SecureAD cannot confirm the final configured value. "
+        + "Review the saved policy file before changing this setting.";
+    public bool CaptureWasComplete => CaptureOutcome == GpoSettingsOutcome.Read;
+    public bool InterpretationWasComplete => ParseErrors.Count == 0 && InterpretationIssues.Count == 0;
+    public bool IsComplete => CaptureWasComplete && InterpretationWasComplete;
+    public bool Supports(string configured) => Value.EntryIndex >= 0
+        && string.Equals(Value.KeyPath, RegistryKey, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(Value.Source.KeyPath, Value.KeyPath, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(Value.ValueName, ValueName, StringComparison.OrdinalIgnoreCase)
+        && (string.Equals(Value.Source.ValueName, ValueName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Value.Source.ValueName, "**soft." + ValueName, StringComparison.OrdinalIgnoreCase))
+        && RegistryPolicyInterpreter.TryReadString(Value.Source, out var original) && original == configured;
+}
 
 /// <summary>
 /// How the <c>ADPasswordEncryptionPrincipal</c> value was written, since Microsoft accepts three
@@ -91,13 +114,14 @@ public sealed record LapsDecryptorEvidence(
     string? DecryptorSid,
     string? DecryptorName,
     IReadOnlyList<LapsDecryptorRouteEvidence> BroadPrincipalRoutes,
-    bool ExpansionWasComplete) : FindingEvidence
+    bool ExpansionWasComplete,
+    LapsPolicySettingsEvidence Settings) : FindingEvidence
 {
     /// <summary>
     /// Whether the decryptor was resolved and its membership walked to the end, so that finding no
     /// broad principal would be a fact rather than a silence.
     /// </summary>
-    public bool IsComplete => DecryptorSid is not null && ExpansionWasComplete;
+    public bool IsComplete => DecryptorSid is not null && ExpansionWasComplete && Settings.IsComplete;
 
     /// <summary>
     /// Whether a broad principal was actually found, as against the decryptor being unresolvable.

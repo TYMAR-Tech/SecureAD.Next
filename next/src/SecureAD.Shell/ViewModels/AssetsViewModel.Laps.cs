@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecureAD.Judgement;
+using SecureAD.Shell.Services.Export;
 
 namespace SecureAD.Shell.ViewModels;
 
@@ -8,28 +9,45 @@ internal sealed partial class AssetsViewModel
 {
     [ObservableProperty] private LapsComputerViewModel? _selectedLapsComputer;
     [ObservableProperty] private string _lapsSearchText = "";
-    [ObservableProperty] private string _lapsStateFilter = "All states";
+    [ObservableProperty] private string _lapsStateFilter = LapsInventoryText.Get("AllValues");
     private readonly Stack<LapsPageMark> _lapsBack = [];
     private LapsPageMark? _lapsNext;
 
     public bool HasSelectedLapsComputer => SelectedLapsComputer is not null;
+    public event Action<string, LapsQuery>? LapsExportRequested;
+    public string LapsExportLabel => ExportText.Get("Action");
+    public bool CanExportLaps => _active && ShowsLaps && HasListingResult && !HasLapsRefusal
+        && BundlePath is not null && Selected is not null;
+    public string LapsTitle => LapsInventoryText.Get("Title");
+    public string LapsCaption => LapsInventoryText.Get("Caption");
     public IReadOnlyList<string> LapsStateChoices { get; } =
-        ["All states", "Not managed", "Windows LAPS", "Legacy LAPS", "Migrated", "Unexpected"];
+        [LapsInventoryText.Get("AllValues"), .. Enum.GetValues<LapsValuePresence>().Select(LapsInventoryText.Label)];
     public IReadOnlyList<LapsComputerViewModel> VisibleLapsComputers => LapsComputers;
     public int LapsPageNumber => _lapsBack.Count + 1;
     public bool HasMoreLaps => HasListingResult && _lapsNext is not null;
     public bool HasEarlierLaps => HasListingResult && _lapsBack.Count > 0;
 
-    private LapsQuery LapsQuestion(string container) => new(container, Scope, LapsSearchText.Trim(), LapsStateFilter switch
+    private LapsQuery LapsQuestion(string container)
     {
-        "All states" => null,
-        "Not managed" => LapsManagement.NotManaged,
-        "Windows LAPS" => LapsManagement.WindowsLaps,
-        "Legacy LAPS" => LapsManagement.LegacyLaps,
-        "Migrated" => LapsManagement.Migrated,
-        "Unexpected" => LapsManagement.Unexpected,
-        _ => throw new InvalidOperationException("The selected LAPS state is not recognized."),
-    });
+        LapsValuePresence? selected = null;
+        if (LapsStateFilter != LapsInventoryText.Get("AllValues"))
+        {
+            var matches = Enum.GetValues<LapsValuePresence>()
+                .Where(values => LapsInventoryText.Label(values) == LapsStateFilter).ToArray();
+            if (matches.Length != 1) throw new InvalidOperationException("The selected captured-value group is not recognized.");
+            selected = matches[0];
+        }
+        return new(container, Scope, LapsSearchText.Trim(), selected);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExportLaps))]
+    private void ExportLaps()
+    {
+        if (LapsExportRequested is null)
+            throw new InvalidOperationException("The application export presenter is not connected.");
+        LapsExportRequested(BundlePath ?? throw new InvalidOperationException("No run is selected."),
+            LapsQuestion(Selected?.DistinguishedName ?? throw new InvalidOperationException("No directory scope is selected.")));
+    }
 
     [RelayCommand(CanExecute = nameof(HasMoreLaps))]
     private void NextLaps()
@@ -53,7 +71,7 @@ internal sealed partial class AssetsViewModel
     [RelayCommand(CanExecute = nameof(CanOpenLapsComputer))]
     private void OpenLapsComputer(LapsComputerViewModel? row) =>
         Open((row ?? SelectedLapsComputer ?? throw new InvalidOperationException("No LAPS computer is selected.")).DistinguishedName,
-            ObjectSectionCatalog.Overview);
+            ObjectSectionCatalog.Overview, expectedObjectGuid: null);
 
     partial void OnSelectedLapsComputerChanged(LapsComputerViewModel? value)
     {
@@ -80,6 +98,8 @@ internal sealed partial class AssetsViewModel
 
     private void AnnounceLaps()
     {
+        OnPropertyChanged(nameof(CanExportLaps));
+        ExportLapsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(VisibleLapsComputers));
         OnPropertyChanged(nameof(LapsPageNumber));
         OnPropertyChanged(nameof(HasMoreLaps));
@@ -91,7 +111,7 @@ internal sealed partial class AssetsViewModel
     private void ResetLapsFilters()
     {
         _lapsSearchText = "";
-        _lapsStateFilter = "All states";
+        _lapsStateFilter = LapsInventoryText.Get("AllValues");
         OnPropertyChanged(nameof(LapsSearchText));
         OnPropertyChanged(nameof(LapsStateFilter));
         ResetLapsPaging();

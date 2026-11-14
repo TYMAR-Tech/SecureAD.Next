@@ -119,6 +119,8 @@ public sealed class CoverageIdRecipeTests
         [16] = "57cf8ba5a9e7fb10",
         // Navigation publication does not change which domains the capture declared.
         [17] = "57cf8ba5a9e7fb10",
+        // Version 18 adds GPO protocol evidence; the declared-domain recipe remains unchanged.
+        [18] = "57cf8ba5a9e7fb10",
     };
 
     /// <summary>
@@ -127,12 +129,11 @@ public sealed class CoverageIdRecipeTests
     [Fact]
     public void TheRecipeProducesTheValuePinnedForThisSchemaVersion()
     {
+        var actual = CoverageId.ForDomainsExcluding(Forest, Declared, Excluded).Value;
         Assert.True(
             ExpectedBySchemaVersion.TryGetValue(BundleSchema.Version, out var expected),
             $"No coverage identity is pinned for schema version {BundleSchema.Version}. If the "
-            + "schema version was raised, add a row recording what the recipe produces under it.");
-
-        var actual = CoverageId.ForDomainsExcluding(Forest, Declared, Excluded).Value;
+            + $"schema version was raised, add a row recording the observed value '{actual}'.");
 
         Assert.True(
             string.Equals(expected, actual, StringComparison.Ordinal),

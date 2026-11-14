@@ -25,7 +25,7 @@ public sealed partial class OpenedRunResultsTests
             using var counts = new FindingsVerificationCounts(directory);
             using var source = new BundleAssetSource();
             var screen = new AssetsViewModel(source) { Pane = AssetsPane.Objects };
-            using (var heavy = new FindingsHeavyLocks(directory))
+            using (var heavy = new FindingsHeavyLocks(directory, permissionHeaders: true))
             {
                 screen.Show(directory, false);
                 await screen.ReadCompletion;
@@ -63,7 +63,7 @@ public sealed partial class OpenedRunResultsTests
                 screen.Pane = AssetsPane.Findings;
                 await screen.ReadCompletion;
                 Assert.Null(screen.ViewRefusal);
-                screen.RuleFilter = "SEC-022";
+                screen.RuleFilter = "SEC-030";
                 await screen.ReadCompletion;
                 var original = screen.Findings.Select(FindingDisplaySnapshot).ToArray();
                 Assert.Equal(50, original.Length);
@@ -72,10 +72,17 @@ public sealed partial class OpenedRunResultsTests
                 var findingsGrid = Assert.Single(ObjectNavigationViewTests.Descendants<DataGrid>(findingsView));
                 Assert.Equal(screen.Findings.Count, findingsGrid.Items.Count);
                 Assert.True(findingsGrid.ActualHeight >= 50);
+                Assert.Equal(0, counts.Heavy);
                 screen.OpenFinding(screen.Findings.Single(row => row.DistinguishedName == NavigationBrowsingTests.Group));
+                await screen.FindingDetails!.ReadCompletion;
+                Assert.Null(screen.FindingDetails.Refusal);
+                Assert.NotNull(screen.FindingDetails.ProtectionMarker);
+                screen.OpenAffectedObjectCommand.Execute(null);
                 await screen.ObjectReadCompletion;
                 Assert.NotNull(screen.Opened);
                 Assert.Null(screen.ObjectRefusal);
+                screen.Opened.Show(ObjectSectionCatalog.Findings);
+                await screen.Opened.ReadCompletion;
                 Assert.Null(screen.Opened.Refusal);
                 Assert.Equal(ObjectSectionCatalog.Findings, screen.Opened.SelectedKey);
                 Assert.Single(Assert.IsType<FindingsSectionViewModel>(screen.Opened.Content).Findings);
@@ -91,17 +98,21 @@ public sealed partial class OpenedRunResultsTests
                 screen.CloseObject();
                 await screen.ReadCompletion;
                 Assert.Equal(original, screen.Findings.Select(FindingDisplaySnapshot));
-                Assert.Equal(0, counts.Heavy);
+                Assert.Equal((1L, 0L, 0L, 0L, 0L), (counts.Count("permission"), counts.Count("path"),
+                    counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
                 screen.Suspend();
                 source.CloseRun();
                 screen.Show(directory, false);
                 await screen.ReadCompletion;
                 Assert.Null(screen.ViewRefusal);
                 Assert.Equal(original, screen.Findings.Select(FindingDisplaySnapshot));
-                Assert.Equal(0, counts.Heavy);
+                Assert.Equal((1L, 0L, 0L, 0L, 0L), (counts.Count("permission"), counts.Count("path"),
+                    counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
             }
 
             screen.OpenFinding(screen.Findings.Single(row => row.DistinguishedName == NavigationBrowsingTests.Group));
+            await screen.FindingDetails!.ReadCompletion;
+            screen.OpenAffectedObjectCommand.Execute(null);
             await screen.ObjectReadCompletion;
             screen.Opened!.Show(ObjectSectionCatalog.Membership);
             await screen.Opened.ReadCompletion;
@@ -184,10 +195,13 @@ public sealed partial class OpenedRunResultsTests
             writer.Complete(NavigationBrowsingTests.When.AddMinutes(1));
         using var captured = BundleReader.Open(directory).Value;
         var names = new[] { NavigationBrowsingTests.Group }.Concat(Enumerable.Range(0, 60).Select(NavigationBrowsingTests.Person));
-        var findings = names.Select(dn => new Finding("SEC-022", 1, Severity.High,
+        // This navigation fixture includes a group, so it must not pretend to carry an
+        // account-only preauthentication finding with flags that do not contain that setting.
+        var findings = names.Select(dn => new Finding("SEC-030", 1, Severity.Medium,
             new(FindingSubjectKind.Account, dn), captured.ReadObjectIdentity(dn)!.ObjectGuid!.Value,
             dn, "contoso.com", dn == NavigationBrowsingTests.Group ? "group" : "user",
-            "Recorded browsing fixture", EvidenceCompleteness.Complete, new UserAccountControlEvidence(514))
+            "Recorded browsing fixture", EvidenceCompleteness.Complete,
+            new AdminCountWithoutProtectionEvidence("S-1-5-21-1-2-3-1100"))
         { PrincipalName = dn == NavigationBrowsingTests.Group ? "Operators" : captured.ReadObjectIdentity(dn)!.DistinguishedName }).ToArray();
         WriteFindingsFixture(directory, findings);
         return directory;

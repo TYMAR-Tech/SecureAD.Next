@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
 using SecureAD.Evidence.Run;
+using SecureAD.Kernel;
 using SecureAD.Storage;
 
 namespace SecureAD.Judgement;
@@ -44,6 +45,7 @@ public sealed class JudgementWriter : IDisposable
     private readonly PreparedStatements _statements;
     private readonly Guid? _derivationGenerationId;
     private string _evidenceSeal = "";
+    private string? _permissionControlDerivationSeal;
     private readonly PermissionWriteSession _session = new();
     private SqliteTransaction? _batch;
     private int _batchObjects;
@@ -145,6 +147,62 @@ public sealed class JudgementWriter : IDisposable
         if (!LapsAttributes.IsComputer(subject)) return;
         LapsInventoryStorage.Write(_connection, Batch(), LapsInventoryStorage.CreateComputerResult(subject));
         _lapsComputers++;
+    }
+
+    private StoreRootManifest? _lapsCaptureRoot;
+    private ConfiguredLapsSchedulingSummary? _configuredLapsScope;
+
+    private StoreRootManifest LapsCaptureRoot()
+    {
+        if (_lapsCaptureRoot is null)
+        {
+            var capture = AnalysisStoreLifecycle.ResolveCapture(_bundleDirectory);
+            if (!capture.IsSuccess) throw new InvalidDataException(capture.Error.Description);
+            _lapsCaptureRoot = capture.Value;
+        }
+        if (_lapsCaptureRoot.EvidenceSeal != _evidenceSeal) throw LapsConfiguredPolicyStorage.Invalid();
+        return _lapsCaptureRoot;
+    }
+
+    internal void WriteLapsConfiguredPolicy(LapsConfiguredPolicy value, CancellationToken token = default)
+    {
+        ThrowIfFinishedWithinObject();
+        token.ThrowIfCancellationRequested();
+        if (value.EvidenceSeal != _evidenceSeal || value.CaptureGenerationId != LapsCaptureRoot().GenerationId
+            || value.DerivationGenerationId is not null && value.DerivationGenerationId != _derivationGenerationId)
+            throw LapsConfiguredPolicyStorage.Invalid();
+        var saved = SavedLapsConfiguredPolicy.Create(value, GenerationId, _derivationGenerationId,
+            FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), token);
+        LapsConfiguredPolicyStorage.Write(_connection, Batch(), saved, token);
+    }
+
+    internal ConfiguredLapsSchedulingSummary StartConfiguredLapsScheduling(ConfiguredLapsPolicy policy, bool captureComplete)
+    {
+        ThrowIfFinishedWithinObject();
+        var value = new ConfiguredLapsSchedulingSummary(GenerationId, LapsCaptureRoot().GenerationId, _evidenceSeal,
+            _derivationGenerationId, policy, ConfiguredLapsSchedulingState.Writing, _lapsComputers, 0, 0, 0, captureComplete);
+        LapsSchedulingStorage.Start(_connection, Batch(), value);
+        _configuredLapsScope = value;
+        return value;
+    }
+
+    internal void WriteUnassessedLapsComputer(CapturedObjectIdentity computer, AuditError reason)
+    {
+        ThrowIfFinishedWithinObject();
+        if (computer.CaptureGenerationId != LapsCaptureRoot().GenerationId || computer.ObjectId <= 0)
+            throw LapsSchedulingStorage.Invalid();
+        LapsSchedulingStorage.WriteUnassessed(_connection, Batch(), computer, reason);
+    }
+
+    internal void CompleteConfiguredLapsScheduling(ConfiguredLapsSchedulingSummary value)
+    {
+        ThrowIfFinishedWithinObject();
+        if (value.JudgementGenerationId != GenerationId || value.CaptureGenerationId != LapsCaptureRoot().GenerationId
+            || value.EvidenceSeal != _evidenceSeal || value.DerivationGenerationId != _derivationGenerationId)
+            throw LapsSchedulingStorage.Invalid();
+        LapsSchedulingStorage.Complete(_connection, Batch(), value);
+        _configuredLapsScope = value;
+        FlushObjects();
     }
 
     private readonly GroupMembershipTotals _groupMembershipTotals = new();
@@ -604,6 +662,7 @@ public sealed class JudgementWriter : IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         diagnostic?.Part("validate-laps");
         LapsInventoryStorage.RequirePublishable(_connection);
+        LapsConfiguredPolicyStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-permission-classifications");
         PermissionClassificationStorage.RequirePublishable(_connection);
         diagnostic?.Part("validate-path-fragments");
@@ -631,12 +690,19 @@ public sealed class JudgementWriter : IDisposable
             ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         ReplicationPermissionFindingStorage.RequirePublishable(_connection, _rulesWritten.Contains("SEC-002")
             ? FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        GmsaPasswordReaderStorage.RequirePublishable(_connection, GenerationId, _evidenceSeal, _derivationGenerationId,
+            _rulesWritten.Contains("SEC-102") ? _permissionControlDerivationSeal
+                ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
+        GpoDirectoryPermissionStorage.RequirePublishable(_connection, GenerationId, _evidenceSeal, _derivationGenerationId,
+            _rulesWritten.Overlaps(["SEC-080", "SEC-081"]) ? _permissionControlDerivationSeal
+                ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId) : null, cancellationToken);
         GroupInventoryStorage.RequirePublishable(_connection, null);
         Tier0DistanceStorage.RequirePublishable(_connection, _pathDescription, cancellationToken);
         BestSupportedRouteStorage.RequirePublishable(_connection);
         JudgementStoreLayout.RequirePublishable(_connection);
 
-        var state = _evidenceIsComplete
+        var configuredLapsIncomplete = LapsSchedulingStorage.RequirePublishable(_connection, _configuredLapsScope);
+        var state = _evidenceIsComplete && !configuredLapsIncomplete
             && _outcomes.All(o => o == RuleExecutionOutcome.Succeeded)
             ? JudgementRunState.Completed
             : JudgementRunState.CompletedDegraded;
@@ -701,6 +767,27 @@ public sealed class JudgementWriter : IDisposable
     }
 
     /// <inheritdoc />
+    private void WriteLapsRegistryLimit(SqliteTransaction transaction, long findingId, string kind, int ordinal,
+        int? entry, string? key, string? value, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason) || entry < 0)
+            throw new InvalidDataException("A saved LAPS registry limitation has no qualified reason or occurrence.");
+        Execute(transaction, """
+            INSERT INTO finding_laps_registry_limit
+            (finding_id,kind,ordinal,entry_index,key_path,value_name,reason)
+            VALUES ($id,$kind,$ordinal,$entry,$key,$value,$reason)
+            """, command =>
+        {
+            command.Parameters.AddWithValue("$id", findingId);
+            command.Parameters.AddWithValue("$kind", kind);
+            command.Parameters.AddWithValue("$ordinal", ordinal);
+            command.Parameters.AddWithValue("$entry", (object?)entry ?? DBNull.Value);
+            command.Parameters.AddWithValue("$key", (object?)key ?? DBNull.Value);
+            command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
+            command.Parameters.AddWithValue("$reason", reason);
+        });
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -793,6 +880,14 @@ public sealed class JudgementWriter : IDisposable
 
     private void WriteFinding(SqliteTransaction transaction, Finding finding)
     {
+        if (finding.RuleId == "SEC-060" && (finding.RuleVersion == BroadPrincipalCanTakeOverObject.RuleVersion
+            || finding.Evidence is ObjectTakeoverEvidence { Calculation: not null }))
+        {
+            PermissionControlCalculationStorage.Validate(finding, GenerationId, _evidenceSeal, _derivationGenerationId);
+            _permissionControlDerivationSeal ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId);
+            if (((ObjectTakeoverEvidence)finding.Evidence).Calculation!.DerivationSeal != _permissionControlDerivationSeal)
+                throw PermissionControlCalculationStorage.Invalid();
+        }
         var findingId = _nextFindingId++;
         var list = FindingListItem.FromFinding(finding);
 
@@ -831,7 +926,7 @@ public sealed class JudgementWriter : IDisposable
                 command.Parameters.AddWithValue("$protection", (object?)list.Membership?.DirectProtectionName ?? DBNull.Value);
             });
 
-        WriteFindingEvidence(transaction, findingId, finding.Evidence);
+        WriteFindingEvidence(transaction, findingId, finding);
     }
 
     /// <summary>
@@ -843,10 +938,21 @@ public sealed class JudgementWriter : IDisposable
     /// per kind means the gap shows up here, at the write, naming the type.
     /// </remarks>
     private void WriteFindingEvidence(
-        SqliteTransaction transaction, long findingId, FindingEvidence evidence)
+        SqliteTransaction transaction, long findingId, Finding finding)
     {
+        var evidence = finding.Evidence;
         switch (evidence)
         {
+            case GpoDirectoryPermissionEvidence gpo:
+                GpoDirectoryPermissionStorage.Write(_connection, transaction, findingId, GenerationId, _evidenceSeal,
+                    _derivationGenerationId, _permissionControlDerivationSeal
+                        ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), finding, gpo,
+                    new SharedPermissionStorage(_connection, transaction, _statements, _session));
+                break;
+            case GmsaPasswordReaderEvidence gmsa:
+                GmsaPasswordReaderStorage.Write(_connection, transaction, findingId, GenerationId, _evidenceSeal, _derivationGenerationId,
+                    _permissionControlDerivationSeal ??= FindingInputBinding.DerivationSeal(_bundleDirectory, _derivationGenerationId), finding, gmsa);
+                break;
             case ReplicationPermissionEvidence replication:
                 ReplicationPermissionFindingStorage.Write(_connection, transaction, findingId, GenerationId, replication);
                 break;
@@ -1027,56 +1133,22 @@ public sealed class JudgementWriter : IDisposable
                 return;
 
             case LapsPasswordReaderEvidence readers:
-                Execute(
-                    transaction,
-                    "INSERT INTO finding_laps_password_reader (finding_id, trustee_sid, "
-                    + "trustee_name, broad_principal_sid, broad_principal_name, attribute, "
-                    + "rights, reach, inherited_from, expansion_was_complete, route_length) "
-                    + "VALUES ($id, $trustee, $name, $broad, $broadName, $attribute, $rights, "
-                    + "$reach, $inherited, $complete, $length)",
-                    command =>
-                    {
-                        command.Parameters.AddWithValue("$id", findingId);
-                        command.Parameters.AddWithValue("$trustee", readers.TrusteeSid);
-                        command.Parameters.AddWithValue(
-                            "$name", (object?)readers.TrusteeName ?? DBNull.Value);
-                        command.Parameters.AddWithValue("$broad", readers.BroadPrincipalSid);
-                        command.Parameters.AddWithValue(
-                            "$broadName", (object?)readers.BroadPrincipalName ?? DBNull.Value);
-                        command.Parameters.AddWithValue("$attribute", readers.Attribute);
-                        command.Parameters.AddWithValue("$rights", readers.Rights.ToString());
-                        command.Parameters.AddWithValue("$reach", readers.Reach.ToString());
-                        command.Parameters.AddWithValue(
-                            "$inherited", (object?)readers.InheritedFrom ?? DBNull.Value);
-                        command.Parameters.AddWithValue(
-                            "$complete", readers.ExpansionWasComplete ? 1L : 0L);
-                        command.Parameters.AddWithValue("$length", readers.MembershipPath.Count);
-                    });
-
-                // The path, in order. Without it the finding names a broad principal and cannot say
-                // which link an operator would cut, which is the whole of P-123's third condition.
-                for (var ordinal = 0; ordinal < readers.MembershipPath.Count; ordinal++)
-                {
-                    var step = readers.MembershipPath[ordinal];
-                    var position = ordinal;
-
-                    Execute(
-                        transaction,
-                        "INSERT INTO finding_laps_password_reader_path "
-                        + "(finding_id, ordinal, sid, name) VALUES ($id, $ordinal, $sid, $name)",
-                        command =>
-                        {
-                            command.Parameters.AddWithValue("$id", findingId);
-                            command.Parameters.AddWithValue("$ordinal", position);
-                            command.Parameters.AddWithValue("$sid", step.Sid);
-                            command.Parameters.AddWithValue(
-                                "$name", (object?)step.Name ?? DBNull.Value);
-                        });
-                }
-
+                LapsReadFindingStorage.Write(_connection, transaction, findingId, GenerationId, finding, readers);
                 return;
 
             case ObjectTakeoverEvidence takeover:
+                if (takeover.Calculation is { } calculation)
+                    Execute(transaction,
+                        "INSERT INTO finding_object_takeover_calculation (finding_id,calculation_complete,display_header,payload) VALUES ($id,$complete,$header,$payload)",
+                        command =>
+                        {
+                            command.Parameters.AddWithValue("$id", findingId);
+                            command.Parameters.AddWithValue("$complete", calculation.IsComplete ? 1 : 0);
+                            command.Parameters.AddWithValue("$header", System.Text.Json.JsonSerializer.Serialize(
+                                SavedPermissionControlAssessment.From(calculation, takeover.MembershipPath.Count),
+                                PermissionControlCalculationStorage.DisplayOptions));
+                            command.Parameters.AddWithValue("$payload", System.Text.Json.JsonSerializer.Serialize(calculation, ProofSerialization.Options));
+                        });
                 Execute(
                     transaction,
                     "INSERT INTO finding_object_takeover (finding_id, trustee_sid, "
@@ -1148,8 +1220,10 @@ public sealed class JudgementWriter : IDisposable
                     transaction,
                     "INSERT INTO finding_laps_decryptor (finding_id, policy_display_name, "
                     + "configured_value, form, decryptor_sid, decryptor_name, "
-                    + "expansion_was_complete, route_count) "
-                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $complete, $count)",
+                    + "expansion_was_complete, route_count,settings_outcome,settings_reason,registry_entry_index,"
+                    + "registry_key_path,registry_value_name,registry_type,registry_data,parse_error_count,interpretation_issue_count) "
+                    + "VALUES ($id, $policy, $value, $form, $sid, $sidName, $complete, $count,"
+                    + "$outcome,$reason,$entry,$key,$name,$type,$data,$parse,$issues)",
                     command =>
                     {
                         command.Parameters.AddWithValue("$id", findingId);
@@ -1165,7 +1239,31 @@ public sealed class JudgementWriter : IDisposable
                             "$complete", decryptor.ExpansionWasComplete ? 1L : 0L);
                         command.Parameters.AddWithValue(
                             "$count", decryptor.BroadPrincipalRoutes.Count);
+                        var settings = decryptor.Settings;
+                        if (!Enum.IsDefined(settings.CaptureOutcome) || settings.Value.EntryIndex < 0
+                            || (settings.CaptureOutcome == GpoSettingsOutcome.Read) != (settings.CaptureReason is null)
+                            || !settings.Supports(decryptor.ConfiguredValue))
+                            throw new InvalidDataException("A saved LAPS policy-input assessment is inconsistent.");
+                        command.Parameters.AddWithValue("$outcome", settings.CaptureOutcome.ToString());
+                        command.Parameters.AddWithValue("$reason", (object?)settings.CaptureReason ?? DBNull.Value);
+                        command.Parameters.AddWithValue("$entry", settings.Value.EntryIndex);
+                        command.Parameters.AddWithValue("$key", settings.Value.Source.KeyPath);
+                        command.Parameters.AddWithValue("$name", settings.Value.Source.ValueName);
+                        command.Parameters.AddWithValue("$type", (long)settings.Value.Source.RegistryType);
+                        command.Parameters.AddWithValue("$data", settings.Value.Source.Data);
+                        command.Parameters.AddWithValue("$parse", settings.ParseErrors.Count);
+                        command.Parameters.AddWithValue("$issues", settings.InterpretationIssues.Count);
                     });
+
+                for (var index = 0; index < decryptor.Settings.ParseErrors.Count; index++)
+                    WriteLapsRegistryLimit(transaction, findingId, "Parse", index, null, null, null,
+                        decryptor.Settings.ParseErrors[index]);
+                for (var index = 0; index < decryptor.Settings.InterpretationIssues.Count; index++)
+                {
+                    var issue = decryptor.Settings.InterpretationIssues[index];
+                    WriteLapsRegistryLimit(transaction, findingId, "Operation", index,
+                        issue.EntryIndex, issue.KeyPath, issue.ValueName, issue.Reason);
+                }
 
                 for (var routeOrdinal = 0;
                      routeOrdinal < decryptor.BroadPrincipalRoutes.Count;

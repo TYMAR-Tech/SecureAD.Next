@@ -28,16 +28,14 @@ namespace SecureAD.Judgement;
 /// <para>
 /// <b>Why an administrator cannot find this himself.</b> Membership is a link between two objects -
 /// the group's <c>member</c> and the account's <c>memberOf</c>. A SID in <c>sIDHistory</c> creates
-/// no such link, so listing that group's members, at any depth, will not name this account. The
-/// privilege is real and the membership listing is empty.
+/// no such link, so a group-membership review can miss access retained through a historical SID.
+/// Recognising the identifier pattern does not establish that access for this object or resource.
 /// </para>
 /// <para>
-/// <b>What the customer can therefore mitigate.</b> A standing privilege escalation that survives
-/// every review of group membership. The remedy is Microsoft's own, from the same assessment:
-/// identify the value with <c>Get-ADUser -Properties SidHistory</c> and remove it with
-/// <c>Set-ADUser -Remove @{SIDHistory='S-1-5-21-…'}</c>. The wording below says that and no more -
-/// the value may be the only reason the account can still reach resources whose permissions were
-/// never re-stamped after the migration.
+/// <b>What the customer can review.</b> Verify the migration, trust and resource dependencies before
+/// removing a specific unnecessary value using administration appropriate to the captured object
+/// class. The value may be the only reason the object can still reach resources whose permissions
+/// were never re-stamped after the migration.
 /// </para>
 /// <para>
 /// <b>All three classes are reported identically</b>, decided by the owner on 2026-09-02. The schema
@@ -61,12 +59,25 @@ namespace SecureAD.Judgement;
 /// </remarks>
 public sealed class PrivilegedSidHistory : IObjectRule
 {
+    internal const int RuleVersion = 2;
+    internal const string Explanation =
+        "SID history can retain access through earlier identifiers without adding the object to the corresponding group. "
+        + "A privileged historical identifier can therefore preserve access that a group-membership review would miss. "
+        + "Actual access depends on resource permissions and, where applicable, trust and SID-filtering rules. "
+        + "This finding does not prove a specific current group membership, effective access, successful use, compromise or a completed Tier 0 path.";
+    internal const string Guidance =
+        "Verify why each flagged value is present, the migration history and current resource dependencies. "
+        + "When authorised, check relevant trust and SID-filtering behaviour. If a value is no longer needed, remove only that specific sIDHistory value "
+        + "using administration appropriate to the user, computer or group shown, under change control, then test dependent access. "
+        + "Do not clear the entire attribute or assume that unranked or unreadable values are harmless. "
+        + "Removing a historical identifier may break access still granted only to that identifier.";
+
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         "SEC-027",
         "Privileged identifier carried in SID history",
         Severity.High,
-        Version: 1,
+        Version: RuleVersion,
         SubjectClasses: ["user", "computer", "group"],
         RequiredAttributes: ["sIDHistory", "objectSid", "objectClass"],
         RequiredDerivedFacts: []);
@@ -97,8 +108,8 @@ public sealed class PrivilegedSidHistory : IObjectRule
                 : RuleVerdict.CouldNotJudge(["sIDHistory"]);
         }
 
-        if (subject.ObjectGuid is not { } objectGuid)
-            return RuleVerdict.Judged([]);
+        if (subject.ObjectGuid is not { } objectGuid || objectGuid == Guid.Empty)
+            return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         // A privileged identifier was found, so the finding is true whether or not every other value
         // was readable - and reporting it beside the count of what could not be read tells an
@@ -122,7 +133,7 @@ public sealed class PrivilegedSidHistory : IObjectRule
                 subject.DistinguishedName,
                 DnHelper.DnToFqdn(subject.DistinguishedName),
                 objectClass,
-                Wording(name, objectSid, evidence),
+                Wording(name, evidence),
                 subject.Completeness,
                 evidence),
         ]);
@@ -155,26 +166,16 @@ public sealed class PrivilegedSidHistory : IObjectRule
     /// Removing the value can take away access the account still depends on, because permissions
     /// left over from the migration may name only the old identifier.
     /// </remarks>
-    private static string Wording(
-        string name, string? objectSid, PrivilegedSidHistoryEvidence evidence)
+    private static string Wording(string name, PrivilegedSidHistoryEvidence evidence)
     {
         var carried = string.Join(
             ", ",
             evidence.Matches.Select(m => $"{m.Name} ({m.Sid})"));
 
-        var ownDomain = Sid.IssuingDomain(objectSid);
-        var fromElsewhere = ownDomain is not null && evidence.Matches.All(m =>
-            !string.Equals(
-                Sid.IssuingDomain(m.Sid),
-                ownDomain,
-                StringComparison.OrdinalIgnoreCase));
-
-        var origin = fromElsewhere ? " issued by another domain" : string.Empty;
-
         var unranked = evidence.UnrankedValues.Count;
         var others = unranked == 0
             ? string.Empty
-            : $" The account carries {unranked} further SID history "
+            : $" The object carries {unranked} further SID history "
                 + $"{(unranked == 1 ? "value" : "values")} that this product cannot rank, because "
                 + "what they were granted lives in the domain that issued them.";
 
@@ -182,16 +183,10 @@ public sealed class PrivilegedSidHistory : IObjectRule
             ? string.Empty
             : $" A further {evidence.UnreadableValues} "
                 + $"{(evidence.UnreadableValues == 1 ? "value was" : "values were")} present but "
-                + "could not be read, so this account may carry more than is listed here.";
+                + "could not be read, so this object may carry more than is listed here.";
 
-        return $"{name} carries a privileged identifier in its SID history{origin}: {carried}. "
-            + "Every value in SID history is placed in the account's access token at sign-in and "
-            + "grants access exactly as membership of that group would, but it appears in no group "
-            + "membership listing, so a review of that group's members will not show this account. "
-            + "Confirm the value is still required, then remove it with "
-            + "Set-ADUser -Remove @{SIDHistory='…'}. Removing it may take away access the account "
-            + "still relies on, if permissions left behind by the migration name only the old "
-            + "identifier."
+        return $"{name} carries SID-history values recognised by this rule: {carried}. "
+            + Explanation + " " + Guidance
             + others
             + unreadable;
     }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Data.Sqlite;
 using SecureAD.Cli;
 using SecureAD.Derivation;
@@ -7,6 +8,7 @@ using SecureAD.Evidence.Run;
 using SecureAD.Judgement;
 using SecureAD.Kernel;
 using SecureAD.Kernel.Security;
+using SecureAD.Next.Tests.Architecture;
 using SecureAD.Shell.Services;
 using Xunit;
 using static SecureAD.Next.Tests.Judgement.SelfMembershipDiscoveryTests;
@@ -79,7 +81,7 @@ public sealed class CompletionSummaryTests
     }
 
     [Fact]
-    public async Task GuiCompletionUsesSavedCountsAndCoverageWithEvidenceAndOriginalProofLocked()
+    public async Task GuiCompletionUsesSavedCountsAndCoverageWithoutReconstructingOriginalResults()
     {
         var directory = Bundle(writeAdditional: (writer, domain) => writer.WriteObject(new(domain,
             "CN=Delegated,DC=contoso,DC=com", Guid.NewGuid(),
@@ -93,20 +95,16 @@ public sealed class CompletionSummaryTests
                 new("sAMAccountName", StoredAttributeCompleteness.Complete, [EvidenceValue.OfText("Delegated")]),
             ], Started)));
         Derive(directory);
-        ProductLocks? locks = null;
-        Result<JudgingOutcome> result;
-        try
-        {
-            result = await new JudgingLauncher(null).RunAsync(directory,
-                new Watched<JudgingRun.JudgingProgress>(value =>
-                {
-                    if (value.Phase == JudgingPhase.ReadingResults)
-                        locks = new ProductLocks(directory, pathProof: false);
-                }), CancellationToken.None);
-        }
-        finally { locks?.Dispose(); }
-        Assert.NotNull(locks);
+        var completionObserved = false;
+        var result = await new JudgingLauncher(null).RunAsync(directory,
+            new Watched<JudgingRun.JudgingProgress>(value =>
+            {
+                if (value.Phase == JudgingPhase.ReadingResults) completionObserved = true;
+            }), CancellationToken.None);
+        Assert.True(completionObserved);
         Assert.True(result.IsSuccess, result.Error?.Description);
+        RequireSummaryCompletion(typeof(JudgingLauncher), typeof(JudgingRun), nameof(JudgingRun.JudgeAudit),
+            typeof(JudgementReader));
         using var reader = JudgementReader.Open(directory).Value;
         var original = reader.Read();
         Assert.Equal(4, result.Value.ObjectsJudged);
@@ -191,16 +189,15 @@ public sealed class CompletionSummaryTests
         var directory = Bundle();
         if (host == "shell")
         {
-            var changed = false;
+            var completionObserved = false;
             var result = await new DerivationLauncher().RunAsync(directory, new Watched<DerivationProgress>(value =>
             {
-                if (value.Phase != "ReadingDerivedResults") return;
-                Change(directory, AnalysisStoreKind.Derivation, StoreSegmentRole.Derivation,
-                    "DROP TABLE completeness_unresolved_trustee");
-                changed = true;
+                if (value.Phase == "ReadingDerivedResults") completionObserved = true;
             }), CancellationToken.None);
-            Assert.True(changed);
+            Assert.True(completionObserved);
             Assert.True(result.IsSuccess, result.Error?.Description);
+            RequireSummaryCompletion(typeof(DerivationLauncher), typeof(Stage2aRun), nameof(Stage2aRun.Derive),
+                typeof(DerivationReader));
             Assert.Equal(DerivationReader.ReadSummary(directory).Value.Size.Principals, result.Value.Principals);
             Assert.Equal(DerivationReader.ReadSummary(directory).Value.Size.NestingEdges, result.Value.NestingEdges);
         }
@@ -211,7 +208,9 @@ public sealed class CompletionSummaryTests
                 "DROP TABLE completeness_unresolved_trustee");
             Stage2aRun.AppendPortableSummary(directory, GenerationId(directory, AnalysisStoreKind.Derivation), TimeSpan.FromMilliseconds(123),
                 [new("Measured", 17)], RunLog.Discarded, CancellationToken.None);
-            var written = File.ReadAllText(BundleLayout.PortableSummaryPath(directory));
+            var summaryPath = BundleLayout.PortableSummaryPath(directory);
+            Assert.True(File.Exists(summaryPath), "Portable completion did not write its saved summary.");
+            var written = File.ReadAllText(summaryPath);
             Assert.Contains("CompletedDegraded", written, StringComparison.Ordinal);
             Assert.Contains("2", Field(written, "Principals"), StringComparison.Ordinal);
             Assert.Equal("1 relationships", Field(written, "Nesting"));
@@ -501,6 +500,28 @@ public sealed class CompletionSummaryTests
 
     private static string Field(string text, string name) =>
         text.Split(Environment.NewLine).Single(line => line.StartsWith(name.PadRight(14), StringComparison.Ordinal))[14..].Trim();
+
+    private static void RequireSummaryCompletion(Type launcher, Type producer, string operation, Type reader)
+    {
+        var entry = Assert.Single(launcher.GetMethods(BindingFlags.Public | BindingFlags.Instance),
+            method => method.Name == "RunAsync");
+        var boundaries = producer.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(method => method.Name == operation).Cast<MethodBase>().ToHashSet();
+        Assert.NotEmpty(boundaries);
+        var calls = ReachabilityTrace.CalledMethods(entry, boundaries);
+        Assert.Contains(calls, method => boundaries.Contains(method));
+        Assert.Contains(calls, method => method.DeclaringType == reader && method.Name == "ReadSummary");
+        Assert.Empty(calls.Where(method =>
+            method.DeclaringType == typeof(DerivationReader) && method.Name == nameof(DerivationReader.Read)
+            || method.DeclaringType == typeof(JudgementReader) && method.Name is
+                nameof(JudgementReader.Read) or nameof(JudgementReader.ReadPage)
+                or nameof(JudgementReader.ReadPathInputs) or nameof(JudgementReader.ReadControlEdges)
+                or nameof(JudgementReader.ReadControlEdge) or nameof(JudgementReader.ReadMemberAttribution)
+                or nameof(JudgementReader.ReadSelfMembershipAssessments)
+                or nameof(JudgementReader.ReadPermissionsThroughMembership)
+            || method.DeclaringType == typeof(BundleReader)
+                && method.Name is "StreamObjects" or "ReadPermissions" or "ReadObjectAttributes"));
+    }
 
     private static string[] RuleFields(string text, string rule) =>
         text.Split(Environment.NewLine).Single(line => line.TrimStart().StartsWith(rule + " ", StringComparison.Ordinal))

@@ -61,10 +61,10 @@ public sealed partial class OpenedRunResultsTests
                 Assert.True(read.IsSuccess, read.Error?.Description);
                 var item = Assert.Single(read.Value.Findings);
                 Assert.False(item.EvidenceIsComplete);
-                Assert.Equal((finding.Subject, finding.ObjectGuid, finding.RuleId, finding.Severity, finding.Detail),
+                Assert.Equal((finding.Subject, finding.ObjectGuid, finding.RuleId, finding.Severity, FindingListItem.FromFinding(finding).Detail),
                     (item.Subject, item.ObjectGuid, item.RuleId, item.Severity, item.Detail));
                 Assert.Equal(1, read.Value.RulesRan);
-                Assert.Equal("May be incomplete", new FindingRowViewModel(item).Coverage);
+                Assert.Equal("May be incomplete", new FindingRowViewModel(item, current: null).Coverage);
             }
             Assert.Equal((1L, 1L, 0L, 0L, 0L, 0L),
                 (counts.Count("judgement"), counts.Count("permission"), counts.Count("path"),
@@ -116,8 +116,8 @@ public sealed partial class OpenedRunResultsTests
                 DELETE FROM finding_laps_decryptor
                 """,
             "missing" => $"DELETE FROM {table}",
-            "invalid" => $"UPDATE {table} SET {column}={(ruleId == "SEC-027" ? -1 : 2)}",
-            "text" => $"UPDATE {table} SET {column}='not recorded'",
+            "invalid" => $"PRAGMA ignore_check_constraints=ON; UPDATE {table} SET {column}={(ruleId == "SEC-027" ? -1 : 2)}",
+            "text" => $"PRAGMA ignore_check_constraints=ON; UPDATE {table} SET {column}='not recorded'",
             _ => throw new ArgumentOutOfRangeException(nameof(defect)),
         });
         using var source = new BundleAssetSource();
@@ -171,7 +171,13 @@ public sealed partial class OpenedRunResultsTests
         var second = first with
         {
             Subject = new(FindingSubjectKind.DirectoryObject, "another finding on the same object"),
-            Evidence = Assert.IsType<LapsPasswordReaderEvidence>(first.Evidence) with { ExpansionWasComplete = true },
+            Evidence = Assert.IsType<LapsPasswordReaderEvidence>(first.Evidence) with
+            {
+                ExpansionWasComplete = true,
+                Assessment = new(1, 1, true, true, true, true, []),
+                SupportingExposures = Assert.IsType<LapsPasswordReaderEvidence>(first.Evidence).SupportingExposures!
+                    .Select(value => value with { MembershipIsComplete = true }).ToArray(),
+            },
         };
         WriteFindingsFixture(directory, [first, second]);
         ChangeFindingsDatabase(directory, "UPDATE finding SET evidence_complete=1");
@@ -229,9 +235,21 @@ public sealed partial class OpenedRunResultsTests
         await screen.ReadCompletion;
         row = Assert.Single(screen.Findings);
         screen.SelectedFinding = row;
-        screen.OpenFinding(row);
+        if (ruleId == "SEC-060")
+        {
+            // This coverage fixture keeps the legacy header, whose current detail deliberately refuses.
+            screen.OpenObject(new ListedObjectViewModel(new(FirstDn, "Recorded object", null, "computer", "ad.lab")));
+        }
+        else
+        {
+            screen.OpenFinding(row);
+            await screen.FindingDetails!.ReadCompletion;
+            screen.OpenAffectedObjectCommand.Execute(null);
+        }
         await screen.ObjectReadCompletion;
         Assert.Null(screen.ObjectRefusal);
+        screen.Opened!.Show(ObjectSectionCatalog.Findings);
+        await screen.Opened.ReadCompletion;
         var section = screen.Findings();
         Assert.Null(section.Refusal);
         Assert.Equal("May be incomplete", Assert.Single(section.Findings).Coverage);
@@ -249,8 +267,9 @@ public sealed partial class OpenedRunResultsTests
         var directory = LapsBundle.BuildMany(
             [(FirstDn, null, null, null, null, 512), (SecondDn, null, null, null, null, 512)], DateTimeOffset.UnixEpoch);
         using (var captured = BundleReader.Open(directory).Value)
-            finding = new(ruleId, 1, ruleId == "SEC-031" ? Severity.Low : ruleId == "SEC-032" ? Severity.Medium : Severity.High,
-                new(FindingSubjectKind.DirectoryObject, "saved coverage finding"),
+            finding = new(ruleId, ruleId is "SEC-031" or "SEC-032" ? 3 : ruleId is "SEC-027" or "SEC-090" ? 2 : 1, ruleId == "SEC-031" ? Severity.Low : ruleId == "SEC-032" ? Severity.Medium : Severity.High,
+                ruleId == "SEC-027" ? new(FindingSubjectKind.Account, "Recorded principal")
+                    : new(FindingSubjectKind.DirectoryObject, "saved coverage finding"),
                 Assert.IsType<Guid>(captured.ReadObjectAttributes(FirstDn)!.ObjectGuid), FirstDn, "ad.lab", "computer",
                 "Recorded finding with independently saved limitations.", EvidenceCompleteness.Complete, CoverageEvidence(ruleId, complete))
             { PrincipalName = "Recorded principal" };
@@ -272,10 +291,11 @@ public sealed partial class OpenedRunResultsTests
                 ObjectOwnerStanding.Exists, "computer", complete),
             "SEC-060" => new ObjectTakeoverEvidence(trustee, "Recorded group", broad, "Everyone", path,
                 ObjectTakeoverRight.WriteDacl, null, complete),
-            "SEC-090" => new LapsPasswordReaderEvidence(trustee, "Recorded group", broad, "Everyone", path,
+            "SEC-090" => RecordedLapsReadFinding.Evidence(trustee, "Recorded group", broad, "Everyone", path,
                 "msLAPS-EncryptedPassword", LapsReadRights.Both, LapsGrantReach.ThisAttributeOnly, null, complete),
             "SEC-093" => new LapsDecryptorEvidence("Recorded policy", trustee, LapsDecryptorForm.SecurityIdentifier,
-                trustee, "Recorded group", [new(broad, "Everyone", path)], complete),
+                trustee, "Recorded group", [new(broad, "Everyone", path)], complete,
+                SecureAD.Next.Tests.Judgement.SyntheticLapsPolicySettings.Complete(trustee)),
             _ => throw new ArgumentOutOfRangeException(nameof(ruleId)),
         };
     }
@@ -285,7 +305,7 @@ public sealed partial class OpenedRunResultsTests
         "SEC-027" => ("finding_privileged_sid_history", "unreadable_values"),
         "SEC-031" or "SEC-032" => ("finding_object_ownership", "membership_was_complete"),
         "SEC-060" => ("finding_object_takeover", "expansion_was_complete"),
-        "SEC-090" => ("finding_laps_password_reader", "expansion_was_complete"),
+        "SEC-090" => ("finding_laps_password_reader", "assessment_complete"),
         "SEC-093" => ("finding_laps_decryptor", "expansion_was_complete"),
         _ => throw new ArgumentOutOfRangeException(nameof(ruleId)),
     };

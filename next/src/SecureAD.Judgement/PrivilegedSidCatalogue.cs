@@ -95,7 +95,7 @@ public static class PrivilegedSidCatalogue
         if (Sid.IsBuiltinDomain(sid))
             return null;
 
-        return Sid.RelativeIdentifier(sid) is { } rid
+        return PrincipalClassificationRegistry.DomainRid(sid) is { } rid
             && PrivilegedRelativeIdentifiers.Contains(rid)
                 ? WellKnownSidCatalog.FindByRid(rid)?.DisplayName
                 : null;

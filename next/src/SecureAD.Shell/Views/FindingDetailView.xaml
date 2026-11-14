@@ -1,0 +1,1348 @@
+<UserControl x:Class="SecureAD.Shell.Views.FindingDetailView" x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="PermissionControlCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20,16" />
+        </Style>
+        <Style x:Key="PermissionControlLabel" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <Style x:Key="PermissionControlStatusCard" TargetType="Border" BasedOn="{StaticResource PermissionControlCard}">
+            <Setter Property="BorderThickness" Value="1,3,1,1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Padding" Value="16,14" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="Not established">
+                    <Setter Property="BorderBrush" Value="{DynamicResource NotEstablishedBrush}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="Unresolved">
+                    <Setter Property="BorderBrush" Value="{DynamicResource EstablishedBadBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlStatus" TargetType="TextBlock" BasedOn="{StaticResource RowTitle}">
+            <Setter Property="FontSize" Value="{StaticResource ScreenTitleFontSize}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,8" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="Not established">
+                    <Setter Property="Foreground" Value="{DynamicResource NotEstablishedBrush}" />
+                    <Setter Property="FontWeight" Value="Normal" />
+                </Trigger>
+                <Trigger Property="Text" Value="Unresolved">
+                    <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlStatusNote" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="Text" Value="Supported by this saved assessment." />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="Not established">
+                    <Setter Property="Text" Value="Other access is not ruled out." />
+                </Trigger>
+                <Trigger Property="Tag" Value="Unresolved">
+                    <Setter Property="Text" Value="This assessment could not settle that right." />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PermissionControlCaution" TargetType="Border" BasedOn="{StaticResource PermissionControlCard}">
+            <Setter Property="Background" Value="{DynamicResource EstablishedBadSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource EstablishedBadBrush}" />
+            <Setter Property="BorderThickness" Value="3,1,1,1" />
+            <Setter Property="Margin" Value="0,16,0,0" />
+        </Style>
+        <DataTemplate x:Key="SavedFindingPageControls">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="Previous" Command="{Binding PreviousPageCommand}" />
+                    <TextBlock Text="{Binding PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                    <Button Content="Next" Command="{Binding NextPageCommand}" />
+                </StackPanel>
+                <TextBlock Text="{Binding LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                           Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+                <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                         Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                         Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="ServiceAccountLink">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Direction}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                <TextBlock Text="Primary-group membership" TextWrapping="Wrap"
+                           Visibility="{Binding IsPrimaryGroup,Converter={StaticResource Shown}}" />
+                <TextBox Text="{Binding ContainingGroup.DistinguishedName,Mode=OneWay,StringFormat=Containing group: {0}}"
+                         Style="{StaticResource SelectableMessage}" />
+                <TextBlock Text="{Binding ContainingGroup.DomainFqdn,StringFormat=Group domain: {0}}" TextWrapping="Wrap" />
+                <StackPanel Visibility="{Binding ShowsMember,Converter={StaticResource Shown}}">
+                    <TextBox Text="{Binding Member.DistinguishedName,Mode=OneWay,StringFormat=Member: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBlock Text="{Binding Member.DomainFqdn,StringFormat=Member domain: {0}}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Visibility="{Binding HasForeignReference,Converter={StaticResource Shown}}">
+                    <TextBox Text="{Binding RecordedThrough.DistinguishedName,Mode=OneWay,StringFormat=Recorded through: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBox Text="{Binding RecordedThrough.Sid,Mode=OneWay,StringFormat=Recorded reference SID: {0}}"
+                             Style="{StaticResource SelectableMessage}" />
+                    <TextBlock Text="{Binding RecordedThrough.DomainFqdn,StringFormat=Reference domain: {0}}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Content="View saved supporting values" Command="{Binding ViewCommand}"
+                        HorizontalAlignment="Left" Margin="0,6,0,0" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="View saved routes" Command="{Binding OpenSavedRoutesCommand}"
+                    CommandParameter="{Binding FindingDetails.Finding}" Margin="0,0,8,0"
+                    Visibility="{Binding FindingDetails.Finding.HasTier0Routes,Converter={StaticResource Shown}}" />
+            <Button Content="Open affected object" Command="{Binding OpenAffectedObjectCommand}" Margin="0,0,8,0"
+                    IsEnabled="{Binding FindingDetails.HasFinding}" />
+            <Button Content="Close" Command="{Binding CloseFindingDetailsCommand}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding FindingDetails.LoadingText}" Style="{StaticResource Caption}"
+                   Visibility="{Binding FindingDetails.IsLoading,Converter={StaticResource Shown}}" />
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,8"
+                Visibility="{Binding FindingDetails.HasRefusal,Converter={StaticResource Shown}}">
+            <TextBox Text="{Binding FindingDetails.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                     Foreground="{DynamicResource FaultBrush}" />
+        </Border>
+        <ScrollViewer x:Name="FindingDetailsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding FindingDetails.HasFinding,Converter={StaticResource Shown}}">
+            <StackPanel>
+                <TextBlock Text="{Binding FindingDetails.Finding.FindingLabel}" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                           Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}" />
+                <WrapPanel Margin="0,8,0,12"
+                           Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding FindingDetails.Finding.Severity}" Margin="0,0,16,0" />
+                    <TextBlock Text="{Binding FindingDetails.Finding.Coverage}" Foreground="{DynamicResource SecondaryTextBrush}" />
+                </WrapPanel>
+                <StackPanel Visibility="{Binding FindingDetails.ShowsStandardIdentity,Converter={StaticResource Shown}}">
+                    <TextBlock Text="{Binding FindingDetails.Finding.Principal,StringFormat=Principal: {0}}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding FindingDetails.Finding.DistinguishedName,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding FindingDetails.Finding.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" Margin="0,0,0,16" />
+                </StackPanel>
+                <StackPanel x:Name="PermissionControlPresentation" DataContext="{Binding FindingDetails.PermissionControl}"
+                            Visibility="{Binding DataContext.FindingDetails.HasPermissionControl,RelativeSource={RelativeSource AncestorType=UserControl},Converter={StaticResource Shown}}"
+                            Background="{DynamicResource WindowBackground}">
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="SEC-060 / PERMISSION CONTROL" Style="{StaticResource Caption}"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                        <Border Background="{DynamicResource EstablishedBadSubtleBrush}" BorderBrush="{DynamicResource EstablishedBadBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,3">
+                            <TextBlock Text="{Binding DataContext.FindingDetails.Finding.Severity,RelativeSource={RelativeSource AncestorType=UserControl},StringFormat={}{0} severity}"
+                                       Foreground="{DynamicResource EstablishedBadBrush}" FontWeight="SemiBold" />
+                        </Border>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Heading}" FontSize="{StaticResource DashboardMetricFontSize}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                    <TextBlock Text="Review a broad identity's connection to this object's saved permissions."
+                               Style="{StaticResource Caption}" Margin="0,6,0,20" TextWrapping="Wrap" />
+                    <Border Style="{StaticResource PermissionControlCard}" x:Name="PermissionControlConnection">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,16" LastChildFill="True">
+                                <Button DockPanel.Dock="Right" Content="View saved supporting chain" Command="{Binding ViewChainCommand}"
+                                        Style="{StaticResource PrimaryButton}" Margin="16,0,0,0" />
+                                <TextBlock Text="Who is connected to what?" Style="{StaticResource SectionTitle}" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" /><ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.1*" /><ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="1.1*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Broad identity" Style="{StaticResource PermissionControlLabel}" />
+                                    <TextBlock Text="{Binding BroadIdentity}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="Linked by saved membership" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="&#x00B7;&#x00B7;&#x00B7;" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="{StaticResource SectionTitleFontSize}" />
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Permission holder" Style="{StaticResource PermissionControlLabel}" />
+                                    <WrapPanel>
+                                        <TextBlock Text="{Binding Holder}" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center" Margin="0,0,8,4" />
+                                        <Border Background="{DynamicResource NotEstablishedSubtleBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                                BorderThickness="1" CornerRadius="6" Padding="8,2" Margin="0,0,0,4">
+                                            <TextBlock x:Name="PermissionControlHolderType" Text="{Binding HolderType}" Style="{StaticResource Caption}"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Text="Rights assessed for this holder" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="3" Text="&#x2192;" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="{StaticResource SectionTitleFontSize}" />
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Affected object" Style="{StaticResource PermissionControlLabel}" />
+                                    <TextBlock Text="{Binding AffectedObject}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.ObjectClass}" Style="{StaticResource Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.DomainFqdn}" Style="{StaticResource Caption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}">
+                        <TextBlock Text="Saved permission conclusions" Style="{StaticResource SectionTitle}" Margin="0,20,0,10" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="PermissionControlModifyCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding ModifyPermissions}">
+                                <StackPanel>
+                                    <TextBlock Text="Modify permissions" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlModifyState" Text="{Binding ModifyPermissions}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlModifyNote" Tag="{Binding ModifyPermissions}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" x:Name="PermissionControlOwnerCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding ChangeOwner}">
+                                <StackPanel>
+                                    <TextBlock Text="Change owner" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlOwnerState" Text="{Binding ChangeOwner}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlOwnerNote" Tag="{Binding ChangeOwner}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="4" x:Name="PermissionControlFullCard" Style="{StaticResource PermissionControlStatusCard}" Tag="{Binding FullControl}">
+                                <StackPanel>
+                                    <TextBlock Text="Full control" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="PermissionControlFullState" Text="{Binding FullControl}" Style="{StaticResource PermissionControlStatus}" />
+                                    <TextBlock x:Name="PermissionControlFullNote" Tag="{Binding FullControl}" Style="{StaticResource PermissionControlStatusNote}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="{Binding ScopeNote}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding ReportedRight,StringFormat=Reported right: {0}}" Style="{StaticResource RowTitle}"
+                               TextWrapping="Wrap" Margin="0,16,0,0" Visibility="{Binding HasLegacyAssessment,Converter={StaticResource Shown}}" />
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding IsOwnership,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding OwnerRoute}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource EstablishedBadBrush}" Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding OwnerSummary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasNullDacl,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding EntryNote}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasCalculationLimits,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding CalculationLimitsHeading}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding CalculationLimits}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="PermissionControlCaptureLimit" Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasCaptureLimits,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding CapturedPermissions,StringFormat=Captured permission list: {0}}" TextWrapping="Wrap" />
+                    </Border>
+                    <Border x:Name="PermissionControlMembershipLimit" Style="{StaticResource PermissionControlCaution}" Visibility="{Binding HasMembershipLimits,Converter={StaticResource Shown}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Expansion,StringFormat=Saved membership expansion: {0}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ExpansionNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding FullControlNote}" TextWrapping="Wrap" Margin="0,16,0,0"
+                               Visibility="{Binding IsFullControlCategory,Converter={StaticResource Shown}}" />
+                    <Border Style="{StaticResource PermissionControlCard}" Margin="0,16,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="1.15*" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Why this needs review" FontWeight="SemiBold" />
+                                <TextBlock Text="If an applicable permission can be exercised, it may allow the object's permission list to be changed. A broad identity's involvement warrants review."
+                                           TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Recommended review" FontWeight="SemiBold" />
+                                <TextBlock Text="1. Confirm the delegation is intended." FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="2. Verify the actual entries, their scope and conditions." TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <TextBlock Text="3. Narrow only confirmed unnecessary access; check shared-group and service impact." TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <WrapPanel Margin="0,16,0,10">
+                        <TextBlock Text="{Binding CapturedPermissions,StringFormat=Captured permission list: {0}}" Style="{StaticResource Caption}" Margin="0,0,20,0"
+                                   Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding Expansion,StringFormat=Saved membership expansion: {0}}" Style="{StaticResource Caption}" />
+                    </WrapPanel>
+                    <Border Style="{StaticResource PermissionControlCard}" Padding="4">
+                        <StackPanel>
+                            <Expander x:Name="PermissionControlIdentifiers" Header="Identifiers and object location">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding Object.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Object.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                    <TextBox Text="{Binding Object.DistinguishedName,Mode=OneWay,StringFormat=Location: {0}}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                                    <TextBox Text="{Binding HolderSid,Mode=OneWay,StringFormat=Holder SID: {0}}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                                    <TextBox Text="{Binding BroadSid,Mode=OneWay,StringFormat=Broad identity SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    <TextBlock Text="{Binding ReportedRight,StringFormat=Reported right: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Expander>
+                            <Expander x:Name="PermissionControlAssessmentContext" Header="Assessment context and what the statuses mean" Margin="0,6,0,0">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding Statement}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding StateNote}" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding HasCurrentAssessment,Converter={StaticResource Shown}}" />
+                                    <TextBlock Text="{Binding EntryContext,StringFormat=Recorded entry context: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    <TextBlock Text="{Binding EntryNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{Binding ExpansionNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                    <TextBlock Text="{Binding OwnerNote}" TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding IsOwnership,Converter={StaticResource Shown}}" />
+                                </StackPanel>
+                            </Expander>
+                            <Expander x:Name="PermissionControlGuidance" Header="Full verification and remediation guidance" Margin="0,6,0,0">
+                                <StackPanel Margin="12">
+                                    <TextBlock Text="{Binding DataContext.FindingDetails.Finding.WhyItMatters,RelativeSource={RelativeSource AncestorType=UserControl}}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding DataContext.FindingDetails.Finding.WhatToDo,RelativeSource={RelativeSource AncestorType=UserControl}}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </Border>
+                        <StackPanel Visibility="{Binding HasChain,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved supporting chain" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="{Binding ChainNote}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding Chain.Steps}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBox Text="{Binding DisplayName,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ContentControl Content="{Binding Chain}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
+                </StackPanel>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasServiceAccount,Converter={StaticResource Shown}}">
+                    <StackPanel DataContext="{Binding FindingDetails.ServiceAccount}">
+                        <TextBlock Text="{Binding Heading}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding Account.Name,StringFormat=Account: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Account.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Account.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding Account.DistinguishedName,Mode=OneWay,StringFormat=Location: {0}}"
+                                 Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding CapturedAt,StringFormat=Captured at: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Association,StringFormat=Service association: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding AssociationNote}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="Password never expires: Enabled" Style="{StaticResource RowTitle}" TextWrapping="Wrap"
+                                   Visibility="{Binding IsPasswordSetting,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding IsAdministrative,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding TargetName,StringFormat=Administrative group: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding Target.Sid,Mode=OneWay,StringFormat=Group SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                            <TextBlock Text="{Binding Target.DomainFqdn,StringFormat=Group domain: {0}}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding Target.DistinguishedName,Mode=OneWay,StringFormat=Group location: {0}}"
+                                     Style="{StaticResource SelectableMessage}" />
+                            <TextBlock Text="Entry memberships" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding Entries.Rows}" ItemTemplate="{StaticResource ServiceAccountLink}" />
+                            <ContentControl Content="{Binding Entries}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                        </StackPanel>
+                        <Button Content="View captured service names" Command="{Binding ViewNamesCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding HasNames,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Captured service principal names (SPNs)" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="No service principal name values are recorded in this saved finding." TextWrapping="Wrap"
+                                       Visibility="{Binding HasNoNames,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding Names.Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,6">
+                                            <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="Unreadable captured value." TextWrapping="Wrap"
+                                                       Visibility="{Binding IsUnreadable,Converter={StaticResource Shown}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ContentControl Content="{Binding Names}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                        </StackPanel>
+                        <Button Content="View recorded membership links" Command="{Binding ViewLinksCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Visibility="{Binding IsAdministrative,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding HasLinks,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Recorded membership links" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding Links.Rows}" ItemTemplate="{StaticResource ServiceAccountLink}" />
+                            <ContentControl Content="{Binding Links}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasValues,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved supporting values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="{Binding SelectedRelationship}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding Values.Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <TextBox Text="{Binding Source,Mode=OneWay,StringFormat=Recorded on: {0}}"
+                                                     Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding Attribute,StringFormat=Recorded attribute: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="Saved value" Style="{StaticResource Caption}" />
+                                            <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ContentControl Content="{Binding Values}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasLimitations,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="The captured evidence for this account may be incomplete." TextWrapping="Wrap"
+                                       Visibility="{Binding HasCaptureWarning,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding Account.MissingInputs,StringFormat=Missing captured account facts: {0}}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasMissingInputs,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding LimitationsNote}" TextWrapping="Wrap"
+                                       Visibility="{Binding HasMembershipLimitations,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding RouteLimitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,6,0,0">
+                                            <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" />
+                                            <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="View saved evidence limitations" Command="{Binding ViewLimitationsCommand}"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Visibility="{Binding HasRecordedLimitations,Converter={StaticResource Shown}}" />
+                            <StackPanel Visibility="{Binding HasSavedLimitations,Converter={StaticResource Shown}}">
+                                <ItemsControl ItemsSource="{Binding Limitations.Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,6,0,6">
+                                                <TextBlock Text="{Binding Category}" Style="{StaticResource Caption}" />
+                                                <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                                <TextBox Text="{Binding Location,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ContentControl Content="{Binding Limitations}" ContentTemplate="{StaticResource SavedFindingPageControls}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasCapturedSetting,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured setting" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.Setting}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.ControllerRoleNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CapturedSetting.HasControllerRoleNote,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.CapturedSetting.ControllerDisagreement}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CapturedSetting.HasControllerDisagreement,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasDelegationConfiguration,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Heading}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <StackPanel Visibility="{Binding FindingDetails.DelegationConfiguration.IsConstrained,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.DelegatingAccount,StringFormat=Delegating account: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Account.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Account.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Account.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Resource.DistinguishedName,StringFormat=Matched resource: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Resource.DomainFqdn,StringFormat=Resource domain: {0}}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.DelegationConfiguration.IsResourceBased,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.ResourceName,StringFormat=Resource: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Resource.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Resource.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.Resource.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.ResourceRelevance,StringFormat=Resource relevance: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Configured service names" Style="{StaticResource SectionTitle}" Margin="0,12,0,6"
+                                   Visibility="{Binding FindingDetails.DelegationConfiguration.IsConstrained,Converter={StaticResource Shown}}" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.DelegationConfiguration.Services}"
+                                      Visibility="{Binding FindingDetails.DelegationConfiguration.IsConstrained,Converter={StaticResource Shown}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,0,0,6" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Visibility="{Binding FindingDetails.DelegationConfiguration.ShowsHolders,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Configured delegation holders" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DelegationConfiguration.Holders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBox Text="{Binding DisplayName,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.DelegationConfiguration.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <WrapPanel Margin="0,6,0,0" Visibility="{Binding FindingDetails.DelegationConfiguration.ShowsPaging,Converter={StaticResource Shown}}">
+                            <Button Content="Previous" Command="{Binding FindingDetails.DelegationConfiguration.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.DelegationConfiguration.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.DelegationConfiguration.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DelegationConfiguration.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.DelegationConfiguration.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.DelegationConfiguration.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.DelegationConfiguration.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DelegationConfiguration.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasGpoDirectoryPermission,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Holder,StringFormat=Permission holder: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.GpoDirectoryPermission.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.TargetCaption}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Permission identified" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Operations}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,4" /></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Why the holder is unexpected" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.WhyUnexpected}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Entries}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding EntryType}" Style="{StaticResource RowTitle}" />
+                                        <TextBlock Text="{Binding PermissionScope,StringFormat=Permission scope: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Operations}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Assignment,StringFormat=Assignment: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding InheritanceNote}" TextWrapping="Wrap"
+                                                   Visibility="{Binding IsInherited,Converter={StaticResource Shown}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.GpoDirectoryPermission.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.GpoDirectoryPermission.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.GpoDirectoryPermission.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.GpoDirectoryPermission.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.Caution}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.GpoDirectoryPermission.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.GpoDirectoryPermission.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.GpoDirectoryPermission.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasGmsaPasswordReaders,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.ServiceAccount,StringFormat=Service account: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.BroadIdentity,StringFormat=Broad identity: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.GmsaPasswordReaders.Holders}" Margin="0,12,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding PermissionHolder,StringFormat=Permission holder: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding Inclusion}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.GmsaPasswordReaders.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.GmsaPasswordReaders.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.GmsaPasswordReaders.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.GmsaPasswordReaders.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.GmsaPasswordReaders.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.GmsaPasswordReaders.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.GmsaPasswordReaders.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasAttributeWritePermission,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured write permission" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Holder,StringFormat=Permission holder: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding FindingDetails.AttributeWritePermission.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.TargetName,StringFormat=Target account: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Target.ObjectClass,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Target.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Target.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Attribute,StringFormat=Attribute: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Text="Why this holder is unexpected" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.Unexpectedness}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.AttributeWritePermission.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.AttributeWritePermission.ShowsEntries,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved permission entries" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.AttributeWritePermission.Entries}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding EntryType}" Style="{StaticResource RowTitle}" />
+                                            <TextBlock Text="{Binding PermissionScope,StringFormat=Permission scope: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Assignment,StringFormat=Assignment: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InheritanceNote}" TextWrapping="Wrap"
+                                                       Visibility="{Binding IsInherited,Converter={StaticResource Shown}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.AttributeWritePermission.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.AttributeWritePermission.NextPageCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.AttributeWritePermission.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.AttributeWritePermission.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.AttributeWritePermission.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.AttributeWritePermission.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.AttributeWritePermission.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.AttributeWritePermission.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasReplicationPermission,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved replication-permission assessment" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Holder,StringFormat=Permission holder: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding FindingDetails.ReplicationPermission.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Root.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Root.DistinguishedName,StringFormat=Domain root: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Changes,StringFormat=Replicating Directory Changes: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.ChangesAll,StringFormat=Replicating Directory Changes All: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Reason for review" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Unexpectedness}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.PolicyNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.NullDaclNote}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.ReplicationPermission.HasNullDacl,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.ReplicationPermission.ShowsEntries,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved permission entries" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="{Binding FindingDetails.ReplicationPermission.EntryNote}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.ReplicationPermission.Entries}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding EntryType,StringFormat=Recorded entry type: {0}}" Style="{StaticResource RowTitle}" />
+                                            <TextBlock Text="{Binding Holder,StringFormat=Assigned to: {0}}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding Scope,StringFormat=Recorded scope: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Assignment,StringFormat=Original assignment: {0}}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding InheritanceNote}" TextWrapping="Wrap"
+                                                       Visibility="{Binding IsInherited,Converter={StaticResource Shown}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.ReplicationPermission.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.ReplicationPermission.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.ReplicationPermission.NextPageCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.LoadingText}" Style="{StaticResource Caption}" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.ReplicationPermission.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.ReplicationPermission.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Margin="0,6,0,0"
+                                 Visibility="{Binding FindingDetails.ReplicationPermission.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ReplicationPermission.Limitations}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding FindingDetails.ReplicationPermission.HasLimitations,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasDuplicateSpn,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured duplicate service names" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Forest,StringFormat=Forest: {0}}" TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,12,0,6">
+                            <Button Content="Previous SPN" Command="{Binding FindingDetails.DuplicateSpn.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.SpnLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next SPN" Command="{Binding FindingDetails.DuplicateSpn.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="Duplicated SPN (case-insensitive match)" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.MatchKey,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="Registered objects" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Owners.Owners}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding RegisteredObject}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SubjectNote}" Style="{StaticResource Caption}"
+                                                   Visibility="{Binding IsSubject,Converter={StaticResource Shown}}" />
+                                        <TextBlock Text="{Binding ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.DuplicateSpn.Owners.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Owners.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.DuplicateSpn.Owners.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Owners.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.Owners.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.Owners.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.Owners.HasRefusal,Converter={StaticResource Shown}}" />
+                        <Button Content="View captured registrations" Command="{Binding FindingDetails.DuplicateSpn.LoadRegistrationsCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.IsLoadingRegistrations,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.RegistrationRefusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.HasRegistrationRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.DuplicateSpn.HasRegistrations,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Captured registration values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Registrations.Registrations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding RegisteredObject,StringFormat=Registered object: {0}}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding CapturedSpn,Mode=OneWay,StringFormat=Captured SPN: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.DuplicateSpn.Registrations.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Registrations.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.DuplicateSpn.Registrations.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.Registrations.LoadingText}" Style="{StaticResource Caption}"
+                                       Visibility="{Binding FindingDetails.DuplicateSpn.Registrations.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.DuplicateSpn.Registrations.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.Registrations.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.DuplicateSpn.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.DuplicateSpn.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.DuplicateSpn.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.DuplicateSpn.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.DuplicateSpn.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.DuplicateSpn.LimitationsNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.DuplicateSpn.Limitations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,6,0,0" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasSidHistory,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Captured SID history" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.ObjectSid,Mode=OneWay,StringFormat=Object SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.UnreadableValues,StringFormat=Unreadable SID-history values: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="Flagged historical identifiers" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.SidHistory.Flagged.Values}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding RecognisedType,StringFormat=Recognised identifier type: {0}}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.SidHistory.Flagged.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.Flagged.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.SidHistory.Flagged.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.Flagged.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.SidHistory.Flagged.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.Flagged.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.Flagged.HasRefusal,Converter={StaticResource Shown}}" />
+                        <Button Content="View other captured values" Command="{Binding FindingDetails.SidHistory.LoadOtherCommand}" HorizontalAlignment="Left" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.LoadingText}" Style="{StaticResource Caption}"
+                                   Visibility="{Binding FindingDetails.SidHistory.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.SidHistory.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.HasRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.SidHistory.HasOther,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Other captured SID-history values" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                            <TextBlock Text="No other readable SID-history values are recorded." TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasNoOther,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.SidHistory.Other.Values}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,10">
+                                            <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding RecognisedType}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Previous" Command="{Binding FindingDetails.SidHistory.Other.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.SidHistory.Other.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.SidHistory.Other.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.Other.LoadingText}" Style="{StaticResource Caption}"
+                                       Visibility="{Binding FindingDetails.SidHistory.Other.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.SidHistory.Other.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.SidHistory.Other.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.SidHistory.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <StackPanel Visibility="{Binding FindingDetails.SidHistory.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved evidence limitations" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.UnreadableNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasUnreadable,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding FindingDetails.SidHistory.CaptureNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Visibility="{Binding FindingDetails.SidHistory.HasCaptureLimit,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasProtectionMarker,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved assessment" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Statement}" TextWrapping="Wrap" Margin="0,6,0,12" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.ProtectionMarker.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ReportedAdminCount,StringFormat=Reported adminCount: {0}}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ReportedInheritance,StringFormat=Reported permission inheritance: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.SavedProtection,StringFormat=Saved protection assessment: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.AssessmentNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.ProtectionMarker.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasOwnershipAssessment,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved ownership assessment" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.AffectedObject,StringFormat=Affected object: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.ObjectType,StringFormat=Object type: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.OwnerName,StringFormat=Recorded owner: {0}}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        <TextBox Text="{Binding FindingDetails.OwnershipAssessment.OwnerSid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.OwnerStatus,StringFormat=Recorded owner status: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.TargetClassification,StringFormat=Saved target classification: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.MembershipEvidence,StringFormat=Owner-policy membership evidence: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.MissingOwnerNote}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding FindingDetails.OwnershipAssessment.IsMissing,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.MembershipNote}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding FindingDetails.OwnershipAssessment.HasMembershipLimit,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.OwnershipAssessment.ScopeNote}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasServiceRegistration,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved service-registration assessment" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Account,StringFormat=Affected account: {0}}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding FindingDetails.ServiceRegistration.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.SavedProtection,StringFormat=Saved protection assessment: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.AccountState,StringFormat=Account state at capture: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.DirectProtection}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding FindingDetails.ServiceRegistration.HasDirectProtection,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="Registered service names (SPNs)" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.ServiceRegistration.Names.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,0,0,6" />
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel>
+                            <Button Content="Previous" Command="{Binding FindingDetails.ServiceRegistration.Names.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Names.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.ServiceRegistration.Names.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Names.LoadingText}" TextWrapping="Wrap"
+                                   Visibility="{Binding FindingDetails.ServiceRegistration.Names.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.ServiceRegistration.Names.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.ServiceRegistration.Names.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.UnreadableNames}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding FindingDetails.ServiceRegistration.HasUnreadableNames,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasGroupReview,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.PanelTitle}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.GroupDescription}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBox Text="{Binding FindingDetails.GroupReview.SidDescription,Mode=OneWay}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.DomainDescription}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.LocationDescription}" TextWrapping="Wrap" />
+                        <StackPanel Visibility="{Binding FindingDetails.GroupReview.IsSize,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.DirectCount,StringFormat=Direct count: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.ReviewThreshold,StringFormat=Review threshold: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.KnownTotal,StringFormat=Known total: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.UnresolvedReferences,StringFormat=Unresolved references: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.UnreadableReferences,StringFormat=Unreadable references: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.DirectNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.TotalNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.ReferenceNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.PolicyNote}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <StackPanel Visibility="{Binding FindingDetails.GroupReview.HasTotalLimits,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                                <TextBlock Text="Incomplete membership evidence" Style="{StaticResource SectionTitle}" />
+                                <TextBlock Text="{Binding FindingDetails.GroupReview.TotalLimits}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.GroupReview.IsNesting,Converter={StaticResource Shown}}" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.Direction}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.Destination,StringFormat=Member of: {0}}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding FindingDetails.GroupReview.DestinationSid,Mode=OneWay,StringFormat=Destination-group SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.DestinationDomain,StringFormat=Destination domain: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.DestinationLocation,StringFormat=Destination location: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.NestedType,StringFormat=Recorded nested-group type: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.DestinationLocation,StringFormat=Membership recorded on: {0}}" TextWrapping="Wrap" />
+                            <TextBlock Text="Recorded attribute: member" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.NestingScope}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.ForeignReferenceNote}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Visibility="{Binding FindingDetails.GroupReview.HasForeignReference,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.InputLimits}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding FindingDetails.GroupReview.HasInputLimits,Converter={StaticResource Shown}}" />
+                        <Button Content="View saved direct references" Command="{Binding FindingDetails.GroupReview.ViewReferencesCommand}" HorizontalAlignment="Left" Margin="0,12,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.GroupReview.HasReferences,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Saved direct references" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.ReferencesNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.GroupReview.References.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <TextBox Text="{Binding Value,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,0,0,6" />
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.GroupReview.References.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.GroupReview.References.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.GroupReview.References.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.GroupReview.References.LoadingText}" Visibility="{Binding FindingDetails.GroupReview.References.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.GroupReview.References.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.GroupReview.References.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.GroupReview.LoadingText}" Visibility="{Binding FindingDetails.GroupReview.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.GroupReview.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.GroupReview.HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Visibility="{Binding FindingDetails.HasBroadMembership,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved broad group membership" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Group,StringFormat=Affected group: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.GroupingNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                        <TextBlock Text="Broad identities" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.SourcesNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Sources.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Name,StringFormat=Broad identity: {0}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    <TextBlock Text="{Binding SidScope,StringFormat=Recorded SID scope: {0}}" TextWrapping="Wrap"
+                                               Visibility="{Binding HasSidScope,Converter={StaticResource Shown}}" />
+                                </StackPanel>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel>
+                            <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Sources.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Sources.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Sources.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.Sources.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Sources.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Sources.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Sources.HasRefusal,Converter={StaticResource Shown}}" />
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasLimitations,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Incomplete membership evidence" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.LimitationsNote}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Limitations.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding Reason}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Location}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Limitations.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Limitations.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Limitations.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Limitations.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Limitations.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Limitations.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Limitations.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <Button Content="View recorded membership links" Command="{Binding FindingDetails.BroadMembership.ViewLinksCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasLinks,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Recorded membership links" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.LinksNote}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Links.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Direction}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="Member identity" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding Member.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding Member.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap"
+                                                   Visibility="{Binding HasMemberDomain,Converter={StaticResource Shown}}" />
+                                        <TextBlock Text="{Binding Member.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Containing group" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                        <TextBox Text="{Binding ContainingGroup.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                        <TextBlock Text="{Binding ContainingGroup.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ContainingGroup.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        <StackPanel Visibility="{Binding HasForeignReference,Converter={StaticResource Shown}}">
+                                            <TextBlock Text="Recorded through" FontWeight="SemiBold" Margin="0,6,0,0" />
+                                            <TextBlock Text="{Binding ForeignReferenceNote}" TextWrapping="Wrap" />
+                                            <TextBox Text="{Binding RecordedThrough.Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                            <TextBlock Text="{Binding RecordedThrough.DomainFqdn,StringFormat=Domain: {0}}" TextWrapping="Wrap"
+                                                       Visibility="{Binding HasReferenceDomain,Converter={StaticResource Shown}}" />
+                                            <TextBlock Text="{Binding RecordedThrough.DistinguishedName,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Content="View saved supporting values" Command="{Binding ViewCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Links.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Links.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Links.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Links.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Links.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Links.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Links.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.BroadMembership.HasValues,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved supporting values" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.SelectedRelationship}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.ValuesNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.MemberOfNote}" TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.BroadMembership.HasMemberOf,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.BroadMembership.Values.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <TextBlock Text="{Binding Source,StringFormat=Recorded on: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Attribute,StringFormat=Recorded attribute: {0}}" TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding Value,Mode=OneWay,StringFormat=Saved value: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.BroadMembership.Values.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.BroadMembership.Values.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.BroadMembership.Values.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.BroadMembership.Values.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.Values.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.BroadMembership.Values.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.Values.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.BroadMembership.LoadingText}" Visibility="{Binding FindingDetails.BroadMembership.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.BroadMembership.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.BroadMembership.HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.HasCircularMembership,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="The circular nesting" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Chain,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 FontSize="20" FontWeight="SemiBold" Margin="0,6,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.ArrowNote}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.IncompleteNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CircularMembership.IsIncomplete,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.OtherLoopsNote}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Visibility="{Binding FindingDetails.CircularMembership.HasOtherLoops,Converter={StaticResource Shown}}" />
+                        <WrapPanel Visibility="{Binding FindingDetails.CircularMembership.IsPagedLoop,Converter={StaticResource Shown}}" Margin="0,6,0,0">
+                            <Button Content="Previous" Command="{Binding FindingDetails.CircularMembership.Loop.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.Loop.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.CircularMembership.Loop.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.Loop.LoadingText}"
+                                   Visibility="{Binding FindingDetails.CircularMembership.Loop.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Loop.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Loop.HasRefusal,Converter={StaticResource Shown}}" />
+                        <TextBlock Text="How to break the loop shown" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.BreakNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="Containing group" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1" Text="Member to review for removal" FontWeight="SemiBold" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding FindingDetails.CircularMembership.Loop.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding ContainingGroup}" TextWrapping="Wrap" Margin="0,0,10,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Member}" TextWrapping="Wrap" Margin="0,0,10,0" />
+                                    <Button Grid.Column="2" Content="Review membership" Command="{Binding ReviewCommand}" />
+                                </Grid>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.ReviewNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                        <Button Content="Group details and original evidence" Command="{Binding FindingDetails.CircularMembership.ViewDetailsCommand}"
+                                HorizontalAlignment="Left" Margin="0,6,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.CircularMembership.HasDetails,Converter={StaticResource Shown}}">
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.InventoryLabel}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.AffectedObjectNote}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                        <TextBlock Text="Groups in this finding" Style="{StaticResource SectionTitle}" Margin="0,12,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.GroupNote}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <ItemsControl ItemsSource="{Binding FindingDetails.CircularMembership.Groups.Rows}">
+                            <ItemsControl.ItemTemplate><DataTemplate>
+                                <StackPanel Margin="0,0,0,12">
+                                    <TextBlock Text="{Binding Group,StringFormat=Group: {0}}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                    <TextBox Text="{Binding Sid,Mode=OneWay,StringFormat=SID: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    <TextBlock Text="{Binding Domain,StringFormat=Domain: {0}}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Location,StringFormat=Location: {0}}" TextWrapping="Wrap" />
+                                    <Button Content="Open group" Command="{Binding OpenCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel>
+                            <Button Content="Previous" Command="{Binding FindingDetails.CircularMembership.Groups.PreviousPageCommand}" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.Groups.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                            <Button Content="Next" Command="{Binding FindingDetails.CircularMembership.Groups.NextPageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.Groups.LoadingText}"
+                                   Visibility="{Binding FindingDetails.CircularMembership.Groups.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Groups.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Groups.HasRefusal,Converter={StaticResource Shown}}" />
+                        <Button Content="View recorded nesting links" Command="{Binding FindingDetails.CircularMembership.ViewLinksCommand}"
+                                HorizontalAlignment="Left" Margin="0,12,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.CircularMembership.HasLinks,Converter={StaticResource Shown}}">
+                            <TextBlock Text="Recorded nesting links" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.LinksNote}" TextWrapping="Wrap" Margin="0,6,0,8" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.CircularMembership.Links.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Direction}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding MemberLocation,StringFormat=Member group: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ContainingGroupLocation,StringFormat=Containing group: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelfMembershipNote}" TextWrapping="Wrap"
+                                                   Visibility="{Binding IsSelfMembership,Converter={StaticResource Shown}}" />
+                                        <Button Content="View saved supporting values" Command="{Binding ViewCommand}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.CircularMembership.Links.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.CircularMembership.Links.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.CircularMembership.Links.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.Links.LoadingText}"
+                                       Visibility="{Binding FindingDetails.CircularMembership.Links.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.CircularMembership.Links.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Links.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.CircularMembership.HasWitnesses,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="Saved supporting values" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.SelectedRelationship}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.WitnessesNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.MemberOfNote}" TextWrapping="Wrap" Margin="0,0,0,6"
+                                       Visibility="{Binding FindingDetails.CircularMembership.HasMemberOf,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.CircularMembership.Witnesses.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Source,StringFormat=Recorded on: {0}}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Attribute,StringFormat=Recorded attribute: {0}}" TextWrapping="Wrap" />
+                                        <TextBox Text="{Binding Value,Mode=OneWay,StringFormat=Saved value: {0}}" Style="{StaticResource SelectableMessage}" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.CircularMembership.Witnesses.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.CircularMembership.Witnesses.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.CircularMembership.Witnesses.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.CircularMembership.Witnesses.LoadingText}"
+                                       Visibility="{Binding FindingDetails.CircularMembership.Witnesses.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.CircularMembership.Witnesses.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.Witnesses.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.CircularMembership.LoadingText}"
+                                   Visibility="{Binding FindingDetails.CircularMembership.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.CircularMembership.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.CircularMembership.HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding FindingDetails.ShowsSavedDescription,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Finding" Style="{StaticResource SectionTitle}" />
+                        <TextBox Text="{Binding FindingDetails.Finding.Detail,Mode=OneWay}" Style="{StaticResource SelectableMessage}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Why it matters" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.WhyItMatters}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding FindingDetails.ShowsStandardPresentation,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="What to do" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.Finding.WhatToDo}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                        Visibility="{Binding FindingDetails.HasServiceRegistration,Converter={StaticResource Shown}}">
+                    <StackPanel>
+                        <TextBlock Text="Saved membership evidence" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.MembershipNote}" TextWrapping="Wrap" Margin="0,6,0,6" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.MembershipCount}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.MembershipCompleteness}" TextWrapping="Wrap" />
+                        <TextBlock Text="Membership branches have not been opened." TextWrapping="Wrap" Margin="0,6,0,6"
+                                   Visibility="{Binding FindingDetails.ServiceRegistration.MembershipNotOpened,Converter={StaticResource Shown}}" />
+                        <Button Content="View membership evidence" Command="{Binding FindingDetails.ServiceRegistration.ViewMembershipCommand}" HorizontalAlignment="Left" Margin="0,6,0,6" />
+                        <StackPanel Visibility="{Binding FindingDetails.ServiceRegistration.HasMemberships,Converter={StaticResource Shown}}">
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.EmptyMemberships}" TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.ServiceRegistration.HasNoMemberships,Converter={StaticResource Shown}}" />
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.PartialEmpty}" TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.ServiceRegistration.HasPartialEmpty,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.ServiceRegistration.Memberships.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,6,0,6">
+                                        <TextBlock Text="{Binding Identity}" ToolTip="{Binding ExactIdentity}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding PrimaryNote}" TextWrapping="Wrap" Visibility="{Binding IsPrimaryGroup,Converter={StaticResource Shown}}" />
+                                        <Button Content="View supporting chains" Command="{Binding ViewCommand}" HorizontalAlignment="Left" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.ServiceRegistration.Memberships.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Memberships.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.ServiceRegistration.Memberships.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Memberships.LoadingText}" Visibility="{Binding FindingDetails.ServiceRegistration.Memberships.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.ServiceRegistration.Memberships.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.ServiceRegistration.Memberships.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.ServiceRegistration.HasRoutes,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.SelectedMembership}" Style="{StaticResource SectionTitle}" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.ServiceRegistration.Routes.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,6,0,6">
+                                        <TextBlock Text="{Binding Root}" Style="{StaticResource RowTitle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Authorization}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Protection}" TextWrapping="Wrap" />
+                                        <Button Content="View chain" Command="{Binding ViewCommand}" HorizontalAlignment="Left" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.ServiceRegistration.Routes.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Routes.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.ServiceRegistration.Routes.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Routes.LoadingText}" Visibility="{Binding FindingDetails.ServiceRegistration.Routes.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.ServiceRegistration.Routes.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.ServiceRegistration.Routes.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding FindingDetails.ServiceRegistration.HasSteps,Converter={StaticResource Shown}}" Margin="0,12,0,0">
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.SelectedRoot}" Style="{StaticResource SectionTitle}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.ContinuedSteps}" TextWrapping="Wrap"
+                                       Visibility="{Binding FindingDetails.ServiceRegistration.Steps.IsContinuation,Converter={StaticResource Shown}}" />
+                            <ItemsControl ItemsSource="{Binding FindingDetails.ServiceRegistration.Steps.Rows}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <StackPanel Margin="0,6,0,6">
+                                        <TextBlock Text="{Binding Identity}" ToolTip="{Binding ExactIdentity}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding PrimaryNote}" TextWrapping="Wrap" Visibility="{Binding IsPrimaryGroup,Converter={StaticResource Shown}}" />
+                                    </StackPanel>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel>
+                                <Button Content="Previous" Command="{Binding FindingDetails.ServiceRegistration.Steps.PreviousPageCommand}" />
+                                <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Steps.PageLabel}" VerticalAlignment="Center" Margin="12,0" />
+                                <Button Content="Next" Command="{Binding FindingDetails.ServiceRegistration.Steps.NextPageCommand}" />
+                            </WrapPanel>
+                            <TextBlock Text="{Binding FindingDetails.ServiceRegistration.Steps.LoadingText}" Visibility="{Binding FindingDetails.ServiceRegistration.Steps.IsLoading,Converter={StaticResource Shown}}" />
+                            <TextBox Text="{Binding FindingDetails.ServiceRegistration.Steps.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                     Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.ServiceRegistration.Steps.HasRefusal,Converter={StaticResource Shown}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FindingDetails.ServiceRegistration.LoadingText}" Visibility="{Binding FindingDetails.ServiceRegistration.IsLoading,Converter={StaticResource Shown}}" />
+                        <TextBox Text="{Binding FindingDetails.ServiceRegistration.Refusal,Mode=OneWay}" Style="{StaticResource SelectableMessage}"
+                                 Foreground="{DynamicResource FaultBrush}" Visibility="{Binding FindingDetails.ServiceRegistration.HasRefusal,Converter={StaticResource Shown}}" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="{Binding FindingDetails.Finding.About}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,16,0,0" />
+                <TextBlock Text="{Binding FindingDetails.Finding.MicrosoftReference}" Style="{StaticResource Caption}" Margin="0,12,0,0"
+                           Visibility="{Binding FindingDetails.Finding.HasMicrosoftReference,Converter={StaticResource Shown}}" />
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

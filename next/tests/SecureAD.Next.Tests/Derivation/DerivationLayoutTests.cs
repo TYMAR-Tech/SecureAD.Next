@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Data.Sqlite;
 using SecureAD.Derivation;
+using SecureAD.Evidence;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Derivation;
@@ -38,55 +38,104 @@ public sealed class DerivationLayoutTests
         [15] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
         // Version 16 includes captured singleton self-loops; the physical tables are unchanged.
         [16] = "FFE987C95F60D7B88BD51060B11F5B34E2666FF5F2B51124BAC2D739264276C4",
+        // Version 17 checkpoints the published Derivation and Membership roles, root version and
+        // persisted definitions. Observed from this build's writer, not a historical forest anchor.
+        [17] = "135F8A5900F53B0976273B060BAFDD3C368FE17F0C6C907E4E8D717F8711CA26",
     };
 
     [Fact]
     public void TheStoredLayoutMatchesItsVersionCheckpoint()
     {
-        using var connection = Create();
-        AssertLayout(connection);
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
     }
 
     [Theory]
-    [InlineData("ALTER TABLE protected_principal ADD COLUMN unversioned TEXT")]
-    [InlineData("DROP INDEX ix_nesting_edge_member")]
-    [InlineData("CREATE TABLE unversioned (id INTEGER PRIMARY KEY)")]
-    public void TheCheckpointRejectsAnUnversionedLayoutChange(string mutation)
+    [InlineData(StoreSegmentRole.Derivation, "ALTER TABLE protected_principal ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.Derivation, "DROP INDEX ix_nesting_edge_member")]
+    [InlineData(StoreSegmentRole.Derivation, "CREATE TABLE unversioned (id INTEGER PRIMARY KEY)")]
+    [InlineData(StoreSegmentRole.Derivation, "ALTER TABLE derivation ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.Membership, "ALTER TABLE principal ADD COLUMN unversioned TEXT")]
+    [InlineData(StoreSegmentRole.Membership, "DROP INDEX ix_nesting_edge_member")]
+    [InlineData(StoreSegmentRole.Membership, "CREATE TABLE unversioned (id INTEGER PRIMARY KEY)")]
+    [InlineData(StoreSegmentRole.Membership, "ALTER TABLE derivation ADD COLUMN unversioned TEXT")]
+    public void TheCheckpointRejectsAnUnversionedLayoutChange(StoreSegmentRole role, string mutation)
     {
-        using var connection = Create();
-        AssertLayout(connection);
-        using var command = connection.CreateCommand();
-        command.CommandText = mutation;
-        command.ExecuteNonQuery();
-        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => AssertLayout(connection));
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
+        layout.Execute(role, mutation);
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => AssertLayout(layout));
         Assert.Contains("layout changed without a new version checkpoint", error.Message);
     }
 
-    private static SqliteConnection Create()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheCheckpointRejectsMovingAnUnchangedDefinitionToAnotherProduct(bool index)
     {
-        var connection = new SqliteConnection("Data Source=:memory:");
-        connection.Open();
-        DerivationSchema.CreateTables(connection);
-        DerivationSchema.CreateDeferredIndexes(connection);
-        return connection;
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
+        var before = layout.Roles.SelectMany(layout.Definitions).Order(StringComparer.Ordinal).ToArray();
+        if (index) layout.MoveIndex(StoreSegmentRole.Membership, StoreSegmentRole.Derivation, "ix_browse_sid_id");
+        else layout.MoveTable(StoreSegmentRole.Derivation, StoreSegmentRole.Membership, "protected_principal");
+        Assert.Equal(before, layout.Roles.SelectMany(layout.Definitions).Order(StringComparer.Ordinal));
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => AssertLayout(layout));
+        Assert.Contains("layout changed without a new version checkpoint", error.Message);
     }
 
-    private static void AssertLayout(SqliteConnection connection)
+    [Theory]
+    [InlineData(StoreSegmentRole.Derivation, "schema_version=0")]
+    [InlineData(StoreSegmentRole.Derivation, "evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.Derivation, "derivation_generation_id='foreign generation'")]
+    [InlineData(StoreSegmentRole.Membership, "schema_version=0")]
+    [InlineData(StoreSegmentRole.Membership, "evidence_seal='foreign evidence'")]
+    [InlineData(StoreSegmentRole.Membership, "derivation_generation_id='foreign generation'")]
+    public void TheCheckpointRejectsAChangedProductBinding(StoreSegmentRole role, string change)
     {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_schema "
-            + "WHERE sql IS NOT NULL ORDER BY type, name";
-        using var reader = command.ExecuteReader();
-        var layout = new StringBuilder();
-        while (reader.Read())
-        {
-            for (var column = 0; column < reader.FieldCount; column++)
-                layout.Append(reader.GetString(column).Replace("\r\n", "\n", StringComparison.Ordinal)).Append('\n');
-        }
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
+        Assert.Equal(1, layout.Execute(role, "UPDATE derivation SET " + change));
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => AssertLayout(layout));
+        Assert.Contains("Published layout binding changed", error.Message);
+    }
 
-        var actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(layout.ToString())));
+    [Theory]
+    [InlineData(StoreSegmentRole.Derivation, "DELETE FROM derivation")]
+    [InlineData(StoreSegmentRole.Membership, "DELETE FROM derivation")]
+    [InlineData(StoreSegmentRole.Membership, "INSERT INTO derivation SELECT * FROM derivation")]
+    public void TheCheckpointRequiresExactlyOneProductHeader(StoreSegmentRole role, string mutation)
+    {
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
+        Assert.Equal(1, layout.Execute(role, mutation));
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(() => AssertLayout(layout));
+        Assert.Contains("Published layout binding changed", error.Message);
+    }
+
+    [Theory]
+    [InlineData("root-version")]
+    [InlineData("root-generation")]
+    [InlineData("root-evidence")]
+    [InlineData("missing-role")]
+    [InlineData("duplicate-role")]
+    [InlineData("product-version")]
+    [InlineData("product-generation")]
+    [InlineData("product-file")]
+    [InlineData("summary")]
+    public void NativeDeclarationsRejectChangedBindings(string change)
+    {
+        var layout = PublishedAnalysisLayout.Create(AnalysisStoreKind.Derivation);
+        AssertLayout(layout);
+        layout.ChangeDeclaration(change);
+        var error = Assert.Throws<Xunit.Sdk.TrueException>(layout.CheckDeclarations);
+        Assert.Contains("Published layout binding changed", error.Message);
+    }
+
+    private static void AssertLayout(PublishedAnalysisLayout layout)
+    {
+        var actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(layout.Read())));
         Assert.True(Layouts.TryGetValue(DerivationSchema.Version, out var expected),
-            $"Schema {DerivationSchema.Version} needs an independently recorded layout checkpoint; actual {actual}.");
+            $"Schema {DerivationSchema.Version} needs a recorded native layout checkpoint; actual {actual}.");
         Assert.True(string.Equals(expected, actual, StringComparison.Ordinal),
             $"Schema {DerivationSchema.Version} layout changed without a new version checkpoint. Expected {expected}; actual {actual}.");
     }

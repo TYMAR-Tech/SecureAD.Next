@@ -140,7 +140,13 @@ public static class JudgementSchema
     // Format 74 saves native LAPS domain filtering metadata; inventory answers and original values are unchanged.
     // Format 75 serves group inventory and Tier 0 identity/distance/grade summaries without opening original proof.
     // Format 77 indexes case-insensitive control/cycle lookups and saves unfinished control-object totals.
-    public const int Version = 77;
+    // Format 81 distinguishes unusable expiry inputs and captured value presence from management claims.
+    // Format 82 saves SEC-093's original registry value and independent policy-input limitations.
+    // Format 83 saves selected-computer configured LAPS answers, shared conditions and source-bound assumptions.
+    // Format 84 records automatic configured LAPS scope and individual unassessed questions.
+    // Format 85 saves SEC-102's embedded password-reader proof and selected-only holder summaries.
+    // Format 86 saves scoped GPO-directory/link permission findings and prepared selected-entry pages.
+    public const int Version = 86;
 
     private static string[] TableDdl(SqliteConnection connection) =>
     [
@@ -510,9 +516,14 @@ public static class JudgementSchema
             attribute                           TEXT    NOT NULL,
             rights                              TEXT    NOT NULL,
             reach                               TEXT    NOT NULL,
-            inherited_from                      TEXT        NULL,
+            inherited_class_guid                TEXT        NULL,
+            is_inherited                        INTEGER NOT NULL CHECK (is_inherited IN (0,1)),
             expansion_was_complete              INTEGER NOT NULL,
             route_length                        INTEGER NOT NULL CHECK (route_length >= 0),
+            assessment_complete                 INTEGER NOT NULL CHECK (assessment_complete IN (0,1)),
+            exposure_count                      INTEGER NOT NULL CHECK (exposure_count > 0),
+            established_count                   INTEGER NOT NULL CHECK (established_count >= 0),
+            assessment_json                     TEXT NOT NULL,
             PRIMARY KEY (finding_id)
         )
         """,
@@ -540,6 +551,27 @@ public static class JudgementSchema
             PRIMARY KEY (finding_id, ordinal)
         )
         """,
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader_support (
+            finding_id INTEGER NOT NULL,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            generation_id TEXT NOT NULL,
+            trustee_sid TEXT NOT NULL,
+            attribute TEXT NOT NULL,
+            state TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            PRIMARY KEY (finding_id,ordinal)
+        )
+        """,
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_password_reader_entry (
+            finding_id INTEGER NOT NULL,
+            attribute TEXT NOT NULL,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            payload TEXT NOT NULL,
+            PRIMARY KEY (finding_id,attribute,ordinal)
+        )
+        """,
 
         // SEC-060: an object a principal broad in every organisation can take control of.
         //
@@ -563,6 +595,15 @@ public static class JudgementSchema
             inherited_from                      TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
             PRIMARY KEY (finding_id)
+        )
+        """,
+
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_object_takeover_calculation (
+            finding_id                          INTEGER NOT NULL PRIMARY KEY,
+            calculation_complete                INTEGER NOT NULL,
+            display_header                      TEXT NOT NULL,
+            payload                             TEXT NOT NULL
         )
         """,
 
@@ -645,7 +686,30 @@ public static class JudgementSchema
             decryptor_name                      TEXT        NULL,
             expansion_was_complete              INTEGER NOT NULL,
             route_count                         INTEGER NOT NULL CHECK (route_count >= 0),
+            settings_outcome                    TEXT NOT NULL,
+            settings_reason                     TEXT NULL,
+            registry_entry_index                INTEGER NOT NULL CHECK (registry_entry_index >= 0),
+            registry_key_path                   TEXT NOT NULL,
+            registry_value_name                 TEXT NOT NULL,
+            registry_type                       INTEGER NOT NULL,
+            registry_data                       BLOB NOT NULL,
+            parse_error_count                   INTEGER NOT NULL CHECK (parse_error_count >= 0),
+            interpretation_issue_count          INTEGER NOT NULL CHECK (interpretation_issue_count >= 0),
             PRIMARY KEY (finding_id)
+        )
+        """,
+
+        $"""
+        CREATE TABLE {JudgementStoreLayout.Schema(connection, StoreSegmentRole.PermissionProof)}.finding_laps_registry_limit (
+            finding_id INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('Parse','Operation')),
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            entry_index INTEGER NULL,
+            key_path TEXT NULL,
+            value_name TEXT NULL,
+            reason TEXT NOT NULL,
+            PRIMARY KEY (finding_id,kind,ordinal),
+            FOREIGN KEY (finding_id) REFERENCES finding_laps_decryptor(finding_id)
         )
         """,
 
@@ -730,10 +794,14 @@ public static class JudgementSchema
         ServiceAccountFindingStorage.CreateTables(connection);
         AttributeWriteFindingStorage.CreateTables(connection);
         ReplicationPermissionFindingStorage.CreateTables(connection);
+        GmsaPasswordReaderStorage.CreateTables(connection);
+        GpoDirectoryPermissionStorage.CreateTables(connection);
         GroupInventoryStorage.CreateTables(connection);
         PathRequesterRiskStorage.CreateTables(connection);
         Tier0RouteFindingStorage.CreateTables(connection);
         LapsInventoryStorage.CreateTables(connection);
+        LapsConfiguredPolicyStorage.CreateTables(connection);
+        LapsSchedulingStorage.CreateTables(connection);
         PermissionClassificationStorage.CreateTables(connection);
         JudgementStoreLayout.CreateReferences(connection);
     }

@@ -1,7 +1,7 @@
 namespace SecureAD.Evidence.Findings;
 
 /// <summary>
-/// The right that lets a principal take control of an object's permission list.
+/// The selected permission category; changing the owner is not itself proof of permission-list control.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -33,28 +33,22 @@ public enum ObjectTakeoverRight
     WriteDacl,
 
     /// <summary>
-    /// <c>WRITE_OWNER</c> — the right to become the owner, and so to inherit the rights an owner
-    /// holds implicitly.
+    /// WRITE_OWNER: the permission to change the owner, independently of any subsequent control.
     /// </summary>
     /// <remarks>
-    /// <b>This one is conditional and the other two are not.</b> It reaches control in two steps
-    /// rather than one, and the second step depends on the owner's implicit rights surviving. Where
-    /// the forest has blocked those rights, this is not takeover-class at all, and a finding
-    /// claiming otherwise would be false. See <c>SEC-060</c> §4.
+    /// Version 3 saves owner-right conditions and the unresolved controlled-owner transition
+    /// separately. Neither this enum value nor the granted primitive establishes that compound.
     /// </remarks>
     WriteOwner,
 }
 
 /// <summary>
-/// What SEC-060 rested on: a principal broad in every organisation that can take control of an
-/// object, and the route by which it got there.
+/// A broad identity, its saved attribution route and the selected permission category.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>What "take over" means here, in plain terms.</b> The principal can rewrite the object's
-/// permission list — granting itself, or anybody else, full control of that object — and nothing
-/// about the object will look unusual afterwards. A permission list shows what was granted. It does
-/// not show what the grant is <i>worth</i>.
+/// Version 2 used takeover categories; version 3 saves the independent permission and ownership
+/// conclusions in <see cref="Calculation"/>, without claiming individual authorization or an operation.
 /// </para>
 /// <para>
 /// <b>The path is the finding, for the reason <c>P-123</c> gives.</b> Naming <i>Domain Users</i> as
@@ -79,8 +73,8 @@ public enum ObjectTakeoverRight
 /// </param>
 /// <param name="Right">Which takeover-class right the entry effectively carried.</param>
 /// <param name="InheritedFrom">
-/// The container the entry was inherited from, or null where it was set on the object itself. Stated
-/// as a fact and not as a verdict: a grant inherited from the domain root may be entirely deliberate.
+/// A legacy inherited-entry marker, not a proven source container. Version 3 leaves it null and
+/// saves actual supporting-entry inheritance separately in <see cref="Calculation"/>.
 /// </param>
 /// <param name="ExpansionWasComplete">
 /// Whether the walk that found the broad principal reached everything nested inside the trustee.
@@ -95,11 +89,13 @@ public sealed record ObjectTakeoverEvidence(
     string? InheritedFrom,
     bool ExpansionWasComplete) : FindingEvidence
 {
+    /// <summary>Version 3 keeps permission conclusions separate from membership and hypothetical ownership.</summary>
+    public PermissionControlCalculation? Calculation { get; init; }
+
     /// <summary>
-    /// Whether everything nested inside the trustee was reached, so that finding no <i>further</i>
-    /// broad principal is a fact rather than a silence.
+    /// Membership and permission-calculation completeness; neither establishes a live operation.
     /// </summary>
-    public bool IsComplete => ExpansionWasComplete;
+    public bool IsComplete => ExpansionWasComplete && (Calculation?.IsComplete ?? true);
 
     /// <summary>The route as an operator would read it, naming what can be named.</summary>
     public string Route => string.Join(" -> ", MembershipPath.Select(s => s.Display));
@@ -111,8 +107,7 @@ public sealed record ObjectTakeoverEvidence(
     public int NestingDepth => Math.Max(0, MembershipPath.Count - 1);
 
     /// <summary>
-    /// Whether control is reached by becoming the owner rather than directly, which is the case
-    /// that depends on the forest not having blocked an owner's implicit rights.
+    /// Whether the selected permission is WRITE_OWNER, not whether an owner transition succeeded.
     /// </summary>
     public bool ThroughOwnership => Right is ObjectTakeoverRight.WriteOwner;
 }

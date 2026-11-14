@@ -40,14 +40,14 @@ public sealed class LapsInventoryTests
     [Fact]
     public void AMachineWithTheModernTimestampIsManagedByWindowsLaps() =>
         Assert.Equal(
-            LapsManagement.WindowsLaps,
-            Row(modern: Timestamp).Management);
+            LapsValuePresence.WindowsOnly,
+            Row(modern: Timestamp).ValuePresence);
 
     [Fact]
     public void AMachineWithOnlyTheLegacyTimestampIsManagedByLegacyLaps() =>
         Assert.Equal(
-            LapsManagement.LegacyLaps,
-            Row(legacy: Timestamp).Management);
+            LapsValuePresence.LegacyOnly,
+            Row(legacy: Timestamp).ValuePresence);
 
     /// <summary>
     /// A machine carrying both timestamps is shown as migrated, not as two states at once.
@@ -59,12 +59,12 @@ public sealed class LapsInventoryTests
     [Fact]
     public void AMachineWithBothTimestampsIsMigrated() =>
         Assert.Equal(
-            LapsManagement.Migrated,
-            Row(modern: Timestamp, legacy: Timestamp).Management);
+            LapsValuePresence.Both,
+            Row(modern: Timestamp, legacy: Timestamp).ValuePresence);
 
     [Fact]
     public void AMachineWithNeitherTimestampIsNotManaged() =>
-        Assert.Equal(LapsManagement.NotManaged, Row().Management);
+        Assert.Equal(LapsValuePresence.None, Row().ValuePresence);
 
     /// <summary>
     /// A Server 2016 machine carrying the modern timestamp is shown as Unexpected.
@@ -77,8 +77,8 @@ public sealed class LapsInventoryTests
     [Fact]
     public void AMachineTooOldForWindowsLapsCarryingTheModernTimestampIsUnexpected() =>
         Assert.Equal(
-            LapsManagement.Unexpected,
-            Row(modern: Timestamp, os: LegacyServer, version: LegacyServerBuild).Management);
+            LapsValuePresence.WindowsOnLegacyOnly,
+            Row(modern: Timestamp, os: LegacyServer, version: LegacyServerBuild).ValuePresence);
 
     /// <summary>
     /// A domain controller is listed rather than filtered out, and says it is one.
@@ -94,7 +94,7 @@ public sealed class LapsInventoryTests
         var row = Row(uac: 0x82000, primaryGroupId: 516);
 
         Assert.True(row.DomainController.IsDomainController);
-        Assert.False(row.IsJudged);
+        Assert.False(row.IsInRuleScope);
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public sealed class LapsInventoryTests
         var row = Row(uac: 4098);
 
         Assert.True(row.IsDisabled);
-        Assert.False(row.IsJudged);
+        Assert.False(row.IsInRuleScope);
         Assert.False(row.DomainController.IsDomainController);
     }
 
@@ -121,7 +121,7 @@ public sealed class LapsInventoryTests
 
         Assert.False(row.IsDisabled);
         Assert.False(row.DomainController.IsDomainController);
-        Assert.True(row.IsJudged);
+        Assert.True(row.IsInRuleScope);
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public sealed class LapsInventoryTests
     /// </summary>
     /// <remarks>
     /// <b>The anchor that stops the two drifting apart.</b> The machine is a Server 2016 carrying
-    /// only the legacy timestamp: the grid must call it <see cref="LapsManagement.LegacyLaps"/> and
+    /// only the legacy timestamp: the grid must call it <see cref="LapsValuePresence.LegacyOnly"/> and
     /// the rule must stay silent, and both answers rest on the same capability classification. If a
     /// second classifier ever appeared in either, this fails.
     /// </remarks>
@@ -153,9 +153,9 @@ public sealed class LapsInventoryTests
         var listed = Assert.Single(
             SavedLapsTestRun.Read(directory, Root, ListingScope.Subtree).Computers);
 
-        Assert.Equal(LapsManagement.LegacyLaps, listed.Management);
+        Assert.Equal(LapsValuePresence.LegacyOnly, listed.ValuePresence);
         Assert.Equal(LapsCapabilityKind.LegacyLapsOnly, listed.Capability.Kind);
-        Assert.True(listed.IsJudged);
+        Assert.True(listed.IsInRuleScope);
 
         // What the rule says about the same machine, through a whole derive and judge.
         Assert.True(
@@ -203,14 +203,14 @@ public sealed class LapsInventoryTests
         Assert.True(page.ComputersAreComplete);
         Assert.Null(page.Shortfall);
 
-        Assert.Equal(1, page.CountOf(LapsManagement.WindowsLaps));
-        Assert.Equal(1, page.CountOf(LapsManagement.LegacyLaps));
-        Assert.Equal(1, page.CountOf(LapsManagement.NotManaged));
-        Assert.Equal(1, page.CountOf(LapsManagement.Unexpected));
+        Assert.Equal(1, page.CountOf(LapsValuePresence.WindowsOnly));
+        Assert.Equal(1, page.CountOf(LapsValuePresence.LegacyOnly));
+        Assert.Equal(1, page.CountOf(LapsValuePresence.None));
+        Assert.Equal(1, page.CountOf(LapsValuePresence.WindowsOnLegacyOnly));
 
         // A state nothing is in answers zero rather than being absent, so a caller never has to
         // work out whether it was measured.
-        Assert.Equal(0, page.CountOf(LapsManagement.Migrated));
+        Assert.Equal(0, page.CountOf(LapsValuePresence.Both));
     }
 
     /// <summary>

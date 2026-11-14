@@ -23,22 +23,66 @@ namespace SecureAD.Judgement;
 /// </remarks>
 public static class RuleGuidanceCatalogue
 {
+    private const string UnconstrainedDelegationRisk =
+        "For authentication that permits delegation, a service trusted for unconstrained "
+        + "delegation can reuse delegated Kerberos credentials to access other services. "
+        + "The captured setting does not establish that a service is in use, credentials "
+        + "were received, impersonation occurred or a route to Tier 0 was completed.";
+
+    private const string UnconstrainedDelegationAction =
+        "Identify the services and authentication flows that depend on this account, and "
+        + "confirm the account's actual role. If unconstrained delegation is unnecessary, "
+        + "remove that trust under change control and verify dependent authentication. "
+        + "Where delegation is required, assess a compatible, narrowly scoped design rather "
+        + "than assuming any one alternative is automatically safe.";
+
     /// <summary>Guidance for every rule in <see cref="RuleCatalogue.All"/>.</summary>
     public static IReadOnlyList<RuleGuidance> All { get; } =
     [
+        new RuleGuidance("SEC-080", "Group Policy permissions", MitreTechnique: null,
+            WhyItMatters: GpoDirectoryPermissionRules.Explanation("SEC-080"),
+            WhatToDo: GpoDirectoryPermissionRules.Action("SEC-080"),
+            About: "Checks unexpected policy-related directory-property write or permission-list control on captured GPO directory objects. "
+                + "Rename-only, delete-only, ownership and WRITE_OWNER alone do not trigger this rule. "
+                + "An intentional delegation can still warrant review; unexpected does not mean unauthorized.\n\n" + GpoDirectoryPermissionRules.Caution,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-gpol/a0b3f9f6-da35-4c8a-8b8d-1318d4673e9d"),
+        new RuleGuidance("SEC-081", "Group Policy permissions", MitreTechnique: null,
+            WhyItMatters: GpoDirectoryPermissionRules.Explanation("SEC-081"),
+            WhatToDo: GpoDirectoryPermissionRules.Action("SEC-081"),
+            About: "Checks unexpected gPLink write permission on captured domain roots, OUs and sites, including scopes with no current links. "
+                + "gPOptions inheritance-control permission remains separate. An intentional delegation can still warrant review; unexpected does not mean unauthorized.\n\n"
+                + GpoDirectoryPermissionRules.Caution,
+            MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-gpol/a0b3f9f6-da35-4c8a-8b8d-1318d4673e9d"),
+        new RuleGuidance("SEC-102", "Service accounts", MitreTechnique: null,
+            WhyItMatters: GmsaPasswordReaders.Why,
+            WhatToDo: GmsaPasswordReaders.Guidance,
+            About: "Checks captured gMSA password-reader configuration for direct or group-held exposure to the shared broad identities. "
+                + "A named service host or purpose-built service group is not flagged merely for being non-administrative or large. "
+                + "This does not determine which individual hosts the organisation intended. "
+                + GmsaPasswordReaders.Scope,
+            MicrosoftReference: GmsaPasswordReaders.Reference),
         new RuleGuidance("SEC-002", "Credentials", MitreTechnique: null,
             WhyItMatters: UnexpectedDomainSecretReplication.Explanation,
             WhatToDo: UnexpectedDomainSecretReplication.Guidance,
             About: UnexpectedDomainSecretReplication.Explanation + "\n\n" + UnexpectedDomainSecretReplication.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-drsr/15bbda52-7742-4ce3-9327-018647b0fc26"),
         new RuleGuidance("SEC-012", "Delegation configuration", MitreTechnique: null,
-            WhyItMatters: ConstrainedDelegationToRelevantService.Explanation,
-            WhatToDo: "Review whether this delegation is required.",
+            WhyItMatters: "Where Kerberos permits delegation, a service using this account may act on a user's behalf to the configured services. "
+                + "Unintended delegation to a Tier 0-relevant destination warrants review. "
+                + "The captured configuration does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path.",
+            WhatToDo: "Confirm the service owner, intended destination and business need for each listed value. Review dependencies before making changes. "
+                + "If a destination is unnecessary, remove only the unnecessary values from msDS-AllowedToDelegateTo on the delegating account under change control, "
+                + "then test dependent authentication. Do not remove the resource's legitimate servicePrincipalName registration, clear every destination "
+                + "or switch to unconstrained delegation as a shortcut.",
             About: ConstrainedDelegationToRelevantService.Summary + "\n\n" + ConstrainedDelegationToRelevantService.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/security/kerberos/kerberos-constrained-delegation-overview"),
         new RuleGuidance("SEC-013", "Delegation configuration", MitreTechnique: null,
-            WhyItMatters: ResourceBasedDelegationOnRelevantResource.Explanation,
-            WhatToDo: "Review the recorded grants and whether this delegation is required.",
+            WhyItMatters: "The captured RBCD configuration contains delegation grants for the recorded holders on this Tier 0-relevant resource. "
+                + "Unintended grants warrant review. A group-held grant does not establish authorization for each member. "
+                + "This finding does not establish current service use, working delegation, successful impersonation, credential extraction or a completed Tier 0 path.",
+            WhatToDo: "Confirm each configured holder and its business need. Review service dependencies and shared or group-held grants before making changes. "
+                + "If a grant is unnecessary, narrow or remove only that grant from msDS-AllowedToActOnBehalfOfOtherIdentity on the resource account under change control, "
+                + "then test dependent authentication. Do not clear the entire configuration indiscriminately or change general object permissions as a substitute.",
             About: ResourceBasedDelegationOnRelevantResource.Summary + "\n\n" + ResourceBasedDelegationOnRelevantResource.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-sfu/3bff5864-8135-400e-bdd9-33b552051d94"),
         new RuleGuidance("SEC-050", "Group membership", MitreTechnique: null,
@@ -61,39 +105,57 @@ public static class RuleGuidanceCatalogue
                 + "Reports one finding per resource-domain legacy group with supported broad membership, keeping symbolic broad identities and alternative recorded security links rather than expanding them into accounts.",
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-014", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change the RBCD attribute that controls who may act on behalf of other identities to this account's services. "
-                + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's RBCD configuration. "
+                + "If misused, this permission could allow the delegation configuration to be altered. "
+                + "It does not show that delegation is configured or in use, that a directory change will succeed, or that impersonation, authentication, "
+                + "account takeover or a completed Tier 0 path has occurred. A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate service or delegation-administration responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not clear legitimate RBCD configuration as a substitute for correcting the write permission.",
             About: "Reports established WRITE_PROPERTY permission on msDS-AllowedToActOnBehalfOfOtherIdentity using captured account identity, schema and scoped expectedness.\n\n"
                 + "Permission is not proof of a successful RBCD configuration or service impersonation. WRITE_DAC and ownership pivots are separate assessments. "
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-ada2/cea4ac11-a4b2-4f2d-84cc-aebb4a4ad405"),
         new RuleGuidance("SEC-024", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change service principal names registered on this account. " + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's servicePrincipalName attribute. "
+                + "If misused, this permission could allow unintended service registrations or changes to existing registrations. "
+                + "It does not show that a service principal name has been added or changed, that a service is in use, that a directory change will succeed, "
+                + "or that authentication, impersonation, credential theft, account takeover or a completed Tier 0 path has occurred. "
+                + "A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate service-registration responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not remove legitimate service principal names or reset passwords as a substitute for correcting the write permission.",
             About: "Reports established WRITE_PROPERTY permission on servicePrincipalName, including a captured containing property set.\n\n"
                 + "Restricted validated-SPN writes are not unrestricted attribute-write permission. Existing SPNs, service usage, password strength and successful Kerberos ticket requests are not prerequisites established here. "
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows/win32/api/ntdsapi/nf-ntdsapi-dswriteaccountspnw"),
         new RuleGuidance("SEC-025", "Property permissions", MitreTechnique: null,
-            WhyItMatters: "An unexpected holder has permission to change the account's key-credential-link attribute. " + AttributeWriteRules.ScopeNote,
-            WhatToDo: AttributeWriteRules.Guidance,
+            WhyItMatters: "The saved assessment identifies unexpected permission to write this account's msDS-KeyCredentialLink attribute. "
+                + "If misused, this permission could allow key-credential registrations to be added or changed. "
+                + "It does not show that a usable key is registered, that a directory change will succeed, that key-based authentication is available or will succeed, "
+                + "or that credential extraction, account takeover or a completed Tier 0 path has occurred. "
+                + "A group-held permission does not establish authorization for each member.",
+            WhatToDo: "Confirm the holder's legitimate account, device-authentication and key-enrolment responsibilities. Review dependent services and other rights in the same assignment before making changes. "
+                + "If this write permission is unintended, remove or narrow only that permission on the target account. "
+                + "For an inherited assignment, verify its original source and wider impact before changing it. Review shared or group-held grants and do not assume removing one member eliminates the permission. "
+                + "Do not delete existing key credentials or reset passwords as a substitute for correcting the write permission.",
             About: "Reports the existing CanWriteKeyCredentialLink permission assessment for msDS-KeyCredentialLink.\n\n"
                 + "The SELF-only validated computer operation is separate. Adding a usable key, certificate infrastructure, authentication and credential extraction are not established. "
                 + AttributeWriteRules.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/openspecs/windows_protocols/ms-adts/f70afbcc-780e-4d91-850c-cfadce5bb15c"),
         new RuleGuidance("SEC-100", "Service accounts", MitreTechnique: null,
-            WhyItMatters: "A service-associated account has an established security-membership route to a verified administrative group. "
-                + ServiceAccountWithAdministrativeMembership.ScopeNote,
-            WhatToDo: ServiceAccountWithAdministrativeMembership.Guidance,
+            WhyItMatters: SavedServiceAccountContext.AdministrativeWhy,
+            WhatToDo: SavedServiceAccountContext.AdministrativeAction,
             About: "Reports sMSA/gMSA accounts and ordinary SPN-bearing users with captured security membership in Domain Admins, "
                 + "forest-root Enterprise Admins or Schema Admins, or resource-domain BUILTIN Administrators.\n\n"
                 + "Disabled accounts remain visible as dormant exposure. Established membership remains a finding when other routes could not be assessed. "
                 + ServiceAccountWithAdministrativeMembership.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-101", "Service accounts", MitreTechnique: null,
-            WhyItMatters: "An ordinary SPN-bearing user has Password never expires set. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
-            WhatToDo: ServiceAccountWithNonExpiringPassword.Guidance,
+            WhyItMatters: SavedServiceAccountContext.PasswordWhy,
+            WhatToDo: SavedServiceAccountContext.PasswordAction,
             About: "Reports ordinary SPN-bearing users with the captured Password never expires setting; managed service accounts and computers are excluded.\n\n"
                 + "Disabled accounts remain visible as dormant exposure. " + ServiceAccountWithNonExpiringPassword.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/troubleshoot/windows-server/active-directory/useraccountcontrol-manipulate-account-properties"),
@@ -103,7 +165,9 @@ public static class RuleGuidanceCatalogue
             About: BroadAdministrativeGroupMembership.MembershipSummary + "\n\n" + BroadAdministrativeGroupMembership.ScopeNote,
             MicrosoftReference: "https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups"),
         new RuleGuidance("SEC-026", "Kerberos", MitreTechnique: null,
-            WhyItMatters: DuplicateServicePrincipalNames.Explanation,
+            WhyItMatters: "Duplicate service principal names can prevent Kerberos from identifying the intended service account. "
+                + "This finding records captured registrations, not a confirmed outage, current service use, successful authentication, "
+                + "credential exposure, compromise or a completed Tier 0 path.",
             WhatToDo: DuplicateServicePrincipalNames.Guidance,
             About: "Reports the same complete service principal name on distinct captured objects in this forest, using Windows case-insensitive comparison.\n\n"
                 + "Ports, instance names and service-name suffixes remain part of the match; HOST registrations are not blanket-exempt. "
@@ -116,7 +180,7 @@ public static class RuleGuidanceCatalogue
             WhatToDo: CircularGroupMembership.Guidance,
             About: "These groups form a circular membership relationship.\n\n"
                 + "Review the recorded links and the membership or permissions that depend on them; this finding does not establish a route to Tier 0.",
-            MicrosoftReference: "https://learn.microsoft.com/windows/win32/ad/determining-a-user-s-or-group-s-membership-in-a-group"),
+            MicrosoftReference: "https://learn.microsoft.com/windows/win32/ad/determining-a-userampaposs-or-groupampaposs-membership-in-a-group"),
         new RuleGuidance(
             "SEC-071",
             "Tier 0",
@@ -137,25 +201,15 @@ public static class RuleGuidanceCatalogue
             "SEC-010",
             "Delegation",
             MitreTechnique: null,
-            WhyItMatters:
-                "Any service running as this account can impersonate whoever authenticates to it, "
-                + "to any other service. An attacker who compromises the account inherits that: "
-                + "every user who has authenticated to it becomes an identity he can borrow, "
-                + "including administrators.",
-            WhatToDo:
-                "Move the service to resource-based constrained delegation, which lets each "
-                + "resource decide who may impersonate to it. Removing the setting outright will "
-                + "break whatever relied on it, so identify what authenticates to this account "
-                + "first - Microsoft marks unconstrained delegation \"Supported (not recommended)\" "
-                + "rather than unsupported, and it is often load-bearing.",
+            WhyItMatters: UnconstrainedDelegationRisk,
+            WhatToDo: UnconstrainedDelegationAction,
             About:
-                "Reports a user or service account whose account options trust it for "
-                + "unconstrained delegation.\n\nIt reads that one setting and nothing else: it does "
-                + "not report constrained delegation or resource-based constrained delegation, "
-                + "which are the safer forms and are not judged here at all, and it cannot say "
-                + "whether anyone has ever actually authenticated to this account.\n\nAn account "
-                + "nothing uses carries the same setting as one every administrator signs in "
-                + "through, and the directory does not record the difference.",
+                "Reports a saved unconstrained-delegation setting under this rule's existing "
+                + "non-computer classification and controller-exclusion logic.\n\n"
+                + "Missing findings do not establish "
+                + "that excluded or unassessed accounts lack the setting; classification and "
+                + "coverage limitations remain separate from this presentation.\n\n"
+                + "It does not assess current service use or exercise delegation.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -163,22 +217,16 @@ public static class RuleGuidanceCatalogue
             "SEC-011",
             "Delegation",
             MitreTechnique: null,
-            WhyItMatters:
-                "This host collects the Kerberos tickets of everyone who authenticates to it, and "
-                + "it is not a domain controller, so it is unlikely to be defended like one. "
-                + "Anyone who compromises it can reuse those tickets as the people they belong to.",
-            WhatToDo:
-                "Move the host to resource-based constrained delegation. As with any delegation "
-                + "change, find out what depends on it before removing it.",
+            WhyItMatters: UnconstrainedDelegationRisk,
+            WhatToDo: UnconstrainedDelegationAction + " Do not change a domain controller's normal "
+                + "delegation configuration based only on this finding.",
             About:
-                "Reports a computer trusted for unconstrained delegation that is not a domain "
-                + "controller.\n\nDomain controllers are excluded deliberately, because the setting "
-                + "is normal on them; a controller identified by any of three independent signals "
-                + "is left alone, and a machine that looks like one by some signals and not others "
-                + "is reported with that disagreement recorded rather than resolved.\n\nAs with "
-                + "SEC-010 it reads one setting: the safer forms of delegation are not judged, and "
-                + "whether the machine has actually collected anyone's tickets cannot be seen from "
-                + "the directory.",
+                "Reports a saved unconstrained-delegation setting under this rule's existing "
+                + "computer-class classification and controller-exclusion logic, including managed "
+                + "service-account subclasses selected by that ancestry. The saved indicators do "
+                + "not independently verify the account's current directory role or show that "
+                + "delegation was used. Missing findings do not establish complete coverage or "
+                + "correct the separately known classification and exclusion limitations.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -187,22 +235,19 @@ public static class RuleGuidanceCatalogue
             "Kerberos",
             "T1558.004",
             WhyItMatters:
-                "A domain controller will answer an authentication request for this account without "
-                + "the asker proving they know the password, and the reply contains material "
-                + "derived from that password which can be cracked offline. No credentials are "
-                + "needed to begin, which is what separates this from most credential attacks - an "
-                + "attacker who has reached the network but holds no account can start here.",
+                "This setting can allow an attacker to obtain password-derived material for offline "
+                + "password guessing without first proving knowledge of the account password. "
+                + "The saved setting does not establish that a request succeeded, the password is "
+                + "weak or cracked, or an attack occurred.",
             WhatToDo:
-                "Clear \"Do not require Kerberos preauthentication\" on the account. The flag is "
-                + "usually set for a non-Windows Kerberos client that could not send "
-                + "pre-authentication data, so establish what uses the account before clearing it.",
+                "Confirm what uses this account and whether any integration requires this exception. "
+                + "If it is unnecessary, clear \"Do not require Kerberos preauthentication\" using "
+                + "the appropriate account-management tool under change control, then verify "
+                + "dependent authentication still works.",
             About:
-                "Reports an account whose account options waive Kerberos pre-authentication.\n\nIt "
-                + "judges the setting, not the risk: a long random password makes the offline "
-                + "attack impractical without changing anything this rule can see, so a reported "
-                + "account is not necessarily crackable and an unreported one is not necessarily "
-                + "safe from anything else.\n\nIt also cannot tell whether the weakness is being used "
-                + "- that is a question for sign-in telemetry, which this product does not read.",
+                "Reports accounts whose captured account options waive Kerberos pre-authentication, "
+                + "including disabled accounts. It reports a saved setting, not current live state, "
+                + "successful ticket issuance or password compromise.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 
@@ -211,25 +256,20 @@ public static class RuleGuidanceCatalogue
             "Privileged access",
             MitreTechnique: null,
             WhyItMatters:
-                "This object was privileged once and is not now, and it is carrying the leftovers. "
-                + "Microsoft states that its access control list is no longer maintained, and that "
-                + "it still does not inherit permissions from where it lives - so it sits in a "
-                + "state nobody chose, with a frozen set of permissions that no longer reflects "
-                + "either its old role or its new one.",
+                "Blocked permission inheritance prevents permission changes delegated through the parent container from reaching this object through inheritance. "
+                + "This can prevent delegated administration from working as intended. Microsoft documents that this condition can remain after protected membership ends, "
+                + "but this finding does not establish that history for this object or determine what its explicit permissions grant.",
             WhatToDo:
-                "Confirm the object is genuinely no longer privileged, then clear its adminCount "
-                + "value and re-enable inheritance on it so it picks up the permissions of the "
-                + "container it now lives in. Check what its current access control list grants "
-                + "before doing so: it is a snapshot of AdminSDHolder from the day it was last "
-                + "stamped, and something may be relying on it.",
+                "Confirm the object's current protection requirements and intended delegated administration. "
+                + "Review its current explicit permissions and the permissions it would inherit from its parent before making changes. "
+                + "If the object is no longer protected and blocked inheritance is unintended, clear the unnecessary adminCount marker and re-enable inheritance under change control, "
+                + "then test delegated management and dependent access. Preserve legitimate explicit permissions. "
+                + "Do not change AdminSDHolder or the SDProp schedule as a shortcut. Clearing adminCount alone does not re-enable inheritance, "
+                + "and enabling inheritance does not remove existing explicit grants.",
             About:
-                "Reports an object carrying the AdminSDHolder marker whose permissions still "
-                + "refuse to inherit, where the captured evidence does not establish that "
-                + "AdminSDHolder protects it now.\n\nIt does not prove the object was ever "
-                + "privileged - the marker is set when protection begins and is never cleared when "
-                + "it ends, so it records a history nobody can read back - and it does not examine "
-                + "what the frozen access control list actually grants. Whether those permissions "
-                + "are dangerous is a separate question this product does not yet answer.",
+                "Reports the saved combination of adminCount=1, disabled permission inheritance and a completed captured-evidence assessment that the object is not AdminSDHolder-protected. "
+                + "adminCount alone is not the protection test. The rule does not reconstruct past membership or an old AdminSDHolder permissions template, "
+                + "assess every explicit permission, or test current SDProp operation. A missing or uncertain protection answer must not be presented as this finding.",
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface#privileged-accounts-and-groups-in-active-directory"),
 
@@ -237,30 +277,13 @@ public static class RuleGuidanceCatalogue
             "SEC-027",
             "Privileged access",
             "T1134.005",
-            WhyItMatters:
-                "Every value in an account's SID history is placed in its access token when it "
-                + "signs in, and grants access exactly as membership of that group would. This "
-                + "account carries an identifier Microsoft documents as privileged, so it has that "
-                + "privilege - but it appears in no group membership listing, because nothing was "
-                + "ever added to a group. An administrator reviewing who is in Domain Admins will "
-                + "not see this account, and the account has the access anyway.",
-            WhatToDo:
-                "Establish why the account carries the value, then remove it with "
-                + "Set-ADUser -Remove @{SIDHistory='S-1-5-21-…'}. Removing it may take away access "
-                + "the account still depends on: permissions left behind by the migration may name "
-                + "only the old identifier, and nothing will have re-stamped them. This rule ranks "
-                + "only the identifiers Microsoft documents, so an account carrying a custom group "
-                + "from a domain that no longer exists is not reported here - the values it holds "
-                + "are shown on the object itself.",
+            WhyItMatters: PrivilegedSidHistory.Explanation,
+            WhatToDo: PrivilegedSidHistory.Guidance,
             About:
-                "Reports an account whose SID history contains an identifier Microsoft documents "
-                + "as privileged - Domain Admins, Enterprise Admins, the built-in operator groups "
-                + "and their like.\n\nIt ranks a value by the number at the end of it, which it can "
-                + "only do for the identifiers Microsoft publishes. A custom group that was "
-                + "powerful in the old domain has an ordinary, sequentially allocated number, and "
-                + "nothing in that number says what it once granted; if the old domain is gone, "
-                + "nothing can. Such an account is not reported, and every value it carries is "
-                + "shown on the object itself so a reader is not left with a filtered view.",
+                "Reports a captured user, computer or group carrying a SID-history value recognised by SecureAD's existing privileged-identifier catalogue. "
+                + "Recognition uses well-known SID patterns, not a live lookup of the issuing domain or group. "
+                + "Custom identifiers are not assessed for privilege by this rule. Other captured values remain available, and unreadable values are reported. "
+                + "This rule does not establish current group membership, effective access, trust acceptance, SID filtering or a completed Tier 0 path.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-sid-history-attributes"),
 
@@ -269,25 +292,16 @@ public static class RuleGuidanceCatalogue
             "Credentials",
             MitreTechnique: null,
             WhyItMatters:
-                "This account is exempt from the domain's minimum password length, so it may have "
-                + "no password at all. Anyone who can reach authentication could sign in as it "
-                + "without knowing anything - no cracking, no interception, no foothold first. The "
-                + "password policy screen still shows the policy, and does not show that this "
-                + "account is not subject to part of it.",
+                "This setting permits a password requirement exception. It does not show that "
+                + "the account has an empty or weak password, or that passwordless sign-in succeeded.",
             WhatToDo:
-                "Clear \"Password not required\" on the account, then set a password on it. "
-                + "Clearing the flag alone does not give the account a password - if it currently "
-                + "has none, it still has none until one is set. Establish what uses the account "
-                + "first: something that was created without a password may not survive being "
-                + "given one.",
+                "Confirm what uses the account and how its password is managed. If the exception "
+                + "is unnecessary, ensure appropriate password protection and remove it under "
+                + "change control, coordinating dependent services. Do not reset the password blindly.",
             About:
-                "Reports an account whose account options exempt it from the domain's minimum "
-                + "password length.\n\nIt does not report accounts with no password, and the "
-                + "difference matters: the flag says the rule does not apply to this account, not "
-                + "that the account took advantage of it. The directory does not disclose whether "
-                + "a password is set or what it is, and this product never asks - so a reported "
-                + "account may have a perfectly good password, and what is wrong is that nothing "
-                + "obliges it to.",
+                "Reports the captured Password not required option on user or computer accounts, "
+                + "excluding interdomain trust accounts. It reports an exception, not whether a "
+                + "password exists, its strength or current live state.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -296,23 +310,17 @@ public static class RuleGuidanceCatalogue
             "Credentials",
             MitreTechnique: null,
             WhyItMatters:
-                "The directory holds this account's password in a form that can be decrypted back "
-                + "to the password itself, rather than a hash that an attacker would have to work "
-                + "on. Whoever reaches the stored value gets a working credential immediately, and "
-                + "people reuse passwords, so the reach of it is rarely limited to this account.",
+                "This is a captured account option, not proof that a reversible copy of the password "
+                + "currently exists. Clearing the option alone does not establish that a previously "
+                + "stored copy has been removed.",
             WhatToDo:
-                "Clear \"Store password using reversible encryption\" on the account and then "
-                + "change its password. The order matters and the second step is not optional: "
-                + "clearing the setting stops a new reversible copy being stored, but the existing "
-                + "one stays until the password changes. Find out why it was set - it is usually "
-                + "an application that required it, and that application may stop working.",
+                "Check application and protocol dependencies and the applicable password policy. "
+                + "If the requirement is unnecessary, remove it under change control, then "
+                + "coordinate a password change and verify dependent authentication.",
             About:
-                "Reports an account set to store its password using reversible encryption.\n\nIt "
-                + "reads the setting, which governs what happens at the next password change; it "
-                + "cannot see whether a reversible copy is stored right now. So an account cleared "
-                + "of the setting but never given a new password still holds one and is not "
-                + "reported, which is why the guidance insists on the password change as well as "
-                + "the clearing.",
+                "Reports the captured reversible-password-storage option on user or computer "
+                + "accounts, including disabled accounts. It does not inspect password material or "
+                + "establish that a reversible copy is currently stored or has been removed.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -321,22 +329,18 @@ public static class RuleGuidanceCatalogue
             "Credentials",
             MitreTechnique: null,
             WhyItMatters:
-                "This account is restricted to DES, a cipher broken long ago, so Kerberos tickets "
-                + "encrypted for it are far cheaper to attack than tickets for any other account. "
-                + "It also drags the account back from whatever stronger encryption the rest of "
-                + "the domain has moved to.",
+                "DES is an old, weak encryption method. This captured option can restrict the "
+                + "account's Kerberos encryption choices; it does not show which encryption an "
+                + "actual ticket used.",
             WhatToDo:
-                "Clear \"Use Kerberos DES encryption types for this account\". The setting is "
-                + "almost always present because something authenticating as this account could "
-                + "not do better - a legacy appliance or an old integration - so establish what "
-                + "that is before clearing it, or that thing stops authenticating.",
+                "Identify legacy clients and applications and check their encryption and key "
+                + "requirements. Address those dependencies, clear an unnecessary DES-only "
+                + "restriction under change control, and verify actual authentication. Clearing "
+                + "it does not by itself guarantee stronger encryption.",
             About:
-                "Reports an account restricted to DES encryption by its account options.\n\nIt reads "
-                + "the account's own setting and not the domain's: what encryption types the domain "
-                + "permits, and which are used for the tickets actually issued, are configured "
-                + "elsewhere and are not judged here. An account without this flag may still be "
-                + "negotiating weak encryption for other reasons, and this rule says nothing about "
-                + "that.",
+                "Reports the captured DES-only account option, including disabled accounts. It "
+                + "does not assess domain encryption policy or establish the encryption used for "
+                + "actual tickets.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/accounts#unsecure-account-attributes"),
 
@@ -345,34 +349,11 @@ public static class RuleGuidanceCatalogue
             "Credentials",
             "T1558.003",
             WhyItMatters:
-                "Any authenticated member of the domain can ask a domain controller for a ticket to "
-                + "this account's service, and that ticket is encrypted with this account's "
-                + "password. Compromising it exposes the authority it actually holds. AdminSDHolder "
-                + "protection alone does not prove domain administration: distribution-group paths "
-                + "can propagate protection without authorization. The request is ordinary protocol traffic, the account is never "
-                + "contacted, and the cracking leaves no failed logons, so nothing about it looks "
-                + "like an attack while it is happening.",
+                ServiceRegistrationPresentation.Why,
             WhatToDo:
-                "If the account does not actually run a service, remove the service name - a stale "
-                + "name left from a test is the commonest case and the only one where the exposure "
-                + "goes away rather than getting more expensive. If it does run a service, replace "
-                + "it with a group managed service account, whose password Windows generates and "
-                + "rotates itself; where that is not possible, give it a long random password. "
-                + "Consider whether the account needs its privilege at all. Removing the service "
-                + "name closes this route to the account and says nothing about any other. Review "
-                + "each initial membership in the supporting evidence, including longer routes. "
-                + "Changing a shared group can affect other accounts. Removing the listed memberships "
-                + "does not establish that every other form of privilege is gone.",
+                ServiceRegistrationPresentation.Action,
             About:
-                "Reports a service name registered on an account that AdminSDHolder protects.\n\n"
-                + "Ordinary service accounts with service names are not reported, and that "
-                + "is the rule rather than an omission: a service name on an ordinary account is "
-                + "what a service account is, and reporting every one would report the normal "
-                + "operation of every application in the estate. Microsoft scopes its own "
-                + "recommendation the same way. The key distribution centre's own account is "
-                + "excluded too - it carries a service name by default and cannot be changed. This "
-                + "rule does not measure password strength, which is what actually decides whether "
-                + "the offline attack succeeds.",
+                ServiceRegistrationPresentation.About,
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#credential-access-alerts"),
 
@@ -396,45 +377,14 @@ public static class RuleGuidanceCatalogue
             "SEC-060",
             "Permissions",
 
-            // T1222 is permission modification, which is what holding WriteDacl or WriteOwner lets
-            // somebody do. Claimed rather than omitted because the mapping is direct: the technique
-            // describes modifying object permissions to enable follow-on access, and that is
-            // exactly the capability being reported.
             MitreTechnique: "T1222",
-            WhyItMatters:
-                "A principal that is broad in every organisation - Everyone, Authenticated Users, "
-                + "Domain Users, Domain Computers, Guests or Anonymous - can rewrite this object's "
-                + "permission list. That means any person who can log on can grant themselves, or "
-                + "anybody else, full control of this object, and nothing about it will look "
-                + "unusual afterwards. A permission list shows what was granted; it does not show "
-                + "what the grant is worth. The principal is usually not the one named in the "
-                + "permission - it falls out of the group nesting underneath, which is why nobody "
-                + "notices.",
-            WhatToDo:
-                "Follow every membership path on the finding and cut the links that bring broad "
-                + "principal into the group the permission names, or narrow the permission so it "
-                + "names only the administrators who need it. Do not simply delete the entry: this "
-                + "product cannot know which principals your organisation intended to hold this "
-                + "access, and the group named may be entirely legitimate apart from what is "
-                + "nested inside it. Where the entry was inherited, the container it came from is "
-                + "named on the finding, and changing it there will affect everything beneath it.",
-            About:
-                "Reports an object over which a principal broad in every organisation effectively "
-                + "holds Full Control, Write DACL, or the ability to take ownership - found by "
-                + "expanding whichever principal the permission actually names all the way down.\n\n"
-                + "GenericWrite is deliberately excluded: Microsoft's generic mapping shows it "
-                + "does not include the right to change permissions, so it cannot yield control of "
-                + "the list.\n\nTaking ownership is reported only where an owner would actually keep "
-                + "the implicit right to rewrite permissions; where the object carries an OWNER "
-                + "RIGHTS entry, or the forest has blocked implicit owner rights for computer "
-                + "objects, that route reaches nothing and is not reported.\n\nEntries that sit on an "
-                + "object only to be inherited by the objects beneath it grant nothing where they "
-                + "sit and are not counted. Deny entries are applied in the order the directory "
-                + "stores them, which is how Windows itself evaluates them.\n\nWhere the object's "
-                + "permissions could not be read, or the membership walk did not finish, the rule "
-                + "says so rather than reporting the object as safe.",
+            WhyItMatters: SavedPermissionControl.Risk,
+            WhatToDo: SavedPermissionControl.Action,
+            About: SavedPermissionControl.Statement + "\n\n" + SavedPermissionControl.CalculationLimits
+                + "\n\n" + SavedPermissionControl.ExpansionNote + " " + SavedPermissionControl.ChainNote
+                + "\n\n" + SavedPermissionControl.OwnerNote,
             MicrosoftReference:
-                "https://learn.microsoft.com/defender-for-identity/security-posture-assessments/certificates"),
+                "https://learn.microsoft.com/windows/win32/api/iads/ne-iads-ads_rights_enum"),
 
         new RuleGuidance(
             "SEC-031",
@@ -447,38 +397,11 @@ public static class RuleGuidanceCatalogue
             // exists to prevent.
             MitreTechnique: null,
             WhyItMatters:
-                "The owner of an object can rewrite that object's permissions whenever they like, "
-                + "and ownership does not appear in the permission list. You can review every "
-                + "entry on this object, find nothing wrong, and still miss that its owner can "
-                + "replace the whole list at will. Microsoft is blunt about it: no matter what "
-                + "permissions are set on an object, the owner can always change them. Objects "
-                + "created by an administrator are owned by the Administrators group; an object "
-                + "created by anybody else is owned by that person personally, and stays that way "
-                + "for the life of the object.",
+                SavedOwnershipAssessment.Risk,
             WhatToDo:
-                "Decide whether this owner should hold that standing. Where they should not, "
-                + "change the owner to a privileged and monitored principal - which is what "
-                + "Microsoft prescribes for the one case it covers directly. Where the owner is a "
-                + "service account or an application identity that your organisation manages "
-                + "deliberately, accept the finding rather than changing anything: that leaves a "
-                + "record, where a silent exclusion would not. Where the owning account no longer "
-                + "exists the object is orphaned and nobody can be asked to hand ownership over, "
-                + "so an administrator must take ownership before anything else can be done.",
+                SavedOwnershipAssessment.Action,
             About:
-                "Reports an object whose owner is not an administrative principal.\n\nThis is latent "
-                + "authority and not evidence of wrongdoing - the ordinary cause is that somebody "
-                + "was allowed to create the object, they created it, and they became its owner.\n\n"
-                + "An owner accepted through group membership is not reported within that "
-                + "acceptance's scope. The forest-root Schema Admins group and its members are "
-                + "accepted only in that forest's schema partition. Membership is consulted rather "
-                + "than the identifier alone.\n\nThe rule stays silent where the owner would not "
-                + "actually keep the power - an OWNER RIGHTS entry on the object switches off the "
-                + "owner's implicit rights, and so does the forest setting that blocks them, which "
-                + "applies to computer objects owned by non-administrators.\n\nObjects that "
-                + "AdminSDHolder protects are reported by SEC-032 instead and never by both, so no "
-                + "object appears twice.\n\nExpect this rule to be plentiful in a forest where "
-                + "delegated creation is normal; a large count is information about the estate "
-                + "rather than a defect.",
+                SavedOwnershipAssessment.ScopeNote,
             MicrosoftReference:
                 "https://learn.microsoft.com/windows/win32/secauthz/owner-of-a-new-object"),
 
@@ -487,45 +410,11 @@ public static class RuleGuidanceCatalogue
             "Permissions",
             MitreTechnique: null,
             WhyItMatters:
-                "This object is one AdminSDHolder protects, which means the directory treats it as "
-                + "conferring privilege - a member of Domain Admins, Enterprise Admins, "
-                + "Administrators or an operator group. Its owner is not an administrative "
-                + "principal, and an owner can rewrite an object's permissions whenever they like. "
-                + "What makes this worth your attention is that it should not have been possible "
-                + "to observe: AdminSDHolder restores the owner of a protected object roughly "
-                + "every hour, so finding a non-administrative one in a capture means either the "
-                + "change was made within about the last hour, or AdminSDHolder is not running at "
-                + "all. The second case is the serious one, because every privileged object in "
-                + "the domain would then be sitting unrepaired.",
+                SavedOwnershipAssessment.Risk + "\n\n" + SavedOwnershipAssessment.ProtectedRisk,
             WhatToDo:
-                "Look at this promptly, and expect the owner may already have been restored by "
-                + "the time you do - that does not mean the finding was wrong. First check "
-                + "whether AdminSDHolder is running: compare the owner now against the one "
-                + "reported here, and if it has been put back then the protection mechanism is "
-                + "working and what you are looking at is a recent change worth explaining. If "
-                + "the owner is still non-administrative an hour or more after the capture, "
-                + "treat AdminSDHolder itself as the problem and check the domain controller "
-                + "holding the PDC emulator role, because a stalled SDProp affects every "
-                + "privileged object at once. Either way, check how the owner came to hold that "
-                + "standing: an object created inside a privileged container by a delegated "
-                + "administrator is the usual route, and the delegation that allowed it will "
-                + "still be in place.",
+                SavedOwnershipAssessment.Action,
             About:
-                "Reports an object protected by AdminSDHolder whose owner is not an administrative "
-                + "principal.\n\nIt applies the same test as SEC-031 and covers the objects SEC-031 "
-                + "deliberately leaves alone, so the two never report the same object. Where the "
-                + "protection closure is incomplete neither rule reports, because an object that "
-                + "might be protected must not be quietly reported at the lower severity.\n\nThe "
-                + "owner is judged by membership as well as by identifier, and the rule stays "
-                + "silent where the owner would not actually keep the power to rewrite the list. "
-                + "Schema Admins and its members are accepted as owners only within the captured "
-                + "forest's schema, not on protected objects elsewhere unless independently accepted.\n\n"
-                + "This finding is time-sensitive in a way the other rules are not: because "
-                + "AdminSDHolder repairs ownership on its own schedule, the same object may be "
-                + "reported in one run and absent from the next without anybody having fixed "
-                + "anything. It does not check whether AdminSDHolder is running - it can only "
-                + "tell you that something it should have repaired had not been repaired when "
-                + "the directory was read.",
+                SavedOwnershipAssessment.ScopeNote + "\n\n" + SavedOwnershipAssessment.ProtectedRisk,
             MicrosoftReference:
                 "https://learn.microsoft.com/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory"),
 

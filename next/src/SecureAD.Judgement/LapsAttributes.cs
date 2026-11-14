@@ -215,6 +215,23 @@ public static class LapsAttributes
 
     /// <summary>The object's most derived class, or the empty string where none was captured.</summary>
     /// <param name="subject">The object being judged.</param>
+    internal static IReadOnlyList<CapturedInputIssue> UnusableInputs(LapsTimestamp modern, LapsTimestamp legacy)
+    {
+        var issues = new List<CapturedInputIssue>();
+        Add(WindowsLapsExpiration, modern);
+        Add(LegacyLapsExpiration, legacy);
+        return issues;
+
+        void Add(string attribute, LapsTimestamp timestamp)
+        {
+            if (timestamp.Reading == LapsTimestampReading.Zero)
+                issues.Add(new(attribute, CapturedInputIssueKind.ZeroValue));
+            else if (timestamp.Reading == LapsTimestampReading.Unreadable)
+                issues.Add(new(attribute, timestamp.HasUnsupportedRepresentation
+                    ? CapturedInputIssueKind.UnsupportedRepresentation : CapturedInputIssueKind.UnusableValue));
+        }
+    }
+
     public static string ClassOf(ObjectAttributes subject) =>
         AttributeReading.LastText(subject, "objectClass") ?? string.Empty;
 }

@@ -86,7 +86,6 @@ public sealed class PublicTypeReachabilityGateTests
         // settings this product analyses, instead of every GPO in the forest over SMB. A saving
         // that matters at nine domains and is invisible in the laboratory. Not wired in yet.
         new("SecureAD.Kernel.GroupPolicy.GpoClientSideExtensions", "GPO filtering: optimisation not wired in."),
-        new("SecureAD.Kernel.GroupPolicy.GpoClientSideExtensionCatalog", "GPO filtering: the known CSE GUIDs."),
         new("SecureAD.Kernel.GroupPolicy.ParsedCseList", "GPO filtering: what the parse returns."),
     ];
 

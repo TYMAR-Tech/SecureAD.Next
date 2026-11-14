@@ -73,9 +73,6 @@ public sealed class NoKerberosPreauthentication : IObjectRule
         if (missing.Length > 0)
             return RuleVerdict.CouldNotJudge(missing);
 
-        if (subject.ObjectGuid is not { } objectGuid)
-            return RuleVerdict.Judged([]);
-
         // A value that is present but not a number is not an absent value. Saying "not captured"
         // here would send an operator to look at his capture for a fault that is in the directory.
         if (AttributeReading.UnsignedInteger(subject, "userAccountControl") is not { } control)
@@ -83,6 +80,9 @@ public sealed class NoKerberosPreauthentication : IObjectRule
 
         if ((control & DontRequirePreauth) == 0)
             return RuleVerdict.Judged([]);
+
+        if (subject.ObjectGuid is not { } objectGuid || objectGuid == Guid.Empty)
+            return RuleVerdict.CouldNotJudge(["objectGUID"]);
 
         var name = AttributeReading.Text(subject, "sAMAccountName") ?? subject.DistinguishedName;
         var objectClass = AttributeReading.LastText(subject, "objectClass") ?? string.Empty;

@@ -11,9 +11,10 @@ public sealed class DuplicateServicePrincipalNames : IRule
 
     internal const string Explanation = "The same complete service principal name is recorded on more than one captured object. "
         + "This can prevent Kerberos from identifying the service account. It does not prove ticket issuance, credential exposure or takeover.";
-    internal const string Guidance = "Identify the actual service and account that should own each registration before changing AD. "
-        + "Use setspn -F -Q <SPN> and setspn -F -X to investigate in the affected forest when authorized; these commands are not run by this rule. "
-        + "Remove only a confirmed erroneous registration under change control, then verify service authentication and capture again. "
+    internal const string Guidance = "Confirm the intended service and service account before changing any registration. "
+        + "When authorized, use setspn -F -Q <SPN> and setspn -F -X to check current registrations in the affected forest. "
+        + "Review dependencies, then remove only a confirmed erroneous registration under change control and test dependent service authentication. "
+        + "Do not choose an owner automatically, remove every matching value or reset passwords as a substitute for correcting the registration. "
         + "Do not remove krbtgt or kadmin registrations based on this finding alone.";
 
     // MS-ADTS 2.2.21 permits :port OR :instancename; never strip either or apply HOST aliases.

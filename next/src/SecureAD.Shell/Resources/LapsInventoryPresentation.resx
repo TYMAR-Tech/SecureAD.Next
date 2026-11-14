@@ -7,4 +7,16 @@
   <data name="Unavailable" xml:space="preserve"><value>This run has no saved LAPS inventory.</value></data>
   <data name="AccountUnknown" xml:space="preserve"><value>Account state unknown</value></data>
   <data name="ControllerAccountUnknown" xml:space="preserve"><value>Domain controller; account state unknown</value></data>
+  <data name="Title" xml:space="preserve"><value>LAPS expiry evidence</value></data>
+  <data name="Caption" xml:space="preserve"><value>Captured expiry values do not prove active LAPS management or completed migration. Scope notes describe exclusions or uncertainty, not completed assessment.</value></data>
+  <data name="AllValues" xml:space="preserve"><value>All value groups</value></data>
+  <data name="ValuesNone" xml:space="preserve"><value>No expiry values</value></data>
+  <data name="ValuesWindows" xml:space="preserve"><value>Windows value only</value></data>
+  <data name="ValuesLegacy" xml:space="preserve"><value>Legacy value only</value></data>
+  <data name="ValuesBoth" xml:space="preserve"><value>Both expiry values</value></data>
+  <data name="ValuesPlatform" xml:space="preserve"><value>Platform review</value></data>
+  <data name="ExpiryNone" xml:space="preserve"><value>No value captured</value></data>
+  <data name="ExpiryZero" xml:space="preserve"><value>Zero (no usable date)</value></data>
+  <data name="ExpiryUnusable" xml:space="preserve"><value>Unusable value</value></data>
+  <data name="ScopeDisabled" xml:space="preserve"><value>Disabled AD computer account</value></data>
 </root>

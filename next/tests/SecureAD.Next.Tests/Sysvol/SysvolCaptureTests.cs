@@ -83,7 +83,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task OnePolicyRefusedOutOfTwoLeavesTheOtherReadAndSaysWhichWasMissed()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .Denying(SecondPolicyPath, string.Empty);
 
         var coverage = await ReadAsync(
@@ -112,7 +112,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task APolicyWhoseScriptsFolderIsRefusedIsReadOnlyInPart()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Scripts\logon.bat", Bytes("echo hello"))
             .Denying(PolicyPath, @"Machine\Scripts");
@@ -130,7 +130,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task APathWhosePermissionsAreRefusedGetsARowSayingSo()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Scripts\logon.bat", Bytes("echo hello"))
@@ -151,12 +151,12 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task ThePolicyFoldersOwnPermissionsAreStored()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor());
+            .WithPolicy(PolicyPath, ADescriptor());
 
         var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
 
         Assert.Equal(
-            [""],
+            ["", "GPT.ini"],
             Query(bundle, "SELECT relative_path FROM sysvol_path_security_descriptor"));
     }
 
@@ -173,7 +173,7 @@ public sealed class SysvolCaptureTests : IDisposable
             """;
 
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithFile(PolicyPath, TemplatePath, TemplateBytes(template));
 
         var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
@@ -198,7 +198,7 @@ public sealed class SysvolCaptureTests : IDisposable
             """;
 
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithFile(PolicyPath, TemplatePath, TemplateBytes(template));
 
         var bundle = await CaptureAsync(reader, Inventory(OnePolicy()));
@@ -241,7 +241,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AFileThatCouldNotBeParsedLeavesThePolicyExplicitlyIncomplete()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Registry.pol", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Registry.pol", Bytes("this is not a policy file"));
@@ -267,7 +267,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AFileThatCouldNotBeParsedStillRecordsWhatTheParserSaid()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Registry.pol", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Registry.pol", Bytes("this is not a policy file"));
@@ -300,7 +300,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AListedFileThatWillNotOpenLeavesThePolicyExplicitlyIncomplete()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Preferences", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Preferences\Groups", ADescriptor())
@@ -329,7 +329,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AWellKnownFileAPolicyDoesNotHaveIsNotAGap()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor());
+            .WithPolicy(PolicyPath, ADescriptor());
 
         var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
 
@@ -341,7 +341,7 @@ public sealed class SysvolCaptureTests : IDisposable
     {
         var path = @"Machine\Preferences\Groups\Groups.xml";
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithFile(
                 PolicyPath,
                 path,
@@ -364,7 +364,7 @@ public sealed class SysvolCaptureTests : IDisposable
     {
         var path = @"Machine\Preferences\Groups\Groups.xml";
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithFile(
                 PolicyPath,
                 path,
@@ -393,7 +393,7 @@ public sealed class SysvolCaptureTests : IDisposable
     {
         var path = @"Machine\Preferences\Groups\Groups.xml";
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithFile(PolicyPath, path, Bytes("<Groups><User>"))
             .WithDescriptor(PolicyPath, path, ADescriptor());
 
@@ -428,7 +428,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AnXmlFileUnderAScriptsFolderDoesNotDestroyTheCapture()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
@@ -452,7 +452,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AFileReachedByBothScansIsStoredOnce()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
@@ -481,7 +481,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task AScriptsFolderXmlWhoseDescriptorIsRefusedIsRecordedOnceAndSaysSo()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Scripts", ADescriptor())
             .WithFile(PolicyPath, @"Machine\Scripts\settings.xml", Bytes("<Groups/>"))
             .Denying(PolicyPath, @"Machine\Scripts\settings.xml");
@@ -515,7 +515,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task APolicyReadInFullIsReportedAsRead()
     {
         var reader = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, string.Empty, ADescriptor());
+            .WithPolicy(PolicyPath, ADescriptor());
 
         var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
 
@@ -545,8 +545,8 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task ATimedOutEnumerationMarksOnlyItsPolicyIncomplete()
     {
         var files = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor())
-            .WithDescriptor(SecondPolicyPath, "", ADescriptor());
+            .WithPolicy(PolicyPath, ADescriptor())
+            .WithPolicy(SecondPolicyPath, ADescriptor());
         var reader = new TimedOutReader(files, "directories", "*");
 
         var coverage = await ReadAsync(reader, Inventory(OnePolicy(),
@@ -560,31 +560,32 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task NoFurtherAcquisitionRunsForAPolicyWhoseEnumerationTimedOut()
     {
         var reader = new TimedOutReader(new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor()), "directories", "*");
+            .WithPolicy(PolicyPath, ADescriptor()), "directories", "*");
 
         await ReadAsync(reader, Inventory(OnePolicy()));
 
-        Assert.Equal(["acl:", "directories:*"], reader.Calls.Select(call => call.Operation + ":" + call.Path));
+        Assert.Equal(["acl:", "file:GPT.ini", "acl:GPT.ini", "directories:*"],
+            reader.Calls.Select(call => call.Operation + ":" + call.Path));
     }
 
     [Fact]
     public async Task CompletedRootEvidenceSurvivesAnEnumerationTimeoutInASealedBundle()
     {
         var reader = new TimedOutReader(new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor()), "directories", "*");
+            .WithPolicy(PolicyPath, ADescriptor()), "directories", "*");
 
         var directory = await CaptureAsync(reader, Inventory(OnePolicy()));
 
-        Assert.Equal([PolicyGuid.ToString("D") + "|PartiallyRead|"], Query(directory,
+        Assert.Equal([PolicyGuid.ToString("D") + "|PartiallyRead|", PolicyGuid.ToString("D") + "|PartiallyRead|GPT.ini"], Query(directory,
             "SELECT c.gpo_guid || '|' || c.outcome || '|' || d.relative_path "
-            + "FROM sysvol_gpo_coverage c JOIN sysvol_path_security_descriptor d ON c.gpo_guid = d.gpo_guid"));
+            + "FROM sysvol_gpo_coverage c JOIN sysvol_path_security_descriptor d ON c.gpo_guid = d.gpo_guid ORDER BY d.relative_path"));
     }
 
     [Fact]
     public async Task CompletedFileContentsSurviveTheSubsequentAclTimeout()
     {
         var files = new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor())
+            .WithPolicy(PolicyPath, ADescriptor())
             .WithDescriptor(PolicyPath, "Machine", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Microsoft", ADescriptor())
             .WithDescriptor(PolicyPath, @"Machine\Microsoft\Windows NT", ADescriptor())
@@ -603,7 +604,7 @@ public sealed class SysvolCaptureTests : IDisposable
     public async Task ARootTimeoutIsUnreadableRatherThanAnEmptySuccessfulPolicy()
     {
         var reader = new TimedOutReader(new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor()), "acl", "");
+            .WithPolicy(PolicyPath, ADescriptor()), "acl", "");
 
         var coverage = await ReadAsync(reader, Inventory(OnePolicy()));
 
@@ -617,7 +618,7 @@ public sealed class SysvolCaptureTests : IDisposable
         var descriptor = ADescriptor();
         writer.WriteSysvolSecurityDescriptor(PolicyGuid, "", descriptor,
             AceNormalizer.Normalize(Guid.Empty, SecurityDescriptorParser.Parse(descriptor)));
-        var reader = new InMemorySysvolFileReader().WithDescriptor(PolicyPath, "", descriptor);
+        var reader = new InMemorySysvolFileReader().WithPolicy(PolicyPath, descriptor);
         var capture = new SysvolCapture(reader, writer, RunLog.Discarded, TimeProvider.System);
 
         await Assert.ThrowsAsync<SqliteException>(() => capture.ReadAsync(Inventory(OnePolicy()), CancellationToken.None));
@@ -628,8 +629,8 @@ public sealed class SysvolCaptureTests : IDisposable
     {
         using var writer = BundleWriter.Create(Directory.CreateDirectory(_root).FullName, Started);
         var reader = new TimedOutReader(new InMemorySysvolFileReader()
-            .WithDescriptor(PolicyPath, "", ADescriptor())
-            .WithDescriptor(SecondPolicyPath, "", ADescriptor()), "directories", "*");
+            .WithPolicy(PolicyPath, ADescriptor())
+            .WithPolicy(SecondPolicyPath, ADescriptor()), "directories", "*");
         var log = new RecordingRunLog();
 
         await new SysvolCapture(reader, writer, log, TimeProvider.System).ReadAsync(Inventory(OnePolicy(),

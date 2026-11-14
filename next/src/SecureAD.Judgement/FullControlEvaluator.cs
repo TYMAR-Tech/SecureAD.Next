@@ -21,11 +21,11 @@ internal static class FullControlEvaluator
         var checks = new List<FullControlRight>();
         foreach (var right in RequiredRights)
         {
-            checks.Add(Check(source, right, null, true));
+            checks.Add(Check(source, right, null, true, matchDeny: null, includeScoped: false, attributeScope: null));
             foreach (var scope in source.Entries.Where(entry => Applies(entry) && entry.HasObjectType
                 && IsDeny(entry) && (entry.AccessMask & right) != 0)
                 .Select(entry => entry.ObjectTypeGuid ?? "").Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal))
-                checks.Add(Check(source, right, scope, KnownScope(source, right, scope)));
+                checks.Add(Check(source, right, scope, KnownScope(source, right, scope), matchDeny: null, includeScoped: false, attributeScope: null));
         }
         var uncertainty = checks.Aggregate(ControlUncertainty.None, (value, check) => value | check.Uncertainty);
         var state = checks.Any(check => check.State == ControlEvaluationState.NotEstablished) ? ControlEvaluationState.NotEstablished
@@ -96,7 +96,27 @@ internal static class FullControlEvaluator
                 || edge.DerivationGenerationId != value.DerivationGenerationId)) throw InvalidProof();
     }
 
-    private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope)
+    internal static FullControlRight AssessStandardRight(FullControlSource source, int right,
+        Func<PermissionEntry, bool?> matchDeny) => Check(source, right, null, true, matchDeny, includeScoped: true, attributeScope: null);
+
+    internal static FullControlRight AssessAttributeRight(FullControlSource source, int right,
+        Func<PermissionEntry, ControlEvaluationState> scope, Func<PermissionEntry, bool?> matchDeny,
+        bool holderIdentityEstablished) =>
+        Check(source, right, null, true, matchDeny, includeScoped: true, scope, holderIdentityEstablished);
+
+    internal static FullControlRight AssessRequesterRight(FullControlSource source, int right,
+        Func<PermissionEntry, ControlEvaluationState> scope, Func<PermissionEntry, bool?> matchTrustee) =>
+        CheckCore(source, right, null, true, matchTrustee, true, scope, true, matchTrustee);
+
+    private static FullControlRight Check(FullControlSource source, int right, string? scope, bool knownScope,
+        Func<PermissionEntry, bool?>? matchDeny, bool includeScoped,
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope, bool holderIdentityEstablished = false) =>
+        CheckCore(source, right, scope, knownScope, matchDeny, includeScoped, attributeScope, holderIdentityEstablished, null);
+
+    private static FullControlRight CheckCore(FullControlSource source, int right, string? scope, bool knownScope,
+        Func<PermissionEntry, bool?>? matchDeny, bool includeScoped,
+        Func<PermissionEntry, ControlEvaluationState>? attributeScope, bool holderIdentityEstablished,
+        Func<PermissionEntry, bool?>? matchAllow)
     {
         var unknown = source.Availability != DescriptorAvailability.Read || source.Dacl == DaclState.Unreadable
             ? ControlUncertainty.DescriptorUnreadable
@@ -104,7 +124,8 @@ internal static class FullControlEvaluator
         var definition = PrincipalClassificationRegistry.For(source.Holder.Sid);
         if (!source.Holder.HoldsThePermission || definition.IdentityIsValid && definition.MicrosoftName is not null
             && source.Holder.Sid is "S-1-3-0" or "S-1-3-4") unknown |= ControlUncertainty.HolderIsPlaceholder;
-        if (!definition.IdentityIsValid || source.Holder.DistinguishedName is null && definition.MicrosoftName is null)
+        if (!definition.IdentityIsValid || !holderIdentityEstablished
+            && source.Holder.DistinguishedName is null && definition.MicrosoftName is null)
             unknown |= ControlUncertainty.HolderUnresolved;
         if (!source.ResourceContextEstablished) unknown |= ControlUncertainty.ResourceContextUnverified;
         var grants = new List<int>();
@@ -113,13 +134,19 @@ internal static class FullControlEvaluator
             return new(right, scope, unknown == ControlUncertainty.None && Same(source.Holder.Sid, "S-1-1-0")
                 ? ControlEvaluationState.Established : ControlEvaluationState.Unknown, unknown, grants, blockers);
         var boundary = false;
+        var denied = false;
+        var uncertainGrant = ControlUncertainty.None;
         foreach (var entry in source.Entries)
         {
-            if (!Applies(entry) || (entry.AccessMask & right) == 0) continue;
-            var sameHolder = Same(entry.Trustee.Sid == "S-1-5-10" && source.TargetSid is not null
+            if (denied || !Applies(entry) || (entry.AccessMask & right) == 0) continue;
+            var sameHolder = matchAllow is null && Same(entry.Trustee.Sid == "S-1-5-10" && source.TargetSid is not null
                 ? source.TargetSid : entry.Trustee.Sid, source.Holder.Sid);
-            if (!sameHolder && !IsDeny(entry)) continue;
-            if (scope is null && entry.HasObjectType) continue;
+            if (!sameHolder && !IsDeny(entry) && matchAllow is null) continue;
+            var matches = sameHolder ? true : (IsDeny(entry) ? matchDeny : matchAllow)?.Invoke(entry);
+            if (matches == false) continue;
+            var qualifiedScope = attributeScope?.Invoke(entry);
+            if (qualifiedScope == ControlEvaluationState.NotEstablished) continue;
+            if (scope is null && entry.HasObjectType && !includeScoped) continue;
             if (scope is not null && entry.HasObjectType && !Same(entry.ObjectTypeGuid ?? "", scope))
             {
                 // Overlapping property sets and object-type scopes are not unioned into an authorization answer.
@@ -127,11 +154,21 @@ internal static class FullControlEvaluator
                 continue;
             }
             var limit = !Supported(entry) ? ControlUncertainty.ConditionalOrUnsupportedAce
-                : !sameHolder ? ControlUncertainty.CrossTrusteeDeny
-                : scope is not null && entry.HasObjectType && !knownScope ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
+                : !sameHolder && matches != true ? IsDeny(entry)
+                    ? ControlUncertainty.CrossTrusteeDeny : ControlUncertainty.HolderUnresolved
+                : qualifiedScope == ControlEvaluationState.Unknown
+                    || attributeScope is null && entry.HasObjectType && (includeScoped || !knownScope)
+                    ? ControlUncertainty.ObjectSpecificScopeNotEvaluated
                 : ControlUncertainty.None;
             if (limit != ControlUncertainty.None)
             {
+                if (!boundary && grants.Count == 0 && entry.AceType is
+                    "AccessAllowed" or "AccessAllowedObject" or "AccessAllowedCallback" or "AccessAllowedCallbackObject")
+                {
+                    uncertainGrant |= limit;
+                    blockers.Add(entry.Ordinal);
+                    continue;
+                }
                 if (grants.Count == 0) unknown |= limit;
                 blockers.Add(entry.Ordinal);
                 boundary = true;
@@ -140,9 +177,11 @@ internal static class FullControlEvaluator
             {
                 blockers.Add(entry.Ordinal);
                 boundary = true;
+                denied = grants.Count == 0;
             }
             else if (!boundary) grants.Add(entry.Ordinal);
         }
+        if (grants.Count == 0) unknown |= uncertainGrant;
         var state = unknown != ControlUncertainty.None ? ControlEvaluationState.Unknown
             : grants.Count != 0 ? ControlEvaluationState.Established : ControlEvaluationState.NotEstablished;
         return new(right, scope, state, unknown, grants, blockers);

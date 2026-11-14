@@ -177,7 +177,7 @@ public sealed class StageStatusGateTests
         new("Judge", "JudgingRun"),
         new("Read back", "RunLibrary"),
         new("Dashboard", "DashboardViewModel"),
-        new("Reports, compare and export", "ReportDefinition", "RunComparison"),
+        new("Reports, compare and export", "CsvExportService", "ReportDefinition", "RunComparison"),
     ];
 
     /// <summary>
@@ -191,28 +191,9 @@ public sealed class StageStatusGateTests
         foreach (var (stage, state) in PipelineClaims())
         {
             var declared = PipelineStages.Single(s => s.Stage == stage);
-            var claimsBuilt = state.StartsWith("built", StringComparison.Ordinal);
-
-            foreach (var witness in declared.Witnesses)
-            {
-                var present = WitnessIsDeclared(witness);
-
-                if (claimsBuilt && !present)
-                {
-                    failures.Add(
-                        $"  '{stage}' says '{state}' but its witness '{witness}' is declared "
-                        + "nowhere under next/src. Either the stage is not built, or the witness "
-                        + "names the wrong type.");
-                }
-
-                if (!claimsBuilt && present)
-                {
-                    failures.Add(
-                        $"  '{stage}' says '{state}' but its witness '{witness}' IS declared under "
-                        + "next/src. The stage looks finished and the document has not caught up - "
-                        + "which is exactly how stage 5 went unnoticed in the roadmap.");
-                }
-            }
+            if (!PipelineStatusMatches(state, declared.Witnesses.Select(WitnessIsDeclared).ToArray()))
+                failures.Add($"  '{stage}' says '{state}' but its declared source witnesses disagree: "
+                    + string.Join(", ", declared.Witnesses.Select(witness => witness + "=" + WitnessIsDeclared(witness))));
         }
 
         Assert.True(
@@ -223,6 +204,22 @@ public sealed class StageStatusGateTests
             + Environment.NewLine
             + string.Join(Environment.NewLine, failures));
     }
+
+    private static bool PipelineStatusMatches(string state, bool[] present) =>
+        present.Length != 0 && (state.StartsWith("built", StringComparison.Ordinal) ? present.All(value => value)
+            : state.StartsWith("started", StringComparison.Ordinal) ? present.Any(value => value)
+            : present.All(value => !value));
+
+    [Theory]
+    [InlineData("built", true, true, true)]
+    [InlineData("built", true, false, false)]
+    [InlineData("started", true, false, true)]
+    [InlineData("started", false, false, false)]
+    [InlineData("not built", false, false, true)]
+    [InlineData("not built", true, false, false)]
+    public void PartialPipelineStagesRequireRealWorkWithoutClaimingEveryPartIsBuilt(
+        string state, bool first, bool second, bool expected) =>
+        Assert.Equal(expected, PipelineStatusMatches(state, [first, second]));
 
     /// <summary>
     /// The pipeline table is found, every row is claimed, and both directions are exercised.

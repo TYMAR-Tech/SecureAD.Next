@@ -83,6 +83,8 @@ public enum UnresolvedReason
     OwnerHeuristicNotRead,
     /// <summary>The named ownership modification has unresolved class, scope or requester applicability.</summary>
     OwnerRightsNotEvaluated,
+    /// <summary>A relevant permission entry, holder or operation scope remains unresolved.</summary>
+    PermissionControlNotEvaluated,
 
     /// <summary>
     /// This account's own domain was not read in full, so nothing was established about it.
@@ -110,6 +112,16 @@ public enum UnresolvedReason
     AttributeWriteIncomplete,
     /// <summary>The domain-root replication permission or scoped expectedness has unresolved inputs.</summary>
     ReplicationPermissionIncomplete,
+    /// <summary>A gMSA reader entry has a condition or ACE representation this assessment cannot evaluate.</summary>
+    GmsaReaderConditionalEntryUnsupported,
+    /// <summary>An object-specific scope in the embedded reader descriptor is not supported.</summary>
+    GmsaReaderScopeUnsupported,
+    /// <summary>A denial requires a concrete requester authorization context, not only group attribution.</summary>
+    GmsaReaderDenialUnassessed,
+    /// <summary>A reader-membership route passed through a group whose captured security type is unavailable.</summary>
+    GmsaReaderGroupTypeUnavailable,
+    /// <summary>A GPO-directory operation or scoped holder assessment has unavailable or unsupported inputs.</summary>
+    GpoDirectoryPermissionIncomplete,
 }
 
 /// <summary>

@@ -192,22 +192,32 @@ public sealed partial class OwnAccountMembershipPathTests
     [Theory]
     [InlineData("cancelled")]
     [InlineData("disposed")]
-    [InlineData("replaced-derivation")]
-    public void TargetPreparationRefusesInterruptedOrChangedSourceInputs(string change)
+    public void TargetPreparationRefusesInterruptedSourceInputs(string change)
     {
         using var fixture = PrerequisiteFixtureFor("both-permissions");
         using var stopping = new CancellationTokenSource();
         if (change == "cancelled") stopping.Cancel();
         else if (change == "disposed") fixture.Sources.Dispose();
-        else Derive(fixture.Reader.BundleDirectory);
 
         var error = Record.Exception(() => RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description,
             fixture.Sources, fixture.Identities, fixture.Inputs, [new(new(UserDn, CoreDn), null)], stopping.Token, fixture.Memberships));
 
         Assert.NotNull(error);
         if (change == "cancelled") Assert.IsType<OperationCanceledException>(error);
-        else if (change == "disposed") Assert.IsType<ObjectDisposedException>(error);
-        else Assert.IsType<InvalidOperationException>(error);
+        else Assert.IsType<ObjectDisposedException>(error);
+    }
+
+    [Fact]
+    public void TargetPreparationKeepsItsBoundInputsAfterDerivationReplacement()
+    {
+        using var fixture = PrerequisiteFixtureFor("both-permissions");
+        Derive(fixture.Reader.BundleDirectory);
+        Assert.NotEqual(fixture.Description.DerivationGenerationId,
+            AnalysisStoreLifecycle.ResolveRoot(fixture.Reader.BundleDirectory, AnalysisStoreKind.Derivation).Value.GenerationId);
+        var error = Record.Exception(() => RequesterBatchEvaluation.Create(fixture.Connection, fixture.Description,
+            fixture.Sources, fixture.Identities, fixture.Inputs, [new(new(UserDn, CoreDn), null)],
+            CancellationToken.None, fixture.Memberships));
+        Assert.Null(error);
     }
 
     [Fact]

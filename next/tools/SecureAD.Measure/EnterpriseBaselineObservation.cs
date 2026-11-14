@@ -20,13 +20,26 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
     private readonly Task _sampling;
     private readonly List<EnterpriseStageObservation> _stages = [];
     private readonly Dictionary<string, long> _verifications = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _nameLookups = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _nameLookupSources = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _gpoPreparations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _nativePreparations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _sourceGuards = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _selectionManifestReads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EnterpriseWorkTiming> _calculationTimings = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _calculationWork = new(StringComparer.Ordinal);
+    private double _calculationCollectorMilliseconds;
+    private long _calculationCollectorEvents;
+    private double _sourceGuardMilliseconds;
+    private long _sourceGuardSamples;
     private ExceptionDispatchInfo? _samplingFailure;
     private string _stage = "Preparing";
     private TimeSpan? _memoryExceeded;
     private int _resourceSamples;
     private bool _disposed;
 
-    internal EnterpriseBaselineObservation(string output, long physicalMemoryBytes, CancellationTokenSource stopping)
+    internal EnterpriseBaselineObservation(string output, long physicalMemoryBytes, CancellationTokenSource stopping,
+        string? nameLookupDirectory = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(physicalMemoryBytes);
         _output = Path.GetFullPath(output);
@@ -34,13 +47,94 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
         _memoryLimit = Math.Min(48L * 1024 * 1024 * 1024, physicalMemoryBytes / 4 * 3);
         _writer = new StreamWriter(new FileStream(Path.Combine(output, "observations.jsonl"),
             FileMode.CreateNew, FileAccess.Write, FileShare.Read)) { AutoFlush = true };
+        var lookupDirectory = nameLookupDirectory is null ? null : Path.GetFullPath(nameLookupDirectory);
         _listener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == "SecureAD.Evidence.Readback" && instrument.Name == "store.verifications")
+            if (instrument.Meter.Name == "SecureAD.Evidence.Readback"
+                && (instrument.Name == "store.verifications"
+                    || lookupDirectory is not null && instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation" or "store.selection_manifest_reads"))
+                listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null
+                && (instrument.Meter.Name == "SecureAD.Evidence.WqlParser" && instrument.Name == "wql.native_parses"
+                    || instrument.Meter.Name == "SecureAD.Kernel.GroupPolicy" && instrument.Name == "registry.instruction_decodes"))
+                listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null && instrument.Meter.Name == "SecureAD.Judgement.Inputs")
+                listener.EnableMeasurementEvents(instrument);
+            if (lookupDirectory is not null && instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
                 listener.EnableMeasurementEvents(instrument);
         };
-        _listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) =>
         {
+            if (instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
+            {
+                var operation = CalculationOperation(tags, lookupDirectory);
+                if (operation is null) return;
+                if (value < 0) throw new InvalidDataException("A LAPS work count is negative.");
+                var started = Stopwatch.GetTimestamp();
+                try
+                {
+                    lock (_gate)
+                        _calculationWork[operation] = checked(_calculationWork.GetValueOrDefault(operation) + value);
+                }
+                finally { FinishCalculationObservation(started); }
+                return;
+            }
+            if (instrument.Name == "store.selection_manifest_reads")
+            {
+                string? directory = null;
+                string? kind = null;
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "bundle") directory = tag.Value as string;
+                    if (tag.Key == "kind") kind = tag.Value as string;
+                }
+                if (directory is null || kind is null)
+                    throw new InvalidDataException("A selected-manifest read lacks its source or kind.");
+                if (string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                    lock (_gate)
+                        _selectionManifestReads[kind] = checked(_selectionManifestReads.GetValueOrDefault(kind) + value);
+                return;
+            }
+            if (instrument.Meter.Name == "SecureAD.Judgement.Inputs")
+            {
+                foreach (var tag in tags)
+                    if (tag.Key == "bundle" && tag.Value is string directory
+                        && string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                    {
+                        lock (_gate)
+                            _sourceGuards[instrument.Name] = checked(_sourceGuards.GetValueOrDefault(instrument.Name) + value);
+                        return;
+                    }
+                return;
+            }
+            if (instrument.Name is "wql.native_parses" or "registry.instruction_decodes")
+            {
+                lock (_gate)
+                    _nativePreparations[instrument.Name] = checked(_nativePreparations.GetValueOrDefault(instrument.Name) + value);
+                return;
+            }
+            if (instrument.Name is "evidence.name_lookup" or "evidence.gpo_preparation")
+            {
+                string? operation = null;
+                string? source = null;
+                string? directory = null;
+                foreach (var tag in tags)
+                {
+                    if (tag.Key == "operation") operation = tag.Value as string;
+                    if (tag.Key == "source") source = tag.Value as string;
+                    if (tag.Key == "bundle") directory = tag.Value as string;
+                }
+                if (operation is null || source is null || directory is null)
+                    throw new InvalidDataException("A name-lookup observation lacks its operation or source.");
+                if (!string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase)) return;
+                lock (_gate)
+                {
+                    var target = instrument.Name == "evidence.name_lookup" ? _nameLookups : _gpoPreparations;
+                    target[operation] = checked(target.GetValueOrDefault(operation) + value);
+                    _nameLookupSources.Add(source);
+                }
+                return;
+            }
             foreach (var tag in tags)
             {
                 if (tag.Value is not string path || !path.StartsWith(_output + Path.DirectorySeparatorChar,
@@ -55,15 +149,108 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
                 break;
             }
         });
+        _listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
+        {
+            if (instrument.Meter.Name == "SecureAD.Judgement.LapsCalculation")
+            {
+                var operation = CalculationOperation(tags, lookupDirectory);
+                if (operation is null) return;
+                if (!double.IsFinite(value) || value < 0)
+                    throw new InvalidDataException("A LAPS elapsed-work observation is invalid.");
+                var started = Stopwatch.GetTimestamp();
+                try
+                {
+                    lock (_gate)
+                    {
+                        var previous = _calculationTimings.GetValueOrDefault(operation);
+                        _calculationTimings[operation] = new(checked((previous?.Samples ?? 0) + 1),
+                            (previous?.ElapsedMs ?? 0) + value);
+                    }
+                }
+                finally { FinishCalculationObservation(started); }
+                return;
+            }
+            if (instrument.Meter.Name != "SecureAD.Judgement.Inputs" || instrument.Name != "guard.current_ms") return;
+            foreach (var tag in tags)
+                if (tag.Key == "bundle" && tag.Value is string directory
+                    && string.Equals(directory, lookupDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    lock (_gate)
+                    {
+                        _sourceGuardMilliseconds += value;
+                        _sourceGuardSamples++;
+                    }
+                    return;
+                }
+        });
         _listener.Start();
         _sampling = Task.Run(SampleAsync);
     }
 
+    private static string? CalculationOperation(ReadOnlySpan<KeyValuePair<string, object?>> tags, string? selected)
+    {
+        string? directory = null;
+        string? operation = null;
+        foreach (var tag in tags)
+        {
+            if (tag.Key == "bundle") directory = tag.Value as string;
+            if (tag.Key == "operation") operation = tag.Value as string;
+        }
+        if (directory is null || operation is null)
+            throw new InvalidDataException("A LAPS calculation observation lacks its source or operation.");
+        return string.Equals(directory, selected, StringComparison.OrdinalIgnoreCase) ? operation : null;
+    }
+
+    private void FinishCalculationObservation(long started)
+    {
+        lock (_gate)
+        {
+            _calculationCollectorMilliseconds += Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            _calculationCollectorEvents++;
+        }
+    }
+
+    internal IReadOnlyDictionary<string, EnterpriseWorkTiming> CalculationTimings
+    {
+        get { lock (_gate) return new Dictionary<string, EnterpriseWorkTiming>(_calculationTimings, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> CalculationWork
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_calculationWork, StringComparer.Ordinal); }
+    }
+    internal double CalculationCollectorMilliseconds { get { lock (_gate) return _calculationCollectorMilliseconds; } }
+    internal long CalculationCollectorEvents { get { lock (_gate) return _calculationCollectorEvents; } }
     internal IReadOnlyList<EnterpriseStageObservation> Stages { get { lock (_gate) return _stages.ToArray(); } }
     internal IReadOnlyDictionary<string, long> Verifications
     {
         get { lock (_gate) return new Dictionary<string, long>(_verifications, StringComparer.OrdinalIgnoreCase); }
     }
+    internal IReadOnlyDictionary<string, long> NameLookups
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_nameLookups, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyList<string> NameLookupSources
+    {
+        get { lock (_gate) return _nameLookupSources.Order(StringComparer.Ordinal).ToArray(); }
+    }
+    internal IReadOnlyDictionary<string, long> GpoPreparations
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_gpoPreparations, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> NativePreparations
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_nativePreparations, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> SourceGuards
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_sourceGuards, StringComparer.Ordinal); }
+    }
+    internal IReadOnlyDictionary<string, long> SelectionManifestReads
+    {
+        get { lock (_gate) return new Dictionary<string, long>(_selectionManifestReads, StringComparer.Ordinal); }
+    }
+    internal double SourceGuardMilliseconds { get { lock (_gate) return _sourceGuardMilliseconds; } }
+    internal long SourceGuardSamples { get { lock (_gate) return _sourceGuardSamples; } }
     internal int ResourceSamples { get { lock (_gate) return _resourceSamples; } }
     internal CancellationToken Token => _stopping.Token;
 
@@ -192,3 +379,5 @@ internal sealed class EnterpriseBaselineObservation : IRunLog, IDisposable
 
 internal sealed record EnterpriseStageObservation(string Stage, bool Succeeded, double ElapsedMs,
     long ManagedAllocatedBytes, double CpuMs);
+
+internal sealed record EnterpriseWorkTiming(long Samples, double ElapsedMs);

@@ -76,7 +76,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     private TreeNodeViewModel? _selected;
 
     /// <summary>
-    /// The finding whose explanation and guidance the screen is showing.
+    /// The selected grid row, retained independently of the finding window.
     /// </summary>
     /// <remarks>
     /// <b>A property rather than the collection's current item.</b> A view binding through the
@@ -85,7 +85,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// library and the object sections already use for a selected row.
     /// </remarks>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedFinding))]
     private FindingRowViewModel? _selectedFinding;
 
     [ObservableProperty]
@@ -305,15 +304,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Whether the LAPS listing is short by an unknown number of machines.</summary>
     public bool HasLapsShortfall => LapsShortfall is not null;
 
-    /// <summary>
-    /// Whether a finding is selected, so there is an explanation to show beneath the grid.
-    /// </summary>
-    /// <remarks>
-    /// Its own answer rather than a negation at the point of use, for the reason
-    /// <see cref="HasNoRun"/> gives.
-    /// </remarks>
-    public bool HasSelectedFinding => SelectedFinding is not null;
-
     /// <summary>Whether a run has been chosen to look at.</summary>
     public bool HasRun => BundlePath is not null;
 
@@ -462,6 +452,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
         CancelRead();
         if (!string.Equals(BundlePath, bundleDirectory, StringComparison.OrdinalIgnoreCase))
         {
+            CloseFindingDetails();
             ClearObjectPresentation();
             _resetting = true;
             ClearGroups();
@@ -484,6 +475,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// <summary>Forgets the run being shown, so nothing describes a run no longer chosen.</summary>
     public void Clear()
     {
+        CloseFindingDetails();
         ClearObjectPresentation();
         CancelRead();
         _resetting = true;
@@ -533,6 +525,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     [RelayCommand]
     public void Read()
     {
+        CloseFindingDetails();
         ClearObjectPresentation();
         CancelRead();
         _retainedTree = null;
@@ -656,39 +649,12 @@ internal sealed partial class AssetsViewModel : ObservableObject
         LoadVisible();
     }
 
-    /// <summary>
-    /// Opens the object a finding is about, and lands on that object's findings.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>A finding carries a distinguished name and nothing else about the object.</b> It was
-    /// written by a rule reading the evidence, not by the listing, so it has no class and no type
-    /// to hand over - both are read back out of the bundle here. That is the whole reason this
-    /// exists beside <see cref="OpenObject"/> rather than being folded into it.
-    /// </para>
-    /// <para>
-    /// <b>An object a finding names may not be in the evidence at all.</b> A judgement is an
-    /// ordinary file that can be moved beside another capture, and the reader refuses one whose
-    /// fingerprint disagrees - but a bundle can also simply not hold what it once did. The
-    /// predecessor fell back to a finding-detail window; there is none here, so the honest answer
-    /// is to say so in words rather than to open nothing and look broken.
-    /// </para>
-    /// </remarks>
-    /// <param name="finding">The row the operator chose.</param>
-    [RelayCommand]
-    public void OpenFinding(FindingRowViewModel? finding)
-    {
-        if (finding is null || BundlePath is null)
-            return;
-
-        Open(finding.DistinguishedName, ObjectSectionCatalog.Findings);
-    }
-
     [RelayCommand]
     private void OpenSavedRoutes(FindingRowViewModel? finding)
     {
         if (finding?.HasTier0Routes != true || BundlePath is null) return;
-        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path);
+        if (FindingDetails is { } details && !details.CheckCurrent()) return;
+        Open(finding.DistinguishedName, ObjectSectionCatalog.SavedTier0Path, expectedObjectGuid: null);
     }
 
     /// <summary>
@@ -701,17 +667,17 @@ internal sealed partial class AssetsViewModel : ObservableObject
         if (listed is null || BundlePath is null)
             return;
 
-        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview);
+        Open(listed.DistinguishedName, ObjectSectionCatalog.Overview, expectedObjectGuid: null);
     }
 
-    private void Open(string distinguishedName, string section)
+    private void Open(string distinguishedName, string section, Guid? expectedObjectGuid)
     {
         if (BundlePath is null || _captureIsRunning || (!_active && !HasObjectPresentation)) return;
         CancelObjectRead();
         IsOpeningObject = true;
         ObjectRefusal = null;
         Opened = null;
-        ReadCompletion = ObjectReadCompletion = OpenAsync(BundlePath, distinguishedName, section);
+        ReadCompletion = ObjectReadCompletion = OpenAsync(BundlePath, distinguishedName, section, expectedObjectGuid);
     }
 
     /// <summary>Goes back to the listing the object was opened from.</summary>
@@ -726,7 +692,7 @@ internal sealed partial class AssetsViewModel : ObservableObject
     {
         if (Pane == AssetsPane.Groups && _groupObjectBack.TryPop(out var group))
         {
-            Open(group, ObjectSectionCatalog.Membership);
+            Open(group, ObjectSectionCatalog.Membership, expectedObjectGuid: null);
             return;
         }
         DismissObjectDetails();
@@ -799,10 +765,6 @@ internal sealed partial class AssetsViewModel : ObservableObject
         SeverityFilter = Any;
         RuleFilter = Any;
     }
-
-    /// <summary>Dismisses the explanation without changing the findings, filters or page.</summary>
-    [RelayCommand]
-    public void CloseFindingDetails() => SelectedFinding = null;
 
     /// <summary>Shows the next page of findings.</summary>
     [RelayCommand(CanExecute = nameof(HasMoreFindings))]
@@ -994,6 +956,8 @@ internal sealed partial class AssetsViewModel : ObservableObject
     /// </summary>
     private void Announce()
     {
+        OnPropertyChanged(nameof(CanExportLaps));
+        ExportLapsCommand.NotifyCanExecuteChanged();
         AnnounceObjectNavigation();
         AnnounceDelegations();
         AnnounceGroups();

@@ -1,13 +1,31 @@
 # SEC-091 ΓÇö LAPS missing on a computer
 
-**Status:** specified 2026-09-03. Not yet built. Scope settled by the owner 2026-09-03 ΓÇö see [┬º3](#3-scope-which-computers-are-in-scope).
+**Status:** specified 2026-09-03; captured-quality correction owner-approved 2026-11-10.
 **Severity:** Medium. See [┬º7](#7-severity).
 **Rule identifier:** `SEC-091`.
-**Implemented by:** `LapsMissingOnComputer` in `SecureAD.Judgement` (planned).
+**Implemented by:** `LapsMissingOnComputer` in `SecureAD.Judgement`.
 
 ---
 
 ## For a reviewer
+
+### Captured expiry quality - owner-approved 2026-11-10
+
+A captured usable date is an expiry observation, not proof that LAPS is active.
+A zero must remain distinct from an absent or malformed value and must not become an epoch date,
+a proven reset request or proof of missing management.
+Where no independent usable expiry settles this rule, a captured zero, unusable text or unsupported
+single-value representation must leave the assessment explicitly incomplete, not complete and empty
+and not a missing-management finding.
+These are limitations of the captured values, not claims that the attributes were never captured.
+Keep the original values and the ordinary no-value recommendation with its visibility, Entra,
+third-party, emulation and retired-policy alternatives.
+
+The shared inventory must group captured value presence rather than claim management, migration
+or security health; account/controller eligibility must remain separate from actual rule execution.
+Changed saved interpretation requires a new judgment format rather than read-time reclassification
+of earlier completed results, while unchanged-format captures remain reusable.
+The owner's separate SCOUT-13 comparison-time and separate-signal choices remain deferred.
 
 **This document is written to be checked by somebody who cannot see this repository.** Every claim
 about Active Directory cites a Microsoft source, and every case is stated in terms of the directory

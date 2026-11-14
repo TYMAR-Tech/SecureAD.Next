@@ -150,7 +150,7 @@ internal static class EnterpriseBaseline
     }
 
     internal static void RequireControlCounts(EnterpriseCapturedCounts counts) =>
-        Require(counts.EvidenceVersion == 17 && counts.Objects == EnterpriseControlWorkload.Objects
+        Require(counts.EvidenceVersion == 18 && counts.Objects == EnterpriseControlWorkload.Objects
             && counts.MemberOccurrences == EnterpriseControlWorkload.MemberOccurrences
             && counts.DescriptorPositions == 7 && counts.DescriptorLinks == EnterpriseControlWorkload.Objects
             && counts.CapturedPartitions == 5, "Independent captured counts do not match the CTRL75 recipe.");

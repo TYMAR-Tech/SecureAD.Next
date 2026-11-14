@@ -578,6 +578,15 @@ public sealed class ReplicationPermissionRuleTests
 
     internal static string FindingsRun() => Published(Grants(Holder));
 
+    internal static string FindingDetailsRun(int repeated, bool nullDacl = false) => Published(nullDacl
+        ? "O:SYG:SYD:NO_ACCESS_CONTROL"
+        : Grants(Holder) + string.Concat(Enumerable.Range(0, repeated)
+            .Select(index => $"(OA;{(index % 2 == 0 ? "ID" : "")};CR;{(index % 2 == 0 ? Changes : All)};;{Holder})")));
+
+    internal static string FindingScopeRun(bool broad) => Published(broad
+        ? $"(A;;CR;;;{Holder})"
+        : Grants(Holder) + $"(OD;;CR;{Changes};;{Other})");
+
     private static RuleVerdict Assess(IReadOnlyList<PermissionEntry> entries, ObjectAttributes? subject = null,
         IReadOnlyDictionary<string, NamingContextKind>? roots = null, bool missingRoots = false, bool missingMembership = false,
         bool unread = false, bool incomplete = false, bool nullDacl = false, bool captureComplete = true, ObjectAttributes? holder = null)

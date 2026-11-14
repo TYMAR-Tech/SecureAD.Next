@@ -124,7 +124,7 @@ public sealed class AuditProgressTests
     }
 
     [Fact]
-    public async Task SealedCaptureDoesNotHideJudgingProgressOrClaimCompletion()
+    public void SealedCaptureDoesNotHideJudgingProgressOrClaimCompletion() => OneThread.Run(async () =>
     {
         var deriving = new ControlledDerivation();
         var judging = new ControlledJudging();
@@ -140,10 +140,10 @@ public sealed class AuditProgressTests
                 (screen.IsJudging, screen.HasFinished, screen.Report!.Contains("Sealed", StringComparison.Ordinal), screen.ScreenHeading));
         }
         finally { deriving.Complete(); judging.Complete(); await run; }
-    }
+    });
 
     [Fact]
-    public async Task DerivationSubphaseIsVisibleWithoutResettingTheReadCounter()
+    public void DerivationSubphaseIsVisibleWithoutResettingTheReadCounter() => OneThread.Run(async () =>
     {
         var deriving = new ControlledDerivation();
         var judging = new ControlledJudging();
@@ -158,10 +158,10 @@ public sealed class AuditProgressTests
             Assert.Equal((2000L, string.Empty), (screen.ObjectsDerived, screen.Progress.Counter));
         }
         finally { deriving.Complete(); judging.Complete(); await run; }
-    }
+    });
 
     [Fact]
-    public async Task StoppingJudgingPreservesSealedEvidenceAndStatesUnconfirmedCompletion()
+    public void StoppingJudgingPreservesSealedEvidenceAndStatesUnconfirmedCompletion() => OneThread.Run(async () =>
     {
         var deriving = new ControlledDerivation();
         var judging = new ControlledJudging();
@@ -174,18 +174,18 @@ public sealed class AuditProgressTests
         Assert.Equal((false, false, true, true), (screen.Progress.IsActive, screen.HasFinished,
             screen.Report!.Contains("already sealed", StringComparison.Ordinal),
             screen.JudgingReport!.Contains("has not been confirmed", StringComparison.Ordinal)));
-    }
+    });
 
     [Fact]
-    public async Task FailedJudgingIsNotShownAsACompletedAudit()
+    public void FailedJudgingIsNotShownAsACompletedAudit() => OneThread.Run(async () =>
     {
         var screen = Model(new FakeDerivationLauncher(), new FakeJudgingLauncher { Fails = Failures.Any("Synthetic failure") });
         await screen.StartAsync();
         Assert.Contains("incomplete or unavailable", screen.Progress.Status, StringComparison.Ordinal);
-    }
+    });
 
     [Fact]
-    public async Task DegradedJudgingKeepsItsUncertaintyInTheVisibleOutcome()
+    public void DegradedJudgingKeepsItsUncertaintyInTheVisibleOutcome() => OneThread.Run(async () =>
     {
         var screen = Model(new FakeDerivationLauncher(), new FakeJudgingLauncher
         {
@@ -194,10 +194,10 @@ public sealed class AuditProgressTests
         await screen.StartAsync();
         Assert.Equal((true, true, false), (screen.HasJudgingReport,
             screen.JudgingReport!.Contains("not the whole picture", StringComparison.Ordinal), screen.Progress.IsActive));
-    }
+    });
 
     [Fact]
-    public async Task RetryClearsThePreviousJudgementAndBundle()
+    public void RetryClearsThePreviousJudgementAndBundle() => OneThread.Run(async () =>
     {
         var capture = new FakeCaptureLauncher();
         var screen = Model(new FakeDerivationLauncher(), new FakeJudgingLauncher(), capture);
@@ -205,37 +205,28 @@ public sealed class AuditProgressTests
         capture.Cancels = true;
         await screen.StartAsync();
         Assert.Equal((false, null, null), (screen.HasFinished, screen.BundleDirectory, screen.JudgingReport));
-    }
+    });
 
     /// <summary>
-    /// Building the screen leaves no ambient context for <c>Progress&lt;T&gt;</c> to capture.
+    /// Building the screen preserves the caller's UI synchronization context.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>The guard on the clearing in <see cref="Model"/>, asserted rather than timed.</b> The
-    /// obvious check - install a context that runs nothing, then wait for a report to arrive - was
-    /// written first and thrown away. It does not fail when the clearing is removed; it hangs,
-    /// because the waiting test's own continuations are posted to the same dead context and the
-    /// deadline can never be delivered either. A guard that blocks the suite instead of failing it
-    /// is <c>P-155</c> in a new place.
-    /// </para>
-    /// <para>
-    /// So the property is asserted directly: once the screen is built there is no context left to
-    /// capture, and <c>Progress&lt;T&gt;</c> falls back to the thread pool. Removing the clearing
-    /// fails this in milliseconds instead of hanging for two minutes.
+    /// Assert the context directly without starting work on a context that deliberately never runs it.
     /// </para>
     /// </remarks>
     [Fact]
-    public void BuildingTheScreenLeavesNoContextForProgressToCapture()
+    public void BuildingTheScreenPreservesTheCallerUiContext()
     {
         var original = SynchronizationContext.Current;
-        SynchronizationContext.SetSynchronizationContext(new NeverRuns());
+        var caller = new NeverRuns();
+        SynchronizationContext.SetSynchronizationContext(caller);
 
         try
         {
             _ = Model(new ControlledDerivation(), new ControlledJudging());
 
-            Assert.Null(SynchronizationContext.Current);
+            Assert.Same(caller, SynchronizationContext.Current);
         }
         finally { SynchronizationContext.SetSynchronizationContext(original); }
     }
@@ -250,22 +241,7 @@ public sealed class AuditProgressTests
 
     internal static NewAuditViewModel Model(IDerivationLauncher deriving, IJudgingLauncher judging, FakeCaptureLauncher? capture = null)
     {
-        // PROGRESS MUST NOT BE DELIVERED THROUGH XUNIT'S SCHEDULER, AND CLEARING THE CONTEXT HERE
-        // IS WHAT STOPS IT. The view model builds its Progress<T> inside StartAsync, and Progress<T>
-        // captures whatever SynchronizationContext is current at that moment and posts every
-        // callback back to it. Under WPF that is the UI thread and is exactly right. Under xUnit it
-        // is a context running a bounded number of test collections at once, so a callback raised
-        // here waits for a slot behind everything else - including tests that hold one while
-        // blocking, which is P-155.
-        //
-        // CI measured the cost on 2026-09-11: a two-core runner starved this for 200.2 seconds
-        // against a 120-second deadline, while the same test passed on a twenty-thread machine.
-        // Cleared, Progress<T> falls back to the thread pool and the callback runs immediately.
-        //
-        // THE PRODUCT IS NOT CHANGED FOR THIS. Marshalling progress to the UI thread is correct;
-        // the defect was in the harness observing it. This is P-154's last failure, carried for
-        // three sessions as an ordering defect that it never was.
-        SynchronizationContext.SetSynchronizationContext(null);
+        // Async callers use OneThread rather than xUnit's scheduler or concurrent thread-pool callbacks.
 
         var store = new FakeSettingsStore { Stored = new ShellSettings(@"D:\audits", DomainsAtOnce: null) };
         var location = new RunLibraryLocation(store);

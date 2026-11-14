@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using SecureAD.Kernel.Capture;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Architecture;
@@ -116,7 +117,7 @@ public sealed class UnvouchedResultGateTests
     [
         // Portable summaries carry sanitized, counted errors as Problems. Readback failures must
         // reach that list too; PortableSummaryContentTests holds that behavior, not this name scan.
-        "Errors", "Problems", "Warnings", "Verdict", "Verdicts", "IsComplete", "Completeness",
+        "Errors", "Problems", "Warnings", "Issues", "Limitations", "Verdict", "Verdicts", "IsComplete", "Completeness",
         "*AreComplete", "*WereAsked", "FailedPhase", "FailedPhases", "DidNotRun",
     ];
 
@@ -324,6 +325,7 @@ public sealed class UnvouchedResultGateTests
         var offenders = PublicMembers()
             .Where(m => IsCountShaped(m.Member.Name))
             .Where(m => IsBareNumber(m.Returns))
+            .Where(m => !IsObservedCaptureWork(m.Type, m.Member, m.Returns))
             .Where(m => !IsVouched(m.Type))
             .Where(m => !VouchedByContainment.Value.Contains(m.Type))
             .Select(m => $"  {ReadableName(m.Type)}.{m.Member.Name} returns {ReadableName(m.Returns)}")
@@ -365,6 +367,7 @@ public sealed class UnvouchedResultGateTests
     {
         var offenders = PublicMembers()
             .Where(m => IsCollection(m.Returns))
+            .Where(m => !IsObservedCaptureWork(m.Type, m.Member, m.Returns))
             .Where(m => !IsVouched(m.Type))
             .Where(m => !IsExempt(ReadableName(m.Type)))
             .Where(m => !VouchedByContainment.Value.Contains(m.Type))
@@ -382,6 +385,49 @@ public sealed class UnvouchedResultGateTests
             + "AceNormalizationResult do, or return Result<T>:"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
+
+    // These fields report observed work, not audit answers. The witnesses below keep that
+    // distinction limited to the exact typed members and their final capture-report carrier.
+    private static bool IsObservedCaptureWork(Type type, MemberInfo member, Type returns) =>
+        type == typeof(CaptureProgress) && member is PropertyInfo
+        && (member.Name == nameof(CaptureProgress.PoliciesTotal) && returns == typeof(long?)
+            || member.Name == nameof(CaptureProgress.Scopes)
+                && returns == typeof(IReadOnlyList<CaptureScopeProgress>));
+
+    [Theory]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.PoliciesTotal), true)]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.Scopes), true)]
+    [InlineData(typeof(CaptureProgress), nameof(CaptureProgress.PoliciesProcessed), false)]
+    [InlineData(typeof(UnqualifiedProgressLookalike), nameof(UnqualifiedProgressLookalike.PoliciesTotal), false)]
+    [InlineData(typeof(UnqualifiedProgressLookalike), nameof(UnqualifiedProgressLookalike.Scopes), false)]
+    public void TheCaptureObservationContractIsMemberAndTypeSpecific(Type type, string name, bool expected)
+    {
+        var member = Assert.Single(type.GetProperties(), property => property.Name == name);
+        Assert.Equal(expected, IsObservedCaptureWork(type, member, member.PropertyType));
+    }
+
+    [Fact]
+    public void CaptureWorkRemainsAQualifiedReportWithinTheCaptureResult()
+    {
+        var exposure = Assert.Single(PublicMembers().Where(member =>
+            ExposedTypesOf(member.Returns).Contains(typeof(CaptureProgress))));
+        Assert.Equal((typeof(SecureAD.Audit.Capture.CaptureRunResult), nameof(SecureAD.Audit.Capture.CaptureRunResult.Progress)),
+            (exposure.Type, exposure.Member.Name));
+        Assert.Equal(typeof(SecureAD.Audit.Capture.RunCompletion),
+            typeof(SecureAD.Audit.Capture.CaptureRunResult).GetProperty(nameof(SecureAD.Audit.Capture.CaptureRunResult.Outcome))!.PropertyType);
+        Assert.Equal(typeof(SecureAD.Kernel.AuditError),
+            typeof(SecureAD.Audit.Capture.CaptureRunResult).GetProperty(nameof(SecureAD.Audit.Capture.CaptureRunResult.Error))!.PropertyType);
+        var parameters = ProductionAssemblies().SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(type => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic
+                | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            .SelectMany(method => method.GetParameters());
+        Assert.Contains(parameters, parameter => parameter.ParameterType == typeof(IProgress<CaptureProgress>));
+        Assert.Equal(typeof(long?), typeof(CaptureProgress).GetProperty(nameof(CaptureProgress.PoliciesTotal))!.PropertyType);
+        Assert.Equal(typeof(long?), typeof(CaptureScopeProgress).GetProperty(nameof(CaptureScopeProgress.ObjectsRead))!.PropertyType);
+        Assert.Equal(typeof(CaptureReadState), typeof(CaptureScopeProgress).GetProperty(nameof(CaptureScopeProgress.State))!.PropertyType);
+    }
+
+    private sealed record UnqualifiedProgressLookalike(long? PoliciesTotal, IReadOnlyList<CaptureScopeProgress> Scopes);
 
     /// <summary>
     /// The containment rule finds the leaves it was written for. Without this it could quietly
@@ -437,9 +483,49 @@ public sealed class UnvouchedResultGateTests
         typeof(ProblemContainer), VouchedLeaves([(typeof(ProblemContainer), typeof(ProblemContainer))]));
 
     [Fact]
+    public void AResultCarriesItsOutcomeThroughNestedSavedValues()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(IntermediateLeaf), typeof(CountLeaf)),
+            (typeof(NothingVouching), typeof(SecureAD.Kernel.Result<IntermediateLeaf>)),
+        ]);
+        Assert.Contains(typeof(IntermediateLeaf), leaves);
+        Assert.Contains(typeof(CountLeaf), leaves);
+    }
+
+    [Fact]
+    public void AnUnvouchedProducerBlocksNestedLeaves()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(ProblemContainer), typeof(IntermediateLeaf)),
+            (typeof(NothingVouching), typeof(IntermediateLeaf)),
+            (typeof(IntermediateLeaf), typeof(CountLeaf)),
+        ]);
+        Assert.DoesNotContain(typeof(IntermediateLeaf), leaves);
+        Assert.DoesNotContain(typeof(CountLeaf), leaves);
+    }
+
+    [Fact]
+    public void ContainmentCyclesWithoutAnOutcomeCannotVouchForThemselves()
+    {
+        var leaves = VouchedLeaves(
+        [
+            (typeof(CycleFirst), typeof(CycleSecond)),
+            (typeof(CycleSecond), typeof(CycleFirst)),
+        ]);
+        Assert.DoesNotContain(typeof(CycleFirst), leaves);
+        Assert.DoesNotContain(typeof(CycleSecond), leaves);
+    }
+
+    [Fact]
     public void AStateNameAloneDoesNotVouchForCounts() => Assert.False(IsVouched(typeof(StateOnly)));
 
     private sealed record CountLeaf(int Count);
+    private sealed record IntermediateLeaf(CountLeaf Value);
+    private sealed record CycleFirst(CycleSecond Value);
+    private sealed record CycleSecond(CycleFirst Value);
     private sealed record ProblemContainer(IReadOnlyList<SecureAD.Kernel.AuditError> Problems);
     private sealed record StateOnly(string State, int Count);
 
@@ -456,7 +542,7 @@ public sealed class UnvouchedResultGateTests
             var producers = PublicMembers()
                 .Where(m => m.Type != leaf)
                 .Where(m => ExposedTypesOf(m.Returns).Contains(leaf))
-                .Select(m => m.Type)
+                .Select(m => IsVouched(m.Returns) ? m.Returns : m.Type)
                 .Distinct()
                 .ToList();
 
@@ -464,7 +550,7 @@ public sealed class UnvouchedResultGateTests
             Assert.All(
                 producers,
                 p => Assert.True(
-                    IsVouched(p) || IsExempt(ReadableName(p)),
+                    IsVouched(p) || IsExempt(ReadableName(p)) || VouchedByContainment.Value.Contains(p),
                     $"{ReadableName(leaf)} is cleared by containment but {ReadableName(p)} "
                     + "hands it back without vouching for it."));
         }
@@ -802,7 +888,8 @@ public sealed class UnvouchedResultGateTests
     /// </para>
     /// </remarks>
     private static bool IsVouched(Type type) =>
-        DeclaresVouchingName(type) || DeclaredMemberTypes(type).Any(DeclaresVouchingName);
+        IsResult(type)
+        || DeclaresVouchingName(type) || DeclaredMemberTypes(type).Any(DeclaresVouchingName);
 
     /// <summary>A member whose own name is one of the vouching shapes.</summary>
     private static bool DeclaresVouchingName(Type type) =>
@@ -877,16 +964,21 @@ public sealed class UnvouchedResultGateTests
                     exposersOf[exposed] = list;
                 }
 
-                list.Add(member.Type);
+                list.Add(IsVouched(member.Returns) ? member.Returns : member.Type);
             }
         }
 
-        return exposersOf
-            .Where(pair => pair.Value.Count > 0)
-            .Where(pair => pair.Value.All(
-                container => IsVouched(container) || IsExempt(ReadableName(container))))
-            .Select(pair => pair.Key)
-            .ToHashSet();
+        var leaves = new HashSet<Type>();
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var pair in exposersOf)
+                if (!leaves.Contains(pair.Key) && pair.Value.Count > 0 && pair.Value.All(
+                    container => IsVouched(container) || IsExempt(ReadableName(container)) || leaves.Contains(container)))
+                    changed |= leaves.Add(pair.Key);
+        } while (changed);
+        return leaves;
     }
 
     /// <summary>

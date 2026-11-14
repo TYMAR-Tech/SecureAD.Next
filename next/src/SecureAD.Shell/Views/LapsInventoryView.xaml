@@ -2,10 +2,26 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <UserControl.Resources>
+        <Style x:Key="WindowsExpiryText" TargetType="TextBlock">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasUnusableWindowsExpiry}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LegacyExpiryText" TargetType="TextBlock">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasUnusableLegacyExpiry}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource EstablishedBadBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-            <TextBlock Text="LAPS coverage" Style="{StaticResource SectionTitle}" />
-            <TextBlock Text="Saved computer states and expiry values; no password is read and no rotation is performed."
+            <TextBlock Text="{Binding LapsTitle}" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{Binding LapsCaption}"
                        Style="{StaticResource Caption}" TextWrapping="Wrap" />
         </StackPanel>
         <Border DockPanel.Dock="Top"
@@ -15,6 +31,8 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="{Binding ScopeTreeAction}" Command="{Binding ToggleScopeTreeCommand}"
                         Margin="12,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="{Binding LapsExportLabel}" Command="{Binding ExportLapsCommand}"
+                        Style="{StaticResource PrimaryButton}" Margin="12,0,0,0" />
                 <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
                     <Run Text="Scope: " FontWeight="SemiBold" /><Run Text="{Binding LapsLocation,Mode=OneWay}" />
                 </TextBlock>
@@ -97,7 +115,7 @@
                     <TextBlock Text="{Binding SelectedLapsComputer.Name}" Style="{StaticResource RowTitle}" />
                     <TextBlock TextWrapping="Wrap" Style="{StaticResource Caption}">
                         <Run Text="{Binding SelectedLapsComputer.Domain,Mode=OneWay}" /><Run Text=" · " />
-                        <Run Text="{Binding SelectedLapsComputer.Management,Mode=OneWay}" /><Run Text=" · " />
+                        <Run Text="{Binding SelectedLapsComputer.ValuePresence,Mode=OneWay}" /><Run Text=" · " />
                         <Run Text="{Binding SelectedLapsComputer.Capability,Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" Style="{StaticResource Caption}">
@@ -128,19 +146,16 @@
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
                 <DataGridTextColumn Header="Domain" Binding="{Binding Domain}" Width="*" />
 
-                <!-- The state, and the mark beside it. Unexpected is not coloured as bad: the
-                     machine is managed and there is no exposure - what is wrong is that Microsoft
-                     says the combination cannot occur. -->
-                <DataGridTextColumn Header="LAPS" Binding="{Binding Management}" Width="Auto" />
+                <DataGridTextColumn Header="Captured values" Binding="{Binding ValuePresence}" Width="Auto" />
 
-                <DataGridTextColumn Header="Windows LAPS expiry"
-                                    Binding="{Binding WindowsLapsExpiry}" Width="Auto" />
+                <DataGridTextColumn Header="Windows expiry (UTC)"
+                                    Binding="{Binding WindowsLapsExpiry}" ElementStyle="{StaticResource WindowsExpiryText}" Width="Auto" />
 
                 <!-- BOTH TIMESTAMPS, NOT THE ONE THAT SUITS THE TIER. The predecessor showed
                      whichever matched the tier it had assigned, so a migrated machine looked modern
                      and the legacy value it still carried was invisible. -->
-                <DataGridTextColumn Header="Legacy LAPS expiry"
-                                    Binding="{Binding LegacyLapsExpiry}" Width="Auto" />
+                <DataGridTextColumn Header="Legacy expiry (UTC)"
+                                    Binding="{Binding LegacyLapsExpiry}" ElementStyle="{StaticResource LegacyExpiryText}" Width="Auto" />
 
                 <DataGridTextColumn Header="Operating system"
                                     Binding="{Binding OperatingSystem}" Width="*" />
@@ -153,8 +168,8 @@
                      have no way to tell a machine the product deliberately ignored from one it
                      never captured. The first ad.lab run reported two excluded machines as
                      findings because there was nowhere else for them to appear. -->
-                <DataGridTextColumn Header="Rules skip it because"
-                                    Binding="{Binding NotJudgedBecause}" Width="Auto" />
+                <DataGridTextColumn Header="Scope notes"
+                                    Binding="{Binding ScopeNotes}" Width="Auto" />
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

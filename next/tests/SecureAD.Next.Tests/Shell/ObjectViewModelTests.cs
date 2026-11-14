@@ -550,14 +550,13 @@ public sealed class ObjectViewModelTests
     }
 
     /// <summary>
-    /// Opening a finding opens the object it is about, and lands on its findings.
+    /// A finding opens independently; its object is an explicit context action.
     /// </summary>
     /// <remarks>
-    /// The shape the predecessor used, and the owner asked for: a finding names a target, and the
-    /// operator wants to be looking at that target with the finding in front of him.
+    /// Opening object context must not be an implicit cost of reading a finding.
     /// </remarks>
     [Fact]
-    public void OpeningAFindingOpensItsObjectAtItsFindings()
+    public void OpeningAFindingShowsItsWindowBeforeExplicitObjectNavigation()
     {
         var screen = OpenedWith(new FindingsPage([AFinding()], null, RulesRan: 2));
         screen.CloseObject();
@@ -565,9 +564,12 @@ public sealed class ObjectViewModelTests
 
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
+        Assert.True(screen.HasFindingPresentation);
+        Assert.False(screen.HasOpenObject);
+        screen.OpenAffectedObjectCommand.Execute(null);
         Assert.True(screen.HasOpenObject);
         Assert.Equal(AliceDn, screen.Opened!.DistinguishedName);
-        Assert.Equal(ObjectSectionCatalog.Findings, screen.Opened.Selected!.Key);
+        Assert.Equal(ObjectSectionCatalog.Overview, screen.Opened.Selected!.Key);
     }
 
     /// <summary>
@@ -582,12 +584,13 @@ public sealed class ObjectViewModelTests
     public void AnObjectReachedFromAFindingStillKnowsItsClass()
     {
         var assets = SourceWith(new FindingsPage([AFinding()], null, RulesRan: 2));
-        assets.Attributes = AttributesOfAUser();
+        assets.Attributes = AttributesOfAUser() with { ObjectGuid = assets.FindingsPage.Findings[0].ObjectGuid };
 
         var screen = new AssetsViewModel(assets);
         screen.Pane = AssetsPane.Findings;
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
+        screen.OpenAffectedObjectCommand.Execute(null);
 
         Assert.Equal("user", screen.Opened!.ObjectType);
     }
@@ -596,9 +599,7 @@ public sealed class ObjectViewModelTests
     /// A finding naming an object the evidence does not hold says so.
     /// </summary>
     /// <remarks>
-    /// <b>Rather than opening nothing and looking broken.</b> The predecessor fell back to a
-    /// finding-detail window; there is none here, so the honest answer is words. It is the same
-    /// refusal the listing already makes when a row names an object the bundle does not have.
+    /// The saved finding remains readable even when its object context is unavailable.
     /// </remarks>
     [Fact]
     public void AFindingNamingAnObjectTheEvidenceDoesNotHoldSaysSo()
@@ -611,6 +612,9 @@ public sealed class ObjectViewModelTests
         screen.Show(BundlePath, aCaptureIsRunning: false);
         screen.OpenFindingCommand.Execute(screen.Findings[0]);
 
+        Assert.True(screen.FindingDetails!.HasFinding);
+        Assert.False(screen.HasObjectRefusal);
+        screen.OpenAffectedObjectCommand.Execute(null);
         Assert.False(screen.HasOpenObject);
         Assert.True(screen.HasObjectRefusal);
         Assert.Contains(
@@ -652,7 +656,7 @@ public sealed class ObjectViewModelTests
             true,
             null),
         Permissions = Permissions(),
-        Attributes = AttributesOfAUser(),
+        Attributes = AttributesOfAUser() with { ObjectGuid = findings.Findings.FirstOrDefault()?.ObjectGuid ?? Guid.NewGuid() },
         FindingsPage = findings,
     };
 

@@ -172,7 +172,7 @@ public sealed class ClassAwareAttributeTests
         screen.Opened.Show(ObjectSectionCatalog.OtherValues);
         var other = Assert.IsType<OtherValuesSectionViewModel>(screen.Opened.Content);
         Assert.Equal(new[] { "operatingSystem", "managedBy" }, other.Values.Select(row => row.Attribute));
-        Assert.Empty(source.Reads);
+        Assert.Equal(new[] { "Attributes" }, source.Reads);
         source.IsCurrent = false;
         screen.Opened.Show(ObjectSectionCatalog.Overview);
         Assert.True(screen.Opened.HasRefusal);

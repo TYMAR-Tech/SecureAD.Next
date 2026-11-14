@@ -260,6 +260,14 @@ public sealed class AdminCountWithoutProtectionTests
 
     private static StoredJudgement Stored(Subject subject, Action<BundleWriter>? alsoWrite, bool historicalDispute = false)
     {
+        using var reader = JudgementReader.Open(Prepared(subject, alsoWrite, historicalDispute)).Value!;
+        return reader.Read();
+    }
+
+    internal static string FindingsRun() => Prepared(Ann() with { AdminCount = 1, DaclProtected = true }, null);
+
+    private static string Prepared(Subject subject, Action<BundleWriter>? alsoWrite, bool historicalDispute = false)
+    {
         var directory = Build(subject, alsoWrite);
 
         Assert.True(
@@ -281,8 +289,7 @@ public sealed class AdminCountWithoutProtectionTests
 
         Assert.True(judged.IsSuccess, judged.Error?.Description);
 
-        using var reader = JudgementReader.Open(directory).Value!;
-        return reader.Read();
+        return directory;
     }
 
     private static void RestoreSavedVersionThreeDispute(string directory, string sid)

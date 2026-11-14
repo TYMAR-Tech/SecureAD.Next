@@ -50,6 +50,28 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     /// </remarks>
     private static IReadOnlyList<Sample> Samples { get; } =
     [
+        PublishedSample(new BroadGmsaPasswordReader(), GmsaPasswordReaderReadTests.Published(), read =>
+        {
+            var evidence = Assert.IsType<GmsaPasswordReaderEvidence>(read);
+            Assert.Equal(GmsaPasswordReaderTests.AccountGuid, evidence.Source.ObjectGuid);
+            Assert.Equal(GmsaPasswordReaderTests.AccountDn, evidence.Source.DistinguishedName);
+            Assert.Equal(GmsaPasswordReaderTests.Broad, evidence.BroadSid);
+            Assert.Equal(0x10, Assert.Single(evidence.Source.Entries).AccessMask);
+            Assert.Equal(new[] { 0 }, Assert.Single(evidence.Grants).GrantOrdinals);
+            Assert.True(evidence.IsComplete);
+        }),
+        PublishedSample(new UnexpectedGpoDirectoryControl(), GpoDirectoryPermissionRunTests.Published(), read =>
+        {
+            var evidence = Assert.IsType<GpoDirectoryPermissionEvidence>(read);
+            Assert.Equal("SEC-080", evidence.RuleId);
+            Assert.Equal(GpoDirectoryPermissionTests.GpoDn, evidence.Target.DistinguishedName);
+            Assert.Equal(GpoDirectoryPermissionTests.HolderSid, evidence.Holder.Sid);
+            Assert.Equal(0x20, Assert.Single(evidence.Permissions.Entries).AccessMask);
+            var path = Assert.Single(evidence.Rights, right => right.Operation == GpoDirectoryOperation.PolicyFilePath);
+            Assert.Equal(GpoDirectoryPermissionState.Established, path.State);
+            Assert.Equal(new[] { 0 }, path.GrantOrdinals);
+            Assert.True(evidence.IsComplete);
+        }),
         new Sample(new UnexpectedDomainSecretReplication().Definition, "DC=contoso,DC=com",
             ReplicationPermissionRuleTests.ReadPublishedFindings().Single().Evidence,
             read =>
@@ -271,14 +293,14 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         // to at least one of these. The path is the part most worth pinning - it is the whole of
         // what makes the finding actionable, and it is stored in a separate table.
         new Sample(
-            Definition("SEC-090", "A broad principal can read LAPS passwords"),
+            Definition("SEC-090", "Broad permissions on LAPS password attributes"),
             "CN=WS01,OU=Workstations,DC=contoso,DC=com",
-            new LapsPasswordReaderEvidence(
-                TrusteeSid: "S-1-5-21-1004336348-1177238915-682003330-1123",
-                TrusteeName: "LAPS-Readers",
-                BroadPrincipalSid: "S-1-5-11",
-                BroadPrincipalName: "Authenticated Users",
-                MembershipPath:
+            RecordedLapsReadFinding.Evidence(
+                trustee: "S-1-5-21-1004336348-1177238915-682003330-1123",
+                trusteeName: "LAPS-Readers",
+                broad: "S-1-5-11",
+                broadName: "Authenticated Users",
+                path:
                 [
                     new PathStep(
                         "S-1-5-21-1004336348-1177238915-682003330-1123", "LAPS-Readers"),
@@ -289,11 +311,11 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                     // bundle, and a reader that dropped the null would show the wrong thing.
                     new PathStep("S-1-5-11", null),
                 ],
-                Attribute: "msLAPS-Password",
-                Rights: LapsReadRights.Both,
-                Reach: LapsGrantReach.EveryAttribute,
-                InheritedFrom: "DC=contoso,DC=com",
-                ExpansionWasComplete: false),
+                attribute: "msLAPS-Password",
+                rights: LapsReadRights.Both,
+                reach: LapsGrantReach.EveryAttribute,
+                inheritedClassGuid: "bf967a86-0de6-11d0-a285-00aa003049e2",
+                complete: false),
             read =>
             {
                 var e = Assert.IsType<LapsPasswordReaderEvidence>(read);
@@ -309,9 +331,12 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                 Assert.Equal(2, e.NestingDepth);
                 Assert.Equal("msLAPS-Password", e.Attribute);
                 Assert.Equal(LapsReadRights.Both, e.Rights);
-                Assert.True(e.CanReadThePassword);
+                Assert.True(e.HasEstablishedReadPermission);
                 Assert.Equal(LapsGrantReach.EveryAttribute, e.Reach);
-                Assert.Equal("DC=contoso,DC=com", e.InheritedFrom);
+                Assert.Equal("bf967a86-0de6-11d0-a285-00aa003049e2", e.InheritedClassGuid);
+                Assert.True(e.IsInherited);
+                Assert.False(e.SupportsWereLoaded);
+                Assert.Equal(1, e.Assessment.ExposureCount);
                 Assert.False(e.IsComplete);
             }),
 
@@ -423,7 +448,8 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
                                 "Domain Users"),
                         ]),
                 ],
-                ExpansionWasComplete: true),
+                ExpansionWasComplete: true,
+                Settings: SyntheticLapsPolicySettings.Complete(@"CONTOSO\LAPS-Decryptors")),
             read =>
             {
                 var e = Assert.IsType<LapsDecryptorEvidence>(read);
@@ -513,10 +539,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     public void EveryEvidenceKindSurvivesTheGridsPagingPath()
     {
         var findings = OwnAccountMembershipPathTests.ReadMixedEvidenceSample(
-            Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
-                or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence or DelegationConfigurationEvidence
-                or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence or ReplicationPermissionEvidence))
-                .Select(sample => (IRule)new SampleRule(sample)).ToArray(), output)
+            MixedSampleRules(), output)
             .Concat(DuplicateSpnTests.ReadPublishedFindings().Take(1))
             .Concat(BroadAdministrativeGroupMembershipTests.ReadPublishedFindings())
             .Concat(ServiceAccountRuleTests.ReadPublishedFindings())
@@ -524,6 +547,8 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         findings = findings.Concat(MembershipReviewRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-050")).ToArray();
         findings = findings.Concat(DelegationConfigurationRuleTests.ReadPublishedFindings().Where(finding => finding.RuleId == "SEC-012")).ToArray();
         findings = findings.Concat(ReplicationPermissionRuleTests.ReadPublishedFindings()).ToArray();
+        findings = findings.Concat(PublishedFindings(GmsaPasswordReaderReadTests.Published()))
+            .Concat(PublishedFindings(GpoDirectoryPermissionRunTests.Published())).ToArray();
 
         foreach (var sample in Samples)
         {
@@ -537,13 +562,9 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     [Fact]
     public async Task EveryEvidenceKindPreservesTheCompleteLightweightFindingsScreen()
     {
-        var sampleRules = Samples.Where(sample => sample.Evidence is not (Tier0RouteFindingEvidence or CircularMembershipEvidence
-            or DuplicateSpnEvidence or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence
-            or DelegationConfigurationEvidence or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence
-            or ReplicationPermissionEvidence)).Select(sample => (IRule)new SampleRule(sample)).ToArray();
         var directories = new[]
         {
-            OwnAccountMembershipPathTests.CreateMixedEvidenceRun(sampleRules, output),
+            OwnAccountMembershipPathTests.CreateMixedEvidenceRun(MixedSampleRules(), output),
             DuplicateSpnTests.FindingsRun(),
             BroadAdministrativeGroupMembershipTests.FindingsRun(),
             ServiceAccountRuleTests.FindingsRun(),
@@ -551,6 +572,8 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
             MembershipReviewRuleTests.FindingsRun(),
             DelegationConfigurationRuleTests.FindingsRun(),
             ReplicationPermissionRuleTests.FindingsRun(),
+            GmsaPasswordReaderReadTests.Published(),
+            GpoDirectoryPermissionRunTests.Published(),
         };
         var seen = new HashSet<Type>();
         foreach (var directory in directories)
@@ -560,6 +583,27 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
             await SecureAD.Next.Tests.Shell.OpenedRunResultsTests.VerifyLightweightFindingsScreen(directory);
         }
         Assert.Equal(EvidenceKinds().OrderBy(type => type.Name), seen.OrderBy(type => type.Name));
+    }
+
+    private static IRule[] MixedSampleRules() => Samples.Where(sample => sample.Evidence is not (
+        Tier0RouteFindingEvidence or CircularMembershipEvidence or DuplicateSpnEvidence
+        or BroadGroupMembershipEvidence or GroupMembershipReviewEvidence or DelegationConfigurationEvidence
+        or ServiceAccountFindingEvidence or AttributeWritePermissionEvidence or ReplicationPermissionEvidence
+        or GmsaPasswordReaderEvidence or GpoDirectoryPermissionEvidence))
+        .Select(sample => (IRule)new SampleRule(sample)).ToArray();
+
+    private static Sample PublishedSample(IRule rule, string directory, Action<FindingEvidence> assertRead)
+    {
+        var finding = Assert.Single(PublishedFindings(directory), item => item.RuleId == rule.Definition.Id);
+        return new(rule.Definition, finding.DistinguishedName, finding.Evidence, assertRead);
+    }
+
+    private static IReadOnlyList<Finding> PublishedFindings(string directory)
+    {
+        var opened = JudgementReader.Open(directory);
+        Assert.True(opened.IsSuccess, opened.Error?.Description);
+        using var reader = opened.Value;
+        return reader.Read().Findings;
     }
 
     [Fact]
@@ -578,7 +622,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
     ];
 
     private static RuleDefinition Definition(string id, string title) =>
-        new(id, title, Severity.High, 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
+        new(id, title, Severity.High, id is "SEC-027" or "SEC-090" ? 2 : 1, ["user"], ["objectClass"], RequiredDerivedFacts: []);
 
     private static CircularMembershipEvidence CycleSample()
     {
@@ -605,7 +649,7 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
         FindingEvidence Evidence,
         Action<FindingEvidence> AssertRead)
     {
-        public Finding Finding => new(
+        public Finding Finding => RecordedLapsReadFinding.Bind(new(
             Rule.Id,
             Rule.Version,
             Rule.Severity,
@@ -616,6 +660,6 @@ public sealed class EvidenceKindCoverageTests(ITestOutputHelper output)
             "user",
             $"Sample finding for {Evidence.GetType().Name}.",
             EvidenceCompleteness.Complete,
-            Evidence);
+            Evidence));
     }
 }

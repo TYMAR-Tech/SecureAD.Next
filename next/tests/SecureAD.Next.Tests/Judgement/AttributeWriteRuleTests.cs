@@ -653,8 +653,10 @@ public sealed class AttributeWriteRuleTests
         {
             Assert.Equal(Severity.High, rule.Definition.Severity);
             Assert.Single(RuleCatalogue.All, scheduled => scheduled.Definition.Id == rule.Definition.Id);
-            Assert.Contains("does not prove", RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhyItMatters, StringComparison.Ordinal);
-            Assert.Contains("Remove only", RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhatToDo, StringComparison.Ordinal);
+            Assert.Contains("It does not show",
+                RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhyItMatters, StringComparison.Ordinal);
+            Assert.Contains("remove or narrow only that permission on the target account",
+                RuleGuidanceCatalogue.For(rule.Definition.Id)!.WhatToDo, StringComparison.Ordinal);
         });
         Assert.DoesNotContain(RuleCatalogue.All, rule => rule.Definition.Id == "SEC-083");
         Assert.Equal("Service-principal-name write permission", ControlEdgeRowViewModel.CapabilityText(ControlCapability.CanWriteServicePrincipalName));

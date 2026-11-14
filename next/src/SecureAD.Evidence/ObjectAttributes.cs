@@ -216,7 +216,7 @@ internal static class ObjectAttributesReader
             + " WHERE object_id = $object"));
 
     public static ObjectAttributes? Read(SqliteConnection connection, string distinguishedName,
-        IReadOnlyCollection<string>? selected = null)
+        IReadOnlyCollection<string>? selected)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
@@ -224,14 +224,14 @@ internal static class ObjectAttributesReader
     }
 
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId) =>
-        ReadCore(connection, null, objectId);
+        ReadCore(connection, null, objectId, selected: null);
 
     internal static ObjectAttributes? ReadAt(SqliteConnection connection, long objectId,
         IReadOnlyCollection<string>? selected) =>
         ReadCore(connection, null, objectId, selected);
 
     private static ObjectAttributes? ReadCore(SqliteConnection connection, string? distinguishedName, long? rowId,
-        IReadOnlyCollection<string>? selected = null)
+        IReadOnlyCollection<string>? selected)
     {
         var names = selected?.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (names is not null && names.Any(name => !CapturedAttributeCatalog.All.Any(attribute =>
@@ -372,17 +372,20 @@ internal static class ObjectAttributesReader
         return values;
     }
 
-    internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation)
+    internal static CapturedObjectIdentity? ReadIdentity(SqliteConnection connection, string distinguishedName, bool navigation,
+        long? objectId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName);
         using var query = connection.CreateCommand();
         var objectClass = navigation ? "o.most_specific_class"
             : "(SELECT v.value FROM objectclass_value v WHERE v.object_id=o.object_id ORDER BY v.ordinal DESC LIMIT 1)";
+        var predicate = objectId is null ? "o.distinguished_name=$dn COLLATE NOCASE" : "o.object_id=$id";
         query.CommandText = $"""
             SELECT o.distinguished_name,o.object_guid,{objectClass},o.domain_fqdn,o.objectsid,o.object_id
-            FROM captured_object o WHERE o.distinguished_name=$dn COLLATE NOCASE LIMIT 1
+            FROM captured_object o WHERE {predicate} LIMIT 1
             """;
-        query.Parameters.AddWithValue("$dn", distinguishedName);
+        if (objectId is { } id) query.Parameters.AddWithValue("$id", id);
+        else query.Parameters.AddWithValue("$dn", distinguishedName);
         using var row = query.ExecuteReader();
         return !row.Read() ? null : new(row.GetString(0),
             row.IsDBNull(1) ? null : Guid.Parse(row.GetString(1)),

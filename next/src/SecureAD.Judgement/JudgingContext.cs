@@ -209,6 +209,9 @@ public sealed record JudgingContext(
     internal Func<string, string?, SecureAD.Evidence.Findings.MembershipRouteSummary>? MembershipRoutes { get; init; }
     internal AttributeWriteAssessment? AttributeWrites { get; init; }
     internal ReplicationPermissionAssessment? ReplicationPermissions { get; init; }
+    internal PermissionControlInputs? PermissionControlInputs { get; init; }
+    internal GmsaPasswordReaderInputs? GmsaReaders { get; init; }
+    internal GpoDirectoryPermissionInputs? GpoDirectoryPermissions { get; init; }
 
     /// <summary>
     /// A context carrying a reference time and nothing derived, which is what an Evidence-only

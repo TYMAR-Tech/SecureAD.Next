@@ -242,7 +242,25 @@ internal static class ControlEdgeDeriver
             return (ControlEvaluationState.Unknown, name);
         if (entry.ObjectTypeGuid is { } guid && Same(guid, operationCatalogue.GuidFor(name)))
             return (ControlEvaluationState.Established, $"{name}: {guid}; {operationCatalogue.FindByLdapName(name)!.Source} schema catalogue.");
-        if (right == 0x20 && entry.ObjectTypeGuid is { } propertySet)
+        if (right == 0x20)
+            return AttributeScope(entry, name, targetClass, catalogue, memberWrite);
+        if (entry.ObjectTypeGuid is null || !Guid.TryParse(entry.ObjectTypeGuid, out _))
+            return (ControlEvaluationState.Unknown, "Object-type flag is present but its GUID is unavailable or invalid.");
+        return (ControlEvaluationState.NotEstablished, "Entry is scoped to a different operation.");
+    }
+
+    /// <summary>The shared object/class/property-set/attribute hierarchy for attribute permissions.</summary>
+    internal static (ControlEvaluationState State, string Source) AttributeScope(PermissionEntry entry,
+        string name, string? targetClass, SchemaGuidCatalog catalogue, bool memberWrite = false)
+    {
+        if (!entry.HasObjectType)
+            return (ControlEvaluationState.Established, "Unscoped entry reaches this attribute.");
+        if (catalogue.FindUnambiguousByLdapName(name) is not { Kind: SchemaGuidKind.Attribute } attribute
+            || !Guid.TryParse(attribute.Guid, out _))
+            return (ControlEvaluationState.Unknown, $"The attribute identity for {name} is unavailable or ambiguous.");
+        if (Same(entry.ObjectTypeGuid, attribute.Guid))
+            return (ControlEvaluationState.Established, $"{name}: {attribute.Guid}; {attribute.Source} schema catalogue.");
+        if (entry.ObjectTypeGuid is { } propertySet)
         {
             var meanings = catalogue.FindByGuid(propertySet);
             if (meanings.Any(item => item.Kind == SchemaGuidKind.ObjectClass))
@@ -266,7 +284,7 @@ internal static class ControlEdgeDeriver
         }
         if (entry.ObjectTypeGuid is null || !Guid.TryParse(entry.ObjectTypeGuid, out _))
             return (ControlEvaluationState.Unknown, "Object-type flag is present but its GUID is unavailable or invalid.");
-        return (ControlEvaluationState.NotEstablished, "Entry is scoped to a different operation.");
+        return (ControlEvaluationState.NotEstablished, "Entry is scoped to a different attribute or operation.");
     }
 
     internal static (ControlExpectedness State, ControlExpectednessReason Reason) Expected(PermissionTrustee holder,

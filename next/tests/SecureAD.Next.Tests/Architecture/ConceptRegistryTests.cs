@@ -52,7 +52,7 @@ public sealed class ConceptRegistryTests
     /// <param name="Shapes">
     /// Member-name globs that constitute answering it. <c>*</c> stands for the rest of a name.
     /// </param>
-    private sealed record Concept(string Name, string Owner, string[] Shapes);
+    private sealed record Concept(string Name, string Owner, string[] Shapes, Type[]? AnswerTypes = null);
 
     /// <summary>
     /// The registry, held as code so that nothing has to be kept in step with it by hand.
@@ -87,10 +87,11 @@ public sealed class ConceptRegistryTests
 
         new("Security descriptor parsing", "SecurityDescriptorParser",
             ["Parse", "ParseBase64*", "ParseSecurityDescriptor*", "ParseSd*",
-             "TryParseSecurityDescriptor*"]),
+             "TryParseSecurityDescriptor*"], [typeof(SecureAD.Kernel.Security.ParsedSecurityDescriptor)]),
 
         new("ACE canonicalisation", "AceNormalizer",
-            ["Normalize*", "Normalise*", "Canonicalize*", "Canonicalise*"]),
+            ["Normalize*", "Normalise*", "Canonicalize*", "Canonicalise*"],
+            [typeof(SecureAD.Kernel.Security.AceNormalizationResult)]),
 
         new("Generic-rights expansion", "GenericRightsExpander",
             ["Expand*", "ExpandGenericRights*", "HasGenericRights*"]),
@@ -104,7 +105,7 @@ public sealed class ConceptRegistryTests
              "WaitBefore*", "BackoffFor*"]),
 
         new("Operation outcome", "Result",
-            ["IsSuccess", "IsFailure", "Succeeded", "Failed", "IsOk"]),
+            ["IsSuccess", "IsFailure", "Succeeded", "Failed", "IsOk"], [typeof(bool)]),
 
         new("What capture asks the directory for", "CapturedAttributeCatalog",
             ["AttributesFor*", "RequestedAttributes*", "AttributesForClass*", "CaptureFilter*",
@@ -112,7 +113,7 @@ public sealed class ConceptRegistryTests
              "BinaryAttributes*"]),
 
         new("What an entry's values mean", "LdapEntryReader",
-            ["ForEntry*", "ForValues*", "ValuesOf*", "ReadAttribute*", "AsText*", "AsBytes*",
+            ["ForEntry*", "ForValues*", "ValuesOf*", "ReadAttribute", "ReadAttributes", "ReadAttributeValues*", "AsText*", "AsBytes*",
              "AsInteger*", "AsGuid*", "AsSid*", "Continue*"]),
 
         new("Where a block of values begins and ends", "AttributeRange",
@@ -129,7 +130,8 @@ public sealed class ConceptRegistryTests
 
         new("Whether a run may be used", "RunComparability",
             ["Evaluate*", "MayBeBaseline*", "IsBaselineEligible*", "CanCompare*", "MayCompare*",
-             "IsComparable*", "CompareCompatibility*", "NoEarlierRun*", "EarlierRunDeleted*"]),
+             "IsComparable*", "CompareCompatibility*", "NoEarlierRun*", "EarlierRunDeleted*"],
+            [typeof(SecureAD.Evidence.Run.ComparabilityVerdict), typeof(SecureAD.Evidence.Run.BaselineVerdict)]),
 
         new("What a bundle's files are called", "BundleLayout",
             ["EvidenceFileName", "PartialFileName", "SealFileName", "AnnotationsFileName",
@@ -167,8 +169,8 @@ public sealed class ConceptRegistryTests
             (from concept in Registry
              from declaration in Declarations()
              where !IsOwnedBy(declaration.Type, concept.Owner)
-             where concept.Shapes.Any(shape => Matches(shape, declaration.Member))
-             select $"  {ReadableName(declaration.Type)}.{declaration.Member} answers "
+             where Answers(concept, declaration.Member)
+             select $"  {ReadableName(declaration.Type)}.{declaration.Member.Name} answers "
                     + $"'{concept.Name}', which is owned by {concept.Owner}")
             .OrderBy(t => t, StringComparer.Ordinal)
             .ToList();
@@ -217,7 +219,7 @@ public sealed class ConceptRegistryTests
 
         var empty = Registry
             .Where(c => !declarations.Any(d =>
-                IsOwnedBy(d.Type, c.Owner) && c.Shapes.Any(shape => Matches(shape, d.Member))))
+                IsOwnedBy(d.Type, c.Owner) && Answers(c, d.Member)))
             .Select(c => $"  '{c.Name}': {c.Owner} declares no member matching "
                          + $"{string.Join(", ", c.Shapes)}")
             .ToList();
@@ -266,7 +268,7 @@ public sealed class ConceptRegistryTests
         Assert.Contains(
             declarations,
             d => ReadableName(d.Type) == nameof(SecureAD.Kernel.Schema.SchemaGuidCatalog)
-                 && d.Member == nameof(SecureAD.Kernel.Schema.SchemaGuidCatalog.GuidFor));
+                 && d.Member.Name == nameof(SecureAD.Kernel.Schema.SchemaGuidCatalog.GuidFor));
 
         Assert.Contains(
             Registry,
@@ -298,6 +300,21 @@ public sealed class ConceptRegistryTests
     public void TheShapeMatchesTheWholeNameAndNotAPartOfIt(string shape, string member, bool expected)
     {
         Assert.Equal(expected, Matches(shape, member));
+    }
+
+    [Theory]
+    [InlineData("Security descriptor parsing", typeof(SecureAD.Kernel.GroupPolicy.GptIniVersionParser), "Parse", false)]
+    [InlineData("Security descriptor parsing", typeof(SecureAD.Kernel.Security.SecurityDescriptorParser), "Parse", true)]
+    [InlineData("Whether a run may be used", typeof(SecureAD.Kernel.GroupPolicy.RegistryPolicyInterpreter), "Evaluate", false)]
+    [InlineData("Whether a run may be used", typeof(SecureAD.Evidence.Run.RunComparability), "Evaluate", true)]
+    [InlineData("Operation outcome", typeof(SecureAD.Evidence.WqlQueryReading), "Failed", false)]
+    [InlineData("Operation outcome", typeof(SecureAD.Kernel.Result<int>), "IsSuccess", true)]
+    [InlineData("What an entry's values mean", typeof(SecureAD.Judgement.JudgementReader), "ReadAttributeWritePermission", false)]
+    public void CommonNamesAreCheckedAgainstTheQuestionTheyAnswer(string concept, Type type, string name, bool expected)
+    {
+        var member = type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
+            .First(member => member.Name == name);
+        Assert.Equal(expected, Answers(Registry.Single(value => value.Name == concept), member));
     }
 
     /// <summary>
@@ -342,6 +359,16 @@ public sealed class ConceptRegistryTests
             "^" + string.Join("[A-Za-z0-9_]*", shape.Split('*').Select(Regex.Escape)) + "$",
             RegexOptions.CultureInvariant);
 
+    private static bool Answers(Concept concept, MemberInfo member) =>
+        concept.Shapes.Any(shape => Matches(shape, member.Name))
+        && (concept.AnswerTypes is null || concept.AnswerTypes.Contains(member switch
+        {
+            MethodInfo method => method.ReturnType,
+            PropertyInfo property => property.PropertyType,
+            FieldInfo field => field.FieldType,
+            _ => null,
+        }));
+
     /// <summary>
     /// A type owns a concept if it is the named type, or is nested inside it - a helper written
     /// inside the owner is part of the owner's answer, not a rival to it.
@@ -374,7 +401,7 @@ public sealed class ConceptRegistryTests
     /// policing the compiler.
     /// </para>
     /// </summary>
-    private static IEnumerable<(Type Type, string Member)> Declarations() =>
+    private static IEnumerable<(Type Type, MemberInfo Member)> Declarations() =>
         Types()
             .Where(t => !t.IsEnum)
             .SelectMany(t => t
@@ -385,7 +412,7 @@ public sealed class ConceptRegistryTests
                 .Where(m => m is not MethodInfo method || !method.IsSpecialName)
                 .Where(m => !m.Name.Contains('<', StringComparison.Ordinal))
                 .Where(m => !CompilerWritten.Contains(m.Name))
-                .Select(m => (t, m.Name)))
+                .Select(m => (t, m)))
             .Distinct();
 
     /// <summary>Names the compiler generates for a record, which no author wrote.</summary>

@@ -4,6 +4,7 @@ using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -13,6 +14,7 @@ using SecureAD.Evidence.Findings;
 using SecureAD.Judgement;
 using SecureAD.Kernel.Security;
 using SecureAD.Shell.ViewModels;
+using SecureAD.Shell.Views;
 using Xunit;
 
 namespace SecureAD.Next.Tests.Shell;
@@ -34,6 +36,9 @@ public sealed class FindingsViewTests
             Assert.Same(model.NextLapsCommand, next.Command);
             Assert.Equal(model.HasEarlierLaps, previous.IsEnabled);
             Assert.Equal(model.HasMoreLaps, next.IsEnabled);
+            var export = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, model.LapsExportLabel));
+            Assert.Same(model.ExportLapsCommand, export.Command);
+            Assert.Equal(model.CanExportLaps, export.IsEnabled);
             Assert.Contains(Descendants<TextBlock>(view), text => text.Text == "Page " + model.LapsPageNumber);
             Assert.Contains(Descendants<TextBox>(view), text =>
                 Equals(text.ToolTip, "Filter computers in the selected scope by computer or domain."));
@@ -53,201 +58,225 @@ public sealed class FindingsViewTests
         model.SelectedFinding = row;
         Layout(view, 900, 430);
         Assert.Same(row, grid.SelectedItem);
-        Assert.Equal(Visibility.Visible, ((Border)view.FindName("FindingDetails")).Visibility);
-        Assert.True(((ScrollViewer)view.FindName("FindingDetailsScroll")).ActualHeight >= 30);
+        Assert.False(model.HasFindingPresentation);
+        Assert.Empty(Descendants<Expander>(view));
         model.CloseFindingDetails();
-        Layout(view, 900, 430);
-        Assert.Null(grid.SelectedItem);
-        Assert.Equal(Visibility.Collapsed, ((Border)view.FindName("FindingDetails")).Visibility);
+        Assert.Same(row, model.SelectedFinding);
         model.Suspend();
     });
 
     [Theory]
     [InlineData(900, 430)]
     [InlineData(1300, 650)]
-    public void Sec071SummaryAndRouteActionAreVisibleWithoutHidingTheList(int width, int height) => OnSta(() =>
+    public void SummaryGridHasShortTitlesAndNoAutomaticExplanation(int width, int height) => OnSta(() =>
     {
         var (model, source) = Model();
-        var generation = Guid.NewGuid();
-        var account = Guid.NewGuid();
-        var seal = new string('a', 64);
-        source.Tier0Summary = SecureAD.Kernel.Result<Tier0FindingSummary?>.Success(
-            new(1, generation, null, seal, seal, 1, PathRiskAvailability.Recorded, RuleExecutionOutcome.Succeeded, 9, 7, 0));
-        model.RuleFilter = "SEC-071";
-        var row = new FindingRowViewModel(new Finding("SEC-071", 1, Severity.High,
-            new(FindingSubjectKind.Account, account.ToString("D")), account, "CN=Alice,DC=contoso,DC=com",
-            "contoso.com", "user", "Unexpected route", EvidenceCompleteness.Complete,
-            new Tier0RouteFindingEvidence(generation, null, seal, seal, "Tier0ControlPlane", account,
-                "S-1-5-21-1-2-3-1100", "CN=Alice,DC=contoso,DC=com", 1, seal)) { PrincipalName = "Alice" });
-        model.SelectedFinding = row;
         var view = View(model);
+        var grid = Assert.Single(Descendants<DataGrid>(view));
+        model.SelectedFinding = model.Findings[0];
         Layout(view, width, height);
-        var summary = (TextBlock)view.FindName("Tier0FindingSummary");
-        Assert.Contains("Accounts with SEC-071 findings: 7", summary.Text);
-        Assert.Contains("Supported checks only; other routes may exist.", summary.Text);
-        var button = Assert.Single(Descendants<Button>(view), value => Equals(value.Content, "View saved routes"));
-        Assert.Equal(Visibility.Visible, button.Visibility);
-        Assert.Same(model.OpenSavedRoutesCommand, button.Command);
-        Assert.Same(row, button.CommandParameter);
-        Assert.True(Assert.Single(Descendants<DataGrid>(view)).ActualHeight >= 50);
-        Assert.True(((ScrollViewer)view.FindName("FindingDetailsScroll")).ActualHeight >= 30);
+        Assert.Equal(new[] { "Severity", "Finding", "Principal", "Affected object", "Domain", "Coverage" },
+            grid.Columns.Select(column => column.Header));
+        Assert.Same(model.OpenFindingCommand, GridRowAction.GetCommand(grid));
+        Assert.Same(model.SelectedFinding, grid.SelectedItem);
+        Assert.False(model.HasFindingPresentation);
+        Assert.Empty(source.FindingSelections);
+        Assert.Empty(Descendants<Expander>(view));
+        Assert.DoesNotContain(Descendants<TextBox>(view), text => text.Text == model.Findings[0].Detail);
+        Assert.Contains(Descendants<TextBlock>(view), text => text.Text == model.Findings[0].FindingTitle);
+        Assert.Contains(Descendants<TextBlock>(view), text => text.Text == model.Findings[0].Rule);
+        var panel = Assert.IsType<DockPanel>(grid.Parent);
+        var occupied = panel.Children.OfType<FrameworkElement>()
+            .Where(child => child != grid && child.Visibility != Visibility.Collapsed)
+            .Sum(child => child.ActualHeight + child.Margin.Top + child.Margin.Bottom);
+        Assert.True(grid.ActualHeight >= 50);
+        Assert.Equal(panel.ActualHeight - occupied, grid.ActualHeight, 1);
     });
 
     [Fact]
-    public void CloseDetailsReturnsTheListSpaceWithoutChangingItsQuestion() => OnSta(() =>
+    public void RowGestureUsesTheClickedRowRatherThanTheEarlierSelection() => OnSta(() =>
     {
         var (model, source) = Model();
-        model.SeverityFilter = "High";
-        model.RuleFilter = "SEC-010";
-        model.NextFindingsCommand.Execute(null);
+        source.FindingsPage = source.FindingsPage with
+        {
+            Findings = [source.FindingsPage.Findings[0], ObjectFindingsPagingTests.Finding(2)],
+        };
+        model.Read();
         var view = View(model);
         var grid = Assert.Single(Descendants<DataGrid>(view));
-        var row = model.Findings[0];
-        grid.SetCurrentValue(Selector.SelectedItemProperty, row);
+        model.SelectedFinding = model.Findings[0];
         Layout(view, 900, 430);
-        Assert.Same(row, model.SelectedFinding);
-        var details = (Border)view.FindName("FindingDetails");
-        Assert.Equal(Visibility.Visible, details.Visibility);
-        var height = grid.ActualHeight;
-        var page = model.FindingsPageNumber;
-        var container = model.Selected;
-        var reads = source.FindingsReads;
-        var items = model.Findings.ToArray();
-        var button = CloseButton(view);
-        Assert.Same(model.CloseFindingDetailsCommand, button.Command);
-
-        ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)!).Invoke();
-        Layout(view, 900, 430);
-
-        Assert.Null(model.SelectedFinding);
-        Assert.Null(grid.SelectedItem);
-        Assert.Equal(Visibility.Collapsed, details.Visibility);
-        Assert.True(grid.ActualHeight > height + 100);
-        Assert.Equal(page, model.FindingsPageNumber);
-        Assert.Same(container, model.Selected);
-        Assert.Equal("High", model.SeverityFilter);
-        Assert.Equal("SEC-010", model.RuleFilter);
-        Assert.Equal(items, model.Findings.ToArray());
-        Assert.Equal(reads, source.FindingsReads);
-
-        grid.SetCurrentValue(Selector.SelectedItemProperty, row);
-        Layout(view, 900, 430);
-        Assert.Same(row, model.SelectedFinding);
-        Assert.Equal(Visibility.Visible, details.Visibility);
+        var clicked = Assert.IsType<DataGridRow>(grid.ItemContainerGenerator.ContainerFromIndex(1));
+        grid.RaiseEvent(DoubleClick(clicked));
+        Assert.Same(model.Findings[1], model.SelectedFinding);
+        Assert.Equal(model.Findings[1].Saved.Reference, Assert.Single(source.FindingSelections).Reference);
+        Assert.Equal(model.Findings[1].Detail, model.FindingDetails!.Finding!.Detail);
+        model.CloseFindingDetails();
+        var header = Descendants<DataGridColumnHeader>(grid).First();
+        grid.RaiseEvent(DoubleClick(header));
+        Assert.False(model.HasFindingPresentation);
+        Assert.Single(source.FindingSelections);
     });
 
     [Theory]
-    [InlineData("SelectedFinding.WhyItMatters")]
-    [InlineData("SelectedFinding.WhatToDo")]
-    [InlineData("SelectedFinding.About")]
-    public void GuidanceUsesReadableBodyTextEvenUnderALightInheritedForeground(string path) => OnSta(() =>
+    [InlineData("FindingDetails.Finding.WhyItMatters")]
+    [InlineData("FindingDetails.Finding.WhatToDo")]
+    public void GuidanceKeepsReadableBodyText(string path) => OnSta(() =>
     {
         var (model, _) = Model();
-        var view = View(model);
-        model.SelectedFinding = model.Findings[0];
+        model.OpenFinding(model.Findings[0]);
+        var view = View(model, "FindingDetailView.xaml");
         Layout(view, 900, 430);
         var text = BoundText(view, path);
-        var expected = path switch
-        {
-            "SelectedFinding.WhyItMatters" => model.SelectedFinding.WhyItMatters,
-            "SelectedFinding.WhatToDo" => model.SelectedFinding.WhatToDo,
-            _ => model.SelectedFinding.About,
-        };
-
-        Assert.False(string.IsNullOrWhiteSpace(expected));
-        Assert.Equal(expected, text.Text);
+        var finding = model.FindingDetails!.Finding!;
+        Assert.Equal(path.EndsWith("WhyItMatters", StringComparison.Ordinal) ? finding.WhyItMatters : finding.WhatToDo, text.Text);
         Assert.Equal(((SolidColorBrush)view.FindResource("PrimaryTextBrush")).Color,
             Assert.IsType<SolidColorBrush>(text.Foreground).Color);
         Assert.Equal(TextWrapping.Wrap, text.TextWrapping);
         Assert.True(text.FontSize >= (double)view.FindResource("BodyFontSize"));
     });
 
-    [Fact]
-    public void ExpandedMembershipEvidenceKeepsItsUncertaintyReadable() => OnSta(() =>
+    [Theory]
+    [InlineData(900, 430)]
+    [InlineData(1300, 650)]
+    public void ObjectGridUsesTheSameExactFindingAction(int width, int height) => OnSta(() =>
     {
-        var (model, _) = Model();
-        var view = View(model);
-        var row = new FindingRowViewModel(new Finding(
-            "SEC-021", 2, Severity.Critical, new FindingSubject(FindingSubjectKind.Account, "Alice"), Guid.NewGuid(),
-            "CN=Alice,DC=contoso,DC=com", "contoso.com", "user", "Finding", EvidenceCompleteness.Complete,
-            new KerberoastableAccountEvidence("S-1-5-21-11-22-33-1100", ["HTTP/service"], 512)
-            { MembershipRoutes = MembershipRouteSummary.NotDerived }));
-        model.Findings.Add(row);
-        model.SelectedFinding = row;
-        Layout(view, 900, 430);
-        var expander = Assert.Single(Descendants<Expander>(view));
-        Assert.Equal(Visibility.Visible, expander.Visibility);
-        expander.IsExpanded = true;
-        Layout(view, 900, 430);
-        var text = BoundText(expander, "SelectedFinding.MembershipCompleteness");
-
-        Assert.Equal(model.SelectedFinding.MembershipCompleteness, text.Text);
-        Assert.Contains("routes were not derived", text.Text, StringComparison.Ordinal);
-        Assert.Equal(((SolidColorBrush)view.FindResource("PrimaryTextBrush")).Color,
-            Assert.IsType<SolidColorBrush>(text.Foreground).Color);
-    });
-
-    [Fact]
-    public void GuidanceHasThreeDistinctProminentHeadings() => OnSta(() =>
-    {
-        var (model, _) = Model();
-        var view = View(model);
-        model.SelectedFinding = model.Findings[0];
-        Layout(view, 900, 430);
-        string[] headings = ["WHY IT MATTERS", "WHAT TO DO", "WHAT THIS RULE LOOKS FOR"];
-        string[] bodies = ["SelectedFinding.WhyItMatters", "SelectedFinding.WhatToDo", "SelectedFinding.About"];
-        var scroll = (ScrollViewer)view.FindName("FindingDetailsScroll");
-        for (var i = 0; i < headings.Length; i++)
-        {
-            var heading = Assert.Single(Descendants<TextBlock>(scroll).Where(text => text.Text == headings[i]));
-            var body = BoundText(scroll, bodies[i]);
-            Assert.Equal(FontWeights.SemiBold, heading.FontWeight);
-            Assert.True(heading.FontSize > body.FontSize);
-            var top = heading.TransformToAncestor(scroll).Transform(new Point()).Y;
-            Assert.True(body.TransformToAncestor(scroll).Transform(new Point()).Y >= top + heading.ActualHeight);
-            if (i > 0)
-            {
-                var previous = BoundText(scroll, bodies[i - 1]);
-                Assert.True(top >= previous.TransformToAncestor(scroll).Transform(new Point()).Y + previous.ActualHeight + 12);
-            }
-        }
+        var (model, source) = Model();
+        var selected = model.Findings[0];
+        source.Attributes = FakeAssetSource.CapturedObject(selected.DistinguishedName, "user") with { ObjectGuid = selected.Saved.ObjectGuid };
+        model.OpenFinding(selected);
+        model.OpenAffectedObjectCommand.Execute(null);
+        Assert.True(model.ObjectReadCompletion.IsCompletedSuccessfully);
+        var opened = model.Opened!;
+        opened.Show(ObjectSectionCatalog.Findings);
+        Assert.True(opened.ReadCompletion.IsCompletedSuccessfully);
+        model.CloseFindingDetails();
+        var view = ObjectNavigationViewTests.ObjectView(model);
+        Layout(view, width, height);
+        var grid = Assert.Single(Descendants<DataGrid>(view));
+        Assert.Same(model.OpenFindingCommand, GridRowAction.GetCommand(grid));
+        var row = Assert.IsType<DataGridRow>(grid.ItemContainerGenerator.ContainerFromIndex(0));
+        grid.RaiseEvent(DoubleClick(row));
+        Assert.Equal(selected.Saved.Reference, model.FindingDetails!.Finding!.Saved.Reference);
+        Assert.Same(opened, model.Opened);
+        model.CloseFindingDetails();
+        Assert.Same(Assert.Single(Assert.IsType<FindingsSectionViewModel>(opened.Content).Findings), grid.SelectedItem);
     });
 
     [Theory]
     [InlineData(900, 430)]
     [InlineData(1300, 650)]
-    [InlineData(1600, 900)]
-    public void LongGuidanceScrollsWithoutHidingTheListOrCloseAction(int width, int height) => OnSta(() =>
+    public void WindowContentScrollsWhileItsActionsRemainVisible(int width, int height) => OnSta(() =>
     {
-        var (model, _) = Model();
-        var view = View(model);
+        var (model, source) = Model();
+        var longFinding = GenericFinding(source.FindingsPage.Findings[0]) with
+        {
+            Detail = string.Join(Environment.NewLine, Enumerable.Range(1, 80).Select(index => $"Recorded observation {index}: retain this saved explanation.")),
+        };
+        source.FindingsPage = source.FindingsPage with
+        {
+            Findings = [longFinding],
+        };
+        source.FilterValues = new([longFinding.Severity], [longFinding.RuleId], 1);
+        model.Read();
         model.SelectedFinding = model.Findings[0];
+        model.OpenFinding(model.SelectedFinding);
+        var view = View(model, "FindingDetailView.xaml");
         Layout(view, width, height);
         var scroll = (ScrollViewer)view.FindName("FindingDetailsScroll");
-        var grid = Assert.Single(Descendants<DataGrid>(view));
-        var button = CloseButton(view);
-        Assert.True(grid.ActualHeight >= 50, $"Findings list height: {grid.ActualHeight}");
         Assert.True(scroll.ScrollableHeight > 0);
-        Assert.Equal(ScrollBarVisibility.Disabled, scroll.HorizontalScrollBarVisibility);
-        Assert.DoesNotContain(button, Descendants<Button>(scroll));
-        var buttonTop = button.TransformToAncestor(view).Transform(new Point()).Y;
-        Assert.InRange(buttonTop, 0, height - button.ActualHeight);
-
+        foreach (var heading in new[] { "Finding", "Why it matters", "What to do" })
+            Assert.Equal(FontWeights.SemiBold,
+                Assert.Single(Descendants<TextBlock>(scroll), text => text.Text == heading).FontWeight);
+        var close = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "Close"));
+        var open = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "Open affected object"));
+        Assert.Same(model.CloseFindingDetailsCommand, close.Command);
+        Assert.Same(model.OpenAffectedObjectCommand, open.Command);
+        Assert.DoesNotContain(close, Descendants<Button>(scroll));
+        foreach (var button in new[] { close, open })
+        {
+            var bounds = button.TransformToAncestor(view).TransformBounds(new Rect(0, 0, button.ActualWidth, button.ActualHeight));
+            Assert.True(bounds.Top >= 0 && bounds.Bottom <= height);
+        }
         scroll.ScrollToEnd();
         Layout(view, width, height);
-
         Assert.True(scroll.VerticalOffset > 0);
-        var reference = BoundText(scroll, "SelectedFinding.MicrosoftReference");
-        Assert.Equal(model.SelectedFinding.MicrosoftReference, reference.Text);
-        Assert.Equal(Visibility.Visible, reference.Visibility);
-        var referenceTop = reference.TransformToAncestor(scroll).Transform(new Point()).Y;
-        Assert.True(referenceTop + reference.ActualHeight <= scroll.ActualHeight + 1);
+        Assert.Equal(model.FindingDetails!.Finding!.MicrosoftReference,
+            BoundText(scroll, "FindingDetails.Finding.MicrosoftReference").Text);
+        var rows = model.Findings.ToArray();
+        var reads = source.FindingsReads;
+        ((IInvokeProvider)new ButtonAutomationPeer(close).GetPattern(PatternInterface.Invoke)!).Invoke();
+        Layout(view, width, height);
+        Assert.False(model.HasFindingPresentation);
+        Assert.Same(rows[0], model.SelectedFinding);
+        Assert.Equal(rows, model.Findings.ToArray());
+        Assert.Equal(reads, source.FindingsReads);
     });
 
-    private static (AssetsViewModel Model, FakeAssetSource Source) Model()
+    [Fact]
+    public void MembershipTextIsAbsentUntilTheExplicitAction() => OnSta(() =>
+    {
+        var finding = ServiceRegistrationDetailTests.Finding(ObjectFindingsPagingTests.Finding(1));
+        var (model, source) = Model(finding);
+        ServiceRegistrationDetailTests.Configure(source, model.Findings[0].Saved);
+        model.OpenFinding(model.Findings[0]);
+        var view = View(model, "FindingDetailView.xaml");
+        Layout(view, 900, 430);
+        Assert.False(Assert.Single(source.FindingSelections).Membership);
+        Assert.Null(model.FindingDetails!.ServiceRegistration!.Memberships);
+        var action = Assert.Single(Descendants<Button>(view), button => Equals(button.Content, "View membership evidence"));
+        Assert.True(action.IsEnabled);
+        ((IInvokeProvider)new ButtonAutomationPeer(action).GetPattern(PatternInterface.Invoke)!).Invoke();
+        Layout(view, 900, 430);
+        Assert.Equal(new[] { false }, source.FindingSelections.Select(read => read.Membership));
+        Assert.Equal(new[] { "names", "groups" }, source.ServiceReads);
+        Assert.Contains("routes were not derived", model.FindingDetails.ServiceRegistration.MembershipCompleteness, StringComparison.Ordinal);
+        Assert.Equal(model.FindingDetails.ServiceRegistration.MembershipCompleteness, BoundText(view, "FindingDetails.ServiceRegistration.MembershipCompleteness").Text);
+        Assert.False(action.IsEnabled);
+    });
+
+    [Theory]
+    [InlineData(900, 430)]
+    [InlineData(1300, 650)]
+    public void Sec071KeepsItsSummaryAndExistingSavedRouteAction(int width, int height) => OnSta(() =>
+    {
+        var generation = Guid.NewGuid();
+        var account = Guid.NewGuid();
+        var seal = new string('a', 64);
+        var finding = new Finding("SEC-071", 1, Severity.High,
+            new(FindingSubjectKind.Account, account.ToString("D")), account, "CN=Alice,DC=contoso,DC=com",
+            "contoso.com", "user", "Unexpected route", EvidenceCompleteness.Complete,
+            new Tier0RouteFindingEvidence(generation, null, seal, seal, "Tier0ControlPlane", account,
+                "S-1-5-21-1-2-3-1100", "CN=Alice,DC=contoso,DC=com", 1, seal)) { PrincipalName = "Alice" };
+        var (model, source) = Model(finding);
+        source.Tier0Summary = SecureAD.Kernel.Result<Tier0FindingSummary?>.Success(
+            new(1, generation, null, seal, seal, 1, PathRiskAvailability.Recorded, RuleExecutionOutcome.Succeeded, 9, 7, 0));
+        model.RuleFilter = "SEC-071";
+        var main = View(model);
+        Layout(main, width, height);
+        Assert.Contains("Accounts with SEC-071 findings: 7", ((TextBlock)main.FindName("Tier0FindingSummary")).Text);
+        model.OpenFinding(model.Findings[0]);
+        var detail = View(model, "FindingDetailView.xaml");
+        Layout(detail, width, height);
+        var action = Assert.Single(Descendants<Button>(detail), button => Equals(button.Content, "View saved routes"));
+        Assert.Equal(Visibility.Visible, action.Visibility);
+        Assert.Same(model.OpenSavedRoutesCommand, action.Command);
+        Assert.Same(model.FindingDetails!.Finding, action.CommandParameter);
+    });
+
+    internal static Finding GenericFinding(Finding original)
+    {
+        var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == "SEC-091").Definition;
+        return original with { RuleId = definition.Id, RuleVersion = definition.Version, Severity = definition.Severity,
+            ObjectClass = "computer", Subject = new(FindingSubjectKind.DirectoryObject, original.ObjectGuid.ToString("D")),
+            Evidence = new LapsDeploymentEvidence(null, null,
+                new(LapsCapabilityKind.WindowsLapsCapable, LapsCapabilityBasis.OperatingSystemVersion, "Windows 11", "10.0 (22631)")) };
+    }
+
+    private static (AssetsViewModel Model, FakeAssetSource Source) Model(Finding? finding = null)
     {
         const string domain = "DC=contoso,DC=com";
-        var finding = new Finding("SEC-010", 1, Severity.High,
+        finding ??= new Finding("SEC-010", 1, Severity.High,
             new FindingSubject(FindingSubjectKind.Account, "svc-web"), Guid.NewGuid(),
             "CN=svc-web," + domain, "contoso.com", "user", "Unconstrained delegation.",
             EvidenceCompleteness.Complete,
@@ -255,15 +284,15 @@ public sealed class FindingsViewTests
         var source = new FakeAssetSource
         {
             Tree = new DirectoryTree([new TreeNode(domain, "contoso", null, TreeNodeOrigin.Partition, [])], []),
-            FindingsPage = new FindingsPage([finding], new FindingsPageMark(3, "SEC-010", finding.DistinguishedName, 1), RulesRan: 1),
-            FilterValues = new FindingsFilterValues([Severity.High], ["SEC-010"], RulesRan: 1),
+            FindingsPage = new FindingsPage([finding], new FindingsPageMark(3, finding.RuleId, finding.DistinguishedName, 1), 1),
+            FilterValues = new FindingsFilterValues([finding.Severity], [finding.RuleId], 1),
         };
         var model = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
-        model.Show(@"C:\offline-fixture\findings", aCaptureIsRunning: false);
+        model.Show(@"C:\offline-fixture\findings", false);
         return (model, source);
     }
 
-    internal static FrameworkElement View(AssetsViewModel model, string file = "FindingsView.xaml")
+    internal static FrameworkElement View(object model, string file = "FindingsView.xaml")
     {
         XNamespace wpf = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
@@ -271,27 +300,34 @@ public sealed class FindingsViewTests
         var root = XDocument.Load(Path.Combine(shell, "Views", file)).Root!;
         root.Attribute(xaml + "Class")!.Remove();
         root.Attribute(xaml + "ClassModifier")!.Remove();
-        // Only the unused internal column proxy is omitted. Controls and bindings are the actual
-        // production view, with its compiled application theme rather than test-specific styles.
-        root.Element(wpf + "UserControl.Resources")?.Remove();
+        var resourceProperty = wpf + (root.Name.LocalName + ".Resources");
+        var ownedResources = root.Element(resourceProperty);
+        var dictionary = ownedResources?.Element(wpf + "ResourceDictionary")
+            ?? new XElement(wpf + "ResourceDictionary", ownedResources?.Elements());
+        ownedResources?.Remove();
         var assembly = typeof(AssetsViewModel).Assembly.GetName().Name;
         var sources = XDocument.Load(Path.Combine(shell, "App.xaml")).Descendants(wpf + "ResourceDictionary")
             .Attributes("Source").Select(attribute => attribute.Value).Where(source => !source.StartsWith("Views/", StringComparison.Ordinal));
-        root.AddFirst(new XElement(wpf + "UserControl.Resources", new XElement(wpf + "ResourceDictionary",
-            new XElement(wpf + "ResourceDictionary.MergedDictionaries", sources.Select(source => new XElement(wpf + "ResourceDictionary",
-                new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source)))))));
-        var view = (UserControl)XamlReader.Parse(root.ToString());
-        view.Foreground = Brushes.White;
+        var merged = dictionary.Element(wpf + "ResourceDictionary.MergedDictionaries");
+        if (merged is null) { merged = new XElement(wpf + "ResourceDictionary.MergedDictionaries"); dictionary.AddFirst(merged); }
+        merged.AddFirst(sources.Select(source => new XElement(wpf + "ResourceDictionary",
+            new XAttribute("Source", source.StartsWith("pack:", StringComparison.Ordinal) ? source : $"pack://application:,,,/{assembly};component/" + source))));
+        root.AddFirst(new XElement(resourceProperty, dictionary));
+        using var xml = System.Xml.XmlReader.Create(new StringReader(root.ToString()));
+        using var reader = new System.Xaml.XamlXmlReader(xml, XamlReader.GetWpfSchemaContext(), new System.Xaml.XamlXmlReaderSettings
+        { LocalAssembly = typeof(AssetsViewModel).Assembly });
+        var view = (FrameworkElement)XamlReader.Load(reader);
+        if (view is Control control) control.Foreground = Brushes.White;
         view.DataContext = model;
         Layout(view, 900, 430);
         return view;
     }
 
-    private static Button CloseButton(DependencyObject view) => Assert.Single(Descendants<Button>(view)
-        .Where(button => Equals(button.Content, "Close details")));
+    private static TextBlock BoundText(DependencyObject view, string path) => Assert.Single(Descendants<TextBlock>(view),
+        text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == path);
 
-    private static TextBlock BoundText(DependencyObject view, string path) => Assert.Single(Descendants<TextBlock>(view)
-        .Where(text => BindingOperations.GetBinding(text, TextBlock.TextProperty)?.Path.Path == path));
+    private static MouseButtonEventArgs DoubleClick(DependencyObject source) => new(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+    { RoutedEvent = Control.MouseDoubleClickEvent, Source = source };
 
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {

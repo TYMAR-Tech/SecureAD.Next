@@ -36,7 +36,20 @@ public sealed partial class OpenedRunResultsTests
                 Assert.Equal(original.Findings.Count(finding => finding.RuleId == "SEC-071"), summary.AccountsWithFindings);
             }
         }
-        var expected = original.Findings.Select(finding => FindingDisplaySnapshot(new(finding))).ToArray();
+        var expected = original.Findings.Select(finding =>
+        {
+            var item = FindingListItem.FromFinding(finding);
+            item = item with
+            {
+                Detail = finding.RuleId switch
+                {
+                    "SEC-061" => BroadPreWindows2000Membership.Explanation,
+                    "SEC-062" => BroadAdministrativeGroupMembership.Explanation,
+                    _ => item.Detail,
+                },
+            };
+            return FindingDisplaySnapshot(new(item, current: null));
+        }).ToArray();
         var permissionHeaders = original.Findings.Any(finding => finding.Evidence is PrivilegedSidHistoryEvidence
             or ObjectOwnershipEvidence or ObjectTakeoverEvidence or LapsPasswordReaderEvidence or LapsDecryptorEvidence);
         using var counts = new FindingsVerificationCounts(directory);
@@ -48,7 +61,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Null(screen.Refusal);
         Assert.Null(screen.ViewRefusal);
         Assert.False(screen.IsLoading);
-        Assert.Equal(expected, screen.Findings.Select(FindingDisplaySnapshot));
+        Assert.Equal(string.Join("\n", expected), string.Join("\n", screen.Findings.Select(FindingDisplaySnapshot)));
         Assert.Equal(SavedPathText.Summary(summary), screen.Tier0SummaryText);
         Assert.Equal(original.Findings.Count == 0, screen.NothingWasFound);
         for (var index = 0; index < original.Findings.Count; index++)
@@ -70,7 +83,10 @@ public sealed partial class OpenedRunResultsTests
                 LapsDecryptorEvidence value => value.IsComplete,
                 _ => true,
             });
-            Assert.Equal(complete ? "Complete" : "May be incomplete", screen.Findings[index].Coverage);
+            var coverage = proof is CircularMembershipEvidence
+                ? complete ? "Cycle inventory: open details" : "May be incomplete; cycle inventory: open details"
+                : complete ? "Complete" : "May be incomplete";
+            Assert.Equal(coverage, screen.Findings[index].Coverage);
         }
         Assert.True(source.ReadRuleExecutions(directory).IsSuccess);
         Assert.True(source.ReadFindingsFilterValues(directory).IsSuccess);
@@ -113,7 +129,7 @@ public sealed partial class OpenedRunResultsTests
         screen.SelectedFinding = screen.Findings[0];
         Assert.True(screen.SelectedFinding.HasGuidance);
         screen.CloseFindingDetails();
-        Assert.Null(screen.SelectedFinding);
+        Assert.Same(screen.Findings[0], screen.SelectedFinding);
         screen.NextFindings();
         await screen.ReadCompletion;
         Assert.Equal(5, screen.Findings.Count);
@@ -147,30 +163,37 @@ public sealed partial class OpenedRunResultsTests
     }
 
     [Fact]
-    public async Task Arch03ObjectFindingsAndReturnNavigationDoNotOpenOriginalProof()
+    public async Task Arch03ObjectFindingsAndReturnNavigationOpenOnlyTheSelectedSettingsPart()
     {
         var directory = FindingsPagingRun();
-        using var locks = new FindingsHeavyLocks(directory);
+        using var locks = new FindingsHeavyLocks(directory, permissionHeaders: true);
         using var counts = new FindingsVerificationCounts(directory);
         using var source = new BundleAssetSource();
         var screen = new AssetsViewModel(source) { Pane = AssetsPane.Findings };
         screen.Show(directory, aCaptureIsRunning: false);
         await screen.ReadCompletion;
         var before = screen.Findings.Select(FindingDisplaySnapshot).ToArray();
+        Assert.Equal(0L, counts.Heavy);
         screen.OpenFinding(screen.Findings[0]);
+        await screen.FindingDetails!.ReadCompletion;
+        Assert.True(screen.FindingDetails.HasCapturedSetting);
+        screen.OpenAffectedObjectCommand.Execute(null);
         await screen.ObjectReadCompletion;
         Assert.NotNull(screen.Opened);
         Assert.Null(screen.ObjectRefusal);
+        screen.Opened.Show(ObjectSectionCatalog.Findings);
+        await screen.Opened.ReadCompletion;
         Assert.Equal(ObjectSectionCatalog.Findings, screen.Opened.Selected!.Key);
         var findings = screen.Findings();
         Assert.Null(findings.Refusal);
         Assert.Equal(new[] { "SEC-022", "SEC-030" }, findings.Findings.Select(finding => finding.Rule));
         Assert.Equal("Display 000", findings.Findings[0].Principal);
-        Assert.Equal(0L, counts.Heavy);
+        Assert.Equal((1L, 0L, 0L, 0L, 0L), (counts.Count("permission"), counts.Count("path"),
+            counts.Count("facts"), counts.Count("evidence"), counts.Count("derivation")));
         screen.CloseObject();
         await screen.ReadCompletion;
         Assert.Equal(before, screen.Findings.Select(FindingDisplaySnapshot));
-        Assert.Equal((1L, 0L), (counts.Count("judgement"), counts.Proof));
+        Assert.Equal((1L, 1L), (counts.Count("judgement"), counts.Proof));
         screen.Suspend();
     }
 
@@ -317,22 +340,100 @@ public sealed partial class OpenedRunResultsTests
         using var source = new BundleAssetSource();
         var first = source.ReadFindingsList(directory, FindingsQuery.Everything() with { PageSize = 1 });
         Assert.True(first.IsSuccess, first.Error?.Description);
-        var display = new FindingRowViewModel(Assert.Single(first.Value.Findings));
+        var listed = Assert.Single(first.Value.Findings);
+        Assert.Null(listed.Membership);
+        Assert.Null(source.ReadSelectedFinding(directory, listed.Reference!.Value, false).Value.Membership);
+        var selected = source.ReadSelectedFinding(directory, listed.Reference.Value, true);
+        Assert.True(selected.IsSuccess, selected.Error?.Description);
+        var display = new FindingRowViewModel(selected.Value, current: null);
         Assert.True(display.HasMembershipEvidence);
         Assert.Equal("May be incomplete", display.Coverage);
-        Assert.Contains("Direct protection basis: Recorded direct protection", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Initial membership:", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("--primary group-->", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Contains a distribution group", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("not every possible path", display.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("membership evidence or capture coverage is incomplete", display.MembershipCompleteness, StringComparison.Ordinal);
+        var membership = Assert.IsType<FindingMembershipDisplay>(selected.Value.Membership);
+        Assert.Equal("Recorded direct protection", membership.DirectProtectionName);
+        var initial = Assert.Single(membership.MembershipRoutes.Memberships);
+        var route = Assert.Single(initial.Routes);
+        Assert.True(route.Steps[1].IsPrimaryGroup);
+        Assert.Equal(MembershipRouteAuthorization.DistributionGroup, route.Authorization);
+        Assert.False(route.EstablishesProtection);
+        Assert.Contains("not every possible path", ServiceRegistrationPresentation.MembershipNote, StringComparison.Ordinal);
+        Assert.Contains("membership evidence or capture coverage is incomplete", membership.MembershipRoutes.CompletenessDescription, StringComparison.Ordinal);
         var original = source.ReadFindings(directory, FindingsQuery.Everything() with { PageSize = 1 });
         Assert.True(original.IsSuccess, original.Error?.Description);
         Assert.Equal(new[] { "HTTP/a.ad.lab", "HTTP/a.ad.lab" },
             Assert.IsType<KerberoastableAccountEvidence>(Assert.Single(original.Value.Findings).Evidence).ServicePrincipalNames);
         var later = source.ReadFindingsList(directory, FindingsQuery.Everything().ResumingAfter(first.Value.Next!.Value));
-        Assert.False(later.IsSuccess);
-        Assert.NotNull(later.Error);
+        Assert.True(later.IsSuccess, later.Error?.Description);
+        var laterItem = Assert.Single(later.Value.Findings);
+        Assert.True(source.ReadSelectedFinding(directory, laterItem.Reference!.Value, false).IsSuccess);
+        var unsupported = source.ReadSelectedFinding(directory, laterItem.Reference.Value, true);
+        Assert.False(unsupported.IsSuccess);
+        Assert.NotNull(unsupported.Error);
+    }
+
+    [Fact]
+    public void FindingNavigationSelectedReadsUseStableIdentityAndRefuseOtherGenerations()
+    {
+        var directory = FindingsPagingRun();
+        using var source = new BundleAssetSource();
+        var listed = source.ReadFindingsList(directory, FindingsQuery.Everything()).Value.Findings;
+        foreach (var item in listed.Take(4))
+        {
+            var selected = source.ReadSelectedFinding(directory, item.Reference!.Value, false);
+            Assert.True(selected.IsSuccess, selected.Error?.Description);
+            Assert.Equal(item, selected.Value);
+            Assert.Equal(item.ObjectGuid, selected.Value.ObjectGuid);
+            Assert.Equal(item.Subject, selected.Value.Subject);
+        }
+        var reference = listed[0].Reference!.Value;
+        foreach (var invalid in new[]
+        {
+            reference with { GenerationId = Guid.NewGuid() },
+            reference with { FindingId = 0 },
+            reference with { FindingId = long.MaxValue },
+        })
+        {
+            var selected = source.ReadSelectedFinding(directory, invalid, false);
+            Assert.False(selected.IsSuccess);
+            Assert.NotNull(selected.Error);
+        }
+    }
+
+    [Fact]
+    public void FindingNavigationDoesNotReadEvenTheSelectedMembershipPayloadUntilRequested()
+    {
+        var directory = FindingsMembershipRun();
+        ChangeFindingsDatabase(directory, "UPDATE membership_route SET authorization='Broken' WHERE subject_id='1'");
+        using var source = new BundleAssetSource();
+        var page = source.ReadFindingsList(directory, FindingsQuery.Everything());
+        Assert.True(page.IsSuccess, page.Error?.Description);
+        var first = page.Value.Findings[0];
+        Assert.Null(first.Membership);
+        var selected = source.ReadSelectedFinding(directory, first.Reference!.Value, false);
+        Assert.True(selected.IsSuccess, selected.Error?.Description);
+        Assert.Null(selected.Value.Membership);
+        Assert.Equal(first, selected.Value);
+        var requested = source.ReadSelectedFinding(directory, first.Reference.Value, true);
+        Assert.False(requested.IsSuccess);
+        Assert.NotNull(requested.Error);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FindingNavigationStillRefusesMissingOrConflictingMembershipCompleteness(bool missing)
+    {
+        var directory = FindingsMembershipRun();
+        ChangeFindingsDatabase(directory, missing
+            ? """
+                DELETE FROM membership_route_step WHERE subject_id='1';
+                DELETE FROM membership_route WHERE subject_id='1';
+                DELETE FROM membership_route_summary WHERE subject_id='1';
+                """
+            : "UPDATE membership_route_summary SET incomplete_reasons=0 WHERE subject_id='1'");
+        using var source = new BundleAssetSource();
+        var listed = source.ReadFindingsList(directory, FindingsQuery.Everything());
+        Assert.False(listed.IsSuccess);
+        Assert.Contains("completeness", listed.Error.Description, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -371,7 +472,7 @@ public sealed partial class OpenedRunResultsTests
         Assert.Equal(new[]
         {
             "finding", "finding_circular_group", "group_inventory", "group_inventory_product", "judgement",
-            "laps_inventory", "laps_inventory_product",
+            "laps_configured_scope", "laps_inventory", "laps_inventory_product",
             "member_attribution_product", "membership_route",
             "membership_route_step", "membership_route_summary", "rule_execution", "rule_execution_missing_input",
             "tier0_distance", "tier0_distance_product", "tier0_finding_product", "tier0_path_calculation",
@@ -404,8 +505,8 @@ public sealed partial class OpenedRunResultsTests
     private static string FindingDisplaySnapshot(FindingRowViewModel row) => JsonSerializer.Serialize(new
     {
         row.Severity, row.Rank, row.Rule, row.Principal, row.Target, row.DistinguishedName, row.Domain, row.Detail,
-        row.Coverage, row.State, row.HasTier0Routes, row.HasMembershipEvidence, row.MembershipCompleteness,
-        row.MembershipDetails, row.HasGuidance, row.WhyItMatters, row.WhatToDo, row.About, row.Category, row.MicrosoftReference,
+        row.Coverage, row.State, row.HasTier0Routes, row.HasMembershipEvidence,
+        row.HasGuidance, row.WhyItMatters, row.WhatToDo, row.About, row.Category, row.MicrosoftReference,
     });
 
     private static string FindingsPagingRun()
@@ -463,8 +564,8 @@ public sealed partial class OpenedRunResultsTests
     {
         var seal = BundleSealing.ReadSeal(BundleLayout.SealPath(directory))!;
         using var writer = JudgementWriter.Create(directory, seal.Hash, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch);
-        foreach (var group in findings.GroupBy(finding => finding.RuleId, StringComparer.Ordinal))
-            writer.Write(RuleExecution.Judged(new(group.Key, "Recorded display fixture", group.First().Severity, 1,
+        foreach (var group in findings.Select(RecordedLapsReadFinding.Bind).GroupBy(finding => finding.RuleId, StringComparer.Ordinal))
+            writer.Write(RuleExecution.Judged(new(group.Key, "Recorded display fixture", group.First().Severity, group.First().RuleVersion,
                 ["computer"], ["userAccountControl"], []), group.Count(), 0, group.ToArray()));
         writer.Complete(DateTimeOffset.UnixEpoch.AddMinutes(1));
     }

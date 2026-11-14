@@ -114,21 +114,21 @@ internal sealed partial class AssetsViewModel
     private void OpenGroup(GroupRowViewModel? row)
     {
         _groupObjectBack.Clear();
-        Open((row ?? SelectedGroup ?? throw new InvalidOperationException("No current group is selected.")).DistinguishedName, ObjectSectionCatalog.Membership);
+        Open((row ?? SelectedGroup ?? throw new InvalidOperationException("No current group is selected.")).DistinguishedName, ObjectSectionCatalog.Membership, expectedObjectGuid: null);
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenGroup))]
     private void OpenGroupFindings(GroupRowViewModel? row)
     {
         _groupObjectBack.Clear();
-        Open((row ?? SelectedGroup ?? throw new InvalidOperationException("No current group is selected.")).DistinguishedName, ObjectSectionCatalog.Findings);
+        Open((row ?? SelectedGroup ?? throw new InvalidOperationException("No current group is selected.")).DistinguishedName, ObjectSectionCatalog.Findings, expectedObjectGuid: null);
     }
 
     private void OpenGroupMember(string dn)
     {
         if (Opened is null) return;
         _groupObjectBack.Push(Opened.DistinguishedName);
-        Open(dn, ObjectSectionCatalog.Membership);
+        Open(dn, ObjectSectionCatalog.Membership, expectedObjectGuid: null);
     }
 
     [RelayCommand(CanExecute = nameof(CanNextGroupPage))]

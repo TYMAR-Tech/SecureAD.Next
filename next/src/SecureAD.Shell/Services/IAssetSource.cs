@@ -54,6 +54,9 @@ internal interface IAssetSource : IAssetReader
 /// <summary>Queries against a selected run, without the authority to select or close that run.</summary>
 internal interface IAssetReader
 {
+    /// <summary>Reads exact source context, counts and a bounded first page for saved LAPS export.</summary>
+    Result<Export.LapsExportSnapshot> ReadLapsExport(string bundleDirectory, LapsQuery query);
+
     /// <summary>Unverified sources cannot vouch for retained data; protected readers supply their own check.</summary>
     Func<bool> CaptureReadValidity() => () => false;
 
@@ -198,6 +201,93 @@ internal interface IAssetReader
 
     /// <summary>Reads saved Findings display values and selected completeness headers, without reconstructing full proof.</summary>
     Result<FindingListPage> ReadFindingsList(string bundleDirectory, FindingsQuery query);
+
+    /// <summary>Reads the exact selected finding, optionally including explicitly requested membership support.</summary>
+    Result<FindingListItem> ReadSelectedFinding(string bundleDirectory, FindingReference reference, bool includeMembership);
+
+    /// <summary>Reads only the selected supported account-option finding's original setting and saved account state.</summary>
+    Result<SavedAccountSetting> ReadAccountSetting(string bundleDirectory, FindingReference reference);
+
+    /// <summary>Reads selected SEC-012 context and a bounded page of original supported service occurrences.</summary>
+    Result<SavedDelegationConfiguration> ReadConstrainedDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after);
+
+    /// <summary>Reads selected saved RBCD holders and reliably resolved captured names, never group members.</summary>
+    Result<SavedDelegationConfiguration> ReadResourceDelegation(string bundleDirectory, FindingReference reference,
+        DelegationConfigurationMark? after);
+
+    /// <summary>Reads selected saved SEC-014 context and one original shared-entry page.</summary>
+    Result<SavedAttributeWritePermission> ReadAttributeWritePermission(string bundleDirectory, FindingReference reference,
+        AttributeWritePermissionMark? after);
+
+    /// <summary>Reads selected saved SEC-102 context and a bounded named-holder page without access-check replay.</summary>
+    Result<SavedGmsaPasswordReaders> ReadGmsaPasswordReaders(string bundleDirectory, FindingReference reference,
+        GmsaPasswordReaderMark? after);
+    /// <summary>Reads selected GPO-directory/link permission facts and one saved original-entry page.</summary>
+    Result<SavedGpoDirectoryPermission> ReadGpoDirectoryPermission(string bundleDirectory, FindingReference reference,
+        GpoDirectoryPermissionMark? after);
+
+    /// <summary>Reads one saved replication assessment and a bounded original-entry page, without authorization replay.</summary>
+    Result<SavedReplicationPermission> ReadReplicationPermission(string bundleDirectory, FindingReference reference,
+        ReplicationPermissionMark? after);
+
+    /// <summary>Reads one saved duplicated SPN and the requested original owner or registration page.</summary>
+    Result<SavedDuplicateSpn> ReadDuplicateSpn(string bundleDirectory, FindingReference reference, DuplicateSpnMark? position);
+
+    /// <summary>Reads selected saved SID-history values using the existing catalogue interpretation.</summary>
+    Result<SavedSidHistory> ReadSidHistory(string bundleDirectory, FindingReference reference, SidHistoryMark? after);
+
+    /// <summary>Reads one requested page of saved SEC-090 supporting exposures without analysis replay.</summary>
+    Result<SavedLapsReadSupports> ReadLapsReadSupports(string bundleDirectory, FindingReference reference, LapsReadSupportMark? after);
+
+    /// <summary>Reads the exact saved SEC-030 assessment identity without protection re-derivation.</summary>
+    Result<SavedProtectionMarker> ReadProtectionMarker(string bundleDirectory, FindingReference reference);
+
+    /// <summary>Reads one saved owner/standing/membership header without permission or protection replay.</summary>
+    Result<SavedOwnershipAssessment> ReadOwnershipAssessment(string bundleDirectory, FindingReference reference);
+    Result<SavedPermissionControl> ReadPermissionControl(string bundleDirectory, FindingReference reference);
+    Result<SavedPermissionControlChain> ReadPermissionControlChain(string bundleDirectory, FindingReference reference, PermissionControlMark? after);
+
+    /// <summary>Reads one saved group-size or direct-nesting header without materializing its original member list.</summary>
+    Result<SavedGroupReview> ReadGroupReview(string bundleDirectory, FindingReference reference);
+    /// <summary>Reads one requested page of original member-reference occurrences.</summary>
+    Result<SavedGroupReferences> ReadGroupReviewReferences(string bundleDirectory, FindingReference reference, GroupReviewReferenceMark? after);
+
+    /// <summary>Reads the selected broad-membership answer and one bounded symbolic-source page.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadIdentity>> ReadBroadMembershipSources(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+    /// <summary>Reads requested original direct links with their actual endpoints and separate foreign references.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadMembershipLink>> ReadBroadMembershipLinks(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+    /// <summary>Reads original supporting occurrences for exactly one saved direct link.</summary>
+    Result<SavedBroadMembershipPage<SavedBroadMembershipWitness>> ReadBroadMembershipValues(string bundleDirectory, FindingReference reference, long linkPosition, BroadMembershipMark? after);
+    /// <summary>Reads a bounded page of the saved input gaps and unsupported-analysis reasons.</summary>
+    Result<SavedBroadMembershipPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadBroadMembershipLimitations(string bundleDirectory, FindingReference reference, BroadMembershipMark? after);
+
+    /// <summary>Reads selected service-account facts and SEC-100's first entry-membership page.</summary>
+    Result<SavedServiceAccountDetails> ReadServiceAccount(string bundleDirectory, FindingReference reference);
+    Result<SavedServiceAccountPage<SavedServiceAccountName>> ReadServiceAccountNames(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountEntryMemberships(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountLink>> ReadServiceAccountLinks(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SavedServiceAccountWitness>> ReadServiceAccountValues(string bundleDirectory, FindingReference reference, long linkPosition, ServiceAccountMark? after);
+    Result<SavedServiceAccountPage<SecureAD.Evidence.Findings.AdministrativeMembershipLimitation>> ReadServiceAccountLimitations(string bundleDirectory, FindingReference reference, ServiceAccountMark? after);
+
+    /// <summary>Reads one circular finding's saved inventory flag and a bounded group page.</summary>
+    Result<SavedCircularMembershipGroups> ReadCircularMembershipGroups(string bundleDirectory, FindingReference reference, CircularMembershipGroupMark? after);
+    /// <summary>Reads one ordered representative loop page from the selected saved group set.</summary>
+    Result<SavedCircularMembershipLoop> ReadCircularMembershipLoop(string bundleDirectory, FindingReference reference, CircularMembershipLoopMark? after);
+    /// <summary>Reads one requested page of recorded direct links, without their original witness values.</summary>
+    Result<SavedCircularMembershipLinks> ReadCircularMembershipLinks(string bundleDirectory, FindingReference reference, CircularMembershipLinkMark? after);
+    /// <summary>Reads one requested page of original values supporting the selected direct relationship.</summary>
+    Result<SavedCircularMembershipWitnesses> ReadCircularMembershipWitnesses(string bundleDirectory, FindingReference reference,
+        Guid groupGuid, Guid memberGuid, CircularMembershipWitnessMark? after);
+
+    /// <summary>Reads one saved SEC-021 header and a bounded original SPN page.</summary>
+    Result<SavedServiceRegistrations> ReadServiceRegistrations(string bundleDirectory, FindingReference reference, ServiceNameMark? after);
+    /// <summary>Reads initial memberships only; no route or step expansion.</summary>
+    Result<SavedInitialMemberships> ReadInitialMemberships(string bundleDirectory, FindingReference reference, InitialMembershipMark? after);
+    /// <summary>Reads route headers for one requested initial membership.</summary>
+    Result<SavedMembershipRoutes> ReadMembershipRoutes(string bundleDirectory, FindingReference reference, int membershipOrdinal, MembershipRouteMark? after);
+    /// <summary>Reads steps for one requested stored route.</summary>
+    Result<SavedMembershipSteps> ReadMembershipSteps(string bundleDirectory, FindingReference reference, int membershipOrdinal, int routeOrdinal, MembershipStepMark? after);
 
     /// <summary>Reads what the findings grid's filters may offer.</summary>
     /// <param name="bundleDirectory">The run's bundle directory.</param>

@@ -101,7 +101,7 @@ public sealed class KerberoastablePrivilegedAccount : IObjectRule
     /// <inheritdoc />
     public RuleDefinition Definition { get; } = new(
         "SEC-021",
-        "Privileged account with a service name registered on it",
+        ServiceRegistrationPresentation.Title,
         Severity.Critical,
         Version: 2,
         SubjectClasses: ["user"],

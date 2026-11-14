@@ -30,6 +30,20 @@ namespace SecureAD.Next.Tests.Shell;
 /// </remarks>
 internal static class OneThread
 {
+    internal static T Run<T>(Func<Task<T>> body)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        Task<T>? result = null;
+        Task Invoke()
+        {
+            result = body();
+            return result;
+        }
+        Run(Invoke);
+        return (result ?? throw new InvalidOperationException("The UI test body did not run."))
+            .GetAwaiter().GetResult();
+    }
+
     /// <summary>Runs <paramref name="body"/> to completion on the calling thread.</summary>
     /// <param name="body">The asynchronous test body.</param>
     public static void Run(Func<Task> body)

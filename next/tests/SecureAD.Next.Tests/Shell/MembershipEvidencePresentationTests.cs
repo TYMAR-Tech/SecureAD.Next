@@ -1,5 +1,7 @@
 using SecureAD.Evidence;
 using SecureAD.Evidence.Findings;
+using CommunityToolkit.Mvvm.Input;
+using SecureAD.Judgement;
 using SecureAD.Next.Tests.Derivation;
 using SecureAD.Shell.ViewModels;
 using Xunit;
@@ -14,11 +16,12 @@ public sealed class MembershipEvidencePresentationTests
         var summary = MembershipRouteTests.Derive([512, 519, 1200, 1100], [(0, 1), (1, 2), (2, 3)])[3];
         var row = Row(summary);
         Assert.True(row.HasMembershipEvidence);
-        Assert.Equal(1, row.MembershipDetails.Split("Initial membership:", StringSplitOptions.None).Length - 1);
-        Assert.Contains("CN=1200,DC=ad,DC=lab", row.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Domain Admins", row.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Enterprise Admins", row.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("--member of-->", row.MembershipDetails, StringComparison.Ordinal);
+        var group = Assert.Single(summary.Memberships);
+        var display = new ServiceMembershipViewModel(new(0, group.InitialMembership, false, group.Routes.Count), new RelayCommand(() => { }));
+        Assert.Contains("1200", display.Identity, StringComparison.Ordinal);
+        Assert.Contains(group.Routes.Select(Route), route => route.Root.StartsWith("Domain Admins (", StringComparison.Ordinal));
+        Assert.Contains(group.Routes.Select(Route), route => route.Root.StartsWith("Enterprise Admins (", StringComparison.Ordinal));
+        Assert.Contains("not every possible path", ServiceRegistrationPresentation.MembershipNote, StringComparison.Ordinal);
         Assert.Equal("Complete", row.Coverage);
     }
 
@@ -28,23 +31,25 @@ public sealed class MembershipEvidencePresentationTests
         var summary = MembershipRouteTests.Derive([512, 1100], [(0, 1)])[1].WithIncompleteReasons(
             MembershipRouteIncompleteReason.EdgeBudgetReached | MembershipRouteIncompleteReason.StorageBudgetReached);
         var row = Row(summary);
-        Assert.Contains("examined-membership limit", row.MembershipCompleteness, StringComparison.Ordinal);
-        Assert.Contains("stored-evidence size limit", row.MembershipCompleteness, StringComparison.Ordinal);
-        Assert.Contains("not a total", row.MembershipCompleteness, StringComparison.Ordinal);
+        Assert.Contains("examined-membership limit", summary.CompletenessDescription, StringComparison.Ordinal);
+        Assert.Contains("stored-evidence size limit", summary.CompletenessDescription, StringComparison.Ordinal);
+        Assert.Contains("not a total", summary.CompletenessDescription, StringComparison.Ordinal);
         Assert.Equal("May be incomplete", row.Coverage);
         Assert.Equal(FactState.NotEstablished, row.State);
-        Assert.Contains("Initial membership:", row.MembershipDetails, StringComparison.Ordinal);
+        Assert.NotEmpty(summary.Memberships);
     }
 
     [Fact]
     public void PrimaryMembershipAndDistributionPathsAreNotLabelledAsOrdinaryAuthorization()
     {
-        var primary = Row(MembershipRouteTests.Derive([512, 1100], [], primaryGroup: 0)[1]);
-        Assert.Contains("--primary group-->", primary.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Protection through primary-group membership is not established", primary.MembershipDetails, StringComparison.Ordinal);
-        var distribution = Row(MembershipRouteTests.Derive([512, 1200, 1100], [(0, 1), (1, 2)], distribution: 1)[2]);
-        Assert.Contains("does not confer membership-based authorization", distribution.MembershipDetails, StringComparison.Ordinal);
-        Assert.Contains("Protection is established", distribution.MembershipDetails, StringComparison.Ordinal);
+        var primary = MembershipRouteTests.Derive([512, 1100], [], primaryGroup: 0)[1];
+        var primaryRoute = Assert.Single(Assert.Single(primary.Memberships).Routes);
+        Assert.True(new ServiceStepViewModel(new(1, primaryRoute.Steps[1].Principal, primaryRoute.Steps[1].IsPrimaryGroup)).IsPrimaryGroup);
+        Assert.Equal("Protection not established by this chain.", Route(primaryRoute).Protection);
+        var distribution = MembershipRouteTests.Derive([512, 1200, 1100], [(0, 1), (1, 2)], distribution: 1)[2];
+        var shown = Route(Assert.Single(Assert.Single(distribution.Memberships).Routes));
+        Assert.Contains("does not confer membership-based authorization", shown.Authorization, StringComparison.Ordinal);
+        Assert.Equal("Protection established by this chain.", shown.Protection);
     }
 
     [Fact]
@@ -52,9 +57,13 @@ public sealed class MembershipEvidencePresentationTests
     {
         var row = Row(MembershipRouteSummary.NotDerived);
         Assert.True(row.HasMembershipEvidence);
-        Assert.Contains("routes were not derived", row.MembershipCompleteness, StringComparison.Ordinal);
+        Assert.Contains("routes were not derived", MembershipRouteSummary.NotDerived.CompletenessDescription, StringComparison.Ordinal);
         Assert.Equal(FactState.NotEstablished, row.State);
     }
+
+    private static ServiceRouteViewModel Route(MembershipRoute route) => new(new(0, route.CatalogueEntryId,
+        route.RootName, route.Authorization, route.EstablishesProtection, route.Steps.Count)
+        { RootPrincipal = route.Steps[^1].Principal }, new RelayCommand(() => { }));
 
     private static FindingRowViewModel Row(MembershipRouteSummary summary) => new(new Finding(
         "SEC-021", 2, Severity.Critical, new FindingSubject(FindingSubjectKind.Account, "Alice"), Guid.NewGuid(),

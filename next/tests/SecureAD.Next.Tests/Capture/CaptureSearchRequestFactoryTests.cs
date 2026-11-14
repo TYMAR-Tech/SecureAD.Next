@@ -20,6 +20,15 @@ namespace SecureAD.Next.Tests.Capture;
 /// </summary>
 public sealed class CaptureSearchRequestFactoryTests
 {
+    [Fact]
+    public void GpoProtocolCaptureRequestsTheMicrosoftRequiredFunctionalityVersion()
+    {
+        var first = CaptureSearchRequestFactory.ForUnit(Unit(), Controls());
+        var next = CaptureSearchRequestFactory.ForNextPage(Unit(), Controls(), [1]);
+        Assert.Contains("gPCFunctionalityVersion", first.Attributes.Cast<string>());
+        Assert.Contains("gPCFunctionalityVersion", next.Attributes.Cast<string>());
+    }
+
     private static CaptureUnit Unit() =>
         CaptureUnit.Create("DC=example,DC=com", NamingContextKind.Domain, "dc01.example.com").Value;
 

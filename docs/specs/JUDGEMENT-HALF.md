@@ -1098,6 +1098,298 @@ produce structured uncertainty.
 
 GPO security filtering reuses the effective authorization engine from `2b`.
 
+**Captured-filter parsing foundation - owner-approved 2026-11-10.**
+Resolve a selected captured GPO's `gPCWQLFilter` to the exact filter object in its referenced
+domain, keeping the capture generation, both object identities and the original selected
+attribute values; a similarly identified filter in another domain must not substitute for it.
+Follow [MS-GPOL section 2.2.4](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/b0e5c9e8-e858-4a7a-a94a-4a3d0a9d87a2)
+for the reference, including its requirement to ignore the flags field.
+Use Microsoft's local `IWbemQuery` parser for a qualified static-query subset, preserving literal
+types, comparison operators and logical grouping without connecting to a WMI provider.
+Retain absent references, missing definitions, unsupported wrappers/languages/query shapes, native
+rejection and native unavailability explicitly rather than treating any as an unfiltered GPO or
+an empty successful predicate.
+Only the independently recorded single-query wrapper is qualified in this batch; other wrappers
+remain intact and unsupported until separately anchored, not silently partially decoded.
+Parsed conditions establish neither namespace/class existence nor filter truth or GPO applicability.
+This foundation changes no findings, presentation or stored format and does not implement the
+shared security-filter, inheritance, precedence or computer-matching work above.
+
+**Computer/GPO directory security-filter qualification - owner-approved 2026-11-10.**
+Keep directory permission filtering separate from the complete applicability result.
+For a captured computer/GPO question, retain separate whole-object Read Control, Read Properties
+and Apply Group Policy answers, their original ordered permission entries, membership witnesses
+and exact capture/derivation binding.
+In this qualification, directory Read requires both Read Control and whole-object Read Properties;
+an object-specific Read Properties entry must remain unresolved when its coverage is not qualified,
+not become either a whole-object grant or a definite absence of permission.
+This does not establish LDAP navigation visibility, SYSVOL access, policy delivery or client execution.
+Follow Microsoft's [security-filter requirements](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/policy/filtering-the-scope-of-a-gpo)
+and [MS-GPOL filter evaluation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5ead679e-5ec1-4f43-b927-1a339da316c7)
+for the distinct Read and Apply requirements.
+Apply must use the shared schema catalogue's Apply Group Policy right, accepting a qualifying
+unscoped Control Access grant or that exact right, never another extended-right GUID.
+Preserve stored allow/deny order and conditional-entry uncertainty; do not remap unsupported stored
+generic bits or replace ordered authorization with a blanket deny rule.
+
+Use the captured computer's validated current identity and qualified same-forest/resource-domain
+context, with Everyone and Authenticated Users interpreted as the configured authenticated-computer
+profile, not evidence that a disabled or live machine authenticated.
+Disabled account state must not erase configured directory permissions.
+Qualify security-group nesting and each original membership witness, preserving distribution-group,
+unknown-scope, cross-domain and partial-input limitations.
+Primary-group support in this slice requires the captured nonzero primary-group RID and an exact
+same-domain global-security group; do not infer Domain Computers from the computer's class.
+Historical SIDs are not established token membership in this slice, including when a historical SID
+also resolves to a current unrelated principal.
+Unsupported implicit-owner Read Control, NULL DACLs, missing/unreadable descriptors and incomplete
+authorization evidence must remain explicit rather than becoming a grant or an invented exclusion.
+An independent established grant may survive unrelated unavailable membership evidence.
+Selected membership preparation must not depend on unrelated protected-principal products or
+materialize whole group-member attributes, and every answer must reject changed source selections.
+
+Return Included only when both directory Read and Apply are established, Excluded when a required
+right is definitely not established, and Unresolved otherwise.
+Included means this directory permission filter only: hierarchy/link state, policy-half status,
+WMI conditions and setting-level precedence still have their own required answers.
+This slice changes no findings, UI, saved formats, production budgets or automatic WMI evaluation.
+
+**Captured computer/domain/OU link hierarchy - owner-approved 2026-11-10.**
+Read the selected captured computer's ancestor chain and stop at its declared domain naming context,
+using the shared escaped-DN operations rather than comma splitting or walking into its parent domain.
+Follow [MS-GPOL Domain SOM Search](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/6fc6f0fc-c26d-455f-af8f-1856cf5d2a4b)
+for the organizational-unit/domain scope sequence, skipping non-OU containers without dropping the domain.
+Every required container and linked GPO must bind to an unambiguous original captured row and usable
+object identity in a captured read domain; retain missing or unsupported rows explicitly.
+Retain each original link occurrence, source container, stored attribute value, original slot and options,
+including repeated links to the same GPO on the same or different containers.
+Malformed unconsumed link content must not disappear, and a readable link after an unreadable entry
+must keep its original positive slot rather than acquire a fabricated priority of zero.
+
+Use the [MS-GPOL link/inheritance flags](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/08090b22-bc16-49f4-8e10-f27a8fb16d18)
+and [GPO Search algorithm](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5c7ecdad-469f-4b30-94b3-450b7fff868f),
+not the internally contradictory overview page's prose.
+Correct ordinary per-container priority to place the first stored ordinary link highest:
+prepending ordinary links leaves it processed last.
+Retain disabled and enforced flag bits separately, but a disabled link never participates even when
+its enforced bit is also set.
+Block Inheritance affects higher non-enforced links, not links on the blocking container itself,
+and does not exclude enforced ancestors.
+Unknown lower-container inheritance must make an ordinary inherited link unresolved without erasing
+independently established own-container or enforced links.
+Unsupported option values, malformed link strings and unavailable source rows do not become empty
+successful scope or invented exclusions.
+Retain known relative domain/OU processing positions separately from excluded and unplaceable links.
+
+Directory evidence in this slice does not establish a computer's site: state that uncertainty rather
+than claiming no site-linked policies exist or discarding independently known domain/OU links.
+Structural link inclusion/order is not Read/Apply authorization, GPO-half status, a WMI condition,
+overall applicability, a winning configured setting, client processing or completed control/path proof.
+The approved correction changes existing linked-policy figures/row ordering through the shared
+reader, not screen wording/layout or new finding presentation.
+This slice changes no saved format, live capture, production budget, automatic WMI evaluation or finding adoption.
+
+**Required GPO protocol-input capture - owner-approved 2026-11-10.**
+Capture the original `gPCFunctionalityVersion` alongside the existing directory flags and version,
+because [MS-GPOL filter evaluation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/5ead679e-5ec1-4f43-b927-1a339da316c7)
+requires the supported functionality version and distinguishes empty policies using both versions.
+An unreturned directory value must not be replaced by version two, and a missing file-side version
+must not be replaced by zero.
+Read GPT.ini below the captured `gPCFileSysPath`, binding it to the policy's directory object GUID,
+not the different GUID that names its SYSVOL folder.
+Preserve original bytes and the original General/Version value, including a usable zero and the
+entire unsigned 32-bit range; user/machine halves remain parts of that original version.
+Follow [MS-GPOL 2.2.4](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpol/b0e5c9e8-e858-4a7a-a94a-4a3d0a9d87a2):
+the file is ANSI, General/Version is required, and section/key uniqueness is case-insensitive.
+Unsupported encodings, malformed syntax, duplicate identifiers and unusable integers remain explicit
+invalid inputs with their acquired bytes, not a partial successful version.
+
+Distinguish unavailable policy roots, missing GPT.ini, unreadable content, invalid acquired content
+and a parsed version, retaining original errors rather than inferring an empty policy.
+Missing or unusable required version content makes SYSVOL coverage incomplete.
+Capture the acquired file's own permissions under the existing SYSVOL rules; independently acquired
+content survives a later permission failure, while policy abandonment stops further acquisition.
+Cancellation is not an acquisition failure and must not publish a completed version observation.
+Offline readback must retain the saved answer without replaying capture or guessing from another
+policy/path, and reject ambiguous object identity, foreign capture identity or mismatched resource binding.
+Shard merge must carry the complete original observation.
+
+Capture catalogue nine and capture format eighteen are intentional new contracts: refuse older formats
+without migration or legacy readers, preserve historical fingerprints/captures, and append only the
+newly observed format-eighteen fingerprint.
+This input correction changes no UI/finding behavior, automatic WMI evaluation or live capture authorization.
+
+**Combined computer/GPO applicability - owner-approved 2026-11-11.**
+Compose the qualified hierarchy, directory Read/Apply and protocol inputs under one protected
+saved-run lifetime, refusing foreign or changed capture/derivation selections and mismatched
+policy-resource observations rather than joining similar names.
+Retain every original occurrence of the selected policy and its relative processing position;
+an independently included domain/OU occurrence survives unrelated missing hierarchy evidence.
+An excluded domain/OU occurrence does not establish that a site cannot link the same policy.
+Keep structural domain/OU scope, directory/protocol eligibility and overall applicability separate.
+Apply MS-GPOL 2.2.4's computer-disable bit, including both disabled halves and the instruction to
+ignore other flag bits, and 3.2.5.1.6's functionality-version-two and full-container/full-template
+zero-version checks; a known nonzero version independently establishes that the policy is not empty.
+Unavailable or unsupported required inputs must retain their original evidence and explicit reasons,
+not become supported functionality, enabled status or zero versions.
+An established policy-wide exclusion survives unrelated unavailable inputs, but WMI parsing or an
+unreturned filter reference never establishes an unfiltered or matching policy.
+Carry site and WMI uncertainty without evaluating conditions or claiming a complete policy set,
+winning settings, client processing or control/path proof.
+This batch changes no findings, UI, saved formats, production budgets or live-access authorization.
+
+**Conditional applicability outcomes - owner-approved 2026-11-11.**
+For a qualified captured single-query WMI condition, retain separate hypothetical matching and
+non-matching outcomes without treating either assumption as an observed filter result.
+The condition identity must bind the exact evidence seal, capture generation, computer row and
+referenced filter row, sharing one condition across policies for the same computer/filter but not
+across computers, captures or distinct filter objects, even when their query text or logical IDs match.
+A non-matching filter excludes the policy under that assumption; a matching filter cannot erase a
+policy-wide exclusion or establish unavailable directory/protocol or scope prerequisites.
+Missing, rejected, unsupported or unavailable filter definitions do not become an unfiltered policy
+or a qualified pair of outcomes, and original queries, parser results and errors remain retained.
+Unresolved site scope or incomplete domain/OU evidence leaves the policy scope open, including
+possible additional policies; a complete pair of WMI assumptions is not a complete policy set.
+Represent conditions with their outcomes, not an enumeration of every cross-policy combination.
+The existing overall applicability answer stays unchanged, and no automatic matching, saved format,
+finding adoption, presentation change, winning setting or live access is authorized by this slice.
+
+**SCOUT-16 registry-policy interpretation - owner-approved 2026-11-11.**
+Read only the exact case-insensitive hive-relative Windows LAPS Group Policy root, not a suffix,
+CSP/local/legacy root, prefixed hive or descendant location.
+Apply [MS-GPREG 3.2.5.1.2](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-gpreg/57226664-ce00-4487-994e-a6b3820f3e49)
+instructions sequentially, including overwrite, single/list/all-value deletion, immediate-subkey
+deletion and key recreation; retain original records and raw data rather than replacing evidence
+with the interpreted view.
+The normative all-value instruction is `**DelVals.` including the period, unlike the older Win32
+overview; unqualified aliases/encodings remain explicit interpretation limits rather than guesses.
+Conditional `**soft.` writes require pre-existing client state unless earlier captured instructions
+establish the value or its absence, and `**SecureKey` affects key security, not the configured value.
+Missing input, binary parse diagnostics, unsupported operations, unusable replacements and incomplete
+membership must remain distinct, including useful positive observations from incomplete settings.
+An explicit blank or wrong-type replacement must never restore an earlier broad value or establish
+Windows' default behavior without a separate qualification.
+Preserve SEC-093's severity, policy identity and membership supports, use the owner-approved
+partial-settings caution, and retain separate saved capture/interpretation/membership completeness.
+Judgment format 82 and rule version 2 refuse older completed interpretations without migration or
+deleting original results; captures remain unchanged and owner-data re-judging needs separate approval.
+
+**Per-computer LAPS setting precedence - owner-approved 2026-11-11.**
+Resolve the four approved settings independently across the captured ordered domain/OU registry
+instructions, preserving each source policy, original link occurrence, original instruction and
+capture/resource/derivation binding; an explicit deletion differs from an untouched setting.
+Use one shared registry instruction decoder for single-policy interpretation and cross-policy replay,
+including conditional writes, subtree deletion and explicit unsupported-input limits.
+The registry extension must be established from a qualified captured machine-extension declaration,
+not inferred from a captured file or the deliberately permissive capture heuristic.
+Reuse one hypothetical condition per captured computer/filter and retain correlated conditional
+results without enumerating every cross-policy combination; unread or unsupported required inputs
+remain open influence rather than exclusions or invented successful processing.
+Keep the ordered captured-policy projection separate from a whole-computer answer: unresolved site,
+hierarchy or additional-policy scope prevents an unsupported definite result.
+Apply [Microsoft's documented LAPS defaults and governing settings](https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings)
+without mixing CSP/local/legacy roots or claiming that the Group Policy root is the device's active
+policy mechanism; defaults are defaults conditional on selection of that root, not policy-supplied values.
+DSRM's decryptor is always Domain Admins in the DC's domain rather than the custom decryptor setting,
+and requested backup/encryption/recovery configuration is not proof of client processing, domain
+functional-level prerequisites, stored-password access, takeover or completed Tier 0 reachability.
+This slice changes no saved result format, finding adoption, UI, production budget or live-access authorization.
+
+**Complete multi-query WMI filter reading - owner-approved 2026-11-11.**
+Decode the complete nonempty length-framed query sequence in its original order, retaining
+repeated occurrences, each language/namespace/query and the original source-bound attribute.
+Microsoft marks [ms-WMI-Parm2](https://learn.microsoft.com/en-us/windows/win32/adschema/a-mswmi-parm2)
+as internal rather than publishing its framing grammar; qualify the repeated existing framing
+against the owner-created [Windows two-query reference](C:/Users/jistrand/.copilot/session-state/6c9a81b9-6381-456f-8c2a-34b1164a4b63/files/lab-wmi-multi-query-reference-20261112/verified-multi-query-reference.json),
+retaining the recorded Windows single-query anchor without changing it.
+The independently published
+[multi-query writer](https://www.powershellgallery.com/packages/NSP.ActiveDirectory/0.1.4/Content/Private%5CWmiFilterHelpers.ps1)
+is a secondary reference, not a Windows-produced result.
+Do not generalize the recorded example to other encodings or guess unsupported framing.
+Inconsistent counts, lengths, delimiters, empty/null fields or trailing data must refuse the
+whole definition explicitly, not return a successful prefix, truncate a query or imply no filter.
+Preserve each native-parser outcome and reason independently, including queries after one that
+is rejected, unsupported or unavailable.
+[Microsoft's ms-WMI-Som definition](https://learn.microsoft.com/en-us/windows/win32/adschema/c-mswmi-som)
+requires every query to return results: the hypothetical matching outcome therefore represents
+the whole conjunction, never any single query or a flattened cross-namespace query.
+Qualify that condition only when every required query has supported parsed conditions, sharing
+one exact computer/filter key across referring policies; otherwise retain an explicit unavailable
+reason without discarding the other original queries or policy-wide exclusions.
+Actual applicability, unknown site/hierarchy scope, automatic matching, saved results/formats,
+findings and UI remain outside this batch.
+
+**Qualified directory-based WMI OS assessment - owner-approved 2026-11-11.**
+Keep this assessment distinct from confirmed WMI truth: it assumes the captured directory
+platform information represents the computer's WMI values and the specified namespace/class exists.
+Retain original computer attributes, complete query readings, the exact capture/seal/computer/filter
+condition and the explicit assumption with every derived outcome, including a selected LAPS value.
+Do not prune conditional alternatives, set actual applicability, close site scope, infer client
+processing or suppress a finding from this assumed result.
+The first supported subset is `root\CIMv2`, `Win32_OperatingSystem`, `Version` and `ProductType`,
+with native-parsed Boolean grouping and qualified comparisons; other inputs remain explicit limits.
+[Microsoft's WMI property definition](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-operatingsystem)
+defines Version as a string and ProductType as numeric workstation 1, DC 2, or other server 3.
+Normalize only a complete directory version of the form `major.minor (build)` or
+`major.minor.build`, preserving its original; do not borrow the deliberately looser capability
+classifier's partial-version result or use numerical build ordering for a string comparison.
+Recognize only unambiguous supported English Windows family labels, use the shared writable/RODC
+account-flag definition and refuse conflicting account types; an OU name or primary-group value
+must not manufacture a DC product type.
+Missing required facts are unknown, not WMI nulls; require one original text value for every input.
+Use [WQL operators and Boolean grouping](https://learn.microsoft.com/en-us/windows/win32/wmisdk/where-clause)
+with nonnegative integral ProductType constants, including the
+[published quoted ProductType examples](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/jj717288(v=ws.11)).
+For Version comparisons, restrict literals to ASCII digits/dots; qualify
+[LIKE](https://learn.microsoft.com/en-us/windows/win32/wmisdk/like-operator) only as an exact
+literal or one trailing `%`, not a guessed implementation of ranges, escapes or other patterns.
+Every query and required fragment must be qualified even if another Boolean branch or query
+already appears decisive; retain each unsupported reason and the whole-filter unresolved state.
+Selecting an outcome through this assessment must keep its assumption and source supports, refuse
+foreign or contradictory shared-filter support, and explicitly identify a required unresolved
+condition rather than inventing a default match.
+New Windows-produced conformance/reference collection remains separately authorized, not implied by
+synthetic checks; saved results/formats, findings, UI and live access are outside this batch.
+
+**Qualified LAPS calculation save/readback - owner-approved 2026-11-11.**
+Save the four per-setting answers and conditional decision graph in the existing judgement store,
+retaining shared conditions/subgraphs rather than materializing every combination or recursively
+duplicating the graph as a tree.
+Retain original policy/link/instruction supports, source identities/resources, saved defaults,
+directory-based assumptions and selected assumed outcomes, and independent input/scope limitations.
+The exact capture generation/seal, derivation generation/seal and judgement generation must bind
+each saved calculation; do not infer identity from a DN, policy display name or query text.
+Selected-computer readback must use the saved answers without replaying permission checks, WMI
+parsing/evaluation, hierarchy processing or registry interpretation, and must explicitly refuse
+missing/mismatched support rather than repairing it from current evidence.
+An unsaved computer is unassessed scope, not an empty or safe configured policy; a cancelled or
+failed publication must not replace the previous selected generation with partial answers.
+Judgement format 83 refuses older saved interpretations without migration or deleting original
+results; all historical layout pins, captures and Windows reference evidence remain unchanged.
+No automatic whole-forest calculation, finding/UI adoption, production limit, live access, recapture
+or owner-data re-judging is included in this batch.
+
+**Configured LAPS judging integration - owner-approved 2026-11-12.**
+Integrate one automatic captured-computer stage into the shared host judging coordinator, using a
+disabled production policy pending separately approved workload checks rather than a manual target list.
+The enabled policy streams every row whose most-derived captured class is computer, including rows
+with missing platform information; inherited computer class on a managed service account must not
+silently widen that population, and duplicate DNs must not rebind the selected row.
+Reuse the shared protected evidence/derivation lifetime, calculate the four settings once per computer,
+and save the same qualified result before publication; do not activate other discovery.
+Record observed, considered, saved and unassessed counts independently, with disabled scope distinct
+from an enabled stage that found no captured computers.
+Save per-computer calculation refusals and their original reasons rather than substituting empty
+policy/default answers; a calculated answer may still be conditional or unresolved.
+An enabled stage with unassessed questions is degraded, while an unexpected failure or cancellation
+must leave the previous selected generation intact.
+Require publication counts to agree with the recorded result/refusal rows, and bind scope/refusals to
+the exact capture and judgement sources; normal scope-summary readback must not open original proof.
+Keep per-computer preparation bounded to the active computer, report existing progress/log counters
+without new screen wording, and retain separate calculation/storage costs in existing diagnostics.
+Judgement format 84 supports only its current scheduling metadata and saved answers; captures and
+historical references remain unchanged, with no migration, compatibility, finding or UI adoption.
+
 #### Deliberately not fixed seeds under the current working policy
 
 The following are not classified as fixed Tier 0 seeds merely because they are privileged/protected or

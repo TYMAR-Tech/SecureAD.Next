@@ -151,18 +151,29 @@ public sealed class ViewBindingGateTests
         Assert.Contains(member, PermissionsTemplate(), StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("FindingsView.xaml", "SelectedFinding.")]
-    [InlineData("ObjectSectionTemplates.xaml", "")]
-    public void BothFindingSurfacesBindMembershipEvidenceAndCompleteness(string fileName, string prefix)
+    [Fact]
+    public void FindingGridsDeferMembershipToTheSharedWindow()
     {
-        var file = XamlFiles().Single(path => Path.GetFileName(path) == fileName);
-        var document = System.Xml.Linq.XDocument.Load(file);
-        var paths = document.Descendants().SelectMany(element => element.Attributes()).Select(attribute =>
-            Regex.Match(attribute.Value, @"^\{Binding\s+([^,}\s]+)").Groups[1].Value).ToArray();
-        foreach (var member in new[] { nameof(FindingRowViewModel.HasMembershipEvidence),
-            nameof(FindingRowViewModel.MembershipCompleteness), nameof(FindingRowViewModel.MembershipDetails) })
-            Assert.Contains(prefix + member, paths);
+        System.Xml.Linq.XElement Root(string name) => System.Xml.Linq.XDocument.Load(
+            XamlFiles().Single(path => Path.GetFileName(path) == name)).Root!;
+        static string[] Paths(System.Xml.Linq.XElement root) => root.DescendantsAndSelf()
+            .SelectMany(element => element.Attributes()).Select(attribute =>
+               Regex.Match(attribute.Value, @"^\{Binding\s+([^,}\s]+)").Groups[1].Value).ToArray();
+        var objectFindings = Root("ObjectSectionTemplates.xaml").Descendants().Single(element =>
+            element.Name.LocalName == "DataTemplate"
+            && element.Attribute("DataType")?.Value == "{x:Type vm:FindingsSectionViewModel}");
+        foreach (var grid in new[] { Root("FindingsView.xaml"), objectFindings })
+        {
+            var paths = Paths(grid);
+            Assert.Contains(nameof(AssetsViewModel.OpenFindingCommand), paths);
+            Assert.DoesNotContain(paths, path => path.EndsWith("MembershipDetails", StringComparison.Ordinal)
+               || path.EndsWith("MembershipCompleteness", StringComparison.Ordinal) || path.Contains(".ServiceRegistration.", StringComparison.Ordinal));
+        }
+        var detail = Paths(Root("FindingDetailView.xaml"));
+        foreach (var member in new[] { "FindingDetails.HasServiceRegistration", "FindingDetails.ServiceRegistration.ViewMembershipCommand",
+            "FindingDetails.ServiceRegistration.MembershipCompleteness", "FindingDetails.ServiceRegistration.Memberships.Rows",
+            "FindingDetails.ServiceRegistration.Routes.Rows", "FindingDetails.ServiceRegistration.Steps.Rows" })
+            Assert.Contains(member, detail);
     }
 
     // -------------------------------------------------------------------------------------------
@@ -181,6 +192,7 @@ public sealed class ViewBindingGateTests
         // It knows what the view models publish.
         Assert.Contains(nameof(PermissionsSectionViewModel.Counters), PublishedMembers);
         Assert.Contains(nameof(PermissionRightViewModel.Mark), PublishedMembers);
+        Assert.Contains(nameof(SecureAD.Judgement.SavedGmsaPasswordReaderHolder.PermissionHolder), PublishedMembers);
 
         // And it does not merely believe everything is published.
         Assert.DoesNotContain("APropertyNothingHasEverDeclared", PublishedMembers);
@@ -329,6 +341,7 @@ public sealed class ViewBindingGateTests
             typeof(PermissionsSectionViewModel).Assembly,
             typeof(SecureAD.Kernel.GroupPolicy.PolicyLink).Assembly,
             typeof(SecureAD.Evidence.ObjectPermissions).Assembly,
+            typeof(SecureAD.Judgement.SavedGmsaPasswordReaderHolder).Assembly,
         };
 
         foreach (var type in assemblies.Distinct().SelectMany(a => a.GetTypes()))

@@ -1,6 +1,6 @@
 # SEC-027 ΓÇö an account carrying a privileged identifier in its SID history
 
-**Status:** specified 2026-09-02. Not yet built.
+**Status:** specified 2026-09-02; SCOUT-03 boundary and claim corrections owner-approved 2026-11-09.
 **Severity:** High ΓÇö decided by the owner, 2026-09-02.
 **Rule identifier:** `SEC-027`.
 **Implemented by:** `PrivilegedSidHistory` in `SecureAD.Judgement` (planned).
@@ -29,10 +29,13 @@ is drawn in the right place. The severity in [┬º7](#7-severity) was decided b
 ## 1. What it finds
 
 Any captured security principal ΓÇö `user`, `computer` or `group` ΓÇö whose `sIDHistory` attribute
-contains a security identifier whose relative identifier is one Microsoft documents as privileged.
+contains a structurally valid domain-principal SID whose relative identifier belongs to the existing
+sensitive selection, or an exact selected built-in SID.
 
-In plain terms: *this account is a member of a privileged group that no group membership listing
-will show you, because the privilege is carried as an identifier rather than as a membership.*
+In plain terms: *this object carries a historical identifier matching a sensitive identifier type,
+which can justify reviewing access that a current group-membership listing would not explain.*
+Pattern recognition does not resolve an issuing domain, current group, trust acceptance, SID
+filtering or actual resource authority.
 
 ## 2. What SID history is, and what carrying one does
 
@@ -56,8 +59,9 @@ And what that property then does, on the same page:
 > to gain access to a resource, **any one of the SIDs in the access token (including one of the SIDs
 > in the `SIDHistory` property), can allow or deny the user access**."
 
-So a value in `sIDHistory` is not a historical note. **It is a live entry in the access token,
-evaluated on every access check, exactly as a group membership is.**
+So a value in `sIDHistory` can matter to an access check, rather than being only a historical note.
+Its presence in this captured attribute does not establish that it was included in a particular
+token or accepted by a particular resource.
 
 [Using DsAddSidHistory](https://learn.microsoft.com/windows/win32/ad/using-dsaddsidhistory) states
 the consequence directly:
@@ -87,8 +91,8 @@ computers carry it too, not only users.
 > without SID Filtering enabled (also called Quarantine), it's possible to inject a SID from another
 > forest and it will be added to the user token when authenticated and used for access evaluations."
 
-**That example is this rule.** A non-privileged account, holding a privileged identifier from
-another domain, effectively privileged, visible in no membership listing.
+**That example explains the review risk.** This rule recognises selected historical identifier
+patterns; it does not establish the issuing domain's identity or the example's effective privilege.
 
 Microsoft's detection of the act rather than the state is
 [*Suspected SID-History injection*](https://learn.microsoft.com/defender-for-identity/alerts-mdi-classic#persistence-and-privilege-escalation-alerts)
@@ -97,9 +101,9 @@ Microsoft's detection of the act rather than the state is
 fires when a SID is *added*. This rule reports the SID that is *there*, which is what a run over
 sealed evidence can see.
 
-**What the organisation can therefore mitigate:** a standing privilege escalation that survives
-every review of group membership, because it is not a group membership. An administrator auditing
-Domain Admins will not find this account, and the account has the access anyway.
+**What the organisation can therefore review:** historical identifiers that may preserve access
+without a current membership link, alongside the migration, trust and resource dependencies that
+determine whether removing a value is appropriate.
 
 ## 4. The remedy, in Microsoft's words
 
@@ -114,10 +118,12 @@ The *Unsecure SID History attributes* assessment gives the steps exactly:
 > Set-ADUser -Identity <account> -Remove @{SIDHistory='S-1-5-21-...'}
 > ```
 
-**The guidance says that and no more.** It does not promise the change is safe: the value may be the
+**The quoted commands are Microsoft's user-account example, not commands for every object class.**
+Guidance must use administration appropriate to the captured user, computer or group and recommend
+removal of only a confirmed unnecessary value under change control.
+It does not promise the change is safe: the value may be the
 only reason the account can still reach resources whose permissions were never re-stamped after the
-migration, and removing it can take that access away. The guidance states the action and what it may
-break, and never that the customer is then secure.
+migration, and removing it can take that access away. The guidance states the action and what it may break, and never that the customer is then secure.
 
 ## 5. Which identifiers count as privileged, and why each one
 
@@ -128,6 +134,12 @@ Defender's own model and is not documented. So the filter below cannot be attrib
 [Security identifiers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-identifiers#well-known-sids)
 and MS-DTYP 2.4.2.4. The decision that these identifiers amount to privilege is this product's, and
 is stated as such.
+
+**The domain-relative table requires the complete `S-1-5-21-a-b-c-RID` shape**, with a decodable SID
+and all required numeric components, before its final RID is considered.
+An otherwise valid SID such as `S-1-5-512`, a shortened domain prefix or an extra component must
+not acquire a domain-role name from its suffix.
+Exact built-in matching and the existing sensitivity selection remain unchanged.
 
 Every identifier below is already present in `WellKnownSidCatalog`, harvested from MS-DTYP
 2.4.2.4 by `next/tools/harvest-ms-dtyp-well-known-sids.ps1`, read independently through the Microsoft
@@ -262,7 +274,7 @@ the disabled state.
 | Input | Why |
 |---|---|
 | `sIDHistory` | The identifiers. Captured multi-valued and **binary** (`CapturedAttributeCatalog`), so each value is decoded with `Sid.ToText` ΓÇö the same reading `MembershipNestingPass` already uses, so the rule and the derivation cannot disagree about what a value says. |
-| `objectSid` | The account's own identifier, to establish which domain issued it, so the finding can say the history value came from a *different* domain. |
+| `objectSid` | The object's captured identifier, retained as context without resolving historical source-domain identity or authority. |
 | `objectClass` | Reported beside the finding, and decides nothing. |
 | `sAMAccountName` | The name shown, falling back to the distinguished name when absent. |
 
@@ -270,13 +282,20 @@ the disabled state.
 unaffected by the refusal in `docs/decisions/0091`. It can judge a bundle that was never derived,
 which is the second rule to show that the Wave 6 seam costs an attribute-only rule nothing.
 
-**How a value is judged privileged.** `PrivilegedSidHistory.PrivilegedName` answers it, and the rule
-and the reader both ask it, so stored evidence and live judgement cannot disagree. A built-in SID is
-matched whole through `WellKnownSidCatalog.FindBySid`; anything else has its last sub-authority read
-by `Sid.RelativeIdentifier` and looked up with `WellKnownSidCatalog.FindByRid`. A SID under the
-built-in domain is never read the second way, or one number would carry two meanings. The catalogue
+**How a value is recognised.** The rule and current-version readers use
+`PrivilegedSidCatalogue.PrivilegedName`, with the existing complete domain-principal predicate
+`PrincipalClassificationRegistry.DomainRid` before domain RID matching.
+A built-in SID is matched whole through `WellKnownSidCatalog.FindBySid`; a selected domain RID
+uses `WellKnownSidCatalog.FindByRid` only after that structural check.
+A SID under the built-in domain is never read the second way, or one number would carry two meanings. The catalogue
 is a transcription of MS-DTYP and carries no opinion about privilege; **the privileged subset belongs
 to this rule**, because privilege is a judgement and MS-DTYP does not make it.
+
+**Version-bound readback.** The corrected assessment is SEC-027 version 2.
+Saved value interpretation must refuse other calculation versions explicitly rather than
+reclassifying earlier completed answers with the new matcher.
+Original capture and judgement files remain untouched; new answers require a separately authorised
+judgement of the existing capture, not recapture or a migration reader.
 
 ## 9. When it does not answer
 
@@ -285,7 +304,7 @@ to this rule**, because privilege is a judgement and MS-DTYP does not make it.
 | `sIDHistory` absent | **No finding, and no unread input.** An account with no SID history is the ordinary case and is genuinely clean, not unknown. This is the one place the rule must not name a missing attribute, or every account in the forest would report an unread input. |
 | `sIDHistory` present but a value is not a decodable identifier | No verdict for the object, naming `sIDHistory` in `InputsNotCaptured`. It is not skipped, which would silently report the account as fine on the strength of a value nobody could read. |
 | `objectSid` absent or undecodable | The finding is still raised if a privileged identifier is present, and the evidence records that the issuing domain could not be compared. The escalation does not stop being true because the account's own identifier was unreadable. |
-| No object GUID | No finding. A finding must be attributable to an object or it cannot be acted on. |
+| Missing/all-zero object GUID on an otherwise positive subject | No invented finding identity; explicitly incomplete assessment naming `objectGUID`, while genuine negatives remain answerable. |
 
 The distinction in the first two rows is the one that matters: **absent means clean, unreadable means
 unknown**, and the two must never collapse into the same silence (`0002`, `0086`).
@@ -296,7 +315,7 @@ unknown**, and the two must never collapse into the same silence (`0002`, `0086`
 
 - every value in `sIDHistory`, in written form ΓÇö **including the ones not ranked**, per [┬º6](#6-what-is-not-reported-and-why)
 - which of them matched, and the relative identifier and Microsoft name of each match
-- the account's own `objectSid`, so a reader can see the match came from a different domain
+- the object's own captured `objectSid`, without claiming a resolved historical issuing domain
 
 The count of unranked values is derived from the list rather than stored beside it, so there is no
 second copy to disagree with the first ΓÇö the same reasoning as `KerberosPreauthenticationEvidence`

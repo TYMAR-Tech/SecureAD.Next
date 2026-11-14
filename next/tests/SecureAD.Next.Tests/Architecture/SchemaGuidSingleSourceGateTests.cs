@@ -78,6 +78,8 @@ public sealed class SchemaGuidSingleSourceGateTests
             ["GpoClientSideExtensionCatalog.cs"] = "Group Policy client-side extension GUIDs "
                 + "([MS-GPOL]), which name a policy extension rather than a directory object and "
                 + "have no LDAP name",
+            ["WindowsWqlParser.cs"] = "Microsoft's local WQL parser COM class and interface identifiers, "
+                + "which name a native parser rather than Active Directory schema",
         };
 
     [Fact]

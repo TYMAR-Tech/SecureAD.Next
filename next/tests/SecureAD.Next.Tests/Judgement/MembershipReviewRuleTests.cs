@@ -623,7 +623,7 @@ public sealed class MembershipReviewRuleTests
         }
     }
 
-    private static void ChangeReviewProof(string directory, Func<GroupMembershipReviewEvidence, GroupMembershipReviewEvidence> change)
+    internal static void ChangeReviewProof(string directory, Func<GroupMembershipReviewEvidence, GroupMembershipReviewEvidence> change)
     {
         SelfMembershipCoverageTests.Mutate(directory, connection =>
         {
@@ -672,6 +672,21 @@ public sealed class MembershipReviewRuleTests
 
     internal static string FindingsRun() => Prepared([SizeRule, NestedRule, LegacyRule], PositiveSources());
 
+    internal static string GroupReviewDetailsRun(string rule, bool unresolved = false, bool foreign = false, long? groupType = -2147483646)
+    {
+        if (rule == "SEC-051" && foreign)
+        {
+            var stub = "CN=" + ChildSid + "-1201,CN=ForeignSecurityPrincipals," + Root;
+            return Prepared([NestedRule], [Target("DA", Enumerable.Repeat(stub, 57).ToArray()), Fixtures.Stub(stub, ChildSid + "-1201"),
+                Fixtures.Group("CN=Foreign nested," + Child, ChildSid + "-1201", groupType)]);
+        }
+        if (rule == "SEC-051") return Prepared([NestedRule], [Target("DA", Enumerable.Repeat(Bridge, 57).ToArray()),
+            Fixtures.Group(Bridge, DomainSid + "-1201", groupType)]);
+        var accounts = Accounts(55);
+        var references = accounts.Select(value => value.Dn).Concat([accounts[0].Dn, accounts[0].Dn.ToUpperInvariant()]).ToArray();
+        return Prepared([SizeRule], unresolved ? [Target("DA", references)] : [Target("DA", references), .. accounts]);
+    }
+
     [Fact]
     public void Arch03LightweightCompletenessIsSavedAfterFinalMembershipQualifications()
     {
@@ -681,8 +696,9 @@ public sealed class MembershipReviewRuleTests
         Assert.False(Assert.IsType<GroupMembershipReviewEvidence>(original.Evidence).IsComplete);
         var saved = Assert.Single(reader.ReadListPage(FindingsQuery.Everything()).Value.Findings);
         Assert.False(saved.EvidenceIsComplete);
-        Assert.Equal(original.Detail, saved.Detail);
-        Assert.Equal("May be incomplete", new SecureAD.Shell.ViewModels.FindingRowViewModel(saved).Coverage);
+        Assert.Equal(SavedGroupReview.Statement("SEC-050"), saved.Detail);
+        Assert.Contains("Direct count:", original.Detail, StringComparison.Ordinal);
+        Assert.Equal("May be incomplete", new SecureAD.Shell.ViewModels.FindingRowViewModel(saved, current: null).Coverage);
     }
 
     private static Fixtures.Source[] PositiveSources()

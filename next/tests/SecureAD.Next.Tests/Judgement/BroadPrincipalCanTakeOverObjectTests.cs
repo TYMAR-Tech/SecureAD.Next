@@ -222,12 +222,16 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     /// and reports a principal as able to rewrite permissions it cannot rewrite.
     /// </remarks>
     [Fact]
-    public void TakeOwnershipIsNotReportedWhereOwnerRightsSwitchesItOff()
+    public void ChangeOwnerRemainsSeparateWhenOwnerRightsBlockPermissionControl()
     {
         var verdict = Judge(
             Container(), Allow(Everyone, WriteOwner), Allow(OwnerRights, ReadProperty));
 
-        Assert.Empty(verdict.Findings);
+        var calculation = Assert.IsType<PermissionControlCalculation>(
+            Assert.IsType<ObjectTakeoverEvidence>(Assert.Single(verdict.Findings).Evidence).Calculation);
+        Assert.Equal(PermissionControlState.Established, calculation.ChangeOwner.State);
+        Assert.Equal(PermissionControlState.NotEstablished, calculation.OwnerRightsCondition);
+        Assert.Equal(PermissionControlState.Unknown, calculation.OwnerTransition);
     }
 
     /// <summary>
@@ -239,13 +243,17 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     /// principal can rewrite permissions the platform prevents them from rewriting.
     /// </remarks>
     [Fact]
-    public void TakeOwnershipOnAComputerWithoutAServerBaselineIsUnanswered()
+    public void ChangeOwnerOnAComputerDoesNotInventAServerBaseline()
     {
         var verdict = Judge(
             Computer(), [Allow(Everyone, WriteOwner)], NoMembers, Hardened());
 
-        Assert.Empty(verdict.Findings);
-        Assert.Contains(verdict.Unresolved, input => input.Reason == UnresolvedReason.OwnerServerBehaviorNotRecorded);
+        var calculation = Assert.IsType<PermissionControlCalculation>(
+            Assert.IsType<ObjectTakeoverEvidence>(Assert.Single(verdict.Findings).Evidence).Calculation);
+        Assert.Equal(PermissionControlState.Established, calculation.ChangeOwner.State);
+        Assert.Equal(PermissionControlState.Unknown, calculation.OwnerRightsCondition);
+        Assert.Contains(calculation.OwnerConditions, check => check.Name == "ServerBehaviourBaseline"
+            && check.State == PermissionControlState.Unknown);
     }
 
     /// <summary>
@@ -288,14 +296,16 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
     /// only honest answer, and it is confined to the objects the setting could apply to.
     /// </remarks>
     [Fact]
-    public void AComputerIsRefusedWhereTheForestSettingWasNeverRead()
+    public void AnUnreadForestSettingDoesNotEraseTheSeparateChangeOwnerPermission()
     {
         var verdict = JudgeWithoutForestSetting(Computer(), Allow(Everyone, WriteOwner));
 
-        Assert.Empty(verdict.Findings);
-        Assert.False(verdict.IsComplete);
-        Assert.Contains(
-            verdict.Unresolved, u => u.Reason == UnresolvedReason.OwnerHeuristicNotRead);
+        var calculation = Assert.IsType<PermissionControlCalculation>(
+            Assert.IsType<ObjectTakeoverEvidence>(Assert.Single(verdict.Findings).Evidence).Calculation);
+        Assert.Equal(PermissionControlState.Established, calculation.ChangeOwner.State);
+        Assert.Equal(PermissionControlState.Unknown, calculation.OwnerRightsCondition);
+        Assert.Contains(calculation.OwnerConditions, check => check.Name == "BlockOwnerImplicitRights"
+            && check.State == PermissionControlState.Unknown);
     }
 
     /// <summary>
@@ -326,6 +336,8 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
                 Permissions = _ => Permissions(DescriptorAvailability.Unreadable, []),
                 MembersOfPrincipal = NoMembers,
                 OwnerImplicitRights = Unhardened(),
+                PermissionControlInputs = PermissionInputs(),
+                ForestFqdn = Forest,
             });
 
         Assert.Empty(verdict.Findings);
@@ -519,6 +531,8 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
                 Permissions = _ => Permissions(DescriptorAvailability.Read, entries),
                 MembersOfPrincipal = expand,
                 OwnerImplicitRights = ownerRights ?? Unhardened(),
+                PermissionControlInputs = PermissionInputs(),
+                ForestFqdn = Forest,
             });
 
     /// <summary>
@@ -539,6 +553,8 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
                 Permissions = _ => Permissions(DescriptorAvailability.Read, entries),
                 MembersOfPrincipal = NoMembers,
                 OwnerImplicitRights = null,
+                PermissionControlInputs = PermissionInputs(),
+                ForestFqdn = Forest,
             });
 
     /// <summary>A forest that has never set the attribute, which is most forests.</summary>
@@ -595,7 +611,13 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
                     DescriptorAvailability.Read, entries, DaclCompleteness.Unknown),
                 MembersOfPrincipal = NoMembers,
                 OwnerImplicitRights = Unhardened(),
+                PermissionControlInputs = PermissionInputs(),
+                ForestFqdn = Forest,
             });
+
+    private static PermissionControlInputs PermissionInputs() => new(Guid.NewGuid(),
+        new(new string('a', 64), Guid.NewGuid(), new string('b', 64), PrincipalClassificationRegistry.Version, 2, 2,
+            "DC=ad,DC=lab", "CN=Configuration,DC=ad,DC=lab"), _ => "S-1-5-21-1-2-3");
 
     private static int _ordinal;
 
@@ -620,7 +642,7 @@ public sealed class BroadPrincipalCanTakeOverObjectTests
         new(
             _ordinal++,
             aceType,
-            new PermissionTrustee(sid, null, null, Forest, null, null, null),
+            new PermissionTrustee(sid, null, "CN=Captured holder,DC=ad,DC=lab", Forest, null, null, null),
             mask,
             objectTypeGuid,
             InheritedObjectTypeGuid: null,
