@@ -44,8 +44,13 @@ public sealed class RulesPageTests
     {
         var definition = RuleCatalogue.All.Single(rule => rule.Definition.Id == id).Definition;
         var row = new RuleRowViewModel(id, definition, null);
+        var paragraphs = RuleGuidanceCatalogue.For(id)!.About.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         Assert.NotEmpty(row.LooksFor);
-        Assert.True(row.HasScopeNotes);
+        Assert.Equal(paragraphs[0], row.LooksFor);
+        Assert.Equal(paragraphs.Skip(1), row.ScopeNotes.Select(note => note.Text));
+        Assert.Equal(paragraphs.Length > 1, row.HasScopeNotes);
+        Assert.Equal(paragraphs.Length == 1, row.HasNoScopeNotes);
         Assert.Equal(WhiteSpace(row.About),
             WhiteSpace(string.Join(" ", new[] { row.LooksFor }.Concat(row.ScopeNotes.Select(note => note.Text)))));
         Assert.Equal(definition.RequiredAttributes, row.CapturedInputs.Select(input => input.Attribute));

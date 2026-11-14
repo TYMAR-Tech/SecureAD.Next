@@ -232,7 +232,7 @@ public sealed class LapsConfiguredPolicyStorageTests
         var (directory, original) = Build();
         Publish(directory, original);
         var root = AnalysisStoreLifecycle.ResolveRoot(directory, AnalysisStoreKind.Judgement).Value;
-        Assert.All(root.Segments, part => Assert.Equal(84, part.SchemaVersion));
+        Assert.All(root.Segments, part => Assert.Equal(86, part.SchemaVersion));
         var main = Path.Combine(directory, root.Segment(StoreSegmentRole.Judgement).FileName);
         using (var connection = new SqliteConnection("Data Source=" + main + ";Pooling=False"))
         {

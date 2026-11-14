@@ -12,6 +12,7 @@ permissions:
 jobs:
   build-and-test:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       # Full history, not the default depth-1 checkout. AreaFileCitationSurvivalTests reads
@@ -54,6 +55,7 @@ jobs:
         run: dotnet build next/SecureAD.Next.sln --no-restore --configuration Release
 
       - name: Test
+        timeout-minutes: 20
         # Unrelated blocking fixtures must not starve one another on the shared worker.
         # Concurrency within each test is unchanged and remains asserted by those tests.
         run: dotnet test next/SecureAD.Next.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults -- xUnit.ParallelizeTestCollections=false

@@ -182,6 +182,8 @@ public sealed class ControlEdgeLayoutTests
         [83] = "767932A346D7CA31DE15299972AFB027A0BACF807E1A91C44FB0C0F5F96B0B5F",
         // Observed format-84 automatic LAPS scope/refusal storage; all prior pins remain unchanged.
         [84] = "B3DB0B386EB3994D46E291A1D273EBAC5609464F4B0FC5B3A4D41E80A34D910F",
+        // Observed published format-86 gMSA/GPO proof layout, not an external historical anchor.
+        [86] = "37DA3950C3BAE63DF0ECACA9A5139C13F9DEA94FB870DF0467DED3847C864CBB",
     };
 
     [Fact]

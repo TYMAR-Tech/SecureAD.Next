@@ -205,10 +205,11 @@ public static class RuleGuidanceCatalogue
             WhatToDo: UnconstrainedDelegationAction,
             About:
                 "Reports a saved unconstrained-delegation setting under this rule's existing "
-                + "non-computer classification and controller-exclusion logic. It does not assess "
-                + "current service use or exercise delegation. Missing findings do not establish "
+                + "non-computer classification and controller-exclusion logic.\n\n"
+                + "Missing findings do not establish "
                 + "that excluded or unassessed accounts lack the setting; classification and "
-                + "coverage limitations remain separate from this presentation.",
+                + "coverage limitations remain separate from this presentation.\n\n"
+                + "It does not assess current service use or exercise delegation.",
             MicrosoftReference:
                 "https://learn.microsoft.com/defender-for-identity/security-assessment-unsecure-account-attributes"),
 

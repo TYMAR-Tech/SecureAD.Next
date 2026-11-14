@@ -247,6 +247,9 @@ On 2026-10-30 the owner explicitly approved the warned 30-45-minute focused regr
 rebuilt defect/restored verification, clarifying that he had selected approval in the form.
 
 **SEC-010/011 unconstrained-delegation detail - owner-approved 2026-10-30.**
+On 2026-11-13 the owner approved regrouping SEC-010's existing Rules-page text into Summary,
+Assessment boundary and Usage is not recorded using the existing sections and headings, without
+changing its words, rule behavior, classification/exclusion logic or captured-evidence limits.
 Use the existing captured-setting frame for Unconstrained delegation: Enabled, saved account state
 and actual object type/domain/location, with conditional risk and dependency-first action guidance
 shared with Rules rather than claims of received credentials, impersonation or completed Tier 0 paths.
